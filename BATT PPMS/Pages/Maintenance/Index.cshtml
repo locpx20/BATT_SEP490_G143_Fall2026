@@ -1,0 +1,28 @@
+@page
+@model BATT_PPMS.Pages.Maintenance.IndexModel
+@{
+    ViewData["Title"] = "Yeu cau Bao tri";
+    ViewData["ActivePage"] = "Maintenance";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Yêu cầu Bảo trì</h1>
+        <p class="page-subtitle">Quản lý các yêu cầu bảo trì thiết bị</p>
+    </div>
+    <div class="page-actions">
+        <a href="/Maintenance/Create" class="btn btn-primary" id="btn-create-maintenance">
+            <i class="bi bi-plus-lg"></i> Tạo yêu cầu bảo trì
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="bi bi-tools"></i>
+            <h3>Không có yêu cầu bảo trì</h3>
+            <p>TODO: Danh sách yêu cầu bảo trì, ưu tiên, người thực hiện</p>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,79 @@
+/* =====================================================
+   Login Page Styles
+   ===================================================== */
+:root {
+    --primary: #2563eb;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: var(--font);
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.login-wrapper {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+}
+.login-card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 40px 36px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+}
+.login-logo {
+    text-align: center;
+    margin-bottom: 32px;
+}
+.login-logo .logo-icon { font-size: 48px; display: block; margin-bottom: 10px; }
+.login-logo h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 1px;
+}
+.login-logo p { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 4px; letter-spacing: .5px; }
+.form-group { margin-bottom: 18px; }
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 6px;
+}
+.form-control {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.07);
+    color: #fff;
+    font-size: 14px;
+    font-family: var(--font);
+    transition: all 0.25s;
+}
+.form-control::placeholder { color: rgba(255,255,255,0.3); }
+.form-control:focus { outline: none; border-color: #2563eb; background: rgba(37,99,235,0.1); }
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s;
+    margin-top: 6px;
+    font-family: var(--font);
+}
+.btn-login:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.4); }
+.alert { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; }
+.alert-danger { background: rgba(220,38,38,0.2); color: #fca5a5; border: 1px solid rgba(220,38,38,0.3); }

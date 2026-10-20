@@ -1,0 +1,28 @@
+@page
+@model BATT_PPMS.Pages.PurchaseInvoices.IndexModel
+@{
+    ViewData["Title"] = "Hoa don Nhap hang";
+    ViewData["ActivePage"] = "PurchaseInvoice";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Hóa đơn Nhập hàng</h1>
+        <p class="page-subtitle">Quản lý hóa đơn mua hàng từ nhà cung cấp</p>
+    </div>
+    <div class="page-actions">
+        <a href="/PurchaseInvoices/Create" class="btn btn-primary" id="btn-create-invoice">
+            <i class="bi bi-plus-lg"></i> Tạo hóa đơn
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="bi bi-receipt"></i>
+            <h3>Chưa có hóa đơn nhập hàng</h3>
+            <p>TODO: Danh sách hóa đơn, nhà cung cấp, tổng tiền, trạng thái duyệt</p>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,28 @@
+@page
+@model BATT_PPMS.Pages.MaterialPurchases.IndexModel
+@{
+    ViewData["Title"] = "Mua Vat tu Sua chua";
+    ViewData["ActivePage"] = "MaterialPurchase";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Mua Vật tư Sửa chữa</h1>
+        <p class="page-subtitle">Yêu cầu và ghi nhận mua vật tư phục vụ bảo trì</p>
+    </div>
+    <div class="page-actions">
+        <a href="/MaterialPurchases/Create" class="btn btn-primary" id="btn-create-matpurchase">
+            <i class="bi bi-plus-lg"></i> Yêu cầu mua vật tư
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="bi bi-cart3"></i>
+            <h3>Chưa có yêu cầu mua vật tư</h3>
+            <p>TODO: Danh sách yêu cầu mua vật tư, trạng thái duyệt, hóa đơn</p>
+        </div>
+    </div>
+</div>

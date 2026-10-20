@@ -1,0 +1,28 @@
+@page
+@model BATT_PPMS.Pages.QC.IndexModel
+@{
+    ViewData["Title"] = "Kiem tra Chat luong QC";
+    ViewData["ActivePage"] = "QC";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Kiểm tra Chất lượng (QC)</h1>
+        <p class="page-subtitle">Quản lý các phiếu kiểm tra chất lượng sản phẩm</p>
+    </div>
+    <div class="page-actions">
+        <a href="/QC/Create" class="btn btn-primary" id="btn-create-qc">
+            <i class="bi bi-plus-lg"></i> Tạo phiếu kiểm tra
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="bi bi-patch-check"></i>
+            <h3>Chưa có phiếu kiểm tra QC</h3>
+            <p>TODO: Hiển thị danh sách phiếu QC, kết quả Pass/Fail, người kiểm tra</p>
+        </div>
+    </div>
+</div>

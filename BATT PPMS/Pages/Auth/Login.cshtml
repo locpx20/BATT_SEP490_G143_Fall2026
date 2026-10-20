@@ -1,0 +1,45 @@
+@page
+@model BATT_PPMS.Pages.Auth.LoginModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Đăng nhập - BATT PPMS";
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-logo">
+                <span class="logo-icon">🏭</span>
+                <h1>BATT PPMS</h1>
+                <p>Production Planning & Management System</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert alert-danger">@Model.ErrorMessage</div>
+            }
+
+            <form method="post">
+                <div class="form-group">
+                    <label for="username">Tên đăng nhập</label>
+                    <input type="text" id="username" name="Username" class="form-control"
+                           placeholder="Nhập tên đăng nhập" required autofocus />
+                </div>
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" name="Password" class="form-control"
+                           placeholder="Nhập mật khẩu" required />
+                </div>
+                <button type="submit" class="btn-login">Đăng nhập</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

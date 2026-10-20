@@ -1,0 +1,92 @@
+@page
+@model BATT_PPMS.Pages.Orders.IndexModel
+@{
+    ViewData["Title"] = "Quản lý Đơn hàng";
+    ViewData["ActivePage"] = "OrderList";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Quản lý Đơn hàng</h1>
+        <p class="page-subtitle">Danh sách các đơn hàng trong hệ thống</p>
+    </div>
+    <div class="page-actions">
+        <a href="/Orders/Create" class="btn btn-primary" id="btn-create-order">
+            <i class="bi bi-plus-lg"></i> Tạo đơn hàng
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="filter-bar" style="margin-bottom:0; flex:1;">
+            <div class="search-input" style="position:relative;">
+                <i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;"></i>
+                <input type="text" class="form-control" style="padding-left:36px;" placeholder="Tìm kiếm đơn hàng..." id="searchOrder" />
+            </div>
+            <select class="form-control" style="width:auto;" id="filterStatus">
+                <option value="">Tất cả trạng thái</option>
+                <option value="Pending">Chờ duyệt</option>
+                <option value="Approved">Đã duyệt</option>
+                <option value="Rejected">Từ chối</option>
+                <option value="Completed">Hoàn thành</option>
+            </select>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Mã đơn hàng</th>
+                    <th>Khách hàng</th>
+                    <th>Sản phẩm</th>
+                    <th>Số lượng</th>
+                    <th>Tổng tiền</th>
+                    <th>Ngày đặt</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Orders.Count == 0)
+                {
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <i class="bi bi-clipboard-x"></i>
+                                <h3>Chưa có đơn hàng nào</h3>
+                                <p>Nhấn "Tạo đơn hàng" để bắt đầu</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @foreach (var (order, index) in Model.Orders.Select((o, i) => (o, i + 1)))
+                {
+                    <tr>
+                        <td>@index</td>
+                        <td><strong>@order.OrderCode</strong></td>
+                        <td>@order.Customer?.CustomerName</td>
+                        <td>@order.InventoryItem?.ItemName</td>
+                        <td>@order.Quantity</td>
+                        <td>@order.TotalAmount.ToString("N0") ₫</td>
+                        <td>@order.OrderDate.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            <span class="badge @(order.Status == "Pending" ? "badge-pending" : order.Status == "Approved" ? "badge-approved" : order.Status == "Rejected" ? "badge-rejected" : "badge-completed")">
+                                @order.Status
+                            </span>
+                        </td>
+                        <td>
+                            <a href="/Orders/Detail?id=@order.OrderId" class="btn btn-sm btn-outline" title="Xem chi tiết">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="/Orders/Edit?id=@order.OrderId" class="btn btn-sm btn-outline" title="Chỉnh sửa">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

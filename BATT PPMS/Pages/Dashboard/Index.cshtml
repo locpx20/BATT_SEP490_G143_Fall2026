@@ -1,0 +1,85 @@
+@page
+@model BATT_PPMS.Pages.Dashboard.IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+    ViewData["ActivePage"] = "Dashboard";
+}
+
+<!-- Stat Cards -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Tổng quan hệ thống</h1>
+        <p class="page-subtitle">Chào mừng trở lại, @(HttpContext.Session.GetString("FullName"))!</p>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="bi bi-clipboard-check"></i></div>
+        <div>
+            <div class="stat-number">@Model.TotalOrders</div>
+            <div class="stat-label">Đơn hàng hôm nay</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon orange"><i class="bi bi-hourglass-split"></i></div>
+        <div>
+            <div class="stat-number">@Model.PendingOrders</div>
+            <div class="stat-label">Đơn chờ duyệt</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green"><i class="bi bi-truck"></i></div>
+        <div>
+            <div class="stat-number">@Model.TodayDeliveries</div>
+            <div class="stat-label">Giao hàng hôm nay</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon cyan"><i class="bi bi-patch-check"></i></div>
+        <div>
+            <div class="stat-number">@Model.PendingQC</div>
+            <div class="stat-label">Chờ kiểm tra QC</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+        <div>
+            <div class="stat-number">@Model.BrokenEquipment</div>
+            <div class="stat-label">Thiết bị hỏng</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon blue"><i class="bi bi-box-seam"></i></div>
+        <div>
+            <div class="stat-number">@Model.LowStockItems</div>
+            <div class="stat-label">Hàng tồn kho thấp</div>
+        </div>
+    </div>
+</div>
+
+<!-- Placeholder charts -->
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top: 8px;">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">📦 Đơn hàng 7 ngày gần nhất</span>
+        </div>
+        <div class="card-body">
+            <div class="empty-state" style="padding:30px 10px;">
+                <i class="bi bi-bar-chart-line"></i>
+                <p>Biểu đồ sẽ được phát triển ở giai đoạn sau</p>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">🏭 Sản lượng ca làm gần nhất</span>
+        </div>
+        <div class="card-body">
+            <div class="empty-state" style="padding:30px 10px;">
+                <i class="bi bi-graph-up"></i>
+                <p>Biểu đồ sẽ được phát triển ở giai đoạn sau</p>
+            </div>
+        </div>
+    </div>
+</div>

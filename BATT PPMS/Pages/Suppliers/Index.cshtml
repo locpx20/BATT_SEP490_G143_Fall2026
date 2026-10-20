@@ -1,0 +1,28 @@
+@page
+@model BATT_PPMS.Pages.Suppliers.IndexModel
+@{
+    ViewData["Title"] = "Quan ly Nha cung cap";
+    ViewData["ActivePage"] = "Suppliers";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Quản lý Nhà cung cấp</h1>
+        <p class="page-subtitle">Danh sách nhà cung cấp nguyên vật liệu</p>
+    </div>
+    <div class="page-actions">
+        <a href="/Suppliers/Create" class="btn btn-primary" id="btn-create-supplier">
+            <i class="bi bi-plus-lg"></i> Thêm nhà cung cấp
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="bi bi-building"></i>
+            <h3>Chưa có nhà cung cấp nào</h3>
+            <p>TODO: Danh sách nhà cung cấp, thông tin liên hệ, lịch sử giao dịch</p>
+        </div>
+    </div>
+</div>

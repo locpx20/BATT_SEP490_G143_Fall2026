@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36109.1 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BATT PPMS", "BATT PPMS\BATT PPMS.csproj", "{59E7A818-2BDC-41C6-BCB4-060D94BCACBF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{59E7A818-2BDC-41C6-BCB4-060D94BCACBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59E7A818-2BDC-41C6-BCB4-060D94BCACBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59E7A818-2BDC-41C6-BCB4-060D94BCACBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59E7A818-2BDC-41C6-BCB4-060D94BCACBF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CBD3629E-92D0-4D37-B354-1B124BEBDC93}
+	EndGlobalSection
+EndGlobal

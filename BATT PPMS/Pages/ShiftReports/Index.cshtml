@@ -1,0 +1,28 @@
+@page
+@model BATT_PPMS.Pages.ShiftReports.IndexModel
+@{
+    ViewData["Title"] = "Bao cao Ca lam viec";
+    ViewData["ActivePage"] = "ShiftReport";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Báo cáo Ca làm việc</h1>
+        <p class="page-subtitle">Ghi nhận sản lượng sản xuất theo ca làm</p>
+    </div>
+    <div class="page-actions">
+        <a href="/ShiftReports/Create" class="btn btn-primary" id="btn-create-shift">
+            <i class="bi bi-plus-lg"></i> Tạo báo cáo ca
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="bi bi-file-earmark-bar-graph"></i>
+            <h3>Chưa có báo cáo ca làm việc</h3>
+            <p>TODO: Danh sách báo cáo theo ngày, nhân viên, sản lượng</p>
+        </div>
+    </div>
+</div>

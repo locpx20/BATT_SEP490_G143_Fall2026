@@ -1,0 +1,28 @@
+@page
+@model BATT_PPMS.Pages.Admin.Users.IndexModel
+@{
+    ViewData["Title"] = "Quan ly Nguoi dung";
+    ViewData["ActivePage"] = "Users";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Quản lý Người dùng</h1>
+        <p class="page-subtitle">Quản lý tài khoản và phân quyền nhân sự trong hệ thống</p>
+    </div>
+    <div class="page-actions">
+        <a href="/Admin/Users/Create" class="btn btn-primary" id="btn-create-user">
+            <i class="bi bi-person-plus"></i> Thêm người dùng
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <i class="bi bi-person-gear"></i>
+            <h3>Chưa có người dùng nào</h3>
+            <p>TODO: Danh sách người dùng, vai trò, trạng thái tài khoản (Chỉ Admin)</p>
+        </div>
+    </div>
+</div>

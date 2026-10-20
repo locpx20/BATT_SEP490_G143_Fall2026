@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="BATT PPMS - He thong Quan ly San xuat" />
+    <title>@ViewData["Title"] - BATT PPMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+@{
+    var roleName        = Context.Session.GetString("RoleName") ?? "";
+    var fullName        = Context.Session.GetString("FullName") ?? "User";
+    bool isAdmin        = roleName == "Admin";
+    bool isOwner        = roleName == "Owner";
+    bool isManager      = roleName == "Manager";
+    bool isStaff        = roleName == "Staff";
+    bool isMaintenance  = roleName == "Maintenance Staff";
+    bool isQC           = roleName == "QC Staff";
+    bool isPurchasing   = roleName == "Purchasing Staff";
+    string ap           = ViewData["ActivePage"]?.ToString() ?? "";
+}
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <span class="sidebar-logo">&#127981;</span>
+        <div class="sidebar-brand">
+            <span class="brand-name">BATT PPMS</span>
+            <span class="brand-sub">Production Management</span>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+
+        <!-- ========== ADMIN ========== -->
+        @if (isAdmin)
+        {
+            <div class="nav-section">
+                <div class="nav-section-title">Quan tri he thong</div>
+                <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
+                    <i class="bi bi-person-gear"></i><span>Quan ly nguoi dung</span>
+                </a>
+            </div>
+        }
+
+        <!-- ========== OWNER ========== -->
+        @if (isOwner)
+        {
+            <div class="nav-section">
+                <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
+                    <i class="bi bi-speedometer2"></i><span>Dashboard</span>
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Danh muc</div>
+                <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
+                    <i class="bi bi-building"></i><span>Nha cung cap</span>
+                </a>
+                <a class="nav-item @(ap=="Customers"?"active":"")" href="/Customers/Index">
+                    <i class="bi bi-person-lines-fill"></i><span>Khach hang</span>
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Xuat hang</div>
+                <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
+                    <i class="bi bi-clipboard-check"></i><span>Don hang xuat</span>
+                </a>
+                <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
+                    <i class="bi bi-box-seam"></i><span>Ton kho</span>
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Mua hang</div>
+                <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
+                    <i class="bi bi-receipt"></i><span>Don mua hang</span>
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Bao cao</div>
+                <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
+                    <i class="bi bi-file-earmark-bar-graph"></i><span>Bao cao san xuat</span>
+                </a>
+                <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
+                    <i class="bi bi-tools"></i><span>Bao cao bao tri</span>
+                </a>
+                <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
+                    <i class="bi bi-cart3"></i><span>Bao cao mua vat tu</span>
+                </a>
+            </div>
+        }
+
+        <!-- ========== MANAGER ========== -->
+        @if (isManager)
+        {
+            <div class="nav-section">
+                <div class="nav-section-title">Don hang</div>
+                <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
+                    <i class="bi bi-clipboard-check"></i><span>Danh sach don hang</span>
+                </a>
+                <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
+                    <i class="bi bi-building"></i><span>Nha cung cap</span>
+                </a>
+                <a class="nav-item @(ap=="Customers"?"active":"")" href="/Customers/Index">
+                    <i class="bi bi-person-lines-fill"></i><span>Khach hang</span>
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">San xuat</div>
+                <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
+                    <i class="bi bi-calendar-week"></i><span>Lich lam viec</span>
+                </a>
+                <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
+                    <i class="bi bi-file-earmark-bar-graph"></i><span>Bao cao ca lam</span>
+                </a>
+                <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
+                    <i class="bi bi-box-seam"></i><span>Ton kho</span>
+                </a>
+                <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
+                    <i class="bi bi-patch-check"></i><span>Kiem tra QC</span>
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Bao tri</div>
+                <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
+                    <i class="bi bi-exclamation-triangle"></i><span>Thiet bi hong</span>
+                </a>
+                <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
+                    <i class="bi bi-tools"></i><span>Yeu cau bao tri</span>
+                </a>
+                <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
+                    <i class="bi bi-cart3"></i><span>Duyet mua vat tu</span>
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Mua hang</div>
+                <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
+                    <i class="bi bi-receipt"></i><span>Don mua hang</span>
+                </a>
+            </div>
+        }
+
+        <!-- ========== STAFF (UC4) ========== -->
+        @if (isStaff)
+        {
+            <div class="nav-section">
+                <div class="nav-section-title">Cong viec cua toi</div>
+                <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
+                    <i class="bi bi-calendar-week"></i><span>Lich lam viec</span>
+                </a>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Bao cao</div>
+                <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
+                    <i class="bi bi-file-earmark-bar-graph"></i><span>Bao cao ca lam</span>
+                </a>
+                <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
+                    <i class="bi bi-exclamation-triangle"></i><span>Thiet bi hong</span>
+                </a>
+            </div>
+        }
+
+        <!-- ========== MAINTENANCE STAFF (UC5) ========== -->
+        @if (isMaintenance)
+        {
+            <div class="nav-section">
+                <div class="nav-section-title">Bao tri thiet bi</div>
+                <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
+                    <i class="bi bi-tools"></i><span>Yeu cau sua chua</span>
+                </a>
+                <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
+                    <i class="bi bi-cart3"></i><span>Mua vat tu</span>
+                </a>
+            </div>
+        }
+
+        <!-- ========== QC STAFF (UC6) ========== -->
+        @if (isQC)
+        {
+            <div class="nav-section">
+                <div class="nav-section-title">Kiem soat chat luong</div>
+                <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
+                    <i class="bi bi-patch-check"></i><span>Phieu kiem tra QC</span>
+                </a>
+            </div>
+        }
+
+        <!-- ========== PURCHASING STAFF (UC7) ========== -->
+        @if (isPurchasing)
+        {
+            <div class="nav-section">
+                <div class="nav-section-title">Mua hang</div>
+                <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
+                    <i class="bi bi-receipt"></i><span>Don mua hang</span>
+                </a>
+                <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
+                    <i class="bi bi-building"></i><span>Nha cung cap</span>
+                </a>
+            </div>
+        }
+
+        <!-- ========== TAT CA: Tai khoan ca nhan (UC1) ========== -->
+        <div class="nav-section">
+            <div class="nav-section-title">Tai khoan</div>
+            <a class="nav-item @(ap=="Profile"?"active":"")" href="/Profile/Index">
+                <i class="bi bi-person-circle"></i><span>Ho so ca nhan</span>
+            </a>
+            <a class="nav-item @(ap=="ChangePassword"?"active":"")" href="/Profile/ChangePassword">
+                <i class="bi bi-shield-lock"></i><span>Doi mat khau</span>
+            </a>
+        </div>
+
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="user-info">
+            <div class="user-avatar"><i class="bi bi-person-circle"></i></div>
+            <div class="user-details">
+                <span class="user-name">@fullName</span>
+                <span class="user-role">@roleName</span>
+            </div>
+        </div>
+        <a href="/Auth/Logout" class="btn-logout" title="Dang xuat">
+            <i class="bi bi-box-arrow-right"></i>
+        </a>
+    </div>
+</aside>
+
+<div class="main-wrapper">
+    <header class="topbar">
+        <button class="sidebar-toggle" id="sidebarToggle">
+            <i class="bi bi-list"></i>
+        </button>
+        <div class="topbar-title">@ViewData["Title"]</div>
+        <div class="topbar-actions">
+            <span class="topbar-role-badge">@roleName</span>
+            <span class="topbar-greeting">@fullName</span>
+        </div>
+    </header>
+    <main class="page-content">
+        @RenderBody()
+    </main>
+</div>
+
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

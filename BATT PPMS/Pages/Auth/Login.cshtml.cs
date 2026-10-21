@@ -22,12 +22,26 @@ namespace BATT_PPMS.Pages.Auth
         public string Password { get; set; } = string.Empty;
 
         public string? ErrorMessage { get; set; }
+        public string? SuccessMessage { get; set; }
 
-        public IActionResult OnGet()
+        public IActionResult OnGet(string? registered, string? reset, string? msg)
         {
             // Nếu đã đăng nhập rồi thì redirect về Dashboard
             if (HttpContext.Session.GetInt32(SessionKeys.UserId) != null)
                 return RedirectToPage("/Dashboard/Index");
+
+            if (registered == "1")
+            {
+                SuccessMessage = "🎉 Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay.";
+            }
+            else if (reset == "1")
+            {
+                SuccessMessage = "✅ Đặt lại mật khẩu thành công! Vui lòng sử dụng mật khẩu mới để đăng nhập.";
+            }
+            else if (!string.IsNullOrEmpty(msg))
+            {
+                SuccessMessage = msg;
+            }
 
             return Page();
         }
@@ -49,7 +63,7 @@ namespace BATT_PPMS.Pages.Auth
 
             if (user == null)
             {
-                ErrorMessage = "Tên đăng nhập hoặc mật khẩu không đúng.";
+                ErrorMessage = "Tên đăng nhập hoặc mật khẩu không đúng hoặc tài khoản đang bị khóa.";
                 return Page();
             }
 

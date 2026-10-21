@@ -10,6 +10,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
 </head>
 <body>
@@ -19,26 +22,53 @@
                 <span class="logo-icon">🏭</span>
                 <h1>BATT PPMS</h1>
                 <p>Production Planning & Management System</p>
+                <div class="zalo-service-pill">
+                    <span class="zalo-badge-icon">💬</span>
+                    <span>Tích hợp Zalo API External Notification Service</span>
+                </div>
             </div>
+
+            @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+            {
+                <div class="alert alert-success">
+                    <span class="alert-icon">✓</span>
+                    <span>@Model.SuccessMessage</span>
+                </div>
+            }
 
             @if (!string.IsNullOrEmpty(Model.ErrorMessage))
             {
-                <div class="alert alert-danger">@Model.ErrorMessage</div>
+                <div class="alert alert-danger">
+                    <span class="alert-icon">⚠</span>
+                    <span>@Model.ErrorMessage</span>
+                </div>
             }
 
-            <form method="post">
+            <form method="post" autocomplete="on">
                 <div class="form-group">
                     <label for="username">Tên đăng nhập</label>
                     <input type="text" id="username" name="Username" class="form-control"
-                           placeholder="Nhập tên đăng nhập" required autofocus />
+                           value="@Model.Username" placeholder="Nhập tên đăng nhập" required autofocus />
                 </div>
                 <div class="form-group">
-                    <label for="password">Mật khẩu</label>
+                    <div class="form-label-row">
+                        <label for="password">Mật khẩu</label>
+                        <a asp-page="/Auth/ForgotPassword" class="form-link-subtle">Quên mật khẩu?</a>
+                    </div>
                     <input type="password" id="password" name="Password" class="form-control"
                            placeholder="Nhập mật khẩu" required />
                 </div>
+
                 <button type="submit" class="btn-login">Đăng nhập</button>
             </form>
+
+            <div class="auth-divider">
+                <span>hoặc</span>
+            </div>
+
+            <div class="auth-footer-action">
+                <p>Chưa có tài khoản? <a asp-page="/Auth/Register" class="link-register">Đăng ký tài khoản mới</a></p>
+            </div>
         </div>
     </div>
 </body>

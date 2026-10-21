@@ -1,5 +1,6 @@
 using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
+using BATT_PPMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,13 @@ namespace BATT_PPMS.Pages.Profile
     public class ChangePasswordModel : BasePageModel
     {
         private readonly AppDbContext _context;
-        public ChangePasswordModel(AppDbContext context) { _context = context; }
+        private readonly IZaloNotificationService _zaloService;
+
+        public ChangePasswordModel(AppDbContext context, IZaloNotificationService zaloService)
+        {
+            _context = context;
+            _zaloService = zaloService;
+        }
 
         [BindProperty]
         public string CurrentPassword { get; set; } = string.Empty;
@@ -55,7 +62,17 @@ namespace BATT_PPMS.Pages.Profile
 
             user.Password = NewPassword; // TODO: hash password
             await _context.SaveChangesAsync();
-            SuccessMessage = "Đổi mật khẩu thành công!";
+
+            if (!string.IsNullOrWhiteSpace(user.Phone))
+            {
+                await _zaloService.SendPasswordChangedAsync(user.Phone, user.Username);
+                SuccessMessage = "Đổi mật khẩu thành công! Thông báo bảo mật đã được gửi tới số Zalo của bạn.";
+            }
+            else
+            {
+                SuccessMessage = "Đổi mật khẩu thành công!";
+            }
+
             return Page();
         }
     }

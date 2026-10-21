@@ -28,6 +28,16 @@ namespace BATT_PPMS
             // HttpContext Accessor
             builder.Services.AddHttpContextAccessor();
 
+            // In-Memory Cache cho OTP và Cache dữ liệu
+            builder.Services.AddMemoryCache();
+
+            // HttpClient cho các dịch vụ bên ngoài (Zalo API, Webhooks)
+            builder.Services.AddHttpClient();
+
+            // Zalo API External Notification Service & OTP Service
+            builder.Services.AddSingleton<BATT_PPMS.Services.IZaloNotificationService, BATT_PPMS.Services.ZaloNotificationService>();
+            builder.Services.AddSingleton<BATT_PPMS.Services.IOtpService, BATT_PPMS.Services.OtpService>();
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

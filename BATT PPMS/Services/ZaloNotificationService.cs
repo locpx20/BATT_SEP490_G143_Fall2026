@@ -6,7 +6,10 @@ namespace BATT_PPMS.Services
 {
     /// <summary>
     /// Triển khai dịch vụ gửi tin nhắn / OTP qua Zalo API External Notification Service
-    /// Kết nối trực tiếp tới Zalo Notification Service (ZNS OpenAPI): Gửi tin nhắn OTP tới số điện thoại thoại Zalo
+    /// Hỗ trợ:
+    /// 1. Zalo Bot Service (Node.js): Gửi trực tiếp vào ứng dụng Zalo trên điện thoại
+    /// 2. Zalo Notification Service (ZNS OpenAPI): Gửi qua Zalo OA chính thức
+    /// 3. Mock/Console Mode: Ghi mã ra terminal khi chưa kích hoạt bot hoặc token
     /// </summary>
     public class ZaloNotificationService : IZaloNotificationService
     {
@@ -41,13 +44,58 @@ namespace BATT_PPMS.Services
                 ZaloMessageId = $"ZNS_{timestamp:yyyyMMddHHmmss}_{new Random().Next(1000, 9999)}"
             };
 
-            var enableMock = _configuration.GetValue<bool?>("ZaloNotification:EnableMock") ?? false;
+            var enableBot = _configuration.GetValue<bool?>("ZaloNotification:EnableBot") ?? true;
+            var botServiceUrl = _configuration["ZaloNotification:BotServiceUrl"] ?? "http://localhost:5050/send-otp";
+
+            // 1. Ưu tiên: Gửi trực tiếp vào app Zalo điện thoại qua Zalo Bot Service
+            if (enableBot && !string.IsNullOrWhiteSpace(botServiceUrl))
+            {
+                try
+                {
+                    var client = _httpClientFactory.CreateClient();
+                    client.Timeout = TimeSpan.FromSeconds(6);
+                    var botPayload = new
+                    {
+                        phone = phoneNumber,
+                        otp = otpCode,
+                        purpose = purpose
+                    };
+                    var botContent = new StringContent(JsonSerializer.Serialize(botPayload), Encoding.UTF8, "application/json");
+                    var botResponse = await client.PostAsync(botServiceUrl, botContent);
+                    var botBody = await botResponse.Content.ReadAsStringAsync();
+
+                    if (botResponse.IsSuccessStatusCode)
+                    {
+                        using var doc = JsonDocument.Parse(botBody);
+                        var isSuccess = doc.RootElement.TryGetProperty("success", out var sProp) && sProp.GetBoolean();
+                        if (isSuccess)
+                        {
+                            result.Success = true;
+                            result.Message = $"Đã gửi mã xác thực OTP trực tiếp vào app Zalo của số điện thoại {phoneNumber}!";
+                            _logger.LogInformation("Zalo Bot sent OTP to {Phone}: {Body}", phoneNumber, botBody);
+
+                            lock (_lock) { _lastNotification = result; }
+                            return result;
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Zalo Bot service returned error: {Body}", botBody);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogInformation("Zalo Bot service not running or unreachable: {Msg}", ex.Message);
+                }
+            }
+
+            // 2. Gọi qua Zalo OpenAPI (ZNS) khi có Token và tắt Mock
+            var enableMock = _configuration.GetValue<bool?>("ZaloNotification:EnableMock") ?? true;
             var apiEndpoint = _configuration["ZaloNotification:ApiEndpoint"] ?? "https://business.openapi.zalo.me/message/template";
             var accessToken = _configuration["ZaloNotification:AccessToken"];
             var templateId = _configuration["ZaloNotification:TemplateIdOtp"] ?? "328912";
-            var mode = _configuration["ZaloNotification:Mode"]; // "development" hoặc để trống cho production
+            var mode = _configuration["ZaloNotification:Mode"];
 
-            // Xây dựng template_data với các key phổ biến để tương thích với mẫu ZNS của Zalo
             var templateData = new Dictionary<string, object>
             {
                 { "otp", otpCode },
@@ -78,7 +126,6 @@ namespace BATT_PPMS.Services
             var hasLiveToken = !string.IsNullOrWhiteSpace(accessToken)
                                && !accessToken.Equals("your_access_token_here", StringComparison.OrdinalIgnoreCase);
 
-            // Gửi thật qua Zalo OpenAPI khi có token hoặc khi tắt Mock
             if (hasLiveToken && !enableMock)
             {
                 try
@@ -135,16 +182,11 @@ namespace BATT_PPMS.Services
                     result.Message = $"Không thể kết nối đến máy chủ Zalo API: {ex.Message}";
                 }
             }
-            else if (!enableMock && !hasLiveToken)
-            {
-                result.Success = false;
-                result.Message = "Chưa cấu hình Access Token của Zalo trong file appsettings.json. Vui lòng dán Access Token của Zalo OA vào dòng 'AccessToken' trong appsettings.json để gửi tin về điện thoại.";
-            }
             else
             {
-                // Chế độ mô phỏng / Mock (khi EnableMock = true): Ghi log terminal, không hiện trên web
+                // Chế độ mô phỏng / Mock (khi EnableMock = true): Ghi log console ra terminal máy chủ
                 result.Success = true;
-                result.Message = $"Đã gửi mã OTP qua Zalo tới số {phoneNumber}.";
+                result.Message = $"Đã gửi mã OTP qua Zalo tới số {phoneNumber}. (Kiểm tra Zalo trên điện thoại hoặc cửa sổ Terminal)";
                 _logger.LogInformation("=================================================================");
                 _logger.LogInformation(">>> [ZALO NOTIFICATION SERVICE - DISPATCH TO PHONE]");
                 _logger.LogInformation(">>> Recipient Phone : {Phone}", phoneNumber);

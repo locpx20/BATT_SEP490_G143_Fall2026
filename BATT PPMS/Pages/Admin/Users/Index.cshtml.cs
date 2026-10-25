@@ -18,6 +18,15 @@ namespace BATT_PPMS.Pages.Admin.Users
         public List<User> UsersList { get; set; } = new();
         public List<Role> RolesList { get; set; } = new();
 
+        [BindProperty(SupportsGet = true)]
+        public string? Keyword { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? RoleFilter { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string? StatusFilter { get; set; }
+
         [TempData]
         public string? SuccessMessage { get; set; }
 
@@ -151,14 +160,31 @@ namespace BATT_PPMS.Pages.Admin.Users
 
         private async Task LoadDataAsync()
         {
-            UsersList = await _context.Users
+            var query = _context.Users
                 .Include(u => u.Role)
-                .OrderBy(u => u.UserId)
-                .ToListAsync();
+                .AsQueryable();
 
-            RolesList = await _context.Roles
-                .OrderBy(r => r.RoleId)
-                .ToListAsync();
+            if (!string.IsNullOrWhiteSpace(Keyword))
+            {
+                var kw = Keyword.Trim().ToLower();
+                query = query.Where(u => u.Username.ToLower().Contains(kw)
+                                      || u.FullName.ToLower().Contains(kw)
+                                      || (u.Email != null && u.Email.ToLower().Contains(kw))
+                                      || (u.Phone != null && u.Phone.Contains(kw)));
+            }
+
+            if (RoleFilter.HasValue && RoleFilter.Value > 0)
+            {
+                query = query.Where(u => u.RoleId == RoleFilter.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(StatusFilter))
+            {
+                query = query.Where(u => u.Status == StatusFilter);
+            }
+
+            UsersList = await query.OrderBy(u => u.UserId).ToListAsync();
+            RolesList = await _context.Roles.OrderBy(r => r.RoleId).ToListAsync();
         }
     }
 }

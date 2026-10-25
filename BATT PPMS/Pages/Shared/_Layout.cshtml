@@ -41,9 +41,12 @@
         @if (isAdmin)
         {
             <div class="nav-section">
-                <div class="nav-section-title">Quan tri he thong</div>
+                <div class="nav-section-title">Hệ thống &amp; Kiểm toán</div>
                 <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
-                    <i class="bi bi-person-gear"></i><span>Quan ly nguoi dung</span>
+                    <i class="bi bi-people-fill"></i><span>Quản trị tài khoản</span>
+                </a>
+                <a class="nav-item @(ap=="AuditLogs"?"active":"")" href="/Admin/AuditLogs/Index">
+                    <i class="bi bi-shield-check"></i><span>Nhật ký kiểm toán</span>
                 </a>
             </div>
         }
@@ -246,6 +249,7 @@
     </main>
 </div>
 
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>

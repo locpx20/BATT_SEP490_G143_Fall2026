@@ -1,4 +1,3 @@
-﻿using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,17 +5,12 @@ namespace BATT_PPMS.Pages.Customers
 {
     public class IndexModel : BasePageModel
     {
-        private readonly AppDbContext _context;
-        public IndexModel(AppDbContext context) { _context = context; }
-
-        public async Task<IActionResult> OnGetAsync()
+        public IActionResult OnGet()
         {
-            var check = RequireLogin();
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
             if (check != null) return check;
 
-            // TODO: Load data from _context
-
-            return Page();
+            return RedirectToPage("/Suppliers/Index", new { tab = "customers" });
         }
     }
 }

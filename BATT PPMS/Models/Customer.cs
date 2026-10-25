@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BATT_PPMS.Models
@@ -29,6 +29,9 @@ namespace BATT_PPMS.Models
 
         [Column("address")]
         public string? Address { get; set; }
+
+        [Column("payment_terms")]
+        public string? PaymentTerms { get; set; }
 
         [MaxLength(20)]
         [Column("status")]

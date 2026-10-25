@@ -1,4 +1,4 @@
-using BATT_PPMS.Data;
+﻿using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -15,6 +15,7 @@ namespace BATT_PPMS.Pages.Suppliers
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? Address { get; set; }
+        public string? Notes { get; set; }
         public string Status { get; set; } = "Active";
         public int TotalPurchasesCount { get; set; }
         public decimal TotalPurchasesKg { get; set; }
@@ -40,6 +41,7 @@ namespace BATT_PPMS.Pages.Suppliers
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? Address { get; set; }
+        public string? PaymentTerms { get; set; }
         public string Status { get; set; } = "Active";
         public int TotalOrdersCount { get; set; }
         public decimal TotalOrderedKg { get; set; }
@@ -66,7 +68,6 @@ namespace BATT_PPMS.Pages.Suppliers
             _context = context;
         }
 
-        // Active tab: "suppliers" or "customers"
         [BindProperty(SupportsGet = true)]
         public string Tab { get; set; } = "suppliers";
 
@@ -101,7 +102,7 @@ namespace BATT_PPMS.Pages.Suppliers
         // SUPPLIER HANDLERS
         // ==========================================
         public async Task<IActionResult> OnPostCreateSupplierAsync(
-            string SupplierName, string? ContactPerson, string? Phone, string? Email, string? Address)
+            string SupplierName, string? ContactPerson, string? Phone, string? Email, string? Address, string? Notes)
         {
             var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
@@ -112,7 +113,7 @@ namespace BATT_PPMS.Pages.Suppliers
                 return RedirectToPage(new { Tab = "suppliers" });
             }
 
-            var creatorId = CurrentUserId > 0 ? CurrentUserId : 2; // fallback to Owner id
+            var creatorId = CurrentUserId > 0 ? CurrentUserId : 2;
 
             var supplier = new Supplier
             {
@@ -121,6 +122,7 @@ namespace BATT_PPMS.Pages.Suppliers
                 Phone = Phone?.Trim(),
                 Email = Email?.Trim(),
                 Address = Address?.Trim(),
+                Notes = Notes?.Trim(),
                 Status = StatusConstants.Active,
                 CreatedBy = creatorId
             };
@@ -128,12 +130,12 @@ namespace BATT_PPMS.Pages.Suppliers
             _context.Suppliers.Add(supplier);
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Thêm mới Nhà cung cấp '{supplier.SupplierName}' (NCC-{supplier.SupplierId:D2}) thành công!";
+            SuccessMessage = $"Tạo Nhà cung cấp thành công: Đã thêm NCC-{supplier.SupplierId:D2} - {supplier.SupplierName}";
             return RedirectToPage(new { Tab = "suppliers" });
         }
 
         public async Task<IActionResult> OnPostUpdateSupplierAsync(
-            int SupplierId, string SupplierName, string? ContactPerson, string? Phone, string? Email, string? Address, string? Status)
+            int SupplierId, string SupplierName, string? ContactPerson, string? Phone, string? Email, string? Address, string? Notes, string? Status)
         {
             var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
@@ -156,12 +158,13 @@ namespace BATT_PPMS.Pages.Suppliers
             supplier.Phone = Phone?.Trim();
             supplier.Email = Email?.Trim();
             supplier.Address = Address?.Trim();
+            supplier.Notes = Notes?.Trim();
             if (!string.IsNullOrWhiteSpace(Status))
                 supplier.Status = Status;
 
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Cập nhật thông tin Nhà cung cấp NCC-{supplier.SupplierId:D2} thành công!";
+            SuccessMessage = $"Cập nhật thành công: Đã lưu thay đổi cho NCC NCC-{supplier.SupplierId:D2}";
             return RedirectToPage(new { Tab = "suppliers" });
         }
 
@@ -181,8 +184,8 @@ namespace BATT_PPMS.Pages.Suppliers
             supplier.Status = isCurrentlyActive ? StatusConstants.Inactive : StatusConstants.Active;
             await _context.SaveChangesAsync();
 
-            var actionName = isCurrentlyActive ? "ngừng hợp tác với" : "kích hoạt lại";
-            SuccessMessage = $"Đã {actionName} Nhà cung cấp '{supplier.SupplierName}' (NCC-{supplier.SupplierId:D2}).";
+            var actionLabel = isCurrentlyActive ? "ngừng sử dụng" : "kích hoạt lại";
+            SuccessMessage = $"Thao tác thành công: Đã {actionLabel} NCC NCC-{supplier.SupplierId:D2}";
             return RedirectToPage(new { Tab = "suppliers" });
         }
 
@@ -190,7 +193,7 @@ namespace BATT_PPMS.Pages.Suppliers
         // CUSTOMER HANDLERS
         // ==========================================
         public async Task<IActionResult> OnPostCreateCustomerAsync(
-            string CustomerName, string? ContactPerson, string? Phone, string? Email, string? Address)
+            string CustomerName, string? ContactPerson, string? Phone, string? Email, string? Address, string? PaymentTerms)
         {
             var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
@@ -210,6 +213,7 @@ namespace BATT_PPMS.Pages.Suppliers
                 Phone = Phone?.Trim(),
                 Email = Email?.Trim(),
                 Address = Address?.Trim(),
+                PaymentTerms = string.IsNullOrWhiteSpace(PaymentTerms) ? "Chuyển khoản theo thỏa thuận hợp đồng" : PaymentTerms.Trim(),
                 Status = StatusConstants.Active,
                 CreatedBy = creatorId
             };
@@ -217,12 +221,12 @@ namespace BATT_PPMS.Pages.Suppliers
             _context.Customers.Add(customer);
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Thêm mới Khách hàng '{customer.CustomerName}' (KH-{customer.CustomerId:D2}) thành công!";
+            SuccessMessage = $"Tạo Khách hàng thành công: Đã thêm KH-{customer.CustomerId:D2} - {customer.CustomerName}";
             return RedirectToPage(new { Tab = "customers" });
         }
 
         public async Task<IActionResult> OnPostUpdateCustomerAsync(
-            int CustomerId, string CustomerName, string? ContactPerson, string? Phone, string? Email, string? Address, string? Status)
+            int CustomerId, string CustomerName, string? ContactPerson, string? Phone, string? Email, string? Address, string? PaymentTerms, string? Status)
         {
             var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
@@ -245,12 +249,13 @@ namespace BATT_PPMS.Pages.Suppliers
             customer.Phone = Phone?.Trim();
             customer.Email = Email?.Trim();
             customer.Address = Address?.Trim();
+            customer.PaymentTerms = PaymentTerms?.Trim();
             if (!string.IsNullOrWhiteSpace(Status))
                 customer.Status = Status;
 
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Cập nhật thông tin Khách hàng KH-{customer.CustomerId:D2} thành công!";
+            SuccessMessage = $"Cập nhật thành công: Đã lưu thay đổi cho Khách hàng KH-{customer.CustomerId:D2}";
             return RedirectToPage(new { Tab = "customers" });
         }
 
@@ -270,8 +275,8 @@ namespace BATT_PPMS.Pages.Suppliers
             customer.Status = isCurrentlyActive ? StatusConstants.Inactive : StatusConstants.Active;
             await _context.SaveChangesAsync();
 
-            var actionName = isCurrentlyActive ? "ngừng hợp tác với" : "kích hoạt lại";
-            SuccessMessage = $"Đã {actionName} Khách hàng '{customer.CustomerName}' (KH-{customer.CustomerId:D2}).";
+            var actionLabel = isCurrentlyActive ? "ngừng sử dụng" : "kích hoạt lại";
+            SuccessMessage = $"Thao tác thành công: Đã {actionLabel} Khách hàng KH-{customer.CustomerId:D2}";
             return RedirectToPage(new { Tab = "customers" });
         }
 
@@ -311,6 +316,7 @@ namespace BATT_PPMS.Pages.Suppliers
                     Phone = s.Phone ?? "—",
                     Email = s.Email ?? "—",
                     Address = s.Address ?? "—",
+                    Notes = s.Notes ?? "",
                     Status = s.Status,
                     TotalPurchasesCount = invoices.Count,
                     TotalPurchasesKg = totalKg,
@@ -356,6 +362,7 @@ namespace BATT_PPMS.Pages.Suppliers
                     Phone = c.Phone ?? "—",
                     Email = c.Email ?? "—",
                     Address = c.Address ?? "—",
+                    PaymentTerms = string.IsNullOrWhiteSpace(c.PaymentTerms) ? "Chuyển khoản theo thỏa thuận hợp đồng" : c.PaymentTerms,
                     Status = c.Status,
                     TotalOrdersCount = orders.Count,
                     TotalOrderedKg = totalKg,

@@ -1,4 +1,4 @@
-namespace BATT_PPMS.Helpers
+﻿namespace BATT_PPMS.Helpers
 {
     /// <summary>
     /// Định nghĩa đầy đủ 7 vai trò trong hệ thống (khớp toàn bộ use case diagram)

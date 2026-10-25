@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model BATT_PPMS.Pages.Suppliers.IndexModel
 @{
     ViewData["Title"] = "Đối tác Cung ứng & Khách hàng";
@@ -195,7 +195,7 @@
                                     <button type="button"
                                             class="btn btn-outline btn-xs"
                                             title="Chỉnh sửa thông tin"
-                                            onclick="openEditSupplierModal(@sup.SupplierId, '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Name))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.ContactPerson ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Phone ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Email ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Address ?? ""))', '@sup.Status')">
+                                            onclick="openEditModal('SUPPLIER', @sup.SupplierId, '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Code))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Name))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.ContactPerson ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Phone ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Email ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Address ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Notes ?? ""))', '@sup.Status')">
                                         <i class="bi bi-pencil-square" style="color: #4f46e5;"></i>
                                     </button>
 
@@ -294,7 +294,7 @@
                             <div class="partner-stat-box">
                                 <div class="partner-stat-row">
                                     <span>Điều khoản thanh toán:</span>
-                                    <span style="font-weight: 600; color: #0f172a;">Chuyển khoản / Hợp đồng</span>
+                                    <span style="font-weight: 600; color: #0f172a; max-width: 170px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@cus.PaymentTerms">@cus.PaymentTerms</span>
                                 </div>
                                 <div class="partner-stat-row">
                                     <span>Đơn đặt hàng:</span>
@@ -325,7 +325,7 @@
                                     <button type="button"
                                             class="btn btn-outline btn-xs"
                                             title="Chỉnh sửa thông tin"
-                                            onclick="openEditCustomerModal(@cus.CustomerId, '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Name))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.ContactPerson ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Phone ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Email ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Address ?? ""))', '@cus.Status')">
+                                            onclick="openEditModal('CUSTOMER', @cus.CustomerId, '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Code))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Name))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.ContactPerson ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Phone ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Email ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Address ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.PaymentTerms ?? ""))', '@cus.Status')">
                                         <i class="bi bi-pencil-square" style="color: #4f46e5;"></i>
                                     </button>
 
@@ -350,238 +350,237 @@
 </div>
 
 <!-- =====================================================
-     MODAL: TẠO MỚI NHÀ CUNG CẤP (CREATE SUPPLIER)
+     MODAL: THÊM NHÀ CUNG CẤP (ADD SUPPLIER - Matches BATT_PPMSss)
      ===================================================== -->
 <div class="modal-overlay" id="modalAddSupplier">
-    <div class="modal-box" style="max-width: 560px;">
+    <div class="modal-box" style="max-width: 520px;">
         <div class="modal-header">
-            <h3 class="modal-title">
-                <i class="bi bi-truck" style="color: #4f46e5; margin-right: 6px;"></i>
-                Thêm Nhà cung cấp Nguyên vật liệu
-            </h3>
+            <h3 class="modal-title">Thêm Nhà cung cấp Nguyên vật liệu</h3>
             <button type="button" class="modal-close" onclick="closeModal('modalAddSupplier')">
                 <i class="bi bi-x"></i>
             </button>
         </div>
         <form method="post" asp-page-handler="CreateSupplier">
-            <div class="modal-body">
-                <div class="info-box" style="margin-bottom: 16px;">
-                    <i class="bi bi-info-circle" style="color: #4f46e5; margin-right: 6px;"></i>
-                    Mã NCC sẽ được hệ thống tự động sinh tiếp theo (ví dụ: <code>NCC-0@(Model.Suppliers.Count + 1)</code>).
-                </div>
-
-                <div class="form-group" style="margin-bottom: 14px;">
-                    <label class="form-label">Tên Nhà cung cấp <span class="required-star">*</span></label>
-                    <input type="text" name="SupplierName" class="form-control" placeholder="Ví dụ: Công ty TNHH Lâm Nghiệp Hàm Thuận" required />
-                </div>
-
-                <div class="form-grid-2" style="margin-bottom: 14px;">
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+                <!-- Row 1: Code & Category -->
+                <div class="form-grid-2">
                     <div class="form-group">
-                        <label class="form-label">Người đại diện / liên hệ</label>
-                        <input type="text" name="ContactPerson" class="form-control" placeholder="Ví dụ: Ông Nguyễn Đức Thắng" />
+                        <label class="form-label">MÃ NCC *</label>
+                        <input type="text"
+                               value="NCC-0@(Model.Suppliers.Count + 1)"
+                               readonly
+                               class="form-control"
+                               style="font-family: monospace; font-weight: 700; background: #f8fafc;" />
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="text" name="Phone" class="form-control" placeholder="Ví dụ: 0252.386.1111" />
+                        <label class="form-label">MẶT HÀNG</label>
+                        <input type="text"
+                               value="Nguyên vật liệu"
+                               disabled
+                               class="form-control"
+                               style="background: #f1f5f9; color: #64748b; cursor: not-allowed;" />
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 14px;">
-                    <label class="form-label">Email liên hệ</label>
-                    <input type="email" name="Email" class="form-control" placeholder="thang.nd@hamthuanwood.vn" />
-                </div>
-
+                <!-- Row 2: Name -->
                 <div class="form-group">
-                    <label class="form-label">Địa chỉ kho / Trụ sở</label>
-                    <textarea name="Address" class="form-control" rows="2" placeholder="Ví dụ: KCN Hàm Kiệm, Huyện Hàm Thuận Nam, Bình Thuận"></textarea>
+                    <label class="form-label">TÊN NHÀ CUNG CẤP *</label>
+                    <input type="text"
+                           name="SupplierName"
+                           placeholder="Ví dụ: Công ty TNHH Lâm Nghiệp Hàm Thuận"
+                           class="form-control"
+                           required />
+                </div>
+
+                <!-- Row 3: Contact & Phone -->
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">NGƯỜI LIÊN HỆ</label>
+                        <input type="text"
+                               name="ContactPerson"
+                               placeholder="Ông/Bà..."
+                               class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SỐ ĐIỆN THOẠI</label>
+                        <input type="text"
+                               name="Phone"
+                               placeholder="09xx..."
+                               class="form-control" />
+                    </div>
+                </div>
+
+                <!-- Row 4: Address -->
+                <div class="form-group">
+                    <label class="form-label">ĐỊA CHỈ</label>
+                    <input type="text"
+                           name="Address"
+                           placeholder="KCN Hàm Kiệm, Huyện Hàm Thuận Nam, Bình Thuận"
+                           class="form-control" />
+                </div>
+
+                <!-- Row 5: Notes -->
+                <div class="form-group">
+                    <label class="form-label">GHI CHÚ ĐỐI TÁC</label>
+                    <textarea name="Notes"
+                              rows="2"
+                              placeholder="Ghi chú về nguồn cung, năng lực giao hàng..."
+                              class="form-control"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeModal('modalAddSupplier')">Hủy bỏ</button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check2"></i> Lưu Nhà cung cấp
-                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modalAddSupplier')">Hủy bỏ</button>
+                <button type="submit" class="btn btn-primary btn-sm">Lưu Nhà cung cấp</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- =====================================================
-     MODAL: CẬP NHẬT NHÀ CUNG CẤP (UPDATE SUPPLIER)
-     ===================================================== -->
-<div class="modal-overlay" id="modalEditSupplier">
-    <div class="modal-box" style="max-width: 560px;">
-        <div class="modal-header">
-            <h3 class="modal-title">
-                <i class="bi bi-pencil-square" style="color: #4f46e5; margin-right: 6px;"></i>
-                Cập nhật thông tin Nhà cung cấp
-            </h3>
-            <button type="button" class="modal-close" onclick="closeModal('modalEditSupplier')">
-                <i class="bi bi-x"></i>
-            </button>
-        </div>
-        <form method="post" asp-page-handler="UpdateSupplier">
-            <input type="hidden" name="SupplierId" id="editSupplierId" />
-            <div class="modal-body">
-                <div class="form-group" style="margin-bottom: 14px;">
-                    <label class="form-label">Tên Nhà cung cấp <span class="required-star">*</span></label>
-                    <input type="text" name="SupplierName" id="editSupplierName" class="form-control" required />
-                </div>
-
-                <div class="form-grid-2" style="margin-bottom: 14px;">
-                    <div class="form-group">
-                        <label class="form-label">Người đại diện / liên hệ</label>
-                        <input type="text" name="ContactPerson" id="editSupplierContact" class="form-control" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="text" name="Phone" id="editSupplierPhone" class="form-control" />
-                    </div>
-                </div>
-
-                <div class="form-grid-2" style="margin-bottom: 14px;">
-                    <div class="form-group">
-                        <label class="form-label">Email liên hệ</label>
-                        <input type="email" name="Email" id="editSupplierEmail" class="form-control" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Trạng thái hợp tác</label>
-                        <select name="Status" id="editSupplierStatus" class="form-control">
-                            <option value="Active">Đang hợp tác (Active)</option>
-                            <option value="Inactive">Ngừng hợp tác (Inactive)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Địa chỉ kho / Trụ sở</label>
-                    <textarea name="Address" id="editSupplierAddress" class="form-control" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeModal('modalEditSupplier')">Hủy bỏ</button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check2"></i> Cập nhật thay đổi
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- =====================================================
-     MODAL: TẠO MỚI KHÁCH HÀNG (CREATE CUSTOMER)
+     MODAL: THÊM KHÁCH HÀNG (ADD CUSTOMER - Matches BATT_PPMSss)
      ===================================================== -->
 <div class="modal-overlay" id="modalAddCustomer">
-    <div class="modal-box" style="max-width: 560px;">
+    <div class="modal-box" style="max-width: 520px;">
         <div class="modal-header">
-            <h3 class="modal-title">
-                <i class="bi bi-building-check" style="color: #059669; margin-right: 6px;"></i>
-                Thêm Khách hàng Doanh nghiệp
-            </h3>
+            <h3 class="modal-title">Thêm Khách hàng Thu mua</h3>
             <button type="button" class="modal-close" onclick="closeModal('modalAddCustomer')">
                 <i class="bi bi-x"></i>
             </button>
         </div>
         <form method="post" asp-page-handler="CreateCustomer">
-            <div class="modal-body">
-                <div class="info-box" style="margin-bottom: 16px;">
-                    <i class="bi bi-info-circle" style="color: #059669; margin-right: 6px;"></i>
-                    Mã KH sẽ được hệ thống tự động sinh tiếp theo (ví dụ: <code>KH-0@(Model.Customers.Count + 1)</code>).
-                </div>
-
-                <div class="form-group" style="margin-bottom: 14px;">
-                    <label class="form-label">Tên Doanh nghiệp / Khách hàng <span class="required-star">*</span></label>
-                    <input type="text" name="CustomerName" class="form-control" placeholder="Ví dụ: Sumitomo Forestry Co., Ltd" required />
-                </div>
-
-                <div class="form-grid-2" style="margin-bottom: 14px;">
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+                <!-- Row 1: Code & Category -->
+                <div class="form-grid-2">
                     <div class="form-group">
-                        <label class="form-label">Người đại diện / liên hệ</label>
-                        <input type="text" name="ContactPerson" class="form-control" placeholder="Ví dụ: Mr. Kenji Sato / Trần Anh Tuấn" />
+                        <label class="form-label">MÃ KHÁCH HÀNG *</label>
+                        <input type="text"
+                               value="KH-0@(Model.Customers.Count + 1)"
+                               readonly
+                               class="form-control"
+                               style="font-family: monospace; font-weight: 700; background: #f8fafc;" />
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="text" name="Phone" class="form-control" placeholder="Ví dụ: +81.3.3286.7000" />
+                        <label class="form-label">MẶT HÀNG MUA</label>
+                        <input type="text"
+                               value="Viên nén gỗ"
+                               disabled
+                               class="form-control"
+                               style="background: #f1f5f9; color: #64748b; cursor: not-allowed;" />
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 14px;">
-                    <label class="form-label">Email giao dịch</label>
-                    <input type="email" name="Email" class="form-control" placeholder="sales@sumitomoforestry.co.jp" />
-                </div>
-
+                <!-- Row 2: Name -->
                 <div class="form-group">
-                    <label class="form-label">Địa chỉ xuất khẩu / Nhận hàng</label>
-                    <textarea name="Address" class="form-control" rows="2" placeholder="Ví dụ: Chiyoda-ku, Tokyo, Japan / Chi nhánh TP.HCM"></textarea>
+                    <label class="form-label">TÊN DOANH NGHIỆP / KHÁCH HÀNG *</label>
+                    <input type="text"
+                           name="CustomerName"
+                           placeholder="Ví dụ: Công ty Cổ phần Năng lượng Xanh Châu Á"
+                           class="form-control"
+                           required />
+                </div>
+
+                <!-- Row 3: Contact & Phone -->
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">NGƯỜI ĐẠI DIỆN / LIÊN HỆ</label>
+                        <input type="text"
+                               name="ContactPerson"
+                               placeholder="Ông/Bà..."
+                               class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SỐ ĐIỆN THOẠI</label>
+                        <input type="text"
+                               name="Phone"
+                               placeholder="09xx..."
+                               class="form-control" />
+                    </div>
+                </div>
+
+                <!-- Row 4: Address -->
+                <div class="form-group">
+                    <label class="form-label">ĐỊA CHỈ GIAO DỊCH</label>
+                    <input type="text"
+                           name="Address"
+                           placeholder="Quận 1, TP. Hồ Chí Minh"
+                           class="form-control" />
+                </div>
+
+                <!-- Row 5: Payment Terms -->
+                <div class="form-group">
+                    <label class="form-label">ĐIỀU KHOẢN THANH TOÁN</label>
+                    <input type="text"
+                           name="PaymentTerms"
+                           value="Chuyển khoản theo thỏa thuận hợp đồng"
+                           placeholder="Ví dụ: T/T 30 ngày sau khi nhận hàng"
+                           class="form-control" />
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeModal('modalAddCustomer')">Hủy bỏ</button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check2"></i> Lưu Khách hàng
-                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modalAddCustomer')">Hủy bỏ</button>
+                <button type="submit" class="btn btn-primary btn-sm">Lưu Khách hàng</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- =====================================================
-     MODAL: CẬP NHẬT KHÁCH HÀNG (UPDATE CUSTOMER)
+     MODAL: CHỈNH SỬA ĐỐI TÁC (EDIT MODAL - Matches BATT_PPMSss)
      ===================================================== -->
-<div class="modal-overlay" id="modalEditCustomer">
-    <div class="modal-box" style="max-width: 560px;">
+<div class="modal-overlay" id="modalEditPartner">
+    <div class="modal-box" style="max-width: 520px;">
         <div class="modal-header">
-            <h3 class="modal-title">
-                <i class="bi bi-pencil-square" style="color: #059669; margin-right: 6px;"></i>
-                Cập nhật thông tin Khách hàng
-            </h3>
-            <button type="button" class="modal-close" onclick="closeModal('modalEditCustomer')">
+            <h3 class="modal-title" id="editModalTitle">Chỉnh sửa đối tác</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalEditPartner')">
                 <i class="bi bi-x"></i>
             </button>
         </div>
-        <form method="post" asp-page-handler="UpdateCustomer">
+        <form method="post" id="editPartnerForm">
+            <input type="hidden" name="SupplierId" id="editSupplierId" />
             <input type="hidden" name="CustomerId" id="editCustomerId" />
-            <div class="modal-body">
-                <div class="form-group" style="margin-bottom: 14px;">
-                    <label class="form-label">Tên Doanh nghiệp / Khách hàng <span class="required-star">*</span></label>
-                    <input type="text" name="CustomerName" id="editCustomerName" class="form-control" required />
-                </div>
-
-                <div class="form-grid-2" style="margin-bottom: 14px;">
-                    <div class="form-group">
-                        <label class="form-label">Người đại diện / liên hệ</label>
-                        <input type="text" name="ContactPerson" id="editCustomerContact" class="form-control" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="text" name="Phone" id="editCustomerPhone" class="form-control" />
-                    </div>
-                </div>
-
-                <div class="form-grid-2" style="margin-bottom: 14px;">
-                    <div class="form-group">
-                        <label class="form-label">Email giao dịch</label>
-                        <input type="email" name="Email" id="editCustomerEmail" class="form-control" />
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Trạng thái hợp tác</label>
-                        <select name="Status" id="editCustomerStatus" class="form-control">
-                            <option value="Active">Đang hợp tác (Active)</option>
-                            <option value="Inactive">Ngừng hợp tác (Inactive)</option>
-                        </select>
-                    </div>
-                </div>
-
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+                <!-- Name -->
                 <div class="form-group">
-                    <label class="form-label">Địa chỉ xuất khẩu / Nhận hàng</label>
-                    <textarea name="Address" id="editCustomerAddress" class="form-control" rows="2"></textarea>
+                    <label class="form-label">TÊN ĐỐI TÁC *</label>
+                    <input type="text" name="SupplierName" id="editPartnerName" class="form-control" required />
+                </div>
+
+                <!-- Contact & Phone -->
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">NGƯỜI LIÊN HỆ</label>
+                        <input type="text" name="ContactPerson" id="editPartnerContact" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SỐ ĐIỆN THOẠI</label>
+                        <input type="text" name="Phone" id="editPartnerPhone" class="form-control" />
+                    </div>
+                </div>
+
+                <!-- Address -->
+                <div class="form-group">
+                    <label class="form-label">ĐỊA CHỈ</label>
+                    <input type="text" name="Address" id="editPartnerAddress" class="form-control" />
+                </div>
+
+                <!-- Extra field: Notes for Supplier, PaymentTerms for Customer -->
+                <div class="form-group">
+                    <label class="form-label" id="editExtraLabel">GHI CHÚ ĐỐI TÁC</label>
+                    <input type="text" name="Notes" id="editPartnerExtra" class="form-control" />
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <label class="form-label">TRẠNG THÁI HỢP TÁC</label>
+                    <select name="Status" id="editPartnerStatus" class="form-control">
+                        <option value="Active">Đang hợp tác (Active)</option>
+                        <option value="Inactive">Ngừng hợp tác (Inactive)</option>
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="closeModal('modalEditCustomer')">Hủy bỏ</button>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check2"></i> Cập nhật thay đổi
-                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modalEditPartner')">Hủy bỏ</button>
+                <button type="submit" class="btn btn-primary btn-sm">Lưu thay đổi</button>
             </div>
         </form>
     </div>
@@ -602,14 +601,13 @@
             <!-- Populated via JS -->
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-outline" onclick="closeModal('modalHistory')">Đóng</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('modalHistory')">Đóng</button>
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        // Modal helpers
         function openModal(id) {
             const el = document.getElementById(id);
             if (el) el.classList.add('show');
@@ -620,7 +618,6 @@
             if (el) el.classList.remove('show');
         }
 
-        // Add modals
         function openAddSupplierModal() {
             openModal('modalAddSupplier');
         }
@@ -629,58 +626,65 @@
             openModal('modalAddCustomer');
         }
 
-        // Edit Supplier modal
-        function openEditSupplierModal(id, name, contact, phone, email, address, status) {
-            document.getElementById('editSupplierId').value = id;
-            document.getElementById('editSupplierName').value = name;
-            document.getElementById('editSupplierContact').value = contact === '—' ? '' : contact;
-            document.getElementById('editSupplierPhone').value = phone === '—' ? '' : phone;
-            document.getElementById('editSupplierEmail').value = email === '—' ? '' : email;
-            document.getElementById('editSupplierAddress').value = address === '—' ? '' : address;
-            document.getElementById('editSupplierStatus').value = status;
-            openModal('modalEditSupplier');
+        function openEditModal(type, id, code, name, contact, phone, email, address, extra, status) {
+            const form = document.getElementById('editPartnerForm');
+            const title = document.getElementById('editModalTitle');
+            const nameInput = document.getElementById('editPartnerName');
+            const extraLabel = document.getElementById('editExtraLabel');
+            const extraInput = document.getElementById('editPartnerExtra');
+
+            if (type === 'SUPPLIER') {
+                title.innerHTML = `Chỉnh sửa: <span style="font-family:monospace; color:#4338ca;">${code}</span> — Nhà cung cấp`;
+                form.action = '?handler=UpdateSupplier';
+                document.getElementById('editSupplierId').value = id;
+                document.getElementById('editCustomerId').value = '';
+                nameInput.name = 'SupplierName';
+                extraLabel.innerText = 'GHI CHÚ NHÀ CUNG CẤP';
+                extraInput.name = 'Notes';
+            } else {
+                title.innerHTML = `Chỉnh sửa: <span style="font-family:monospace; color:#065f46;">${code}</span> — Khách hàng`;
+                form.action = '?handler=UpdateCustomer';
+                document.getElementById('editCustomerId').value = id;
+                document.getElementById('editSupplierId').value = '';
+                nameInput.name = 'CustomerName';
+                extraLabel.innerText = 'ĐIỀU KHOẢN THANH TOÁN';
+                extraInput.name = 'PaymentTerms';
+            }
+
+            nameInput.value = name;
+            document.getElementById('editPartnerContact').value = contact === '—' ? '' : contact;
+            document.getElementById('editPartnerPhone').value = phone === '—' ? '' : phone;
+            document.getElementById('editPartnerAddress').value = address === '—' ? '' : address;
+            extraInput.value = extra;
+            document.getElementById('editPartnerStatus').value = status;
+
+            openModal('modalEditPartner');
         }
 
-        // Edit Customer modal
-        function openEditCustomerModal(id, name, contact, phone, email, address, status) {
-            document.getElementById('editCustomerId').value = id;
-            document.getElementById('editCustomerName').value = name;
-            document.getElementById('editCustomerContact').value = contact === '—' ? '' : contact;
-            document.getElementById('editCustomerPhone').value = phone === '—' ? '' : phone;
-            document.getElementById('editCustomerEmail').value = email === '—' ? '' : email;
-            document.getElementById('editCustomerAddress').value = address === '—' ? '' : address;
-            document.getElementById('editCustomerStatus').value = status;
-            openModal('modalEditCustomer');
-        }
-
-        // Data for history
         const suppliersData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Suppliers));
         const customersData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Customers));
 
         function viewSupplierHistory(id, code, name) {
             const sup = suppliersData.find(s => s.SupplierId === id);
             document.getElementById('historyModalTitle').innerHTML =
-                `<i class="bi bi-clock-history" style="color: #4f46e5; margin-right: 6px;"></i> Lịch sử thu mua: <strong>${code} - ${name}</strong>`;
+                `<i class="bi bi-clock-history" style="color: #4f46e5; margin-right: 6px;"></i> Lịch sử các phiếu thu mua nguyên vật liệu (${sup && sup.RecentPurchases ? sup.RecentPurchases.length : 0})`;
 
             let html = '';
             if (!sup || !sup.RecentPurchases || sup.RecentPurchases.length === 0) {
                 html = `
                     <div class="empty-state" style="padding: 30px;">
                         <i class="bi bi-receipt" style="font-size: 32px; color: #94a3b8;"></i>
-                        <p style="font-size: 13px; font-weight: 600; color: #64748b; margin-top: 8px;">Chưa có phiếu thu mua nguyên liệu nào với NCC này</p>
+                        <p style="font-size: 13px; font-weight: 600; color: #64748b; margin-top: 8px;">Chưa có phiếu thu mua nguyên vật liệu nào với NCC này</p>
                     </div>`;
             } else {
                 html = `
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 10px;">
-                        Tổng số giao dịch: <strong>${sup.RecentPurchases.length} phiếu</strong> | Tổng khối lượng: <strong>${Number(sup.TotalPurchasesKg).toLocaleString('vi-VN')} kg</strong>
-                    </div>
                     <div class="table-wrapper">
                         <table class="data-table" style="font-size: 12px;">
                             <thead>
                                 <tr>
                                     <th>Mã phiếu</th>
-                                    <th>Ngày thu mua</th>
-                                    <th style="text-align: right;">Khối lượng</th>
+                                    <th>Ngày giao việc</th>
+                                    <th style="text-align: right;">Khối lượng cân</th>
                                     <th style="text-align: right;">Thành tiền</th>
                                     <th>Trạng thái</th>
                                 </tr>
@@ -706,7 +710,7 @@
         function viewCustomerHistory(id, code, name) {
             const cus = customersData.find(c => c.CustomerId === id);
             document.getElementById('historyModalTitle').innerHTML =
-                `<i class="bi bi-clock-history" style="color: #059669; margin-right: 6px;"></i> Lịch sử đơn hàng: <strong>${code} - ${name}</strong>`;
+                `<i class="bi bi-clock-history" style="color: #059669; margin-right: 6px;"></i> Lịch sử các đề xuất xuất hàng &amp; Đơn hàng (${cus && cus.RecentOrders ? cus.RecentOrders.length : 0})`;
 
             let html = '';
             if (!cus || !cus.RecentOrders || cus.RecentOrders.length === 0) {
@@ -717,18 +721,15 @@
                     </div>`;
             } else {
                 html = `
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 10px;">
-                        Tổng số đơn: <strong>${cus.RecentOrders.length} đơn</strong> | Tổng khối lượng: <strong>${Number(cus.TotalOrderedKg).toLocaleString('vi-VN')} kg</strong>
-                    </div>
                     <div class="table-wrapper">
                         <table class="data-table" style="font-size: 12px;">
                             <thead>
                                 <tr>
-                                    <th>Mã đơn</th>
+                                    <th>Mã đề xuất / Đơn</th>
                                     <th>Ngày đặt</th>
                                     <th style="text-align: right;">Khối lượng</th>
-                                    <th style="text-align: right;">Đơn giá</th>
-                                    <th style="text-align: right;">Tổng tiền</th>
+                                    <th style="text-align: right;">Đơn giá bán</th>
+                                    <th style="text-align: right;">Tổng giá trị</th>
                                     <th>Trạng thái</th>
                                 </tr>
                             </thead>
@@ -740,7 +741,7 @@
                             <td><code style="font-weight:700; color:#059669;">${o.OrderCode}</code></td>
                             <td>${dt}</td>
                             <td style="text-align: right; font-weight: 600;">${Number(o.Quantity).toLocaleString('vi-VN')} kg</td>
-                            <td style="text-align: right;">${Number(o.UnitPrice).toLocaleString('vi-VN')} đ</td>
+                            <td style="text-align: right;">${Number(o.UnitPrice).toLocaleString('vi-VN')} đ/kg</td>
                             <td style="text-align: right; font-weight: 700; color: #0f172a;">${Number(o.TotalAmount).toLocaleString('vi-VN')} đ</td>
                             <td><span class="badge" style="background:#ecfdf5; color:#065f46; border-radius:20px; font-size:10px; padding:2px 7px;">${o.Status}</span></td>
                         </tr>`;
@@ -751,7 +752,6 @@
             openModal('modalHistory');
         }
 
-        // Close on escape or outside click
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', function(e) {
                 if (e.target === this) {

@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>BATT_PPMS</RootNamespace>
+    <CodePage>65001</CodePage>
   </PropertyGroup>
 
   <ItemGroup>

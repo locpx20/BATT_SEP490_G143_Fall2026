@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="BATT PPMS - He thong Quan ly San xuat" />
+    <meta name="description" content="BATT PPMS - Hệ thống Quản lý Sản xuất Nhà máy Viên nén Gỗ" />
     <title>@ViewData["Title"] - BATT PPMS</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
@@ -23,227 +23,309 @@
     bool isMaintenance  = roleName == "Maintenance Staff";
     bool isQC           = roleName == "QC Staff";
     bool isPurchasing   = roleName == "Purchasing Staff";
+    bool isWarehouse    = roleName == "Warehouse Staff";
     string ap           = ViewData["ActivePage"]?.ToString() ?? "";
+
+    // Initials for avatar
+    var nameParts = fullName.Trim().Split(' ');
+    var initials = nameParts.Length >= 2
+        ? $"{nameParts[0][0]}{nameParts[^1][0]}"
+        : fullName.Length > 0 ? fullName[0].ToString() : "U";
+    initials = initials.ToUpper();
+
+    // Role display
+    string roleDisplay = roleName switch {
+        "Admin"             => "Quản trị viên",
+        "Owner"             => "Chủ nhà máy",
+        "Manager"           => "Quản lý Vận hành",
+        "Staff"             => "Nhân viên Sản xuất",
+        "Maintenance Staff" => "Bảo trì Cơ điện",
+        "QC Staff"          => "Kiểm tra KCS",
+        "Purchasing Staff"  => "Thu mua",
+        "Warehouse Staff"   => "Thủ kho",
+        _                   => roleName
+    };
 }
 
+<!-- Mobile backdrop -->
+<div class="mobile-backdrop" id="mobileBackdrop" onclick="closeSidebar()"></div>
+
+<!-- ===== SIDEBAR ===== -->
 <aside class="sidebar" id="sidebar">
+    <!-- Brand Header -->
     <div class="sidebar-header">
-        <span class="sidebar-logo">&#127981;</span>
-        <div class="sidebar-brand">
-            <span class="brand-name">BATT PPMS</span>
-            <span class="brand-sub">Production Management</span>
+        <div class="sidebar-logo-box">B</div>
+        <div class="sidebar-brand-info">
+            <div class="sidebar-brand-row">
+                <span class="brand-name">BATT PPMS</span>
+                <span class="badge-version">v6.1</span>
+            </div>
+            <span class="brand-sub">Năng lượng tái tạo</span>
         </div>
+        <button class="sidebar-close-btn d-lg-none" onclick="closeSidebar()">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
 
-    <nav class="sidebar-nav">
+    <!-- Navigation -->
+    <nav class="sidebar-nav" id="sidebarNav">
 
-        <!-- ========== ADMIN ========== -->
         @if (isAdmin)
         {
-            <div class="nav-section">
-                <div class="nav-section-title">Hệ thống &amp; Kiểm toán</div>
-                <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
-                    <i class="bi bi-people-fill"></i><span>Quản trị tài khoản</span>
-                </a>
-                <a class="nav-item @(ap=="AuditLogs"?"active":"")" href="/Admin/AuditLogs/Index">
-                    <i class="bi bi-shield-check"></i><span>Nhật ký kiểm toán</span>
-                </a>
+            <!-- ADMIN: chỉ thấy Admin section -->
+            <div class="nav-group" id="grp-admin">
+                <button class="nav-group-header active" onclick="toggleGroup('admin')">
+                    <span>Hệ thống &amp; Kiểm toán</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-admin"></i>
+                </button>
+                <div class="nav-group-items" id="items-admin">
+                    <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
+                        <i class="bi bi-shield-person"></i><span>Quản trị Tài khoản &amp; Phân quyền</span>
+                    </a>
+                    <a class="nav-item @(ap=="AuditLogs"?"active":"")" href="/Admin/AuditLogs/Index">
+                        <i class="bi bi-clock-history"></i><span>Nhật ký Kiểm toán Hệ thống</span>
+                    </a>
+                </div>
             </div>
         }
 
-        <!-- ========== OWNER ========== -->
-        @if (isOwner)
+        @if (isOwner || isManager)
         {
-            <div class="nav-section">
-                <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
-                    <i class="bi bi-speedometer2"></i><span>Dashboard</span>
-                </a>
+            <!-- CORE group -->
+            <div class="nav-group" id="grp-core">
+                <button class="nav-group-header @(ap is "Dashboard" or "PurchaseInvoice" or "Suppliers" or "Customers" ? "active":"")" onclick="toggleGroup('core')">
+                    <span>Quản trị &amp; Thu mua</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-core"></i>
+                </button>
+                <div class="nav-group-items" id="items-core">
+                    <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
+                        <i class="bi bi-speedometer2"></i><span>Tổng quan Điều hành</span>
+                    </a>
+                    @if (isOwner)
+                    {
+                        <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
+                            <i class="bi bi-building"></i><span>Đối tác Cung ứng &amp; Khách hàng</span>
+                        </a>
+                    }
+                    <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
+                        <i class="bi bi-bag-check"></i><span>Thu mua Nguyên liệu</span>
+                    </a>
+                </div>
             </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Danh muc</div>
-                <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
-                    <i class="bi bi-building"></i><span>Nha cung cap</span>
-                </a>
-                <a class="nav-item @(ap=="Customers"?"active":"")" href="/Customers/Index">
-                    <i class="bi bi-person-lines-fill"></i><span>Khach hang</span>
-                </a>
+
+            <!-- PRODUCTION group -->
+            <div class="nav-group" id="grp-production">
+                <button class="nav-group-header @(ap is "ShiftReport" or "QC" ? "active":"")" onclick="toggleGroup('production')">
+                    <span>Quy trình Sản xuất</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-production"></i>
+                </button>
+                <div class="nav-group-items" id="items-production">
+                    <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
+                        <i class="bi bi-calendar-week"></i><span>Kế hoạch Sản xuất</span>
+                    </a>
+                    <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
+                        <i class="bi bi-clipboard-data"></i><span>Báo cáo Ca Sản xuất</span>
+                    </a>
+                    <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
+                        <i class="bi bi-patch-check"></i><span>Kiểm tra Chất lượng (KCS)</span>
+                    </a>
+                </div>
             </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Xuat hang</div>
-                <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
-                    <i class="bi bi-clipboard-check"></i><span>Don hang xuat</span>
-                </a>
-                <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
-                    <i class="bi bi-box-seam"></i><span>Ton kho</span>
-                </a>
+
+            <!-- WAREHOUSE group -->
+            <div class="nav-group" id="grp-warehouse">
+                <button class="nav-group-header @(ap is "Inventory" or "OrderList" ? "active":"")" onclick="toggleGroup('warehouse')">
+                    <span>Kho vận &amp; Xuất xưởng</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-warehouse"></i>
+                </button>
+                <div class="nav-group-items" id="items-warehouse">
+                    <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
+                        <i class="bi bi-boxes"></i><span>Kho Nguyên liệu &amp; Thành phẩm</span>
+                    </a>
+                    <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
+                        <i class="bi bi-truck"></i><span>Xuất xưởng &amp; Bàn giao</span>
+                    </a>
+                </div>
             </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Mua hang</div>
-                <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
-                    <i class="bi bi-receipt"></i><span>Don mua hang</span>
-                </a>
+
+            <!-- EQUIPMENT group -->
+            <div class="nav-group" id="grp-equipment">
+                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" or "MaterialPurchase" ? "active":"")" onclick="toggleGroup('equipment')">
+                    <span>Máy móc &amp; Cơ điện</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-equipment"></i>
+                </button>
+                <div class="nav-group-items" id="items-equipment">
+                    <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
+                        <i class="bi bi-exclamation-triangle"></i><span>Sự cố &amp; Bảo trì Cơ điện</span>
+                    </a>
+                    <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
+                        <i class="bi bi-tools"></i><span>Danh mục Máy móc</span>
+                    </a>
+                    <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
+                        <i class="bi bi-cart3"></i><span>Vật tư Bảo trì</span>
+                    </a>
+                </div>
             </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Bao cao</div>
-                <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
-                    <i class="bi bi-file-earmark-bar-graph"></i><span>Bao cao san xuat</span>
-                </a>
-                <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
-                    <i class="bi bi-tools"></i><span>Bao cao bao tri</span>
-                </a>
-                <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
-                    <i class="bi bi-cart3"></i><span>Bao cao mua vat tu</span>
-                </a>
+
+            <!-- ADMINISTRATION group -->
+            <div class="nav-group" id="grp-admin2">
+                <button class="nav-group-header @(ap=="AuditLogs"?"active":"")" onclick="toggleGroup('admin2')">
+                    <span>Hệ thống &amp; Kiểm toán</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-admin2"></i>
+                </button>
+                <div class="nav-group-items" id="items-admin2">
+                    <a class="nav-item @(ap=="AuditLogs"?"active":"")" href="/Admin/AuditLogs/Index">
+                        <i class="bi bi-clock-history"></i><span>Nhật ký Kiểm toán Hệ thống</span>
+                    </a>
+                </div>
             </div>
         }
 
-        <!-- ========== MANAGER ========== -->
-        @if (isManager)
-        {
-            <div class="nav-section">
-                <div class="nav-section-title">Don hang</div>
-                <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
-                    <i class="bi bi-clipboard-check"></i><span>Danh sach don hang</span>
-                </a>
-                <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
-                    <i class="bi bi-building"></i><span>Nha cung cap</span>
-                </a>
-                <a class="nav-item @(ap=="Customers"?"active":"")" href="/Customers/Index">
-                    <i class="bi bi-person-lines-fill"></i><span>Khach hang</span>
-                </a>
-            </div>
-            <div class="nav-section">
-                <div class="nav-section-title">San xuat</div>
-                <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
-                    <i class="bi bi-calendar-week"></i><span>Lich lam viec</span>
-                </a>
-                <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
-                    <i class="bi bi-file-earmark-bar-graph"></i><span>Bao cao ca lam</span>
-                </a>
-                <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
-                    <i class="bi bi-box-seam"></i><span>Ton kho</span>
-                </a>
-                <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
-                    <i class="bi bi-patch-check"></i><span>Kiem tra QC</span>
-                </a>
-            </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Bao tri</div>
-                <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
-                    <i class="bi bi-exclamation-triangle"></i><span>Thiet bi hong</span>
-                </a>
-                <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
-                    <i class="bi bi-tools"></i><span>Yeu cau bao tri</span>
-                </a>
-                <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
-                    <i class="bi bi-cart3"></i><span>Duyet mua vat tu</span>
-                </a>
-            </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Mua hang</div>
-                <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
-                    <i class="bi bi-receipt"></i><span>Don mua hang</span>
-                </a>
-            </div>
-        }
-
-        <!-- ========== STAFF (UC4) ========== -->
         @if (isStaff)
         {
-            <div class="nav-section">
-                <div class="nav-section-title">Cong viec cua toi</div>
-                <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
-                    <i class="bi bi-calendar-week"></i><span>Lich lam viec</span>
-                </a>
-            </div>
-            <div class="nav-section">
-                <div class="nav-section-title">Bao cao</div>
-                <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
-                    <i class="bi bi-file-earmark-bar-graph"></i><span>Bao cao ca lam</span>
-                </a>
-                <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
-                    <i class="bi bi-exclamation-triangle"></i><span>Thiet bi hong</span>
-                </a>
+            <div class="nav-group" id="grp-s-prod">
+                <button class="nav-group-header active" onclick="toggleGroup('s-prod')">
+                    <span>Quy trình Sản xuất</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-s-prod"></i>
+                </button>
+                <div class="nav-group-items" id="items-s-prod">
+                    <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
+                        <i class="bi bi-calendar-week"></i><span>Lịch làm việc</span>
+                    </a>
+                    <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
+                        <i class="bi bi-clipboard-data"></i><span>Báo cáo Ca làm</span>
+                    </a>
+                    <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
+                        <i class="bi bi-exclamation-triangle"></i><span>Báo cáo Thiết bị hỏng</span>
+                    </a>
+                </div>
             </div>
         }
 
-        <!-- ========== MAINTENANCE STAFF (UC5) ========== -->
         @if (isMaintenance)
         {
-            <div class="nav-section">
-                <div class="nav-section-title">Bao tri thiet bi</div>
-                <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
-                    <i class="bi bi-tools"></i><span>Yeu cau sua chua</span>
-                </a>
-                <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
-                    <i class="bi bi-cart3"></i><span>Mua vat tu</span>
-                </a>
+            <div class="nav-group" id="grp-ms">
+                <button class="nav-group-header active" onclick="toggleGroup('ms')">
+                    <span>Máy móc &amp; Cơ điện</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-ms"></i>
+                </button>
+                <div class="nav-group-items" id="items-ms">
+                    <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
+                        <i class="bi bi-tools"></i><span>Yêu cầu Bảo trì</span>
+                    </a>
+                    <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
+                        <i class="bi bi-cart3"></i><span>Mua vật tư</span>
+                    </a>
+                </div>
             </div>
         }
 
-        <!-- ========== QC STAFF (UC6) ========== -->
         @if (isQC)
         {
-            <div class="nav-section">
-                <div class="nav-section-title">Kiem soat chat luong</div>
-                <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
-                    <i class="bi bi-patch-check"></i><span>Phieu kiem tra QC</span>
-                </a>
+            <div class="nav-group" id="grp-qc">
+                <button class="nav-group-header active" onclick="toggleGroup('qc')">
+                    <span>Kiểm soát Chất lượng</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-qc"></i>
+                </button>
+                <div class="nav-group-items" id="items-qc">
+                    <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
+                        <i class="bi bi-patch-check"></i><span>Kiểm tra KCS</span>
+                    </a>
+                </div>
             </div>
         }
 
-        <!-- ========== PURCHASING STAFF (UC7) ========== -->
         @if (isPurchasing)
         {
-            <div class="nav-section">
-                <div class="nav-section-title">Mua hang</div>
-                <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
-                    <i class="bi bi-receipt"></i><span>Don mua hang</span>
-                </a>
-                <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
-                    <i class="bi bi-building"></i><span>Nha cung cap</span>
-                </a>
+            <div class="nav-group" id="grp-ps">
+                <button class="nav-group-header active" onclick="toggleGroup('ps')">
+                    <span>Quản trị &amp; Thu mua</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-ps"></i>
+                </button>
+                <div class="nav-group-items" id="items-ps">
+                    <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
+                        <i class="bi bi-bag-check"></i><span>Thu mua Nguyên liệu</span>
+                    </a>
+                    <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
+                        <i class="bi bi-building"></i><span>Nhà cung cấp</span>
+                    </a>
+                </div>
             </div>
         }
 
-        <!-- ========== TAT CA: Tai khoan ca nhan (UC1) ========== -->
-        <div class="nav-section">
-            <div class="nav-section-title">Tai khoan</div>
-            <a class="nav-item @(ap=="Profile"?"active":"")" href="/Profile/Index">
-                <i class="bi bi-person-circle"></i><span>Ho so ca nhan</span>
-            </a>
-            <a class="nav-item @(ap=="ChangePassword"?"active":"")" href="/Profile/ChangePassword">
-                <i class="bi bi-shield-lock"></i><span>Doi mat khau</span>
-            </a>
+        @if (isWarehouse)
+        {
+            <div class="nav-group" id="grp-ws">
+                <button class="nav-group-header active" onclick="toggleGroup('ws')">
+                    <span>Kho vận &amp; Xuất xưởng</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-ws"></i>
+                </button>
+                <div class="nav-group-items" id="items-ws">
+                    <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
+                        <i class="bi bi-boxes"></i><span>Kho nguyên liệu</span>
+                    </a>
+                    <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
+                        <i class="bi bi-truck"></i><span>Xuất xưởng</span>
+                    </a>
+                </div>
+            </div>
+        }
+
+        <!-- Tài khoản (all roles) -->
+        <div class="nav-group" id="grp-account">
+            <button class="nav-group-header @(ap is "Profile" or "ChangePassword" ? "active":"")" onclick="toggleGroup('account')">
+                <span>Tài khoản</span>
+                <i class="bi bi-chevron-down nav-chevron" id="chevron-account"></i>
+            </button>
+            <div class="nav-group-items" id="items-account">
+                <a class="nav-item @(ap=="Profile"?"active":"")" href="/Profile/Index">
+                    <i class="bi bi-person-circle"></i><span>Hồ sơ cá nhân</span>
+                </a>
+                <a class="nav-item @(ap=="ChangePassword"?"active":"")" href="/Profile/ChangePassword">
+                    <i class="bi bi-shield-lock"></i><span>Đổi mật khẩu</span>
+                </a>
+            </div>
         </div>
 
     </nav>
 
+    <!-- Sidebar Footer -->
     <div class="sidebar-footer">
-        <div class="user-info">
-            <div class="user-avatar"><i class="bi bi-person-circle"></i></div>
-            <div class="user-details">
-                <span class="user-name">@fullName</span>
-                <span class="user-role">@roleName</span>
-            </div>
+        <div class="sidebar-factory-card">
+            <p class="factory-name">Nhà máy Viên nén Gỗ BATT</p>
+            <p class="factory-loc">Hàm Kiệm, Bình Thuận</p>
         </div>
-        <a href="/Auth/Logout" class="btn-logout" title="Dang xuat">
-            <i class="bi bi-box-arrow-right"></i>
-        </a>
     </div>
 </aside>
 
-<div class="main-wrapper">
+<!-- ===== MAIN WRAPPER ===== -->
+<div class="main-wrapper" id="mainWrapper">
+
+    <!-- Topbar -->
     <header class="topbar">
-        <button class="sidebar-toggle" id="sidebarToggle">
-            <i class="bi bi-list"></i>
-        </button>
-        <div class="topbar-title">@ViewData["Title"]</div>
-        <div class="topbar-actions">
-            <span class="topbar-role-badge">@roleName</span>
-            <span class="topbar-greeting">@fullName</span>
+        <div class="topbar-left">
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="openSidebar()" title="Mở menu">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="topbar-page-title">@ViewData["Title"]</span>
+        </div>
+
+        <div class="topbar-right">
+            <span class="topbar-role-tag">@roleDisplay</span>
+            <div class="topbar-user">
+                <div class="user-avatar-circle">@initials</div>
+                <div class="d-none d-sm-block">
+                    <div class="user-display-name">@fullName</div>
+                    <div class="user-display-role">@roleDisplay</div>
+                </div>
+            </div>
+            <a href="/Auth/Logout" class="btn-logout" title="Đăng xuất">
+                <i class="bi bi-box-arrow-right"></i>
+            </a>
         </div>
     </header>
+
+    <!-- Page Content -->
     <main class="page-content">
         @RenderBody()
     </main>
@@ -251,6 +333,62 @@
 
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
+<script>
+    // ===== Accordion sidebar =====
+    function toggleGroup(key) {
+        const items = document.getElementById('items-' + key);
+        const chevron = document.getElementById('chevron-' + key);
+        const header = chevron ? chevron.closest('.nav-group-header') : null;
+        if (!items) return;
+
+        const isOpen = items.classList.contains('open');
+
+        // Close all groups first (accordion behavior)
+        document.querySelectorAll('.nav-group-items.open').forEach(el => {
+            el.classList.remove('open');
+        });
+        document.querySelectorAll('.nav-chevron.rotated').forEach(el => {
+            el.classList.remove('rotated');
+        });
+
+        // Open the clicked one if it was closed
+        if (!isOpen) {
+            items.classList.add('open');
+            if (chevron) chevron.classList.add('rotated');
+        }
+    }
+
+    // Auto-open the group that has an active nav item
+    window.addEventListener('DOMContentLoaded', () => {
+        const activeItem = document.querySelector('.nav-item.active');
+        if (activeItem) {
+            const group = activeItem.closest('.nav-group-items');
+            if (group) {
+                group.classList.add('open');
+                const chevron = group.previousElementSibling?.querySelector('.nav-chevron');
+                if (chevron) chevron.classList.add('rotated');
+            }
+        } else {
+            // Open the first group by default
+            const firstItems = document.querySelector('.nav-group-items');
+            if (firstItems) {
+                firstItems.classList.add('open');
+                const chevron = firstItems.previousElementSibling?.querySelector('.nav-chevron');
+                if (chevron) chevron.classList.add('rotated');
+            }
+        }
+    });
+
+    // ===== Mobile sidebar =====
+    function openSidebar() {
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('mobileBackdrop').classList.add('show');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('mobileBackdrop').classList.remove('show');
+    }
+</script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

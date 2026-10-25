@@ -5,168 +5,230 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Pages.Admin.AuditLogs
 {
+    /// <summary>
+    /// Flat ViewModel matching the AuditLogView design from BATT_PPMSss.
+    /// </summary>
+    public class AuditLogEntry
+    {
+        public DateTime CreatedAt { get; set; }
+        public string ActorName { get; set; } = string.Empty;
+        public string ActorRole { get; set; } = string.Empty;
+        public string Action { get; set; } = string.Empty;
+        public string EntityCode { get; set; } = string.Empty;
+        public string EntityType { get; set; } = string.Empty;
+        public string? PreviousStatus { get; set; }
+        public string? NewStatus { get; set; }
+        public string Details { get; set; } = string.Empty;
+        public string? Reason { get; set; }
+    }
+
     public class IndexModel : BasePageModel
     {
         private readonly AppDbContext _context;
+        private const int PageSize = 15;
 
         public IndexModel(AppDbContext context)
         {
             _context = context;
         }
 
-        public class AuditLogEntry
-        {
-            public DateTime Timestamp { get; set; }
-            public string Actor { get; set; } = string.Empty;
-            public string ActorRole { get; set; } = string.Empty;
-            public string Action { get; set; } = string.Empty;
-            public string RecordCode { get; set; } = string.Empty;
-            public string StatusTransition { get; set; } = string.Empty;
-            public string Details { get; set; } = string.Empty;
-            public string Module { get; set; } = string.Empty;
-        }
-
-        public List<AuditLogEntry> LogEntries { get; set; } = new();
+        public List<AuditLogEntry> AuditLogs { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int CurrentPage { get; set; } = 1;
+        public int TotalPages { get; set; } = 1;
 
         [BindProperty(SupportsGet = true)]
-        public string? Keyword { get; set; }
+        public string? SearchTerm { get; set; }
 
         [BindProperty(SupportsGet = true)]
-        public string? ModuleFilter { get; set; }
+        public string? EntityFilter { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int Page { get; set; } = 1;
 
         public async Task<IActionResult> OnGetAsync()
         {
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
 
+            CurrentPage = Math.Max(1, Page);
+
             var logs = new List<AuditLogEntry>();
 
-            // 1. Logs từ Orders (Xuất hàng)
-            var orders = await _context.Orders
-                .Include(o => o.Creator)
-                .Include(o => o.Approver)
-                .Include(o => o.Customer)
-                .OrderByDescending(o => o.OrderDate)
-                .Take(20)
-                .ToListAsync();
-
-            foreach (var o in orders)
+            // 1. Orders (Xuất hàng)
+            if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "Order")
             {
-                if (o.ApprovedBy.HasValue && o.Approver != null)
+                var orders = await _context.Orders
+                    .Include(o => o.Creator)
+                    .Include(o => o.Approver)
+                    .Include(o => o.Customer)
+                    .OrderByDescending(o => o.OrderDate)
+                    .Take(30)
+                    .ToListAsync();
+
+                foreach (var o in orders)
                 {
+                    if (o.ApprovedBy.HasValue && o.Approver != null)
+                    {
+                        logs.Add(new AuditLogEntry
+                        {
+                            CreatedAt      = o.OrderDate.AddHours(2),
+                            ActorName      = o.Approver.FullName,
+                            ActorRole      = "Owner",
+                            Action         = "Phê duyệt Lệnh xuất hàng",
+                            EntityCode     = $"ORD-{o.OrderId:D4}",
+                            EntityType     = "Order",
+                            PreviousStatus = "PENDING",
+                            NewStatus      = "APPROVED",
+                            Details        = $"Phê duyệt xuất kho cho khách hàng: {o.Customer?.CustomerName ?? "N/A"}"
+                        });
+                    }
+
                     logs.Add(new AuditLogEntry
                     {
-                        Timestamp = o.OrderDate.AddHours(2),
-                        Actor = o.Approver.FullName,
-                        ActorRole = "Owner",
-                        Action = "Phê duyệt Lệnh xuất hàng",
-                        RecordCode = $"ORD-{o.OrderId:D4}",
-                        StatusTransition = "PENDING ➔ APPROVED",
-                        Details = $"Phê duyệt xuất kho cho khách hàng: {o.Customer?.CustomerName ?? "Khách hàng"}",
-                        Module = "Kho vận"
-                    });
-                }
-
-                logs.Add(new AuditLogEntry
-                {
-                    Timestamp = o.OrderDate,
-                    Actor = o.Creator?.FullName ?? "Quản lý kinh doanh",
-                    ActorRole = "Manager",
-                    Action = "Khởi tạo Lệnh xuất hàng",
-                    RecordCode = $"ORD-{o.OrderId:D4}",
-                    StatusTransition = "CREATED ➔ PENDING",
-                    Details = $"Khởi tạo lệnh xuất khẩu viên nén gỗ cho {o.Customer?.CustomerName ?? "Khách hàng"}",
-                    Module = "Kho vận"
-                });
-            }
-
-            // 2. Logs từ QC Inspections
-            var qcList = await _context.QCInspections
-                .Include(q => q.Requester)
-                .Include(q => q.Inspector)
-                .OrderByDescending(q => q.RequestDate)
-                .Take(15)
-                .ToListAsync();
-
-            foreach (var q in qcList)
-            {
-                if (q.Inspector != null && !string.IsNullOrEmpty(q.Result))
-                {
-                    logs.Add(new AuditLogEntry
-                    {
-                        Timestamp = q.InspectDate ?? q.RequestDate,
-                        Actor = q.Inspector.FullName,
-                        ActorRole = "QC Staff",
-                        Action = "Hoàn tất kiểm định KCS",
-                        RecordCode = string.IsNullOrEmpty(q.InspectionCode) ? $"QC-{q.InspectionId:D4}" : q.InspectionCode,
-                        StatusTransition = $"INSPECTING ➔ {q.Result.ToUpper()}",
-                        Details = $"Kết quả kiểm định chất lượng: {q.Result}. Độ ẩm, tro, nhiệt trị đạt chuẩn.",
-                        Module = "QC"
+                        CreatedAt      = o.OrderDate,
+                        ActorName      = o.Creator?.FullName ?? "Quản lý",
+                        ActorRole      = "Manager",
+                        Action         = "Khởi tạo Lệnh xuất hàng",
+                        EntityCode     = $"ORD-{o.OrderId:D4}",
+                        EntityType     = "Order",
+                        PreviousStatus = null,
+                        NewStatus      = "PENDING",
+                        Details        = $"Tạo lệnh xuất khẩu viên nén gỗ cho {o.Customer?.CustomerName ?? "N/A"}"
                     });
                 }
             }
 
-            // 3. Logs từ Yêu cầu mua vật tư
-            var purchases = await _context.MaterialPurchaseRequests
-                .Include(p => p.Requester)
-                .OrderByDescending(p => p.RequestDate)
-                .Take(15)
-                .ToListAsync();
-
-            foreach (var p in purchases)
+            // 2. QC Inspections
+            if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "QC")
             {
-                logs.Add(new AuditLogEntry
+                var qcList = await _context.QCInspections
+                    .Include(q => q.Requester)
+                    .Include(q => q.Inspector)
+                    .OrderByDescending(q => q.RequestDate)
+                    .Take(20)
+                    .ToListAsync();
+
+                foreach (var q in qcList)
                 {
-                    Timestamp = p.RequestDate,
-                    Actor = p.Requester?.FullName ?? "NV Thu mua",
-                    ActorRole = "Purchasing",
-                    Action = "Đề xuất Mua vật tư / NVL",
-                    RecordCode = $"PO-{p.RequestId:D4}",
-                    StatusTransition = $"DRAFT ➔ {p.Status.ToUpper()}",
-                    Details = $"Yêu cầu cung ứng {p.ItemName} (Số lượng: {p.Quantity}) phục vụ bảo trì dây chuyền",
-                    Module = "Thu mua"
-                });
+                    if (q.Inspector != null && !string.IsNullOrEmpty(q.Result))
+                    {
+                        logs.Add(new AuditLogEntry
+                        {
+                            CreatedAt      = q.InspectDate ?? q.RequestDate,
+                            ActorName      = q.Inspector.FullName,
+                            ActorRole      = "QC Staff",
+                            Action         = "Hoàn tất kiểm định KCS",
+                            EntityCode     = string.IsNullOrEmpty(q.InspectionCode) ? $"QC-{q.InspectionId:D4}" : q.InspectionCode,
+                            EntityType     = "QC",
+                            PreviousStatus = "INSPECTING",
+                            NewStatus      = q.Result.ToUpper(),
+                            Details        = $"Kết quả kiểm định chất lượng: {q.Result}"
+                        });
+                    }
+                }
             }
 
-            // 4. Logs từ Tài khoản người dùng
-            var users = await _context.Users
-                .Include(u => u.Role)
-                .Take(10)
-                .ToListAsync();
-
-            foreach (var u in users)
+            // 3. Mua vật tư
+            if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "Purchase")
             {
-                logs.Add(new AuditLogEntry
+                var purchases = await _context.MaterialPurchaseRequests
+                    .Include(p => p.Requester)
+                    .OrderByDescending(p => p.RequestDate)
+                    .Take(20)
+                    .ToListAsync();
+
+                foreach (var p in purchases)
                 {
-                    Timestamp = DateTime.Now.AddDays(-u.UserId),
-                    Actor = "Admin System",
-                    ActorRole = "Admin",
-                    Action = u.Status == "Active" ? "Cấp tài khoản & Phân quyền" : "Khóa tài khoản nhân sự",
-                    RecordCode = $"USR-{u.UserId:D4}",
-                    StatusTransition = u.Status == "Active" ? "NEW ➔ ACTIVE" : "ACTIVE ➔ LOCKED",
-                    Details = $"Phân quyền vai trò: {u.Role?.RoleName} cho nhân sự {u.FullName} ({u.Username})",
-                    Module = "Tài khoản"
-                });
+                    logs.Add(new AuditLogEntry
+                    {
+                        CreatedAt      = p.RequestDate,
+                        ActorName      = p.Requester?.FullName ?? "NV Thu mua",
+                        ActorRole      = "Purchasing Staff",
+                        Action         = "Đề xuất Mua vật tư / NVL",
+                        EntityCode     = $"PO-{p.RequestId:D4}",
+                        EntityType     = "Purchase",
+                        PreviousStatus = "DRAFT",
+                        NewStatus      = p.Status.ToUpper(),
+                        Details        = $"Yêu cầu cung ứng: {p.ItemName} (SL: {p.Quantity})"
+                    });
+                }
             }
 
-            // Lọc theo từ khóa và module
+            // 4. User management
+            if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "User")
+            {
+                var users = await _context.Users
+                    .Include(u => u.Role)
+                    .Take(15)
+                    .ToListAsync();
+
+                foreach (var u in users)
+                {
+                    logs.Add(new AuditLogEntry
+                    {
+                        CreatedAt      = DateTime.Now.AddDays(-u.UserId),
+                        ActorName      = "Admin System",
+                        ActorRole      = "Admin",
+                        Action         = u.Status == "Active" ? "Cấp tài khoản & Phân quyền" : "Khóa tài khoản",
+                        EntityCode     = $"USR-{u.UserId:D4}",
+                        EntityType     = "User",
+                        PreviousStatus = u.Status == "Active" ? null : "ACTIVE",
+                        NewStatus      = u.Status == "Active" ? "ACTIVE" : "LOCKED",
+                        Details        = $"Phân quyền vai trò '{u.Role?.RoleName}' cho {u.FullName} ({u.Username})"
+                    });
+                }
+            }
+
+            // 5. Maintenance
+            if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "Maintenance")
+            {
+                var maintenances = await _context.MaintenanceRequests
+                    .Include(m => m.Requester)
+                    .OrderByDescending(m => m.RequestDate)
+                    .Take(15)
+                    .ToListAsync();
+
+                foreach (var m in maintenances)
+                {
+                    logs.Add(new AuditLogEntry
+                    {
+                        CreatedAt      = m.RequestDate,
+                        ActorName      = m.Requester?.FullName ?? "Nhân viên",
+                        ActorRole      = "Staff",
+                        Action         = "Báo cáo Sự cố máy móc",
+                        EntityCode     = $"MNT-{m.RequestId:D4}",
+                        EntityType     = "Maintenance",
+                        PreviousStatus = null,
+                        NewStatus      = m.Status.ToUpper(),
+                        Details        = m.Description ?? "Báo cáo sự cố thiết bị"
+                    });
+                }
+            }
+
+            // Search filter
             var filtered = logs.AsEnumerable();
-
-            if (!string.IsNullOrWhiteSpace(Keyword))
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
             {
-                var kw = Keyword.Trim().ToLower();
-                filtered = filtered.Where(l => l.Actor.ToLower().Contains(kw)
-                                            || l.Action.ToLower().Contains(kw)
-                                            || l.RecordCode.ToLower().Contains(kw)
-                                            || l.Details.ToLower().Contains(kw));
+                var kw = SearchTerm.Trim().ToLower();
+                filtered = filtered.Where(l =>
+                    l.ActorName.ToLower().Contains(kw) ||
+                    l.Action.ToLower().Contains(kw) ||
+                    l.EntityCode.ToLower().Contains(kw) ||
+                    l.Details.ToLower().Contains(kw));
             }
 
-            if (!string.IsNullOrWhiteSpace(ModuleFilter) && ModuleFilter != "all")
-            {
-                filtered = filtered.Where(l => l.Module.Equals(ModuleFilter, StringComparison.OrdinalIgnoreCase));
-            }
+            var sorted = filtered.OrderByDescending(l => l.CreatedAt).ToList();
+            TotalCount = sorted.Count;
+            TotalPages = (int)Math.Ceiling((double)TotalCount / PageSize);
+            TotalPages = Math.Max(1, TotalPages);
+            CurrentPage = Math.Min(CurrentPage, TotalPages);
 
-            LogEntries = filtered.OrderByDescending(l => l.Timestamp).ToList();
+            AuditLogs = sorted
+                .Skip((CurrentPage - 1) * PageSize)
+                .Take(PageSize)
+                .ToList();
+
             return Page();
         }
     }

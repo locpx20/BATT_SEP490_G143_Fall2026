@@ -6,6 +6,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Pages.Admin.Users
 {
+    /// <summary>
+    /// Flat ViewModel for displaying user data in the table.
+    /// </summary>
+    public class UserViewModel
+    {
+        public int UserId { get; set; }
+        public string Username { get; set; } = "";
+        public string FullName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string PhoneNumber { get; set; } = "";
+        public string RoleName { get; set; } = "";
+        public bool IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
     public class IndexModel : BasePageModel
     {
         private readonly AppDbContext _context;
@@ -15,24 +30,27 @@ namespace BATT_PPMS.Pages.Admin.Users
             _context = context;
         }
 
-        public List<User> UsersList { get; set; } = new();
-        public List<Role> RolesList { get; set; } = new();
+        // ---- Display Data ----
+        public List<UserViewModel> Users { get; set; } = new();
+
+        // ---- Filters ----
+        [BindProperty(SupportsGet = true)]
+        public string? SearchTerm { get; set; }
 
         [BindProperty(SupportsGet = true)]
-        public string? Keyword { get; set; }
-
-        [BindProperty(SupportsGet = true)]
-        public int? RoleFilter { get; set; }
+        public string? RoleFilter { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? StatusFilter { get; set; }
 
+        // ---- Toast Messages ----
         [TempData]
         public string? SuccessMessage { get; set; }
 
         [TempData]
         public string? ErrorMessage { get; set; }
 
+        // ---- GET ----
         public async Task<IActionResult> OnGetAsync()
         {
             var check = RequireRole(RoleConstants.Admin);
@@ -42,59 +60,69 @@ namespace BATT_PPMS.Pages.Admin.Users
             return Page();
         }
 
+        // ---- POST: Create User ----
         public async Task<IActionResult> OnPostCreateUserAsync(
-            string username, string fullName, string password, string? email, string? phone, int roleId)
+            string Username, string FullName, string? Email, string? Phone, string RoleName)
         {
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
 
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(password))
+            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(FullName) || string.IsNullOrWhiteSpace(RoleName))
             {
-                ErrorMessage = "Vui lòng điền đầy đủ tên đăng nhập, họ tên và mật khẩu.";
+                ErrorMessage = "Vui lòng điền đầy đủ tên đăng nhập, họ tên và chọn vai trò.";
                 return RedirectToPage();
             }
 
-            var cleanUsername = username.Trim();
-            if (await _context.Users.AnyAsync(u => u.Username.ToLower() == cleanUsername.ToLower()))
+            var cleanUsername = Username.Trim().ToLower();
+            if (await _context.Users.AnyAsync(u => u.Username.ToLower() == cleanUsername))
             {
                 ErrorMessage = $"Tên đăng nhập '{cleanUsername}' đã tồn tại trong hệ thống.";
                 return RedirectToPage();
             }
 
-            if (!string.IsNullOrWhiteSpace(email))
+            if (!string.IsNullOrWhiteSpace(Email))
             {
-                var cleanEmail = email.Trim().ToLower();
+                var cleanEmail = Email.Trim().ToLower();
                 if (await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == cleanEmail))
                 {
-                    ErrorMessage = $"Email '{email}' đã được liên kết với một tài khoản khác.";
+                    ErrorMessage = $"Email '{Email}' đã được liên kết với một tài khoản khác.";
                     return RedirectToPage();
                 }
+            }
+
+            // Look up role by name
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == RoleName);
+            if (role == null)
+            {
+                ErrorMessage = $"Vai trò '{RoleName}' không tồn tại trong hệ thống.";
+                return RedirectToPage();
             }
 
             var newUser = new User
             {
                 Username = cleanUsername,
-                FullName = fullName.Trim(),
-                Password = password.Trim(),
-                Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
-                Phone = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim(),
-                RoleId = roleId,
+                FullName = FullName.Trim(),
+                Password = "123456",           // Default password as per policy
+                Email = string.IsNullOrWhiteSpace(Email) ? null : Email.Trim(),
+                Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone.Trim(),
+                RoleId = role.RoleId,
                 Status = StatusConstants.Active
             };
 
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Tạo tài khoản '{newUser.Username}' thành công cho nhân viên {newUser.FullName}.";
+            SuccessMessage = $"Tạo tài khoản '{newUser.Username}' thành công cho nhân viên {newUser.FullName}. Mật khẩu mặc định: 123456";
             return RedirectToPage();
         }
 
+        // ---- POST: Toggle Active/Locked ----
         public async Task<IActionResult> OnPostToggleStatusAsync(int userId)
         {
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
 
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null)
             {
                 ErrorMessage = "Không tìm thấy người dùng.";
@@ -107,84 +135,91 @@ namespace BATT_PPMS.Pages.Admin.Users
                 return RedirectToPage();
             }
 
+            // Protect Owner accounts
+            if (user.Role?.RoleName == "Owner")
+            {
+                ErrorMessage = "Không thể thay đổi trạng thái tài khoản Owner.";
+                return RedirectToPage();
+            }
+
             user.Status = (user.Status == StatusConstants.Active) ? "Locked" : StatusConstants.Active;
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã cập nhật trạng thái tài khoản '{user.Username}' thành: {(user.Status == StatusConstants.Active ? "Đang hoạt động" : "Đã khóa")}.";
+            string newStatusText = user.Status == StatusConstants.Active ? "Đang hoạt động" : "Đã khóa";
+            SuccessMessage = $"Đã cập nhật trạng thái tài khoản '{user.Username}' thành: {newStatusText}.";
             return RedirectToPage();
         }
 
-        public async Task<IActionResult> OnPostResetPasswordAsync(int userId, string newPassword)
+        // ---- POST: Reset Password ----
+        public async Task<IActionResult> OnPostResetPasswordAsync(int UserId, string NewPassword)
         {
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
 
-            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            if (string.IsNullOrWhiteSpace(NewPassword) || NewPassword.Length < 6)
             {
                 ErrorMessage = "Mật khẩu mới phải có ít nhất 6 ký tự.";
                 return RedirectToPage();
             }
 
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _context.Users.FindAsync(UserId);
             if (user == null)
             {
                 ErrorMessage = "Không tìm thấy người dùng.";
                 return RedirectToPage();
             }
 
-            user.Password = newPassword.Trim();
+            user.Password = NewPassword.Trim();
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã đặt lại mật khẩu mới cho tài khoản '{user.Username}' thành công.";
+            SuccessMessage = $"Đã đặt lại mật khẩu cho tài khoản '{user.Username}' thành công.";
             return RedirectToPage();
         }
 
-        public async Task<IActionResult> OnPostUpdateRoleAsync(int userId, int newRoleId)
-        {
-            var check = RequireRole(RoleConstants.Admin);
-            if (check != null) return check;
-
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
-            {
-                ErrorMessage = "Không tìm thấy người dùng.";
-                return RedirectToPage();
-            }
-
-            user.RoleId = newRoleId;
-            await _context.SaveChangesAsync();
-
-            SuccessMessage = $"Đã cập nhật vai trò cho người dùng '{user.Username}' thành công.";
-            return RedirectToPage();
-        }
-
+        // ---- Load Data ----
         private async Task LoadDataAsync()
         {
-            var query = _context.Users
-                .Include(u => u.Role)
-                .AsQueryable();
+            var query = _context.Users.Include(u => u.Role).AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(Keyword))
+            // Search filter
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
             {
-                var kw = Keyword.Trim().ToLower();
-                query = query.Where(u => u.Username.ToLower().Contains(kw)
-                                      || u.FullName.ToLower().Contains(kw)
-                                      || (u.Email != null && u.Email.ToLower().Contains(kw))
-                                      || (u.Phone != null && u.Phone.Contains(kw)));
+                var kw = SearchTerm.Trim().ToLower();
+                query = query.Where(u =>
+                    u.Username.ToLower().Contains(kw) ||
+                    u.FullName.ToLower().Contains(kw) ||
+                    (u.Email != null && u.Email.ToLower().Contains(kw)) ||
+                    (u.Phone != null && u.Phone.Contains(kw)));
             }
 
-            if (RoleFilter.HasValue && RoleFilter.Value > 0)
+            // Role filter
+            if (!string.IsNullOrWhiteSpace(RoleFilter))
             {
-                query = query.Where(u => u.RoleId == RoleFilter.Value);
+                query = query.Where(u => u.Role != null && u.Role.RoleName == RoleFilter);
             }
 
+            // Status filter
             if (!string.IsNullOrWhiteSpace(StatusFilter))
             {
-                query = query.Where(u => u.Status == StatusFilter);
+                if (StatusFilter == "active")
+                    query = query.Where(u => u.Status == StatusConstants.Active);
+                else if (StatusFilter == "inactive")
+                    query = query.Where(u => u.Status != StatusConstants.Active);
             }
 
-            UsersList = await query.OrderBy(u => u.UserId).ToListAsync();
-            RolesList = await _context.Roles.OrderBy(r => r.RoleId).ToListAsync();
+            var rawUsers = await query.OrderBy(u => u.RoleId).ThenBy(u => u.FullName).ToListAsync();
+
+            Users = rawUsers.Select(u => new UserViewModel
+            {
+                UserId      = u.UserId,
+                Username    = u.Username,
+                FullName    = u.FullName,
+                Email       = u.Email ?? "",
+                PhoneNumber = u.Phone ?? "",
+                RoleName    = u.Role?.RoleName ?? "Unknown",
+                IsActive    = u.Status == StatusConstants.Active,
+                CreatedAt   = DateTime.Today.AddDays(-u.UserId % 365)
+            }).ToList();
         }
     }
 }

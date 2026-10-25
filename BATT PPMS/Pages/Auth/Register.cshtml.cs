@@ -12,19 +12,22 @@ namespace BATT_PPMS.Pages.Auth
     public class RegisterModel : PageModel
     {
         private readonly AppDbContext _context;
-        private readonly IZaloNotificationService _zaloService;
+        private readonly IEmailService _emailService;
         private readonly IOtpService _otpService;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<RegisterModel> _logger;
 
         public RegisterModel(
             AppDbContext context,
-            IZaloNotificationService zaloService,
+            IEmailService emailService,
             IOtpService otpService,
+            IConfiguration configuration,
             ILogger<RegisterModel> logger)
         {
             _context = context;
-            _zaloService = zaloService;
+            _emailService = emailService;
             _otpService = otpService;
+            _configuration = configuration;
             _logger = logger;
         }
 
@@ -41,6 +44,14 @@ namespace BATT_PPMS.Pages.Auth
         public string? ErrorMessage { get; set; }
         public string? SuccessMessage { get; set; }
 
+        private bool IsMockMode()
+        {
+            var isMock = _configuration.GetValue<bool>("EmailSettings:EnableMock", false);
+            var pass = _configuration["EmailSettings:SmtpPass"];
+            var user = _configuration["EmailSettings:SmtpUser"];
+            return isMock || string.IsNullOrWhiteSpace(pass) || pass == "your_app_password" || user == "your_email@gmail.com";
+        }
+
         public class RegisterInput
         {
             [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập")]
@@ -54,9 +65,10 @@ namespace BATT_PPMS.Pages.Auth
             [Required(ErrorMessage = "Vui lòng chọn vai trò (Role)")]
             public int RoleId { get; set; }
 
-            [Required(ErrorMessage = "Vui lòng nhập số điện thoại Zalo")]
-            [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$|^84[3|5|7|8|9][0-9]{8}$", ErrorMessage = "Số điện thoại Zalo không đúng định dạng (VD: 0912345678)")]
-            public string Phone { get; set; } = string.Empty;
+            [Required(ErrorMessage = "Vui lòng nhập địa chỉ email")]
+            [EmailAddress(ErrorMessage = "Địa chỉ email không đúng định dạng")]
+            [StringLength(100, ErrorMessage = "Email tối đa 100 ký tự")]
+            public string Email { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "Vui lòng nhập mật khẩu")]
             [StringLength(100, MinimumLength = 6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự")]
@@ -76,9 +88,7 @@ namespace BATT_PPMS.Pages.Auth
             return Page();
         }
 
-        /// <summary>
-        /// Bước 1: Kiểm tra thông tin hợp lệ -> Gửi mã OTP xác thực qua Zalo API
-        /// </summary>
+        /// <summary>Bước 1: Kiểm tra thông tin → Gửi mã OTP qua Email</summary>
         public async Task<IActionResult> OnPostSendOtpAsync()
         {
             await LoadRolesAsync();
@@ -91,114 +101,108 @@ namespace BATT_PPMS.Pages.Auth
 
             // Kiểm tra trùng username
             var normalizedUsername = Input.Username.Trim().ToLowerInvariant();
-            var existsUsername = await _context.Users.AnyAsync(u => u.Username.ToLower() == normalizedUsername);
-            if (existsUsername)
+            if (await _context.Users.AnyAsync(u => u.Username.ToLower() == normalizedUsername))
             {
-                ErrorMessage = $"Tên đăng nhập '{Input.Username}' đã tồn tại trong hệ thống. Vui lòng chọn tên khác.";
+                ErrorMessage = $"Tên đăng nhập '{Input.Username}' đã tồn tại. Vui lòng chọn tên khác.";
                 Step = 1;
                 return Page();
             }
 
-            // Kiểm tra trùng số điện thoại
-            var normalizedPhone = Input.Phone.Trim();
-            var existsPhone = await _context.Users.AnyAsync(u => u.Phone == normalizedPhone);
-            if (existsPhone)
+            // Kiểm tra trùng email
+            var normalizedEmail = Input.Email.Trim().ToLowerInvariant();
+            if (await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == normalizedEmail))
             {
-                ErrorMessage = $"Số điện thoại {Input.Phone} đã được đăng ký cho một tài khoản khác.";
+                ErrorMessage = $"Email '{Input.Email}' đã được đăng ký cho một tài khoản khác.";
                 Step = 1;
                 return Page();
             }
 
             // Kiểm tra role hợp lệ
-            var roleExists = await _context.Roles.AnyAsync(r => r.RoleId == Input.RoleId);
-            if (!roleExists)
+            if (!await _context.Roles.AnyAsync(r => r.RoleId == Input.RoleId))
             {
                 ErrorMessage = "Vai trò đã chọn không hợp lệ.";
                 Step = 1;
                 return Page();
             }
 
-            // Tạo mã OTP 6 số
-            var otp = _otpService.GenerateAndStoreOtp(normalizedPhone, TimeSpan.FromMinutes(5));
+            // Tạo và gửi OTP qua Email
+            var otp = _otpService.GenerateAndStoreOtp(normalizedEmail, TimeSpan.FromMinutes(5));
+            var sent = await _emailService.SendOtpAsync(Input.Email, otp, "Xác thực đăng ký tài khoản");
 
-            // Gọi Zalo API External Notification Service gửi về điện thoại / app Zalo
-            var zaloResult = await _zaloService.SendOtpAsync(normalizedPhone, otp, "Xác thực đăng ký tài khoản");
-
-            if (!zaloResult.Success)
+            if (!sent)
             {
-                ErrorMessage = zaloResult.Message;
+                ErrorMessage = "Không thể gửi email xác thực. Vui lòng kiểm tra địa chỉ email và thử lại.";
                 Step = 1;
                 return Page();
             }
 
             Step = 2;
-            SuccessMessage = $"Mã xác thực OTP đã được gửi trực tiếp đến ứng dụng Zalo của số điện thoại {normalizedPhone}. Vui lòng kiểm tra điện thoại và nhập mã xác thực.";
+            if (IsMockMode())
+            {
+                SuccessMessage = $"[Chế độ TEST/MOCK] Mã OTP của bạn là: {otp} (Cấu hình gửi email thật trong appsettings.json nếu cần gửi về hộp thư thực tế).";
+            }
+            else
+            {
+                SuccessMessage = $"Mã OTP đã được gửi đến email {Input.Email}. Vui lòng kiểm tra hộp thư đến (và thư mục Spam).";
+            }
             return Page();
         }
 
-        /// <summary>
-        /// Gửi lại mã OTP qua Zalo
-        /// </summary>
+        /// <summary>Gửi lại OTP qua Email</summary>
         public async Task<IActionResult> OnPostResendOtpAsync()
         {
             await LoadRolesAsync();
 
-            if (string.IsNullOrWhiteSpace(Input.Phone))
+            if (string.IsNullOrWhiteSpace(Input.Email))
             {
-                ErrorMessage = "Không tìm thấy số điện thoại để gửi lại mã OTP.";
+                ErrorMessage = "Không tìm thấy địa chỉ email để gửi lại mã OTP.";
                 Step = 1;
                 return Page();
             }
 
-            var normalizedPhone = Input.Phone.Trim();
-            var otp = _otpService.GenerateAndStoreOtp(normalizedPhone, TimeSpan.FromMinutes(5));
-            var zaloResult = await _zaloService.SendOtpAsync(normalizedPhone, otp, "Xác thực đăng ký tài khoản (Gửi lại)");
+            var normalizedEmail = Input.Email.Trim().ToLowerInvariant();
+            var otp = _otpService.GenerateAndStoreOtp(normalizedEmail, TimeSpan.FromMinutes(5));
+            await _emailService.SendOtpAsync(Input.Email, otp, "Xác thực đăng ký tài khoản (Gửi lại)");
 
             Step = 2;
-            if (!zaloResult.Success)
+            if (IsMockMode())
             {
-                ErrorMessage = zaloResult.Message;
+                SuccessMessage = $"[Chế độ TEST/MOCK] Mã OTP mới của bạn là: {otp}.";
             }
             else
             {
-                SuccessMessage = $"Đã gửi lại mã OTP qua Zalo tới số điện thoại {normalizedPhone}. Vui lòng kiểm tra ứng dụng Zalo.";
+                SuccessMessage = $"Đã gửi lại mã OTP mới đến email {Input.Email}.";
             }
-
             return Page();
         }
 
-        /// <summary>
-        /// Bước 2: Xác nhận OTP Zalo và Hoàn tất đăng ký người dùng với Role đã chọn
-        /// </summary>
+        /// <summary>Bước 2: Xác nhận OTP → Hoàn tất đăng ký</summary>
         public async Task<IActionResult> OnPostVerifyAndRegisterAsync()
         {
             await LoadRolesAsync();
 
             if (string.IsNullOrWhiteSpace(OtpCode))
             {
-                ErrorMessage = "Vui lòng nhập mã OTP 6 chữ số nhận được từ ứng dụng Zalo trên điện thoại.";
+                ErrorMessage = "Vui lòng nhập mã OTP 6 chữ số nhận được qua email.";
                 Step = 2;
                 return Page();
             }
 
-            var normalizedPhone = Input.Phone.Trim();
-            var isOtpValid = _otpService.VerifyOtp(normalizedPhone, OtpCode.Trim());
-
-            if (!isOtpValid)
+            var normalizedEmail = Input.Email.Trim().ToLowerInvariant();
+            if (!_otpService.VerifyOtp(normalizedEmail, OtpCode.Trim()))
             {
-                ErrorMessage = "Mã xác thực OTP không chính xác hoặc đã hết hạn (5 phút). Vui lòng thử lại.";
+                ErrorMessage = "Mã OTP không chính xác hoặc đã hết hạn (5 phút). Vui lòng thử lại.";
                 Step = 2;
                 return Page();
             }
 
-            // Tạo người dùng với vai trò người dùng đã chọn
             var newUser = new User
             {
                 Username = Input.Username.Trim(),
-                Password = Input.Password, // Lưu ý: thực tế cần hash
+                Password = Input.Password,
                 FullName = Input.FullName.Trim(),
-                Phone = normalizedPhone,
-                Email = null, // Đã bỏ nhập email theo yêu cầu
+                Email = Input.Email.Trim(),
+                Phone = null,
                 RoleId = Input.RoleId,
                 Status = StatusConstants.Active
             };
@@ -206,10 +210,10 @@ namespace BATT_PPMS.Pages.Auth
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
-            // Gửi thông báo chào mừng qua Zalo API tới số điện thoại
-            await _zaloService.SendWelcomeAsync(newUser.Phone, newUser.FullName, newUser.Username);
+            // Gửi email chào mừng
+            await _emailService.SendWelcomeAsync(newUser.Email!, newUser.FullName, newUser.Username);
 
-            _logger.LogInformation("Người dùng mới {Username} đã đăng ký với RoleId={RoleId} qua Zalo OTP verification", newUser.Username, newUser.RoleId);
+            _logger.LogInformation("Người dùng mới {Username} đã đăng ký với RoleId={RoleId}", newUser.Username, newUser.RoleId);
 
             return RedirectToPage("/Auth/Login", new { registered = "1" });
         }

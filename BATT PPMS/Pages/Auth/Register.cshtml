@@ -21,10 +21,10 @@
             <div class="login-logo">
                 <span class="logo-icon">🏭</span>
                 <h1>Đăng ký tài khoản</h1>
-                <p>Hệ thống Quản lý Kế hoạch & Sản xuất BATT PPMS</p>
+                <p>Hệ thống Quản lý Kế hoạch &amp; Sản xuất BATT PPMS</p>
                 <div class="zalo-service-pill">
-                    <span class="zalo-badge-icon">💬</span>
-                    <span>Xác thực số điện thoại qua Zalo API</span>
+                    <span class="zalo-badge-icon">✉️</span>
+                    <span>Xác thực qua Email</span>
                 </div>
             </div>
 
@@ -37,7 +37,7 @@
                 <div class="step-line @(Model.Step == 2 ? "active" : "")"></div>
                 <div class="step-item @(Model.Step == 2 ? "active" : "")">
                     <span class="step-number">2</span>
-                    <span class="step-title">Xác thực Zalo OTP</span>
+                    <span class="step-title">Xác thực Email OTP</span>
                 </div>
             </div>
 
@@ -89,10 +89,10 @@
                             <span asp-validation-for="Input.RoleId" class="text-danger"></span>
                         </div>
                         <div class="form-group">
-                            <label asp-for="Input.Phone">Số điện thoại Zalo <span class="required">*</span></label>
-                            <input asp-for="Input.Phone" class="form-control" placeholder="vd: 0912345678" required />
-                            <small class="form-hint">Mã OTP sẽ được gửi trực tiếp đến Zalo số này</small>
-                            <span asp-validation-for="Input.Phone" class="text-danger"></span>
+                            <label asp-for="Input.Email">Địa chỉ Email <span class="required">*</span></label>
+                            <input asp-for="Input.Email" type="email" class="form-control" placeholder="vd: nguyenvana@gmail.com" required />
+                            <small class="form-hint">Mã OTP xác thực sẽ được gửi đến email này</small>
+                            <span asp-validation-for="Input.Email" class="text-danger"></span>
                         </div>
                     </div>
 
@@ -110,21 +110,21 @@
                     </div>
 
                     <button type="submit" class="btn-login btn-zalo-primary">
-                        <span>Tiếp tục & Gửi mã OTP qua Zalo</span>
+                        <span>Tiếp tục &amp; Gửi mã OTP qua Email</span>
                         <span class="btn-arrow">→</span>
                     </button>
                 </form>
             }
             else
             {
-                <!-- BƯỚC 2: NHẬP MÃ XÁC THỰC OTP ZALO -->
+                <!-- BƯỚC 2: NHẬP MÃ OTP EMAIL -->
                 <form method="post" asp-page-handler="VerifyAndRegister">
                     <input type="hidden" name="Step" value="2" />
                     <!-- Lưu giữ thông tin bước 1 -->
                     <input type="hidden" asp-for="Input.Username" />
                     <input type="hidden" asp-for="Input.FullName" />
                     <input type="hidden" asp-for="Input.RoleId" />
-                    <input type="hidden" asp-for="Input.Phone" />
+                    <input type="hidden" asp-for="Input.Email" />
                     <input type="hidden" asp-for="Input.Password" />
                     <input type="hidden" asp-for="Input.ConfirmPassword" />
 
@@ -142,20 +142,20 @@
                             <span class="summary-value" style="color: #60a5fa; font-weight: 700;">@selectedRole</span>
                         </div>
                         <div class="summary-item">
-                            <span class="summary-label">Số Zalo nhận mã:</span>
-                            <span class="summary-value highlight-phone">@Model.Input.Phone</span>
+                            <span class="summary-label">Email nhận mã:</span>
+                            <span class="summary-value highlight-phone">@Model.Input.Email</span>
                         </div>
                     </div>
 
                     <div class="form-group otp-group">
-                        <label for="OtpCode">Nhập mã OTP 6 số từ thông báo Zalo trên điện thoại</label>
+                        <label for="OtpCode">Nhập mã OTP 6 số từ email của bạn</label>
                         <input type="text" id="OtpCode" name="OtpCode" class="form-control otp-input"
                                maxlength="6" placeholder="• • • • • •" required autofocus />
-                        <span class="form-hint">Vui lòng mở ứng dụng Zalo trên điện thoại số @Model.Input.Phone để lấy mã OTP</span>
+                        <span class="form-hint">Kiểm tra hộp thư đến tại <strong>@Model.Input.Email</strong> (kể cả thư mục Spam)</span>
                     </div>
 
                     <button type="submit" class="btn-login btn-success-action">
-                        ✓ Xác nhận & Hoàn tất đăng ký
+                        ✓ Xác nhận &amp; Hoàn tất đăng ký
                     </button>
                 </form>
 
@@ -164,11 +164,11 @@
                         <input type="hidden" asp-for="Input.Username" />
                         <input type="hidden" asp-for="Input.FullName" />
                         <input type="hidden" asp-for="Input.RoleId" />
-                        <input type="hidden" asp-for="Input.Phone" />
+                        <input type="hidden" asp-for="Input.Email" />
                         <input type="hidden" asp-for="Input.Password" />
                         <input type="hidden" asp-for="Input.ConfirmPassword" />
                         <button type="submit" class="btn-link-action">
-                            🔄 Chưa nhận được? Gửi lại mã qua Zalo
+                            🔄 Chưa nhận được? Gửi lại mã qua Email
                         </button>
                     </form>
                     <a asp-page="/Auth/Register" class="btn-link-action text-muted">← Nhập lại thông tin</a>

@@ -10,24 +10,24 @@ namespace BATT_PPMS.Pages.Auth
     public class ForgotPasswordModel : PageModel
     {
         private readonly AppDbContext _context;
-        private readonly IZaloNotificationService _zaloService;
+        private readonly IEmailService _emailService;
         private readonly IOtpService _otpService;
         private readonly ILogger<ForgotPasswordModel> _logger;
 
         public ForgotPasswordModel(
             AppDbContext context,
-            IZaloNotificationService zaloService,
+            IEmailService emailService,
             IOtpService otpService,
             ILogger<ForgotPasswordModel> logger)
         {
             _context = context;
-            _zaloService = zaloService;
+            _emailService = emailService;
             _otpService = otpService;
             _logger = logger;
         }
 
         [BindProperty]
-        [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập hoặc số điện thoại Zalo")]
+        [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập hoặc địa chỉ email")]
         public string AccountIdentifier { get; set; } = string.Empty;
 
         public string? ErrorMessage { get; set; }
@@ -47,9 +47,10 @@ namespace BATT_PPMS.Pages.Auth
 
             var identifier = AccountIdentifier.Trim();
 
-            // Tìm user theo username hoặc số điện thoại
+            // Tìm user theo username hoặc email
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Username == identifier || u.Phone == identifier);
+                .FirstOrDefaultAsync(u => u.Username == identifier
+                    || (u.Email != null && u.Email.ToLower() == identifier.ToLower()));
 
             if (user == null)
             {
@@ -57,21 +58,18 @@ namespace BATT_PPMS.Pages.Auth
                 return Page();
             }
 
-            if (string.IsNullOrWhiteSpace(user.Phone))
+            if (string.IsNullOrWhiteSpace(user.Email))
             {
-                ErrorMessage = "Tài khoản này chưa có số điện thoại Zalo trong hồ sơ. Vui lòng liên hệ Quản trị viên hệ thống (Admin).";
+                ErrorMessage = "Tài khoản này chưa có địa chỉ email. Vui lòng liên hệ Quản trị viên hệ thống.";
                 return Page();
             }
 
-            // Tạo mã OTP 6 số gắn với SĐT Zalo của user
-            var otp = _otpService.GenerateAndStoreOtp(user.Phone, TimeSpan.FromMinutes(5));
+            // Tạo mã OTP và gửi qua email
+            var otp = _otpService.GenerateAndStoreOtp(user.Email.ToLower(), TimeSpan.FromMinutes(5));
+            await _emailService.SendOtpAsync(user.Email, otp, "Đặt lại mật khẩu");
 
-            // Gửi OTP qua Zalo API External Notification Service
-            await _zaloService.SendOtpAsync(user.Phone, otp, "Đặt lại mật khẩu");
+            _logger.LogInformation("Đã gửi OTP đặt lại mật khẩu cho user {Username} qua email {Email}", user.Username, user.Email);
 
-            _logger.LogInformation("Đã gửi mã OTP đặt lại mật khẩu cho user {Username} qua Zalo {Phone}", user.Username, user.Phone);
-
-            // Chuyển sang trang Reset Password
             return RedirectToPage("/Auth/ResetPassword", new { username = user.Username });
         }
     }

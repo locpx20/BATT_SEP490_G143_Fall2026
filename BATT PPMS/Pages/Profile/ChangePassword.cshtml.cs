@@ -9,12 +9,12 @@ namespace BATT_PPMS.Pages.Profile
     public class ChangePasswordModel : BasePageModel
     {
         private readonly AppDbContext _context;
-        private readonly IZaloNotificationService _zaloService;
+        private readonly IEmailService _emailService;
 
-        public ChangePasswordModel(AppDbContext context, IZaloNotificationService zaloService)
+        public ChangePasswordModel(AppDbContext context, IEmailService emailService)
         {
             _context = context;
-            _zaloService = zaloService;
+            _emailService = emailService;
         }
 
         [BindProperty]
@@ -63,10 +63,10 @@ namespace BATT_PPMS.Pages.Profile
             user.Password = NewPassword; // TODO: hash password
             await _context.SaveChangesAsync();
 
-            if (!string.IsNullOrWhiteSpace(user.Phone))
+            if (!string.IsNullOrWhiteSpace(user.Email))
             {
-                await _zaloService.SendPasswordChangedAsync(user.Phone, user.Username);
-                SuccessMessage = "Đổi mật khẩu thành công! Thông báo bảo mật đã được gửi tới số Zalo của bạn.";
+                await _emailService.SendPasswordChangedAsync(user.Email, user.Username);
+                SuccessMessage = "Đổi mật khẩu thành công! Thông báo bảo mật đã được gửi tới email của bạn.";
             }
             else
             {

@@ -2,7 +2,7 @@
 @model BATT_PPMS.Pages.Auth.LoginModel
 @{
     Layout = null;
-    ViewData["Title"] = "Đăng nhập - BATT PPMS";
+    ViewData["Title"] = "Đăng nhập Hệ thống Nội bộ - BATT PPMS";
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
 </head>
 <body>
@@ -21,10 +22,10 @@
             <div class="login-logo">
                 <span class="logo-icon">🏭</span>
                 <h1>BATT PPMS</h1>
-                <p>Production Planning & Management System</p>
-                <div class="zalo-service-pill">
-                    <span class="zalo-badge-icon">✉️</span>
-                    <span>Xác thực &amp; Bảo mật qua Email</span>
+                <p>Hệ Thống Quản Lý Quy Trình Sản Xuất Nội Bộ</p>
+                <div class="internal-portal-badge">
+                    <span class="badge-icon">🔒</span>
+                    <span>Cổng Đăng Nhập Dành Cho Cán Bộ Nhân Viên</span>
                 </div>
             </div>
 
@@ -48,7 +49,7 @@
                 <div class="form-group">
                     <label for="username">Tên đăng nhập</label>
                     <input type="text" id="username" name="Username" class="form-control"
-                           value="@Model.Username" placeholder="Nhập tên đăng nhập" required autofocus />
+                           value="@Model.Username" placeholder="Nhập tên đăng nhập được cấp" required autofocus />
                 </div>
                 <div class="form-group">
                     <div class="form-label-row">
@@ -59,15 +60,18 @@
                            placeholder="Nhập mật khẩu" required />
                 </div>
 
-                <button type="submit" class="btn-login">Đăng nhập</button>
+                <button type="submit" class="btn-login">
+                    <span>Đăng nhập vào hệ thống</span>
+                    <span class="btn-arrow">→</span>
+                </button>
             </form>
 
-            <div class="auth-divider">
-                <span>hoặc</span>
-            </div>
-
-            <div class="auth-footer-action">
-                <p>Chưa có tài khoản? <a asp-page="/Auth/Register" class="link-register">Đăng ký tài khoản mới</a></p>
+            <div class="internal-notice-box">
+                <div class="notice-icon">🛡️</div>
+                <div class="notice-content">
+                    <p class="notice-title">Quy định cấp phát tài khoản nội bộ</p>
+                    <p class="notice-desc">Tài khoản và quyền truy cập được khởi tạo, phân quyền trực tiếp bởi <strong>Quản trị viên (Admin)</strong>. Nhân viên chưa có tài khoản vui lòng liên hệ bộ phận IT / Quản trị để được cấp.</p>
+                </div>
             </div>
         </div>
     </div>

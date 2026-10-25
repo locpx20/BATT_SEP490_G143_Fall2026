@@ -1,28 +1,313 @@
 @page
 @model BATT_PPMS.Pages.Admin.Users.IndexModel
 @{
-    ViewData["Title"] = "Quan ly Nguoi dung";
+    ViewData["Title"] = "Quản lý Người dùng & Phân quyền";
     ViewData["ActivePage"] = "Users";
 }
 
-<div class="page-header">
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="page-title">Quản lý Người dùng</h1>
-        <p class="page-subtitle">Quản lý tài khoản và phân quyền nhân sự trong hệ thống</p>
+        <h1 class="page-title fs-3 fw-bold mb-1">👥 Quản lý Người dùng &amp; Phân quyền</h1>
+        <p class="text-muted mb-0">Hệ thống cấp phát tài khoản nội bộ và phân quyền vai trò cho nhân sự nhà máy</p>
     </div>
     <div class="page-actions">
-        <a href="/Admin/Users/Create" class="btn btn-primary" id="btn-create-user">
-            <i class="bi bi-person-plus"></i> Thêm người dùng
-        </a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+            <i class="bi bi-person-plus-fill me-1"></i> Thêm tài khoản mới
+        </button>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="bi bi-person-gear"></i>
-            <h3>Chưa có người dùng nào</h3>
-            <p>TODO: Danh sách người dùng, vai trò, trạng thái tài khoản (Chỉ Admin)</p>
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> @Model.SuccessMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @Model.ErrorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Thống kê nhanh -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-3 me-3 fs-4">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div>
+                    <span class="text-muted small">Tổng số tài khoản</span>
+                    <h4 class="mb-0 fw-bold">@Model.UsersList.Count</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-success bg-opacity-10 text-success p-3 me-3 fs-4">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div>
+                    <span class="text-muted small">Đang hoạt động</span>
+                    <h4 class="mb-0 fw-bold">@Model.UsersList.Count(u => u.Status == "Active")</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm p-3">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-danger bg-opacity-10 text-danger p-3 me-3 fs-4">
+                    <i class="bi bi-lock-fill"></i>
+                </div>
+                <div>
+                    <span class="text-muted small">Tài khoản bị khóa</span>
+                    <h4 class="mb-0 fw-bold">@Model.UsersList.Count(u => u.Status != "Active")</h4>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Bảng danh sách người dùng -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-person-lines-fill me-2"></i>Danh sách tài khoản nhân sự</h5>
+        <span class="badge bg-secondary">Cập nhật nội bộ</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3" style="width: 70px;">ID</th>
+                        <th>Tên đăng nhập</th>
+                        <th>Họ và tên</th>
+                        <th>Vai trò (Role)</th>
+                        <th>Liên hệ</th>
+                        <th>Trạng thái</th>
+                        <th class="text-end pe-3" style="width: 220px;">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.UsersList.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Chưa có tài khoản nào được tạo trong hệ thống.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var user in Model.UsersList)
+                        {
+                            <tr>
+                                <td class="ps-3 fw-bold text-muted">#@user.UserId</td>
+                                <td>
+                                    <div class="fw-bold text-primary">@user.Username</div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">@user.FullName</div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
+                                        <i class="bi bi-shield-check me-1"></i>@(user.Role?.RoleName ?? "Chưa gán")
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="small text-muted">
+                                        @if (!string.IsNullOrWhiteSpace(user.Email))
+                                        {
+                                            <div><i class="bi bi-envelope me-1"></i>@user.Email</div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(user.Phone))
+                                        {
+                                            <div><i class="bi bi-telephone me-1"></i>@user.Phone</div>
+                                        }
+                                        @if (string.IsNullOrWhiteSpace(user.Email) && string.IsNullOrWhiteSpace(user.Phone))
+                                        {
+                                            <span class="text-muted fst-italic">Chưa cập nhật</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (user.Status == "Active")
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Đang hoạt động
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                                            <i class="bi bi-lock-fill me-1"></i>Đã khóa
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="btn-group btn-group-sm">
+                                        <!-- Đổi vai trò -->
+                                        <button type="button" class="btn btn-outline-secondary" title="Đổi vai trò"
+                                                data-bs-toggle="modal" data-bs-target="#editRoleModal-@user.UserId">
+                                            <i class="bi bi-person-gear"></i>
+                                        </button>
+
+                                        <!-- Reset mật khẩu -->
+                                        <button type="button" class="btn btn-outline-warning" title="Đặt lại mật khẩu"
+                                                data-bs-toggle="modal" data-bs-target="#resetPassModal-@user.UserId">
+                                            <i class="bi bi-key-fill"></i>
+                                        </button>
+
+                                        <!-- Khóa/Mở khóa -->
+                                        <form method="post" asp-page-handler="ToggleStatus" style="display:inline;"
+                                              onsubmit="return confirm('Bạn có chắc muốn @(user.Status == "Active" ? "KHÓA" : "MỞ KHÓA") tài khoản @user.Username?');">
+                                            <input type="hidden" name="userId" value="@user.UserId" />
+                                            @if (user.Status == "Active")
+                                            {
+                                                <button type="submit" class="btn btn-outline-danger" title="Khóa tài khoản">
+                                                    <i class="bi bi-lock-fill"></i>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button type="submit" class="btn btn-outline-success" title="Mở khóa tài khoản">
+                                                    <i class="bi bi-unlock-fill"></i>
+                                                </button>
+                                            }
+                                        </form>
+                                    </div>
+
+                                    <!-- Modal Đổi vai trò -->
+                                    <div class="modal fade" id="editRoleModal-@user.UserId" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered text-start">
+                                            <div class="modal-content">
+                                                <form method="post" asp-page-handler="UpdateRole">
+                                                    <input type="hidden" name="userId" value="@user.UserId" />
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title fw-bold">Phân quyền vai trò: @user.Username</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold">Họ tên nhân viên:</label>
+                                                            <input type="text" class="form-control" value="@user.FullName" disabled />
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold">Chọn vai trò mới:</label>
+                                                            <select name="newRoleId" class="form-select" required>
+                                                                @foreach (var r in Model.RolesList)
+                                                                {
+                                                                    <option value="@r.RoleId" selected="@(r.RoleId == user.RoleId)">
+                                                                        @r.RoleName
+                                                                    </option>
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Modal Reset Mật khẩu -->
+                                    <div class="modal fade" id="resetPassModal-@user.UserId" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered text-start">
+                                            <div class="modal-content">
+                                                <form method="post" asp-page-handler="ResetPassword">
+                                                    <input type="hidden" name="userId" value="@user.UserId" />
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title fw-bold">Đặt lại mật khẩu: @user.Username</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p class="text-muted small">Cấp mật khẩu mới trực tiếp cho nhân sự <strong>@user.FullName</strong>:</p>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-semibold">Mật khẩu mới (tối thiểu 6 ký tự):</label>
+                                                            <input type="text" name="newPassword" class="form-control" placeholder="Nhập mật khẩu mới" required minlength="6" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                        <button type="submit" class="btn btn-warning">Xác nhận đặt lại</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tạo Người Dùng Mới (Admin Tạo Nội Bộ) -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="CreateUser">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-person-plus-fill me-2 text-primary"></i>Cấp tài khoản nhân sự mới</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tên đăng nhập <span class="text-danger">*</span></label>
+                        <input type="text" name="username" class="form-control" placeholder="vd: nguyenvan_a" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Họ và tên nhân sự <span class="text-danger">*</span></label>
+                        <input type="text" name="fullName" class="form-control" placeholder="vd: Nguyễn Văn A" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Mật khẩu khởi tạo <span class="text-danger">*</span></label>
+                        <input type="text" name="password" class="form-control" value="123456" required minlength="6" />
+                        <small class="text-muted">Mặc định: <code>123456</code> (Nhân viên có thể đổi sau khi đăng nhập)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Vai trò nghiệp vụ (Role) <span class="text-danger">*</span></label>
+                        <select name="roleId" class="form-select" required>
+                            @foreach (var r in Model.RolesList)
+                            {
+                                <option value="@r.RoleId">@r.RoleName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email công việc</label>
+                            <input type="email" name="email" class="form-control" placeholder="email@gmail.com" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Số điện thoại</label>
+                            <input type="tel" name="phone" class="form-control" placeholder="09xxxxxxxx" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-primary fw-semibold">
+                        <i class="bi bi-check-lg me-1"></i> Khởi tạo tài khoản
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+

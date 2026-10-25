@@ -24,19 +24,15 @@ namespace BATT_PPMS.Pages.Auth
         public string? ErrorMessage { get; set; }
         public string? SuccessMessage { get; set; }
 
-        public IActionResult OnGet(string? registered, string? reset, string? msg)
+        public IActionResult OnGet(string? reset, string? msg)
         {
             // Nếu đã đăng nhập rồi thì redirect về Dashboard
             if (HttpContext.Session.GetInt32(SessionKeys.UserId) != null)
                 return RedirectToPage("/Dashboard/Index");
 
-            if (registered == "1")
+            if (reset == "1")
             {
-                SuccessMessage = "🎉 Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay.";
-            }
-            else if (reset == "1")
-            {
-                SuccessMessage = "✅ Đặt lại mật khẩu thành công! Vui lòng sử dụng mật khẩu mới để đăng nhập.";
+                SuccessMessage = "✅ Đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.";
             }
             else if (!string.IsNullOrEmpty(msg))
             {
@@ -50,20 +46,23 @@ namespace BATT_PPMS.Pages.Auth
         {
             if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
             {
-                ErrorMessage = "Vui lòng nhập đầy đủ thông tin đăng nhập.";
+                ErrorMessage = "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
                 return Page();
             }
 
-            // TODO: Thay bằng hashed password khi triển khai thực tế
             var user = await _context.Users
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Username == Username
-                                       && u.Password == Password
-                                       && u.Status == StatusConstants.Active);
+                .FirstOrDefaultAsync(u => u.Username == Username.Trim());
 
-            if (user == null)
+            if (user == null || user.Password != Password)
             {
-                ErrorMessage = "Tên đăng nhập hoặc mật khẩu không đúng hoặc tài khoản đang bị khóa.";
+                ErrorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác.";
+                return Page();
+            }
+
+            if (user.Status != StatusConstants.Active)
+            {
+                ErrorMessage = "Tài khoản của bạn đang bị khóa hoặc chưa được kích hoạt bởi Quản trị viên.";
                 return Page();
             }
 

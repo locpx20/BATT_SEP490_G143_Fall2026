@@ -41,6 +41,22 @@ namespace BATT_PPMS.Models
         [Column("note")]
         public string? Note { get; set; }
 
+        [MaxLength(100)]
+        [Column("raw_material_type")]
+        public string? RawMaterialType { get; set; }
+
+        [Column("planned_quantity")]
+        public int? PlannedQuantity { get; set; }
+
+        [Column("weighed_quantity")]
+        public int? WeighedQuantity { get; set; }
+
+        [Column("unit_price", TypeName = "decimal(12,2)")]
+        public decimal? UnitPrice { get; set; }
+
+        [Column("rejection_reason")]
+        public string? RejectionReason { get; set; }
+
         [ForeignKey("SupplierId")]
         public Supplier? Supplier { get; set; }
 

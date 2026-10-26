@@ -36,6 +36,12 @@ namespace BATT_PPMS.Models
         [Column("description")]
         public string? Description { get; set; }
 
+        [Column("completion_note")]
+        public string? CompletionNote { get; set; }
+
+        [Column("rejection_reason")]
+        public string? RejectionReason { get; set; }
+
         [ForeignKey("BrokenReportId")]
         public BrokenEquipmentReport? BrokenEquipmentReport { get; set; }
 

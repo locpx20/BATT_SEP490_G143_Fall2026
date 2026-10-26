@@ -32,6 +32,22 @@ namespace BATT_PPMS.Models
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
+        [MaxLength(50)]
+        [Column("shift")]
+        public string? Shift { get; set; }
+
+        [Column("raw_material_used")]
+        public int? RawMaterialUsed { get; set; }
+
+        [Column("has_incident")]
+        public bool? HasIncident { get; set; }
+
+        [Column("incident_description")]
+        public string? IncidentDescription { get; set; }
+
+        [Column("rejection_reason")]
+        public string? RejectionReason { get; set; }
+
         [ForeignKey("StaffId")]
         public User? Staff { get; set; }
     }

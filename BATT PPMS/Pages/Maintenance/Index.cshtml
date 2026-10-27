@@ -539,16 +539,12 @@
                     <div class="modal-body" style="padding: 24px;">
                         <div class="mb-3">
                             <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Thiết bị / Máy móc gặp sự cố <span style="color: #dc2626;">*</span></label>
-                            <select asp-for="FailureEquipmentName" class="form-select" required style="font-size: 12.5px; border-radius: 8px;">
-                                <option value="">-- Chọn máy móc dây chuyền --</option>
-                                <option value="Máy băm nghiền thô M-01 (M-CHIP-01)">Máy băm nghiền thô M-01 (M-CHIP-01)</option>
-                                <option value="Máy sấy thùng quay M-02 (M-DRY-01)">Máy sấy thùng quay M-02 (M-DRY-01)</option>
-                                <option value="Máy ép viên nén CPM-1 (M-PELLET-01)">Máy ép viên nén CPM-1 (M-PELLET-01)</option>
-                                <option value="Máy ép viên nén CPM-2 (M-PELLET-02)">Máy ép viên nén CPM-2 (M-PELLET-02)</option>
-                                <option value="Băng tải làm nguội &amp; sàng rung B1 (CONV-01)">Băng tải làm nguội &amp; sàng rung B1 (CONV-01)</option>
-                                <option value="Trạm cân đóng bao Jumbo 1 tấn (M-PACK-01)">Trạm cân đóng bao Jumbo 1 tấn (M-PACK-01)</option>
-                                <option value="Quạt hút bụi &amp; cyclone sấy (FAN-DRY-01)">Quạt hút bụi &amp; cyclone sấy (FAN-DRY-01)</option>
-                                <option value="Trạm biến áp &amp; tủ điện động lực (ELEC-01)">Trạm biến áp &amp; tủ điện động lực (ELEC-01)</option>
+                            <select asp-for="FailureMachineId" class="form-select" required style="font-size: 12.5px; border-radius: 8px;">
+                                <option value="0">-- Chọn máy móc dây chuyền --</option>
+                                @foreach (var m in Model.AvailableMachines)
+                                {
+                                    <option value="@m.MachineId">@m.MachineCode - @m.MachineName (@m.ProcessName)</option>
+                                }
                             </select>
                         </div>
 

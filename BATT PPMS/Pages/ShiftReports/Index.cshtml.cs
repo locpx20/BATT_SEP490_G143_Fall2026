@@ -104,7 +104,9 @@ namespace BATT_PPMS.Pages.ShiftReports
                 .GroupBy(r => r.ShiftDate)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            var incidents = await _context.BrokenEquipmentReports.AsNoTracking().ToListAsync();
+            var incidents = await _context.BrokenEquipmentReports
+                .Include(b => b.Machine)
+                .AsNoTracking().ToListAsync();
 
             int MaterialUsedOf(EndOfShiftReport r)
             {
@@ -133,7 +135,11 @@ namespace BATT_PPMS.Pages.ShiftReports
                     RawMaterialUsed = MaterialUsedOf(r),
                     HasIncident = dayIncidents.Count > 0,
                     IncidentDescription = dayIncidents.Count > 0
-                        ? string.Join("; ", dayIncidents.Select(i => string.IsNullOrWhiteSpace(i.Description) ? i.EquipmentName : $"{i.EquipmentName}: {i.Description}"))
+                        ? string.Join("; ", dayIncidents.Select(i =>
+                        {
+                            var machineName = i.Machine != null ? $"{i.Machine.MachineCode} - {i.Machine.MachineName}" : "Thiết bị nhà máy";
+                            return string.IsNullOrWhiteSpace(i.Description) ? machineName : $"{machineName}: {i.Description}";
+                        }))
                         : null,
                     // Không có cột RejectionReason: lý do từ chối nằm trong dòng gắn thẻ của Note
                     Note = NoteTags.Plain(r.Note),
@@ -231,16 +237,21 @@ namespace BATT_PPMS.Pages.ShiftReports
             // Ghi nhận sự cố phát sinh vào BrokenEquipmentReport
             if (NewHasIncident && !string.IsNullOrWhiteSpace(NewIncidentDescription))
             {
-                var incident = new BrokenEquipmentReport
+                // Dùng máy M-01 (ID=1) làm default khi báo cáo sự cố từ ca trực
+                var defaultMachine = await _context.Machines.FirstOrDefaultAsync();
+                if (defaultMachine != null)
                 {
-                    EquipmentName = "Dây chuyền sản xuất viên nén",
-                    Description = NewIncidentDescription.Trim(),
-                    ReportDate = NewShiftDate.ToDateTime(TimeOnly.MinValue),
-                    ReportedBy = currentUserId,
-                    Severity = "Medium",
-                    Status = "Reported"
-                };
-                _context.BrokenEquipmentReports.Add(incident);
+                    var incident = new BrokenEquipmentReport
+                    {
+                        MachineId = defaultMachine.MachineId,
+                        Description = NewIncidentDescription.Trim(),
+                        ReportDate = NewShiftDate.ToDateTime(TimeOnly.MinValue),
+                        ReportedBy = currentUserId,
+                        Severity = "Medium",
+                        Status = "Reported"
+                    };
+                    _context.BrokenEquipmentReports.Add(incident);
+                }
             }
 
             var report = new EndOfShiftReport

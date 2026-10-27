@@ -68,10 +68,12 @@ namespace BATT_PPMS.Pages.Maintenance
         [TempData]
         public string? ErrorMessage { get; set; }
 
-        [BindProperty] public string FailureEquipmentName { get; set; } = string.Empty;
+        [BindProperty] public int FailureMachineId { get; set; }
         [BindProperty] public string FailureSymptoms { get; set; } = string.Empty;
         [BindProperty] public string FailureSeverity { get; set; } = "High";
         [BindProperty] public string? FailureDescription { get; set; }
+
+        public List<Machine> AvailableMachines { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -96,9 +98,13 @@ namespace BATT_PPMS.Pages.Maintenance
                 })
                 .ToListAsync();
 
+            // Load available machines for dropdown
+            AvailableMachines = await _context.Machines.OrderBy(m => m.MachineCode).ToListAsync();
+
             // Load maintenance requests with navigation properties
             var query = _context.MaintenanceRequests
                 .Include(m => m.BrokenReport)
+                    .ThenInclude(b => b.Machine)
                 .Include(m => m.RequestedByNavigation)
                 .Include(m => m.AssignedToNavigation)
                 .Include(m => m.MaterialPurchaseRequests)
@@ -121,7 +127,8 @@ namespace BATT_PPMS.Pages.Maintenance
                 var term = SearchTerm.Trim().ToLowerInvariant();
                 filtered = filtered.Where(r =>
                     $"REQ-{r.RequestId:D4}".ToLowerInvariant().Contains(term) ||
-                    (r.BrokenReport?.EquipmentName != null && r.BrokenReport.EquipmentName.ToLowerInvariant().Contains(term)) ||
+                    (r.BrokenReport?.Machine?.MachineName != null && r.BrokenReport.Machine.MachineName.ToLowerInvariant().Contains(term)) ||
+                    (r.BrokenReport?.Machine?.MachineCode != null && r.BrokenReport.Machine.MachineCode.ToLowerInvariant().Contains(term)) ||
                     (NoteTags.Plain(r.Description) != null && NoteTags.Plain(r.Description)!.ToLowerInvariant().Contains(term)) ||
                     (r.RequestedByNavigation?.FullName != null && r.RequestedByNavigation.FullName.ToLowerInvariant().Contains(term)) ||
                     (r.AssignedToNavigation?.FullName != null && r.AssignedToNavigation.FullName.ToLowerInvariant().Contains(term))
@@ -145,7 +152,9 @@ namespace BATT_PPMS.Pages.Maintenance
                 {
                     RequestId = r.RequestId,
                     BrokenReportId = r.BrokenReportId,
-                    EquipmentName = r.BrokenReport?.EquipmentName ?? "Thiết bị nhà máy",
+                    EquipmentName = r.BrokenReport?.Machine != null
+                        ? $"{r.BrokenReport.Machine.MachineCode} - {r.BrokenReport.Machine.MachineName}"
+                        : "Thiết bị nhà máy",
                     Symptoms = !string.IsNullOrWhiteSpace(NoteTags.Plain(r.Description)) ? NoteTags.Plain(r.Description)! : (r.BrokenReport?.Description ?? "Chưa có mô tả hiện tượng"),
                     Priority = !string.IsNullOrWhiteSpace(r.Priority) ? r.Priority : (r.BrokenReport?.Severity ?? "High"),
                     RequestedByStaffId = r.RequestedBy,
@@ -305,17 +314,24 @@ namespace BATT_PPMS.Pages.Maintenance
             var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.Staff, RoleConstants.MaintenanceStaff);
             if (check != null) return check;
 
-            if (string.IsNullOrWhiteSpace(FailureEquipmentName) || string.IsNullOrWhiteSpace(FailureSymptoms))
+            if (FailureMachineId <= 0 || string.IsNullOrWhiteSpace(FailureSymptoms))
             {
-                ErrorMessage = "Vui lòng chọn tên thiết bị và mô tả hiện tượng sự cố.";
+                ErrorMessage = "Vui lòng chọn thiết bị bị hỏng và mô tả hiện tượng sự cố.";
                 return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
             }
 
             var currentUserId = CurrentUserId > 0 ? CurrentUserId : 4;
 
+            var machine = await _context.Machines.FindAsync(FailureMachineId);
+            if (machine == null)
+            {
+                ErrorMessage = "Không tìm thấy thiết bị được chọn. Vui lòng thử lại.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
             var report = new BrokenEquipmentReport
             {
-                EquipmentName = FailureEquipmentName.Trim(),
+                MachineId = FailureMachineId,
                 Description = FailureSymptoms.Trim() + (!string.IsNullOrWhiteSpace(FailureDescription) ? $" | Ghi chú: {FailureDescription.Trim()}" : ""),
                 ReportedBy = currentUserId,
                 ReportDate = DateTime.Now,
@@ -339,7 +355,7 @@ namespace BATT_PPMS.Pages.Maintenance
             _context.MaintenanceRequests.Add(req);
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Báo cáo sự cố thành công cho thiết bị '{report.EquipmentName}' (Mã: REQ-{req.RequestId:D4}). Kỹ thuật viên sẽ được tiếp nhận và xử lý.";
+            SuccessMessage = $"Báo cáo sự cố thành công cho thiết bị '{machine.MachineCode} - {machine.MachineName}' (Mã: REQ-{req.RequestId:D4}). Kỹ thuật viên sẽ được tiếp nhận và xử lý.";
             return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
         }
     }

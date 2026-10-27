@@ -67,7 +67,7 @@ namespace BATT_PPMS.Pages.Personnel
             // Load all assignments with navigation
             var query = _context.PersonnelAssignments
                 .Include(a => a.Staff)
-                .Include(a => a.Assigner)
+                .Include(a => a.AssignedByNavigation)
                 .AsNoTracking()
                 .AsQueryable();
 
@@ -88,22 +88,18 @@ namespace BATT_PPMS.Pages.Personnel
                 .Select(g =>
                 {
                     var first = g.First();
-                    var lastOrMinTarget = g.Where(x => x.TargetProduction.HasValue).Select(x => x.TargetProduction!.Value).LastOrDefault();
-                    if (lastOrMinTarget <= 0)
-                        lastOrMinTarget = g.Min(x => x.TargetProduction ?? 0);
-
                     return new PlanGroup
                     {
                         PlanId = first.AssignmentId,
                         AssignmentDate = g.Key.AssignmentDate,
                         Shift = g.Key.Shift,
-                        Assigner = first.Assigner,
+                        Assigner = first.AssignedByNavigation,
                         Status = g.Any(x => x.Status == "Completed")
                                     ? "Completed"
                                   : g.Any(x => x.Status == "InProgress")
                                     ? "InProgress"
                                     : first.Status,
-                        ProductionTarget = lastOrMinTarget > 0 ? lastOrMinTarget : 25000,
+                        ProductionTarget = 25000,
                         TaskDescription = first.TaskDescription,
                         Stages = g.OrderBy(x => x.AssignmentId).ToList()
                     };
@@ -175,8 +171,7 @@ namespace BATT_PPMS.Pages.Personnel
                     AssignmentDate = NewPlanDate,
                     Shift = NewPlanShift,
                     TaskDescription = desc,
-                    Status = "Assigned",
-                    TargetProduction = target
+                    Status = "Assigned"
                 };
                 _context.PersonnelAssignments.Add(assignment);
             }

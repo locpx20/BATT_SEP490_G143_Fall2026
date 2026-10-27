@@ -109,28 +109,21 @@ UPDATE [MaintenanceRequest] SET
 WHERE request_id = 3;
 
 -- 5. Bảng BrokenEquipmentReport
-ALTER TABLE [BrokenEquipmentReport] ALTER COLUMN equipment_name NVARCHAR(100) NOT NULL;
-ALTER TABLE [BrokenEquipmentReport] ALTER COLUMN description NVARCHAR(MAX);
-
-UPDATE [BrokenEquipmentReport] SET 
-    equipment_name = N'Máy ép viên nén số 01 (Ring Die Pellet Mill)',
-    description = N'Trục ép phát ra tiếng rít kim loại khi chạy tải trên 80%, nhiệt độ vòng bi tăng lên 78°C'
-WHERE report_id = 0;
-
-UPDATE [BrokenEquipmentReport] SET 
-    equipment_name = N'Băng tải cấp mùn cưa BC-02',
-    description = N'Băng tải bị rách mép dọc 25cm tại đoạn nối cơ khí, có nguy cơ kẹt con lăn hồi'
-WHERE report_id = 1;
-
-UPDATE [BrokenEquipmentReport] SET 
-    equipment_name = N'Bàn cân xe điện tử 80 Tấn',
-    description = N'Cảm biến góc loadcell số 3 dao động số liệu +/- 40kg khi xe tải nặng đi vào bàn cân'
-WHERE report_id = 2;
-
-UPDATE [BrokenEquipmentReport] SET 
-    equipment_name = N'Quạt hút sấy mùn cưa F-102',
-    description = N'Rung giật cơ khí cấp độ 3, phát hiện ốc chân đế động cơ bị lỏng ren'
-WHERE report_id = 3;
+IF COL_LENGTH('BrokenEquipmentReport', 'equipment_name') IS NOT NULL
+BEGIN
+    ALTER TABLE [BrokenEquipmentReport] ALTER COLUMN equipment_name NVARCHAR(100) NOT NULL;
+    UPDATE [BrokenEquipmentReport] SET 
+        equipment_name = N'Máy ép viên nén số 01 (Ring Die Pellet Mill)',
+        description = N'Trục ép phát ra tiếng rít kim loại khi chạy tải trên 80%, nhiệt độ vòng bi tăng lên 78°C'
+    WHERE report_id = 0;
+END
+ELSE
+BEGIN
+    ALTER TABLE [BrokenEquipmentReport] ALTER COLUMN description NVARCHAR(MAX);
+    UPDATE [BrokenEquipmentReport] SET 
+        description = N'Trục ép phát ra tiếng rít kim loại khi chạy tải trên 80%, nhiệt độ vòng bi tăng lên 78°C'
+    WHERE report_id = 0;
+END
 
 -- 6. Bảng PurchaseInvoice (Purchase Orders & Reports)
 ALTER TABLE [PurchaseInvoice] ALTER COLUMN raw_material_type NVARCHAR(100);

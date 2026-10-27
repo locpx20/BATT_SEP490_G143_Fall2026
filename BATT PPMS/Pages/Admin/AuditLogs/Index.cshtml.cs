@@ -59,8 +59,8 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
             if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "Order")
             {
                 var orders = await _context.Orders
-                    .Include(o => o.Creator)
-                    .Include(o => o.Approver)
+                    .Include(o => o.CreatedByNavigation)
+                    .Include(o => o.ApprovedByNavigation)
                     .Include(o => o.Customer)
                     .OrderByDescending(o => o.OrderDate)
                     .Take(30)
@@ -68,12 +68,12 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
 
                 foreach (var o in orders)
                 {
-                    if (o.ApprovedBy.HasValue && o.Approver != null)
+                    if (o.ApprovedBy.HasValue && o.ApprovedByNavigation != null)
                     {
                         logs.Add(new AuditLogEntry
                         {
                             CreatedAt      = o.OrderDate.AddHours(2),
-                            ActorName      = o.Approver.FullName,
+                            ActorName      = o.ApprovedByNavigation.FullName,
                             ActorRole      = "Owner",
                             Action         = "Phê duyệt Lệnh xuất hàng",
                             EntityCode     = $"ORD-{o.OrderId:D4}",
@@ -87,7 +87,7 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                     logs.Add(new AuditLogEntry
                     {
                         CreatedAt      = o.OrderDate,
-                        ActorName      = o.Creator?.FullName ?? "Quản lý",
+                        ActorName      = o.CreatedByNavigation?.FullName ?? "Quản lý",
                         ActorRole      = "Manager",
                         Action         = "Khởi tạo Lệnh xuất hàng",
                         EntityCode     = $"ORD-{o.OrderId:D4}",
@@ -102,21 +102,21 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
             // 2. QC Inspections
             if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "QC")
             {
-                var qcList = await _context.QCInspections
-                    .Include(q => q.Requester)
-                    .Include(q => q.Inspector)
+                var qcList = await _context.Qcinspections
+                    .Include(q => q.RequestedByNavigation)
+                    .Include(q => q.InspectedByNavigation)
                     .OrderByDescending(q => q.RequestDate)
                     .Take(20)
                     .ToListAsync();
 
                 foreach (var q in qcList)
                 {
-                    if (q.Inspector != null && !string.IsNullOrEmpty(q.Result))
+                    if (q.InspectedByNavigation != null && !string.IsNullOrEmpty(q.Result))
                     {
                         logs.Add(new AuditLogEntry
                         {
                             CreatedAt      = q.InspectDate ?? q.RequestDate,
-                            ActorName      = q.Inspector.FullName,
+                            ActorName      = q.InspectedByNavigation.FullName,
                             ActorRole      = "QC Staff",
                             Action         = "Hoàn tất kiểm định KCS",
                             EntityCode     = string.IsNullOrEmpty(q.InspectionCode) ? $"QC-{q.InspectionId:D4}" : q.InspectionCode,
@@ -133,7 +133,7 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
             if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "Purchase")
             {
                 var purchases = await _context.MaterialPurchaseRequests
-                    .Include(p => p.Requester)
+                    .Include(p => p.RequestedByNavigation)
                     .OrderByDescending(p => p.RequestDate)
                     .Take(20)
                     .ToListAsync();
@@ -143,13 +143,13 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                     logs.Add(new AuditLogEntry
                     {
                         CreatedAt      = p.RequestDate,
-                        ActorName      = p.Requester?.FullName ?? "NV Thu mua",
+                        ActorName      = p.RequestedByNavigation?.FullName ?? "NV Thu mua",
                         ActorRole      = "Purchasing Staff",
                         Action         = "Đề xuất Mua vật tư / NVL",
                         EntityCode     = $"PO-{p.RequestId:D4}",
                         EntityType     = "Purchase",
                         PreviousStatus = "DRAFT",
-                        NewStatus      = p.Status.ToUpper(),
+                        NewStatus      = (p.Status ?? "").ToUpper(),
                         Details        = $"Yêu cầu cung ứng: {p.ItemName} (SL: {p.Quantity})"
                     });
                 }
@@ -184,7 +184,7 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
             if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "Maintenance")
             {
                 var maintenances = await _context.MaintenanceRequests
-                    .Include(m => m.Requester)
+                    .Include(m => m.RequestedByNavigation)
                     .OrderByDescending(m => m.RequestDate)
                     .Take(15)
                     .ToListAsync();
@@ -194,14 +194,14 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                     logs.Add(new AuditLogEntry
                     {
                         CreatedAt      = m.RequestDate,
-                        ActorName      = m.Requester?.FullName ?? "Nhân viên",
+                        ActorName      = m.RequestedByNavigation?.FullName ?? "Nhân viên",
                         ActorRole      = "Staff",
                         Action         = "Báo cáo Sự cố máy móc",
                         EntityCode     = $"MNT-{m.RequestId:D4}",
                         EntityType     = "Maintenance",
                         PreviousStatus = null,
-                        NewStatus      = m.Status.ToUpper(),
-                        Details        = m.Description ?? "Báo cáo sự cố thiết bị"
+                        NewStatus      = (m.Status ?? "").ToUpper(),
+                        Details        = NoteTags.Plain(m.Description) ?? "Báo cáo sự cố thiết bị"
                     });
                 }
             }

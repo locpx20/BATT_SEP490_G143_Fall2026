@@ -1,42 +1,25 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class BrokenEquipmentReport
 {
-    [Table("BrokenEquipmentReport")]
-    public class BrokenEquipmentReport
-    {
-        [Key]
-        [Column("report_id")]
-        public int ReportId { get; set; }
+    public int ReportId { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        [Column("equipment_name")]
-        public string EquipmentName { get; set; } = string.Empty;
+    public string EquipmentName { get; set; } = null!;
 
-        [Column("description")]
-        public string? Description { get; set; }
+    public string? Description { get; set; }
 
-        [Required]
-        [Column("reported_by")]
-        public int ReportedBy { get; set; }
+    public int ReportedBy { get; set; }
 
-        [Required]
-        [Column("report_date")]
-        public DateTime ReportDate { get; set; }
+    public DateTime ReportDate { get; set; }
 
-        [MaxLength(50)]
-        [Column("status")]
-        public string Status { get; set; } = "Reported";
+    public string? Status { get; set; }
 
-        [MaxLength(20)]
-        [Column("severity")]
-        public string? Severity { get; set; }
+    public string? Severity { get; set; }
 
-        [ForeignKey("ReportedBy")]
-        public User? Reporter { get; set; }
+    public virtual ICollection<MaintenanceRequest> MaintenanceRequests { get; set; } = new List<MaintenanceRequest>();
 
-        public ICollection<MaintenanceRequest> MaintenanceRequests { get; set; } = new List<MaintenanceRequest>();
-    }
+    public virtual User ReportedByNavigation { get; set; } = null!;
 }

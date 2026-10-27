@@ -1,38 +1,25 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class Delivery
 {
-    [Table("Delivery")]
-    public class Delivery
-    {
-        [Key]
-        [Column("delivery_id")]
-        public int DeliveryId { get; set; }
+    public int DeliveryId { get; set; }
 
-        [Required]
-        [Column("order_id")]
-        public int OrderId { get; set; }
+    public int OrderId { get; set; }
 
-        [Required]
-        [MaxLength(20)]
-        [Column("license_plate")]
-        public string LicensePlate { get; set; } = string.Empty;
+    public string LicensePlate { get; set; } = null!;
 
-        [Required]
-        [MaxLength(100)]
-        [Column("driver_name")]
-        public string DriverName { get; set; } = string.Empty;
+    public string DriverName { get; set; } = null!;
 
-        [Required]
-        [Column("pickup_date")]
-        public DateTime PickupDate { get; set; }
+    public DateTime PickupDate { get; set; }
 
-        [MaxLength(50)]
-        [Column("delivery_status")]
-        public string DeliveryStatus { get; set; } = "Prepared";
+    public string? DeliveryStatus { get; set; }
 
-        [ForeignKey("OrderId")]
-        public Order? Order { get; set; }
-    }
+    public int ConfirmedBy { get; set; }
+
+    public virtual User ConfirmedByNavigation { get; set; } = null!;
+
+    public virtual Order Order { get; set; } = null!;
 }

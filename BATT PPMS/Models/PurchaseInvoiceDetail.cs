@@ -1,35 +1,21 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class PurchaseInvoiceDetail
 {
-    [Table("PurchaseInvoiceDetail")]
-    public class PurchaseInvoiceDetail
-    {
-        [Key]
-        [Column("invoice_detail_id")]
-        public int InvoiceDetailId { get; set; }
+    public int InvoiceDetailId { get; set; }
 
-        [Required]
-        [Column("invoice_id")]
-        public int InvoiceId { get; set; }
+    public int InvoiceId { get; set; }
 
-        [Required]
-        [Column("inventory_id")]
-        public int InventoryId { get; set; }
+    public int MaterialId { get; set; }
 
-        [Required]
-        [Column("quantity")]
-        public int Quantity { get; set; }
+    public decimal Quantity { get; set; }
 
-        [Required]
-        [Column("unit_price", TypeName = "decimal(12,2)")]
-        public decimal UnitPrice { get; set; }
+    public decimal UnitPrice { get; set; }
 
-        [ForeignKey("InvoiceId")]
-        public PurchaseInvoice? PurchaseInvoice { get; set; }
+    public virtual PurchaseInvoice Invoice { get; set; } = null!;
 
-        [ForeignKey("InventoryId")]
-        public InventoryItem? InventoryItem { get; set; }
-    }
+    public virtual RawMaterial Material { get; set; } = null!;
 }

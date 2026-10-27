@@ -1,56 +1,33 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class Qcinspection
 {
-    [Table("QCInspection")]
-    public class QCInspection
-    {
-        [Key]
-        [Column("inspection_id")]
-        public int InspectionId { get; set; }
+    public int InspectionId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        [Column("inspection_code")]
-        public string InspectionCode { get; set; } = string.Empty;
+    public string InspectionCode { get; set; } = null!;
 
-        [Required]
-        [Column("order_id")]
-        public int OrderId { get; set; }
+    public int BatchId { get; set; }
 
-        [Required]
-        [Column("request_date")]
-        public DateTime RequestDate { get; set; }
+    public DateTime RequestDate { get; set; }
 
-        [MaxLength(20)]
-        [Column("result")]
-        public string? Result { get; set; }
+    public string? Result { get; set; }
 
-        [Column("note")]
-        public string? Note { get; set; }
+    public string? Note { get; set; }
 
-        [MaxLength(50)]
-        [Column("status")]
-        public string Status { get; set; } = "Pending";
+    public string? Status { get; set; }
 
-        [Required]
-        [Column("requested_by")]
-        public int RequestedBy { get; set; }
+    public int RequestedBy { get; set; }
 
-        [Column("inspected_by")]
-        public int? InspectedBy { get; set; }
+    public int? InspectedBy { get; set; }
 
-        [Column("inspect_date")]
-        public DateTime? InspectDate { get; set; }
+    public DateTime? InspectDate { get; set; }
 
-        [ForeignKey("OrderId")]
-        public Order? Order { get; set; }
+    public virtual FinishedGoodBatch Batch { get; set; } = null!;
 
-        [ForeignKey("RequestedBy")]
-        public User? Requester { get; set; }
+    public virtual User? InspectedByNavigation { get; set; }
 
-        [ForeignKey("InspectedBy")]
-        public User? Inspector { get; set; }
-    }
+    public virtual User RequestedByNavigation { get; set; } = null!;
 }

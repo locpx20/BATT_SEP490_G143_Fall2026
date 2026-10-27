@@ -84,6 +84,9 @@ namespace BATT_PPMS.Pages.Dashboard
                 ActiveFailuresCount = await _context.BrokenEquipmentReports
                     .CountAsync(b => b.Status != "Fixed" && b.Status != "Resolved" && b.Status != "Completed");
 
+                PendingQC = await _context.Qcinspections
+                    .CountAsync(q => q.Status == StatusConstants.Pending);
+
                 // Pending shift reports count
                 PendingShiftReportsCount = await _context.EndOfShiftReports
                     .CountAsync(r => r.Status == "Submitted" || r.Status == "Pending");

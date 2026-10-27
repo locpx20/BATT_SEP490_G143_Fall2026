@@ -1,23 +1,121 @@
 ﻿@page
+@using BATT_PPMS.Helpers
 @model BATT_PPMS.Pages.Orders.DetailModel
 @{
-    ViewData["Title"] = "Chi tiết Đơn hàng";
+    ViewData["Title"] = "Chi tiết đơn hàng";
     ViewData["ActivePage"] = "OrderList";
+    var o = Model.Order;
 }
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success" style="border-radius:12px;">
+        <i class="bi bi-check-circle-fill" style="margin-right:8px;"></i><span>@Model.SuccessMessage</span>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i><span>@Model.ErrorMessage</span>
+    </div>
+}
+
 <div class="page-header">
     <div>
-        <h1 class="page-title">Chi tiết Đơn hàng #@Model.Order?.OrderCode</h1>
+        <h1 class="page-title">
+            Đơn hàng @o.OrderCode
+            <span class="badge @OrderWorkflow.Badge(o.Status)" style="vertical-align:middle;margin-left:8px;">@OrderWorkflow.Label(o.Status)</span>
+        </h1>
+        <p class="page-subtitle">Ngày đặt: @o.OrderDate.ToString("dd/MM/yyyy HH:mm")</p>
     </div>
     <div class="page-actions">
         <a href="/Orders/Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
-        @if (Model.Order?.Status == "Pending")
+        @if (Model.CanModify)
         {
-            <a href="/Orders/Edit?id=@Model.Order.OrderId" class="btn btn-primary" id="btn-edit-order"><i class="bi bi-pencil"></i> Chỉnh sửa</a>
+            <a href="/Orders/Edit?id=@o.OrderId" class="btn btn-primary" id="btn-edit-order"><i class="bi bi-pencil"></i> Chỉnh sửa</a>
+            <a href="/Orders/Delete?id=@o.OrderId" class="btn btn-danger" id="btn-delete-order"><i class="bi bi-trash"></i> Xóa</a>
         }
     </div>
 </div>
-<div class="card">
+
+@if (Model.CanManage && !Model.CanModify)
+{
+    <div class="alert alert-info" style="border-radius:12px;">
+        <i class="bi bi-info-circle-fill" style="margin-right:8px;"></i>
+        Đơn hàng ở trạng thái "@OrderWorkflow.Label(o.Status)" nên không thể chỉnh sửa hoặc xóa.
+    </div>
+}
+
+@if (o.Status == StatusConstants.Rejected && !string.IsNullOrWhiteSpace(o.RejectionReason))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-x-octagon-fill" style="margin-right:8px;"></i>
+        <strong>Lý do từ chối:</strong> @o.RejectionReason
+    </div>
+}
+
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 class="card-title">Thông tin đơn hàng</h3></div>
     <div class="card-body">
-        <p><em>TODO: Hiển thị chi tiết đơn hàng, nút Duyệt / Từ chối (cho Manager/Owner), và lịch sử thay đổi.</em></p>
+        <div class="form-grid">
+            <div class="form-group"><span class="form-label">Khách hàng</span><div>@o.Customer.CustomerName</div>
+                @if (!string.IsNullOrWhiteSpace(o.Customer.Phone)) { <span class="form-hint">@o.Customer.ContactPerson · @o.Customer.Phone</span> }
+            </div>
+            <div class="form-group"><span class="form-label">Sản phẩm</span><div>@o.Inventory.ItemName (@o.Inventory.ItemCode)</div>
+                <span class="form-hint">Tồn kho hiện tại: @o.Inventory.Quantity.ToString("N0") @o.Inventory.Unit</span>
+            </div>
+            <div class="form-group"><span class="form-label">Số lượng</span><div>@o.Quantity.ToString("N0") @o.Inventory.Unit</div></div>
+            <div class="form-group"><span class="form-label">Đơn giá</span><div>@o.UnitPrice.ToString("N0") ₫</div></div>
+            <div class="form-group"><span class="form-label">Tổng tiền</span><div style="font-size:18px;font-weight:700;">@o.TotalAmount.ToString("N0") ₫</div></div>
+            <div class="form-group"><span class="form-label">Người tạo</span><div>@o.CreatedByNavigation.FullName</div></div>
+            <div class="form-group"><span class="form-label">Người duyệt</span><div>@(o.ApprovedByNavigation?.FullName ?? "Chưa có")</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 class="card-title">Bao thành phẩm xuất kho</h3></div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>Số bao</th><th>Ngày sản xuất</th><th>Số lượng</th></tr></thead>
+            <tbody>
+                @if (!o.OrderDetails.Any())
+                {
+                    <tr><td colspan="3"><div class="empty-state" style="padding:24px;"><p>Chưa phân bổ bao thành phẩm cho đơn này.</p></div></td></tr>
+                }
+                @foreach (var d in o.OrderDetails)
+                {
+                    <tr>
+                        <td><strong>@d.Batch.BagNumber</strong></td>
+                        <td>@d.Batch.ProductionDate.ToString("dd/MM/yyyy")</td>
+                        <td>@d.Quantity.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Giao hàng</h3></div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>Biển số xe</th><th>Tài xế</th><th>Ngày lấy hàng</th><th>Trạng thái</th></tr></thead>
+            <tbody>
+                @if (!o.Deliveries.Any())
+                {
+                    <tr><td colspan="4"><div class="empty-state" style="padding:24px;"><p>Chưa có thông tin giao hàng.</p></div></td></tr>
+                }
+                @foreach (var dl in o.Deliveries)
+                {
+                    <tr>
+                        <td>@dl.LicensePlate</td>
+                        <td>@dl.DriverName</td>
+                        <td>@dl.PickupDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@dl.DeliveryStatus</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>

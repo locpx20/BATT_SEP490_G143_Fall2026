@@ -1,52 +1,29 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class MaterialPurchaseRequest
 {
-    [Table("MaterialPurchaseRequest")]
-    public class MaterialPurchaseRequest
-    {
-        [Key]
-        [Column("request_id")]
-        public int RequestId { get; set; }
+    public int RequestId { get; set; }
 
-        [Required]
-        [Column("maintenance_request_id")]
-        public int MaintenanceRequestId { get; set; }
+    public int MaintenanceRequestId { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        [Column("item_name")]
-        public string ItemName { get; set; } = string.Empty;
+    public string ItemName { get; set; } = null!;
 
-        [Required]
-        [Column("quantity")]
-        public int Quantity { get; set; }
+    public int Quantity { get; set; }
 
-        [Required]
-        [Column("requested_by")]
-        public int RequestedBy { get; set; }
+    public int RequestedBy { get; set; }
 
-        [MaxLength(50)]
-        [Column("status")]
-        public string Status { get; set; } = "Pending";
+    public string? Status { get; set; }
 
-        [Required]
-        [Column("request_date")]
-        public DateTime RequestDate { get; set; }
+    public DateTime RequestDate { get; set; }
 
-        [Column("approved_by")]
-        public int? ApprovedBy { get; set; }
+    public int? ApprovedBy { get; set; }
 
-        [ForeignKey("MaintenanceRequestId")]
-        public MaintenanceRequest? MaintenanceRequest { get; set; }
+    public virtual User? ApprovedByNavigation { get; set; }
 
-        [ForeignKey("RequestedBy")]
-        public User? Requester { get; set; }
+    public virtual MaintenanceRequest MaintenanceRequest { get; set; } = null!;
 
-        [ForeignKey("ApprovedBy")]
-        public User? Approver { get; set; }
-
-        public MaterialPurchaseRecord? MaterialPurchaseRecord { get; set; }
-    }
+    public virtual User RequestedByNavigation { get; set; } = null!;
 }

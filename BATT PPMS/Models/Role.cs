@@ -1,24 +1,15 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class Role
 {
-    [Table("Role")]
-    public class Role
-    {
-        [Key]
-        [Column("role_id")]
-        public int RoleId { get; set; }
+    public int RoleId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        [Column("role_name")]
-        public string RoleName { get; set; } = string.Empty;
+    public string RoleName { get; set; } = null!;
 
-        [Column("description")]
-        public string? Description { get; set; }
+    public string? Description { get; set; }
 
-        // Navigation
-        public ICollection<User> Users { get; set; } = new List<User>();
-    }
+    public virtual ICollection<User> Users { get; set; } = new List<User>();
 }

@@ -1,0 +1,40 @@
+﻿@page
+@model BATT_PPMS.Pages.Orders.DeleteModel
+@{
+    ViewData["Title"] = "Xóa đơn hàng xuất kho";
+    ViewData["ActivePage"] = "OrderList";
+    var o = Model.Order;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Xóa đơn hàng xuất kho</h1>
+        <p class="page-subtitle">Hành động này không thể hoàn tác.</p>
+    </div>
+    <a href="/Orders/Detail?id=@o.OrderId" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+</div>
+
+<div class="alert alert-warning" style="border-radius:12px;">
+    <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i>
+    Bạn có chắc chắn muốn xóa đơn hàng <strong>@o.OrderCode</strong>?
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="form-group"><span class="form-label">Mã đơn hàng</span><div><strong>@o.OrderCode</strong></div></div>
+            <div class="form-group"><span class="form-label">Khách hàng</span><div>@o.Customer.CustomerName</div></div>
+            <div class="form-group"><span class="form-label">Sản phẩm</span><div>@o.Inventory.ItemName</div></div>
+            <div class="form-group"><span class="form-label">Số lượng</span><div>@o.Quantity.ToString("N0") @o.Inventory.Unit</div></div>
+            <div class="form-group"><span class="form-label">Tổng tiền</span><div>@o.TotalAmount.ToString("N0") ₫</div></div>
+            <div class="form-group"><span class="form-label">Trạng thái</span>
+                <div><span class="badge @OrderWorkflow.Badge(o.Status)">@OrderWorkflow.Label(o.Status)</span></div>
+            </div>
+        </div>
+
+        <form method="post" style="display:flex;gap:8px;margin-top:20px;">
+            <button type="submit" class="btn btn-danger" id="btn-confirm-delete"><i class="bi bi-trash"></i> Xác nhận xóa</button>
+            <a href="/Orders/Detail?id=@o.OrderId" class="btn btn-secondary">Hủy</a>
+        </form>
+    </div>
+</div>

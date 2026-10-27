@@ -1,71 +1,43 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class Order
 {
-    [Table("Order")]
-    public class Order
-    {
-        [Key]
-        [Column("order_id")]
-        public int OrderId { get; set; }
+    public int OrderId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        [Column("order_code")]
-        public string OrderCode { get; set; } = string.Empty;
+    public string OrderCode { get; set; } = null!;
 
-        [Required]
-        [Column("customer_id")]
-        public int CustomerId { get; set; }
+    public int CustomerId { get; set; }
 
-        [Required]
-        [Column("item_id")]
-        public int ItemId { get; set; }
+    public int InventoryId { get; set; }
 
-        [Required]
-        [Column("quantity")]
-        public int Quantity { get; set; }
+    public int Quantity { get; set; }
 
-        [Required]
-        [Column("unit_price", TypeName = "decimal(12,2)")]
-        public decimal UnitPrice { get; set; }
+    public decimal UnitPrice { get; set; }
 
-        [Required]
-        [Column("total_amount", TypeName = "decimal(12,2)")]
-        public decimal TotalAmount { get; set; }
+    public decimal TotalAmount { get; set; }
 
-        [MaxLength(50)]
-        [Column("status")]
-        public string Status { get; set; } = "Pending";
+    public string? Status { get; set; }
 
-        [Column("rejection_reason")]
-        public string? RejectionReason { get; set; }
+    public string? RejectionReason { get; set; }
 
-        [Column("Approved_by")]
-        public int? ApprovedBy { get; set; }
+    public int? ApprovedBy { get; set; }
 
-        [Required]
-        [Column("created_by")]
-        public int CreatedBy { get; set; }
+    public int CreatedBy { get; set; }
 
-        [Required]
-        [Column("order_date")]
-        public DateTime OrderDate { get; set; }
+    public DateTime OrderDate { get; set; }
 
-        [ForeignKey("CustomerId")]
-        public Customer? Customer { get; set; }
+    public virtual User? ApprovedByNavigation { get; set; }
 
-        [ForeignKey("ItemId")]
-        public InventoryItem? InventoryItem { get; set; }
+    public virtual User CreatedByNavigation { get; set; } = null!;
 
-        [ForeignKey("ApprovedBy")]
-        public User? Approver { get; set; }
+    public virtual Customer Customer { get; set; } = null!;
 
-        [ForeignKey("CreatedBy")]
-        public User? Creator { get; set; }
+    public virtual ICollection<Delivery> Deliveries { get; set; } = new List<Delivery>();
 
-        public Delivery? Delivery { get; set; }
-        public QCInspection? QCInspection { get; set; }
-    }
+    public virtual InventoryItem Inventory { get; set; } = null!;
+
+    public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
 }

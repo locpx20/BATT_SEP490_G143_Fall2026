@@ -73,6 +73,17 @@ namespace BATT_PPMS.Pages.Admin.Users
                 return RedirectToPage();
             }
 
+            var inputError = InputValidator.First(
+                InputValidator.Username(Username),
+                InputValidator.Text(FullName, "Họ tên", 100, required: true),
+                InputValidator.Email(Email),
+                InputValidator.Phone(Phone));
+            if (inputError != null)
+            {
+                ErrorMessage = inputError;
+                return RedirectToPage();
+            }
+
             var cleanUsername = Username.Trim().ToLower();
             if (await _context.Users.AnyAsync(u => u.Username.ToLower() == cleanUsername))
             {
@@ -103,8 +114,8 @@ namespace BATT_PPMS.Pages.Admin.Users
                 Username = cleanUsername,
                 FullName = FullName.Trim(),
                 Password = "123456",           // Default password as per policy
-                Email = string.IsNullOrWhiteSpace(Email) ? null : Email.Trim(),
-                Phone = string.IsNullOrWhiteSpace(Phone) ? null : Phone.Trim(),
+                Email = InputValidator.Clean(Email),
+                Phone = InputValidator.Clean(Phone),
                 RoleId = role.RoleId,
                 Status = StatusConstants.Active
             };
@@ -156,9 +167,10 @@ namespace BATT_PPMS.Pages.Admin.Users
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
 
-            if (string.IsNullOrWhiteSpace(NewPassword) || NewPassword.Length < 6)
+            var pwError = InputValidator.Password(NewPassword, "Mật khẩu mới");
+            if (pwError != null)
             {
-                ErrorMessage = "Mật khẩu mới phải có ít nhất 6 ký tự.";
+                ErrorMessage = pwError;
                 return RedirectToPage();
             }
 

@@ -1,45 +1,23 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class InventoryItem
 {
-    [Table("InventoryItem")]
-    public class InventoryItem
-    {
-        [Key]
-        [Column("inventory_id")]
-        public int InventoryId { get; set; }
+    public int InventoryId { get; set; }
 
-        [Required]
-        [Column("item_id")]
-        public int ItemId { get; set; }
+    public string ItemCode { get; set; } = null!;
 
-        [Required]
-        [MaxLength(50)]
-        [Column("item_code")]
-        public string ItemCode { get; set; } = string.Empty;
+    public string ItemName { get; set; } = null!;
 
-        [Required]
-        [MaxLength(100)]
-        [Column("item_name")]
-        public string ItemName { get; set; } = string.Empty;
+    public string Unit { get; set; } = null!;
 
-        [Required]
-        [MaxLength(20)]
-        [Column("unit")]
-        public string Unit { get; set; } = string.Empty;
+    public int Quantity { get; set; }
 
-        [Column("quantity")]
-        public int Quantity { get; set; } = 0;
+    public int MinQuantity { get; set; }
 
-        [Column("min_quantity")]
-        public int MinQuantity { get; set; } = 0;
+    public string? Status { get; set; }
 
-        [MaxLength(20)]
-        [Column("status")]
-        public string Status { get; set; } = "Available";
-
-        public ICollection<Order> Orders { get; set; } = new List<Order>();
-        public ICollection<PurchaseInvoiceDetail> PurchaseInvoiceDetails { get; set; } = new List<PurchaseInvoiceDetail>();
-    }
+    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 }

@@ -13,6 +13,12 @@ namespace BATT_PPMS.Pages.Profile
 
         public User? User { get; set; }
 
+        [TempData]
+        public string? ErrorMessage { get; set; }
+
+        [TempData]
+        public string? SuccessMessage { get; set; }
+
         [BindProperty]
         public string FullName { get; set; } = string.Empty;
         [BindProperty]
@@ -40,13 +46,30 @@ namespace BATT_PPMS.Pages.Profile
             var user = await _context.Users.FindAsync(CurrentUserId);
             if (user == null) return NotFound();
 
-            user.FullName = FullName;
-            user.Phone = Phone;
-            user.Email = Email;
+            var error = InputValidator.First(
+                InputValidator.Text(FullName, "Họ và tên", 100, required: true),
+                InputValidator.Phone(Phone),
+                InputValidator.Email(Email));
+
+            var cleanEmail = InputValidator.Clean(Email);
+            if (error == null && cleanEmail != null &&
+                await _context.Users.AnyAsync(u => u.UserId != CurrentUserId && u.Email != null && u.Email.ToLower() == cleanEmail.ToLower()))
+                error = $"Email '{cleanEmail}' đã được liên kết với một tài khoản khác.";
+
+            if (error != null)
+            {
+                ErrorMessage = error;
+                return RedirectToPage("/Profile/Index");
+            }
+
+            user.FullName = FullName.Trim();
+            user.Phone = InputValidator.Clean(Phone);
+            user.Email = cleanEmail;
             await _context.SaveChangesAsync();
 
             // Cập nhật lại session
-            HttpContext.Session.SetString(SessionKeys.FullName, FullName);
+            HttpContext.Session.SetString(SessionKeys.FullName, user.FullName);
+            SuccessMessage = "Cập nhật hồ sơ thành công.";
 
             return RedirectToPage("/Profile/Index");
         }

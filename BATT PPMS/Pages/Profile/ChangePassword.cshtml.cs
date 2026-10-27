@@ -44,9 +44,15 @@ namespace BATT_PPMS.Pages.Profile
                 ErrorMessage = "Mật khẩu mới và xác nhận không khớp.";
                 return Page();
             }
-            if (NewPassword.Length < 6)
+            var pwError = InputValidator.Password(NewPassword, "Mật khẩu mới");
+            if (pwError != null)
             {
-                ErrorMessage = "Mật khẩu mới phải có ít nhất 6 ký tự.";
+                ErrorMessage = pwError;
+                return Page();
+            }
+            if (NewPassword == CurrentPassword)
+            {
+                ErrorMessage = "Mật khẩu mới phải khác mật khẩu hiện tại.";
                 return Page();
             }
 

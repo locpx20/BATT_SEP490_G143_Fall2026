@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using BATT_PPMS.Data;
+using BATT_PPMS.Models;
 
 namespace BATT_PPMS
 {
@@ -7,6 +8,9 @@ namespace BATT_PPMS
     {
         public static void Main(string[] args)
         {
+            // Đăng ký [MetadataType] để Validator đọc được quy tắc từ Models/Validation
+            BATT_PPMS.Helpers.ModelValidation.RegisterMetadata();
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
@@ -16,6 +20,8 @@ namespace BATT_PPMS
             builder.Services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            builder.Services.AddDbContext<BATT_PPMS.Models.ProductionManagementDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             // Session (dùng cho đăng nhập đơn giản)
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>

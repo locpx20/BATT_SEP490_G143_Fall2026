@@ -1,49 +1,27 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class Customer
 {
-    [Table("Customer")]
-    public class Customer
-    {
-        [Key]
-        [Column("customer_id")]
-        public int CustomerId { get; set; }
+    public int CustomerId { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        [Column("customer_name")]
-        public string CustomerName { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = null!;
 
-        [MaxLength(100)]
-        [Column("contact_person")]
-        public string? ContactPerson { get; set; }
+    public string? ContactPerson { get; set; }
 
-        [MaxLength(20)]
-        [Column("phone")]
-        public string? Phone { get; set; }
+    public string? Phone { get; set; }
 
-        [MaxLength(100)]
-        [Column("email")]
-        public string? Email { get; set; }
+    public string? Email { get; set; }
 
-        [Column("address")]
-        public string? Address { get; set; }
+    public string? Address { get; set; }
 
-        [Column("payment_terms")]
-        public string? PaymentTerms { get; set; }
+    public string? Status { get; set; }
 
-        [MaxLength(20)]
-        [Column("status")]
-        public string Status { get; set; } = "Active";
+    public int CreatedBy { get; set; }
 
-        [Required]
-        [Column("created_by")]
-        public int CreatedBy { get; set; }
+    public virtual User CreatedByNavigation { get; set; } = null!;
 
-        [ForeignKey("CreatedBy")]
-        public User? Creator { get; set; }
-
-        public ICollection<Order> Orders { get; set; } = new List<Order>();
-    }
+    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 }

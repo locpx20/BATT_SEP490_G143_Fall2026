@@ -15,7 +15,6 @@ namespace BATT_PPMS.Pages.Suppliers
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? Address { get; set; }
-        public string? Notes { get; set; }
         public string Status { get; set; } = "Active";
         public int TotalPurchasesCount { get; set; }
         public decimal TotalPurchasesKg { get; set; }
@@ -41,7 +40,6 @@ namespace BATT_PPMS.Pages.Suppliers
         public string? Phone { get; set; }
         public string? Email { get; set; }
         public string? Address { get; set; }
-        public string? PaymentTerms { get; set; }
         public string Status { get; set; } = "Active";
         public int TotalOrdersCount { get; set; }
         public decimal TotalOrderedKg { get; set; }
@@ -78,6 +76,7 @@ namespace BATT_PPMS.Pages.Suppliers
         public List<CustomerViewModel> Customers { get; set; } = new();
 
         public bool CanManage => IsOwner;
+        public bool CanViewCustomers => !IsPurchasingStaff;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -94,15 +93,31 @@ namespace BATT_PPMS.Pages.Suppliers
                 Tab = "suppliers";
             Tab = Tab.ToLowerInvariant();
 
+            if (!CanViewCustomers)
+                Tab = "suppliers";
+
             await LoadDataAsync();
             return Page();
         }
 
         // ==========================================
+        // VALIDATION
+        // ==========================================
+        private static string? ValidatePartner(string partnerLabel, string? name, string? contact,
+            string? phone, string? email, string? address, string? status) =>
+            InputValidator.First(
+                InputValidator.Text(name, $"Tên {partnerLabel}", 100, required: true),
+                InputValidator.Text(contact, "Người liên hệ", 100),
+                InputValidator.Phone(phone),
+                InputValidator.Email(email),
+                InputValidator.Text(address, "Địa chỉ", 500),
+                InputValidator.Status(status, StatusSets.PartnerStatuses, "Trạng thái hợp tác"));
+
+        // ==========================================
         // SUPPLIER HANDLERS
         // ==========================================
         public async Task<IActionResult> OnPostCreateSupplierAsync(
-            string SupplierName, string? ContactPerson, string? Phone, string? Email, string? Address, string? Notes)
+            string SupplierName, string? ContactPerson, string? Phone, string? Email, string? Address)
         {
             var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
@@ -113,16 +128,24 @@ namespace BATT_PPMS.Pages.Suppliers
                 return RedirectToPage(new { Tab = "suppliers" });
             }
 
+            var supErr = ValidatePartner("Nhà cung cấp", SupplierName, ContactPerson, Phone, Email, Address, null);
+            if (supErr == null && await _context.Suppliers.AnyAsync(s => s.SupplierName.ToLower() == SupplierName.Trim().ToLower()))
+                supErr = $"Nhà cung cấp '{SupplierName.Trim()}' đã tồn tại.";
+            if (supErr != null)
+            {
+                ErrorMessage = supErr;
+                return RedirectToPage(new { Tab = "suppliers" });
+            }
+
             var creatorId = CurrentUserId > 0 ? CurrentUserId : 2;
 
             var supplier = new Supplier
             {
                 SupplierName = SupplierName.Trim(),
-                ContactPerson = ContactPerson?.Trim(),
-                Phone = Phone?.Trim(),
-                Email = Email?.Trim(),
-                Address = Address?.Trim(),
-                Notes = Notes?.Trim(),
+                ContactPerson = InputValidator.Clean(ContactPerson),
+                Phone = InputValidator.Clean(Phone),
+                Email = InputValidator.Clean(Email),
+                Address = InputValidator.Clean(Address),
                 Status = StatusConstants.Active,
                 CreatedBy = creatorId
             };
@@ -135,7 +158,7 @@ namespace BATT_PPMS.Pages.Suppliers
         }
 
         public async Task<IActionResult> OnPostUpdateSupplierAsync(
-            int SupplierId, string SupplierName, string? ContactPerson, string? Phone, string? Email, string? Address, string? Notes, string? Status)
+            int SupplierId, string SupplierName, string? ContactPerson, string? Phone, string? Email, string? Address, string? Status)
         {
             var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
@@ -153,12 +176,20 @@ namespace BATT_PPMS.Pages.Suppliers
                 return RedirectToPage(new { Tab = "suppliers" });
             }
 
+            var supUpdErr = ValidatePartner("Nhà cung cấp", SupplierName, ContactPerson, Phone, Email, Address, Status);
+            if (supUpdErr == null && await _context.Suppliers.AnyAsync(s => s.SupplierId != SupplierId && s.SupplierName.ToLower() == SupplierName.Trim().ToLower()))
+                supUpdErr = $"Nhà cung cấp '{SupplierName.Trim()}' đã tồn tại.";
+            if (supUpdErr != null)
+            {
+                ErrorMessage = supUpdErr;
+                return RedirectToPage(new { Tab = "suppliers" });
+            }
+
             supplier.SupplierName = SupplierName.Trim();
-            supplier.ContactPerson = ContactPerson?.Trim();
-            supplier.Phone = Phone?.Trim();
-            supplier.Email = Email?.Trim();
-            supplier.Address = Address?.Trim();
-            supplier.Notes = Notes?.Trim();
+            supplier.ContactPerson = InputValidator.Clean(ContactPerson);
+            supplier.Phone = InputValidator.Clean(Phone);
+            supplier.Email = InputValidator.Clean(Email);
+            supplier.Address = InputValidator.Clean(Address);
             if (!string.IsNullOrWhiteSpace(Status))
                 supplier.Status = Status;
 
@@ -193,7 +224,7 @@ namespace BATT_PPMS.Pages.Suppliers
         // CUSTOMER HANDLERS
         // ==========================================
         public async Task<IActionResult> OnPostCreateCustomerAsync(
-            string CustomerName, string? ContactPerson, string? Phone, string? Email, string? Address, string? PaymentTerms)
+            string CustomerName, string? ContactPerson, string? Phone, string? Email, string? Address)
         {
             var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
@@ -204,16 +235,24 @@ namespace BATT_PPMS.Pages.Suppliers
                 return RedirectToPage(new { Tab = "customers" });
             }
 
+            var cusErr = ValidatePartner("Khách hàng", CustomerName, ContactPerson, Phone, Email, Address, null);
+            if (cusErr == null && await _context.Customers.AnyAsync(c => c.CustomerName.ToLower() == CustomerName.Trim().ToLower()))
+                cusErr = $"Khách hàng '{CustomerName.Trim()}' đã tồn tại.";
+            if (cusErr != null)
+            {
+                ErrorMessage = cusErr;
+                return RedirectToPage(new { Tab = "customers" });
+            }
+
             var creatorId = CurrentUserId > 0 ? CurrentUserId : 2;
 
             var customer = new Customer
             {
                 CustomerName = CustomerName.Trim(),
-                ContactPerson = ContactPerson?.Trim(),
-                Phone = Phone?.Trim(),
-                Email = Email?.Trim(),
-                Address = Address?.Trim(),
-                PaymentTerms = string.IsNullOrWhiteSpace(PaymentTerms) ? "Chuyển khoản theo thỏa thuận hợp đồng" : PaymentTerms.Trim(),
+                ContactPerson = InputValidator.Clean(ContactPerson),
+                Phone = InputValidator.Clean(Phone),
+                Email = InputValidator.Clean(Email),
+                Address = InputValidator.Clean(Address),
                 Status = StatusConstants.Active,
                 CreatedBy = creatorId
             };
@@ -226,7 +265,7 @@ namespace BATT_PPMS.Pages.Suppliers
         }
 
         public async Task<IActionResult> OnPostUpdateCustomerAsync(
-            int CustomerId, string CustomerName, string? ContactPerson, string? Phone, string? Email, string? Address, string? PaymentTerms, string? Status)
+            int CustomerId, string CustomerName, string? ContactPerson, string? Phone, string? Email, string? Address, string? Status)
         {
             var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
@@ -244,12 +283,20 @@ namespace BATT_PPMS.Pages.Suppliers
                 return RedirectToPage(new { Tab = "customers" });
             }
 
+            var cusUpdErr = ValidatePartner("Khách hàng", CustomerName, ContactPerson, Phone, Email, Address, Status);
+            if (cusUpdErr == null && await _context.Customers.AnyAsync(c => c.CustomerId != CustomerId && c.CustomerName.ToLower() == CustomerName.Trim().ToLower()))
+                cusUpdErr = $"Khách hàng '{CustomerName.Trim()}' đã tồn tại.";
+            if (cusUpdErr != null)
+            {
+                ErrorMessage = cusUpdErr;
+                return RedirectToPage(new { Tab = "customers" });
+            }
+
             customer.CustomerName = CustomerName.Trim();
-            customer.ContactPerson = ContactPerson?.Trim();
-            customer.Phone = Phone?.Trim();
-            customer.Email = Email?.Trim();
-            customer.Address = Address?.Trim();
-            customer.PaymentTerms = PaymentTerms?.Trim();
+            customer.ContactPerson = InputValidator.Clean(ContactPerson);
+            customer.Phone = InputValidator.Clean(Phone);
+            customer.Email = InputValidator.Clean(Email);
+            customer.Address = InputValidator.Clean(Address);
             if (!string.IsNullOrWhiteSpace(Status))
                 customer.Status = Status;
 
@@ -316,8 +363,7 @@ namespace BATT_PPMS.Pages.Suppliers
                     Phone = s.Phone ?? "—",
                     Email = s.Email ?? "—",
                     Address = s.Address ?? "—",
-                    Notes = s.Notes ?? "",
-                    Status = s.Status,
+                    Status = s.Status ?? StatusConstants.Active,
                     TotalPurchasesCount = invoices.Count,
                     TotalPurchasesKg = totalKg,
                     TotalPaidVnd = totalPaid,
@@ -327,10 +373,13 @@ namespace BATT_PPMS.Pages.Suppliers
                         Date = i.PurchaseDate,
                         Quantity = i.PurchaseInvoiceDetails.Sum(d => (decimal)d.Quantity),
                         TotalAmount = i.TotalAmount,
-                        Status = i.Status
+                        Status = i.Status ?? ""
                     }).ToList()
                 };
             }).ToList();
+
+            // Purchasing Staff không được xem danh sách Khách hàng -> không load dữ liệu
+            if (!CanViewCustomers) return;
 
             // Load Customers
             var cusQuery = _context.Customers
@@ -362,8 +411,7 @@ namespace BATT_PPMS.Pages.Suppliers
                     Phone = c.Phone ?? "—",
                     Email = c.Email ?? "—",
                     Address = c.Address ?? "—",
-                    PaymentTerms = string.IsNullOrWhiteSpace(c.PaymentTerms) ? "Chuyển khoản theo thỏa thuận hợp đồng" : c.PaymentTerms,
-                    Status = c.Status,
+                    Status = c.Status ?? StatusConstants.Active,
                     TotalOrdersCount = orders.Count,
                     TotalOrderedKg = totalKg,
                     TotalRevenueVnd = totalRevenue,
@@ -374,7 +422,7 @@ namespace BATT_PPMS.Pages.Suppliers
                         Quantity = o.Quantity,
                         UnitPrice = o.UnitPrice,
                         TotalAmount = o.TotalAmount,
-                        Status = o.Status
+                        Status = o.Status ?? ""
                     }).ToList()
                 };
             }).ToList();

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using BATT_PPMS.Data;
+using BATT_PPMS.Helpers;
 using BATT_PPMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -97,6 +98,13 @@ namespace BATT_PPMS.Pages.Auth
 
             if (!ModelState.IsValid)
                 return Page();
+
+            var pwError = InputValidator.Password(NewPassword, "Mật khẩu mới");
+            if (pwError != null)
+            {
+                ErrorMessage = pwError;
+                return Page();
+            }
 
             if (!_otpService.VerifyOtp(user.Email.ToLower(), OtpCode.Trim()))
             {

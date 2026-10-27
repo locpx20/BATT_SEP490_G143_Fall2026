@@ -1,49 +1,29 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class Supplier
 {
-    [Table("Supplier")]
-    public class Supplier
-    {
-        [Key]
-        [Column("supplier_id")]
-        public int SupplierId { get; set; }
+    public int SupplierId { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        [Column("supplier_name")]
-        public string SupplierName { get; set; } = string.Empty;
+    public string SupplierName { get; set; } = null!;
 
-        [MaxLength(100)]
-        [Column("contact_person")]
-        public string? ContactPerson { get; set; }
+    public string? ContactPerson { get; set; }
 
-        [MaxLength(20)]
-        [Column("phone")]
-        public string? Phone { get; set; }
+    public string? Phone { get; set; }
 
-        [MaxLength(100)]
-        [Column("email")]
-        public string? Email { get; set; }
+    public string? Email { get; set; }
 
-        [Column("address")]
-        public string? Address { get; set; }
+    public string? Address { get; set; }
 
-        [Column("notes")]
-        public string? Notes { get; set; }
+    public string? Status { get; set; }
 
-        [MaxLength(20)]
-        [Column("status")]
-        public string Status { get; set; } = "Active";
+    public int CreatedBy { get; set; }
 
-        [Required]
-        [Column("created_by")]
-        public int CreatedBy { get; set; }
+    public virtual User CreatedByNavigation { get; set; } = null!;
 
-        [ForeignKey("CreatedBy")]
-        public User? Creator { get; set; }
+    public virtual ICollection<PurchaseInvoice> PurchaseInvoices { get; set; } = new List<PurchaseInvoice>();
 
-        public ICollection<PurchaseInvoice> PurchaseInvoices { get; set; } = new List<PurchaseInvoice>();
-    }
+    public virtual ICollection<RawMaterialImport> RawMaterialImports { get; set; } = new List<RawMaterialImport>();
 }

@@ -96,12 +96,37 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             return Page();
         }
 
+        // Schema mới: PurchaseInvoice không còn RawMaterialType / PlannedQuantity / WeighedQuantity / UnitPrice.
+        // Các giá trị này được suy ra từ PurchaseInvoiceDetail (+ RawMaterial).
+        private const string DefaultMaterialType = "Mùn cưa cao su & Keo";
+
+        private static decimal QuantityOf(PurchaseInvoice p) =>
+            p.PurchaseInvoiceDetails.Sum(d => d.Quantity);
+
+        private static string MaterialTypeOf(PurchaseInvoice p)
+        {
+            var names = p.PurchaseInvoiceDetails
+                .Select(d => d.Material?.MaterialName)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Distinct()
+                .ToList();
+            return names.Count > 0 ? string.Join(", ", names) : DefaultMaterialType;
+        }
+
+        private static decimal UnitPriceOf(PurchaseInvoice p)
+        {
+            var qty = QuantityOf(p);
+            return qty > 0 ? Math.Round(p.PurchaseInvoiceDetails.Sum(d => d.Quantity * d.UnitPrice) / qty, 0) : 0;
+        }
+
         private async Task LoadDataAsync()
         {
             var query = _context.PurchaseInvoices
                 .Include(p => p.Supplier)
-                .Include(p => p.Creator)
-                .Include(p => p.Approver)
+                .Include(p => p.CreatedByNavigation)
+                .Include(p => p.ApprovedByNavigation)
+                .Include(p => p.PurchaseInvoiceDetails)
+                    .ThenInclude(d => d.Material)
                 .AsNoTracking()
                 .AsQueryable();
 
@@ -109,7 +134,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
             // Overall KPIs
             TotalSpendVnd = allInvoices.Sum(p => p.TotalAmount);
-            TotalWeighedKg = allInvoices.Sum(p => (decimal)(p.WeighedQuantity ?? (p.PlannedQuantity ?? 0)));
+            TotalWeighedKg = allInvoices.Sum(QuantityOf);
             PendingOrdersCount = allInvoices.Count(p => string.Equals(p.Status, "Pending", StringComparison.OrdinalIgnoreCase) || string.Equals(p.Status, "Submitted", StringComparison.OrdinalIgnoreCase));
             AverageUnitPriceVnd = TotalWeighedKg > 0 ? Math.Round(TotalSpendVnd / TotalWeighedKg, 0) : 0;
 
@@ -134,9 +159,9 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 orderFiltered = orderFiltered.Where(p =>
                     p.InvoiceCode.ToLowerInvariant().Contains(term) ||
                     (p.Supplier?.SupplierName != null && p.Supplier.SupplierName.ToLowerInvariant().Contains(term)) ||
-                    (p.RawMaterialType != null && p.RawMaterialType.ToLowerInvariant().Contains(term)) ||
-                    (p.Creator?.FullName != null && p.Creator.FullName.ToLowerInvariant().Contains(term)) ||
-                    (p.Note != null && p.Note.ToLowerInvariant().Contains(term))
+                    MaterialTypeOf(p).ToLowerInvariant().Contains(term) ||
+                    (p.CreatedByNavigation?.FullName != null && p.CreatedByNavigation.FullName.ToLowerInvariant().Contains(term)) ||
+                    (NoteTags.Plain(p.Note) != null && NoteTags.Plain(p.Note)!.ToLowerInvariant().Contains(term))
                 );
             }
 
@@ -148,27 +173,32 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             Orders = orderFiltered
                 .OrderByDescending(p => p.PurchaseDate)
                 .ThenByDescending(p => p.InvoiceId)
-                .Select(p => new PurchaseOrderItemViewModel
+                .Select(p =>
                 {
-                    InvoiceId = p.InvoiceId,
-                    InvoiceCode = p.InvoiceCode,
-                    SupplierId = p.SupplierId,
-                    SupplierName = p.Supplier?.SupplierName ?? "Nhà cung cấp chưa đặt tên",
-                    SupplierPhone = p.Supplier?.Phone,
-                    SupplierAddress = p.Supplier?.Address,
-                    RawMaterialType = !string.IsNullOrWhiteSpace(p.RawMaterialType) ? p.RawMaterialType : "Mùn cưa cao su & Keo",
-                    PurchaseDate = p.PurchaseDate,
-                    PlannedQuantity = p.PlannedQuantity ?? 0,
-                    WeighedQuantity = p.WeighedQuantity ?? (p.PlannedQuantity ?? 0),
-                    UnitPrice = p.UnitPrice ?? (p.WeighedQuantity > 0 ? Math.Round(p.TotalAmount / p.WeighedQuantity.Value, 0) : 750),
-                    TotalAmount = p.TotalAmount,
-                    CreatedByStaffId = p.CreatedBy,
-                    CreatedByName = p.Creator?.FullName ?? "Nhân viên thu mua",
-                    ApprovedByStaffId = p.ApprovedBy,
-                    ApprovedByName = p.Approver?.FullName,
-                    Status = p.Status,
-                    Note = p.Note,
-                    RejectionReason = p.RejectionReason
+                    var qty = (int)Math.Round(QuantityOf(p));
+                    return new PurchaseOrderItemViewModel
+                    {
+                        InvoiceId = p.InvoiceId,
+                        InvoiceCode = p.InvoiceCode,
+                        SupplierId = p.SupplierId,
+                        SupplierName = p.Supplier?.SupplierName ?? "Nhà cung cấp chưa đặt tên",
+                        SupplierPhone = p.Supplier?.Phone,
+                        SupplierAddress = p.Supplier?.Address,
+                        RawMaterialType = MaterialTypeOf(p),
+                        PurchaseDate = p.PurchaseDate,
+                        PlannedQuantity = qty,
+                        WeighedQuantity = qty,
+                        UnitPrice = UnitPriceOf(p),
+                        TotalAmount = p.TotalAmount,
+                        CreatedByStaffId = p.CreatedBy,
+                        CreatedByName = p.CreatedByNavigation?.FullName ?? "Nhân viên thu mua",
+                        ApprovedByStaffId = p.ApprovedBy,
+                        ApprovedByName = p.ApprovedByNavigation?.FullName,
+                        Status = p.Status ?? "Pending",
+                        // Không có cột RejectionReason: lý do từ chối nằm trong dòng gắn thẻ của Note
+                        Note = NoteTags.Plain(p.Note),
+                        RejectionReason = NoteTags.Get(p.Note, NoteTags.Rejected)
+                    };
                 })
                 .ToList();
 
@@ -177,12 +207,12 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .GroupBy(p => new { p.SupplierId, Name = p.Supplier?.SupplierName ?? "Chưa rõ", Status = p.Supplier?.Status ?? "Active" })
                 .ToList();
 
-            decimal totalReportWeight = filtered.Sum(p => (decimal)(p.WeighedQuantity ?? (p.PlannedQuantity ?? 0)));
+            decimal totalReportWeight = filtered.Sum(QuantityOf);
 
             Reports = supplierGroups
                 .Select(g =>
                 {
-                    decimal weight = g.Sum(x => (decimal)(x.WeighedQuantity ?? (x.PlannedQuantity ?? 0)));
+                    decimal weight = g.Sum(QuantityOf);
                     decimal spend = g.Sum(x => x.TotalAmount);
                     return new SupplierPurchaseReportItemViewModel
                     {
@@ -218,9 +248,15 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 return RedirectToPage(new { Tab, SearchTerm, StatusFilter, FromDate, ToDate });
             }
 
+            if (invoice.Status != "Pending" && invoice.Status != "Submitted")
+            {
+                ErrorMessage = $"Đơn mua hàng {invoice.InvoiceCode} đang ở trạng thái '{invoice.Status}', không thể phê duyệt.";
+                return RedirectToPage(new { Tab, SearchTerm, StatusFilter, FromDate, ToDate });
+            }
+
             invoice.Status = "Approved";
             invoice.ApprovedBy = CurrentUserId;
-            invoice.RejectionReason = null;
+            invoice.Note = NoteTags.Remove(invoice.Note, NoteTags.Rejected);
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã phê duyệt thành công đơn mua hàng {invoice.InvoiceCode}. Đã chuyển sang trạng thái chờ nhập kho.";
@@ -251,12 +287,25 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 return RedirectToPage(new { Tab, SearchTerm, StatusFilter, FromDate, ToDate });
             }
 
+            var reasonError = InputValidator.Text(rejectionReason, "Lý do từ chối", 500);
+            if (reasonError != null)
+            {
+                ErrorMessage = reasonError;
+                return RedirectToPage(new { Tab, SearchTerm, StatusFilter, FromDate, ToDate });
+            }
+
+            if (invoice.Status != "Pending" && invoice.Status != "Submitted")
+            {
+                ErrorMessage = $"Đơn mua hàng {invoice.InvoiceCode} đang ở trạng thái '{invoice.Status}', không thể từ chối.";
+                return RedirectToPage(new { Tab, SearchTerm, StatusFilter, FromDate, ToDate });
+            }
+
             invoice.Status = "Rejected";
             invoice.ApprovedBy = CurrentUserId;
-            invoice.RejectionReason = rejectionReason.Trim();
+            invoice.Note = NoteTags.Set(invoice.Note, NoteTags.Rejected, rejectionReason.Trim());
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã từ chối đơn mua hàng {invoice.InvoiceCode}. Lý do: {invoice.RejectionReason}";
+            SuccessMessage = $"Đã từ chối đơn mua hàng {invoice.InvoiceCode}. Lý do: {rejectionReason.Trim()}";
             return RedirectToPage(new { Tab, SearchTerm, StatusFilter, FromDate, ToDate });
         }
     }

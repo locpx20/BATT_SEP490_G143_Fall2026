@@ -1,71 +1,33 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class PurchaseInvoice
 {
-    [Table("PurchaseInvoice")]
-    public class PurchaseInvoice
-    {
-        [Key]
-        [Column("invoice_id")]
-        public int InvoiceId { get; set; }
+    public int InvoiceId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        [Column("invoice_code")]
-        public string InvoiceCode { get; set; } = string.Empty;
+    public string InvoiceCode { get; set; } = null!;
 
-        [Required]
-        [Column("supplier_id")]
-        public int SupplierId { get; set; }
+    public int SupplierId { get; set; }
 
-        [Required]
-        [Column("purchase_date")]
-        public DateTime PurchaseDate { get; set; }
+    public DateTime PurchaseDate { get; set; }
 
-        [Required]
-        [Column("total_amount", TypeName = "decimal(12,2)")]
-        public decimal TotalAmount { get; set; }
+    public decimal TotalAmount { get; set; }
 
-        [MaxLength(50)]
-        [Column("status")]
-        public string Status { get; set; } = "Pending";
+    public string? Status { get; set; }
 
-        [Required]
-        [Column("created_by")]
-        public int CreatedBy { get; set; }
+    public int CreatedBy { get; set; }
 
-        [Column("approved_by")]
-        public int? ApprovedBy { get; set; }
+    public int? ApprovedBy { get; set; }
 
-        [Column("note")]
-        public string? Note { get; set; }
+    public string? Note { get; set; }
 
-        [MaxLength(100)]
-        [Column("raw_material_type")]
-        public string? RawMaterialType { get; set; }
+    public virtual User? ApprovedByNavigation { get; set; }
 
-        [Column("planned_quantity")]
-        public int? PlannedQuantity { get; set; }
+    public virtual User CreatedByNavigation { get; set; } = null!;
 
-        [Column("weighed_quantity")]
-        public int? WeighedQuantity { get; set; }
+    public virtual ICollection<PurchaseInvoiceDetail> PurchaseInvoiceDetails { get; set; } = new List<PurchaseInvoiceDetail>();
 
-        [Column("unit_price", TypeName = "decimal(12,2)")]
-        public decimal? UnitPrice { get; set; }
-
-        [Column("rejection_reason")]
-        public string? RejectionReason { get; set; }
-
-        [ForeignKey("SupplierId")]
-        public Supplier? Supplier { get; set; }
-
-        [ForeignKey("CreatedBy")]
-        public User? Creator { get; set; }
-
-        [ForeignKey("ApprovedBy")]
-        public User? Approver { get; set; }
-
-        public ICollection<PurchaseInvoiceDetail> PurchaseInvoiceDetails { get; set; } = new List<PurchaseInvoiceDetail>();
-    }
+    public virtual Supplier Supplier { get; set; } = null!;
 }

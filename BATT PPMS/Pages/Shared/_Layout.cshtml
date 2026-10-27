@@ -341,10 +341,90 @@
         </div>
 
         <div class="topbar-right">
-            <div class="role-switch-badge" title="Chuyển đổi vai trò">
-                <i class="bi bi-person-gear"></i>
-                <span>Đổi vai trò: <strong>@(isAdmin ? "Admin System" : roleDisplay)</strong></span>
-                <i class="bi bi-chevron-down"></i>
+            <div class="dropdown">
+                <button type="button" class="role-switch-badge" data-bs-toggle="dropdown" aria-expanded="false" title="Chuyển đổi vai trò">
+                    <i class="bi bi-person-gear"></i>
+                    <span>Đổi vai trò: <strong>@(isAdmin ? "Admin System" : roleDisplay)</strong></span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 12px; min-width: 270px; padding: 8px 0; border: 1px solid #e2e8f0; font-size: 13px;">
+                    <li class="dropdown-header text-uppercase" style="font-size: 11px; font-weight: 700; color: #94a3b8; padding: 6px 16px;">
+                        Chọn vai trò trải nghiệm
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 @(isStaff ? "active" : "")" href="/Auth/SwitchRole?role=Staff">
+                            <div>
+                                <span class="fw-bold d-block">Nhân viên Sản xuất</span>
+                                <small class="text-muted" style="font-size: 11px;">Vận hành máy, nộp báo cáo ca</small>
+                            </div>
+                            @if (isStaff) { <i class="bi bi-check-lg text-primary ms-2"></i> }
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 @(isMaintenance ? "active" : "")" href="/Auth/SwitchRole?role=Maintenance+Staff">
+                            <div>
+                                <span class="fw-bold d-block">Bảo trì Cơ điện</span>
+                                <small class="text-muted" style="font-size: 11px;">Sự cố thiết bị, sửa chữa máy móc</small>
+                            </div>
+                            @if (isMaintenance) { <i class="bi bi-check-lg text-primary ms-2"></i> }
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 @(isManager ? "active" : "")" href="/Auth/SwitchRole?role=Manager">
+                            <div>
+                                <span class="fw-bold d-block">Quản lý Vận hành</span>
+                                <small class="text-muted" style="font-size: 11px;">Phân công ca, duyệt báo cáo, đơn hàng</small>
+                            </div>
+                            @if (isManager) { <i class="bi bi-check-lg text-primary ms-2"></i> }
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 @(isOwner ? "active" : "")" href="/Auth/SwitchRole?role=Owner">
+                            <div>
+                                <span class="fw-bold d-block">Chủ nhà máy (Owner)</span>
+                                <small class="text-muted" style="font-size: 11px;">Dashboard tổng thể, đối tác, duyệt chi</small>
+                            </div>
+                            @if (isOwner) { <i class="bi bi-check-lg text-primary ms-2"></i> }
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 @(isQC ? "active" : "")" href="/Auth/SwitchRole?role=QC+Staff">
+                            <div>
+                                <span class="fw-bold d-block">Kiểm tra KCS</span>
+                                <small class="text-muted" style="font-size: 11px;">Kiểm tra độ ẩm, độ bền viên nén</small>
+                            </div>
+                            @if (isQC) { <i class="bi bi-check-lg text-primary ms-2"></i> }
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 @(isWarehouse ? "active" : "")" href="/Auth/SwitchRole?role=Warehouse+Staff">
+                            <div>
+                                <span class="fw-bold d-block">Thủ kho (Warehouse)</span>
+                                <small class="text-muted" style="font-size: 11px;">Kho nguyên liệu, kho thành phẩm</small>
+                            </div>
+                            @if (isWarehouse) { <i class="bi bi-check-lg text-primary ms-2"></i> }
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 @(isPurchasing ? "active" : "")" href="/Auth/SwitchRole?role=Purchasing+Staff">
+                            <div>
+                                <span class="fw-bold d-block">Nhân viên Thu mua</span>
+                                <small class="text-muted" style="font-size: 11px;">Hóa đơn nguyên liệu, nhà cung cấp</small>
+                            </div>
+                            @if (isPurchasing) { <i class="bi bi-check-lg text-primary ms-2"></i> }
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider my-1"></li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center justify-content-between py-2 px-3 @(isAdmin ? "active" : "")" href="/Auth/SwitchRole?role=Admin+System">
+                            <div>
+                                <span class="fw-bold d-block">Quản trị viên (Admin)</span>
+                                <small class="text-muted" style="font-size: 11px;">Tài khoản &amp; Nhật ký kiểm toán</small>
+                            </div>
+                            @if (isAdmin) { <i class="bi bi-check-lg text-primary ms-2"></i> }
+                        </a>
+                    </li>
+                </ul>
             </div>
 
             <div class="topbar-bell-btn" title="Thông báo">

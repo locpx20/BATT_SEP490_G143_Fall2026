@@ -6,7 +6,7 @@
     public static class RoleConstants
     {
         // UC Admin: Quản lý người dùng hệ thống
-        public const string Admin = "Admin";
+        public const string Admin = "Admin System";
 
         // UC Owner: Xem dashboard, báo cáo, quản lý Supplier/Customer
         public const string Owner = "Owner";

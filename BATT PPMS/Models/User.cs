@@ -31,6 +31,8 @@ public partial class User
 
     public virtual ICollection<FinishedGoodBatch> FinishedGoodBatches { get; set; } = new List<FinishedGoodBatch>();
 
+    public virtual ICollection<Machine> Machines { get; set; } = new List<Machine>();
+
     public virtual ICollection<MaintenanceRequest> MaintenanceRequestAssignedToNavigations { get; set; } = new List<MaintenanceRequest>();
 
     public virtual ICollection<MaintenanceRequest> MaintenanceRequestRequestedByNavigations { get; set; } = new List<MaintenanceRequest>();

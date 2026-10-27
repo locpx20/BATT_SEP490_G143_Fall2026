@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -40,16 +40,24 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
 
+        [BindProperty(Name = "search", SupportsGet = true)]
+        public string? Search { get; set; }
+
         [BindProperty(SupportsGet = true)]
         public string? EntityFilter { get; set; }
 
-        [BindProperty(SupportsGet = true)]
-        public int Page { get; set; } = 1;
+        [BindProperty(Name = "page", SupportsGet = true)]
+        public new int Page { get; set; } = 1;
 
         public async Task<IActionResult> OnGetAsync()
         {
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
+
+            if (string.IsNullOrWhiteSpace(SearchTerm) && !string.IsNullOrWhiteSpace(Search))
+            {
+                SearchTerm = Search;
+            }
 
             CurrentPage = Math.Max(1, Page);
 

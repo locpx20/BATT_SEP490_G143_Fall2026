@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Admin.AuditLogs.IndexModel
 @{
     ViewData["Title"] = "Nhật ký Kiểm toán Hệ thống";
@@ -7,96 +7,121 @@
 
 <div class="space-y-6">
 
-    <!-- Page Header -->
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">Nhật ký Kiểm toán Hệ thống (Audit Logs)</h1>
-            <p class="page-subtitle">Ghi nhận bất biến mọi thay đổi trạng thái, giao dịch vật lý, phê duyệt và người thực hiện</p>
-        </div>
-    </div>
-
-    <!-- Filter Bar -->
-    <div class="card" style="overflow: visible;">
-        <div class="card-body" style="padding: 14px 18px;">
-            <form method="get" class="filter-bar">
-                <div class="search-wrapper">
-                    <i class="bi bi-search"></i>
-                    <input type="text" name="search" value="@Model.SearchTerm"
-                           class="form-control" style="padding-left: 34px;"
+    <!-- Filter & Search Bar -->
+    <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div class="card-body" style="padding: 16px 20px;">
+            <form method="get" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin: 0;">
+                
+                <!-- Search Input with Clear Button -->
+                <div style="flex: 1; min-width: 280px; max-width: 480px; position: relative;">
+                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none;"></i>
+                    <input type="text" name="SearchTerm" value="@Model.SearchTerm"
+                           class="form-control"
+                           style="height: 42px; padding-left: 38px; padding-right: @(!string.IsNullOrEmpty(Model.SearchTerm) ? "36px" : "14px"); border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; transition: all 0.2s ease;"
                            placeholder="Tìm theo hành động, người thực hiện, mã hồ sơ..." />
+                    @if (!string.IsNullOrEmpty(Model.SearchTerm))
+                    {
+                        <a href="/Admin/AuditLogs/Index@(string.IsNullOrEmpty(Model.EntityFilter) ? "" : $"?EntityFilter={Model.EntityFilter}")" 
+                           style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 15px; text-decoration: none;"
+                           title="Xóa tìm kiếm">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </a>
+                    }
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 12px; color: #64748b; font-weight: 500; white-space: nowrap;">Đối tượng:</span>
-                    <select name="entityFilter" class="form-control" style="width: auto; min-width: 200px;">
-                        <option value="">Tất cả đối tượng</option>
-                        <option value="Purchase" selected="@(Model.EntityFilter=="Purchase")">Thu mua (PURCHASE)</option>
-                        <option value="Order" selected="@(Model.EntityFilter=="Order")">Đơn hàng (ORDER)</option>
-                        <option value="QC" selected="@(Model.EntityFilter=="QC")">Kiểm tra KCS (QC)</option>
-                        <option value="ShiftReport" selected="@(Model.EntityFilter=="ShiftReport")">Báo cáo ca (SHIFT_REPORT)</option>
-                        <option value="Maintenance" selected="@(Model.EntityFilter=="Maintenance")">Sự cố máy (MAINTENANCE)</option>
-                        <option value="User" selected="@(Model.EntityFilter=="User")">Quản trị người dùng (USER)</option>
-                        <option value="Inventory" selected="@(Model.EntityFilter=="Inventory")">Kho hàng (INVENTORY)</option>
-                    </select>
+
+                <!-- Entity Filter & Action Buttons -->
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 12.5px; font-weight: 600; color: #475569; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
+                            <i class="bi bi-funnel" style="color: #4f46e5;"></i> Đối tượng:
+                        </span>
+                        <select name="EntityFilter" onchange="this.form.submit()" class="form-select"
+                                style="height: 42px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; padding: 0 36px 0 14px; min-width: 220px; background-color: #fff; color: #0f172a; font-weight: 500; cursor: pointer;">
+                            <option value="">Tất cả đối tượng</option>
+                            <option value="Purchase" selected="@(Model.EntityFilter=="Purchase")">Thu mua (PURCHASE)</option>
+                            <option value="Order" selected="@(Model.EntityFilter=="Order")">Đơn hàng (ORDER)</option>
+                            <option value="QC" selected="@(Model.EntityFilter=="QC")">Kiểm tra KCS (QC)</option>
+                            <option value="ShiftReport" selected="@(Model.EntityFilter=="ShiftReport")">Báo cáo ca (SHIFT_REPORT)</option>
+                            <option value="Maintenance" selected="@(Model.EntityFilter=="Maintenance")">Sự cố máy (MAINTENANCE)</option>
+                            <option value="User" selected="@(Model.EntityFilter=="User")">Quản trị người dùng (USER)</option>
+                            <option value="Inventory" selected="@(Model.EntityFilter=="Inventory")">Kho hàng (INVENTORY)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="height: 42px; padding: 0 20px; border-radius: 10px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);">
+                        <i class="bi bi-search"></i> Lọc
+                    </button>
+
+                    @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.EntityFilter))
+                    {
+                        <a href="/Admin/AuditLogs/Index" class="btn btn-secondary" style="height: 42px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569;" title="Đặt lại bộ lọc">
+                            <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+                        </a>
+                    }
                 </div>
-                <button type="submit" class="btn btn-secondary">
-                    <i class="bi bi-funnel"></i> Lọc
-                </button>
-                @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.EntityFilter))
-                {
-                    <a href="/Admin/AuditLogs/Index" class="btn btn-outline btn-sm">
-                        <i class="bi bi-x"></i> Xóa lọc
-                    </a>
-                }
+
             </form>
         </div>
     </div>
 
     <!-- Audit Log Table -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title" style="font-size: 14px;">
-                <i class="bi bi-clock-history" style="color: #4f46e5; margin-right: 6px;"></i>
-                Nhật ký hoạt động
-                <span style="font-size: 11px; font-weight: 600; background: #eef2ff; color: #4f46e5; padding: 2px 8px; border-radius: 20px; margin-left: 8px;">
-                    @Model.TotalCount bản ghi
-                </span>
-            </h2>
+    <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
+        <div class="card-header" style="background: #ffffff; padding: 16px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 34px; height: 34px; border-radius: 10px; background: #eef2ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    <h2 style="font-size: 14.5px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.2;">
+                        Nhật ký hoạt động hệ thống
+                    </h2>
+                    <span style="font-size: 11.5px; color: #64748b;">
+                        Ghi nhận thời gian thực mọi thay đổi và phê duyệt
+                    </span>
+                </div>
+            </div>
+            <span style="font-size: 12px; font-weight: 700; background: #f1f5f9; color: #475569; padding: 5px 12px; border-radius: 20px; border: 1px solid #e2e8f0;">
+                Tổng số: <strong style="color: #4f46e5;">@Model.TotalCount</strong> bản ghi
+            </span>
         </div>
-        <div class="table-wrapper">
-            <table class="data-table">
+
+        <div class="table-wrapper" style="overflow-x: auto;">
+            <table class="data-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
                 <thead>
-                    <tr>
-                        <th>Thời gian</th>
-                        <th>Người thực hiện</th>
-                        <th>Hành động</th>
-                        <th>Đối tượng</th>
-                        <th>Chuyển trạng thái</th>
-                        <th>Chi tiết nghiệp vụ &amp; Lý do</th>
+                    <tr style="background: #f8fafc;">
+                        <th style="padding: 12px 18px; font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;">Thời gian</th>
+                        <th style="padding: 12px 18px; font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;">Người thực hiện</th>
+                        <th style="padding: 12px 18px; font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;">Hành động</th>
+                        <th style="padding: 12px 18px; font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;">Đối tượng</th>
+                        <th style="padding: 12px 18px; font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0; white-space: nowrap;">Chuyển trạng thái</th>
+                        <th style="padding: 12px 18px; font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #e2e8f0;">Chi tiết nghiệp vụ &amp; Lý do</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!Model.AuditLogs.Any())
                     {
                         <tr>
-                            <td colspan="6" class="empty-state">
-                                <i class="bi bi-clock-history"></i>
-                                <p style="font-size: 14px; font-weight: 600; color: #475569; margin-top: 8px;">Chưa có nhật ký nào</p>
-                                <p style="font-size: 12px; color: #94a3b8;">Các hoạt động trong hệ thống sẽ được ghi lại tại đây</p>
+                            <td colspan="6" class="empty-state" style="padding: 50px 20px; text-align: center;">
+                                <i class="bi bi-clock-history" style="font-size: 38px; color: #cbd5e1; display: block; margin-bottom: 8px;"></i>
+                                <p style="font-size: 14px; font-weight: 700; color: #475569; margin: 0 0 4px 0;">Chưa có nhật ký nào phù hợp</p>
+                                <p style="font-size: 12px; color: #94a3b8; margin: 0;">Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc để hiển thị toàn bộ</p>
                             </td>
                         </tr>
                     }
                     @foreach (var log in Model.AuditLogs)
                     {
-                        <tr>
-                            <td style="font-family: monospace; color: #64748b; white-space: nowrap; font-size: 12px;">
+                        <tr style="transition: background-color 0.15s ease;">
+                            <td style="padding: 14px 18px; font-family: monospace; color: #64748b; white-space: nowrap; font-size: 12px; border-bottom: 1px solid #f1f5f9;">
                                 @log.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")
                             </td>
-                            <td style="white-space: nowrap;">
+                            <td style="padding: 14px 18px; white-space: nowrap; border-bottom: 1px solid #f1f5f9;">
                                 <span style="font-weight: 700; color: #0f172a; display: block; font-size: 12.5px;">@log.ActorName</span>
                                 <span style="font-size: 10px; color: #94a3b8; font-family: monospace; font-weight: 600;">[@log.ActorRole]</span>
                             </td>
-                            <td style="font-weight: 600; color: #1e293b; font-size: 12.5px;">@log.Action</td>
-                            <td>
+                            <td style="padding: 14px 18px; font-weight: 600; color: #1e293b; font-size: 12.5px; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">
+                                @log.Action
+                            </td>
+                            <td style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9;">
                                 <div>
                                     <span style="font-family: monospace; font-weight: 700; color: #4f46e5; font-size: 12px;">@log.EntityCode</span>
                                     @if (!string.IsNullOrEmpty(log.EntityType))
@@ -105,21 +130,21 @@
                                     }
                                 </div>
                             </td>
-                            <td>
+                            <td style="padding: 14px 18px; border-bottom: 1px solid #f1f5f9; white-space: nowrap;">
                                 @if (!string.IsNullOrEmpty(log.PreviousStatus) || !string.IsNullOrEmpty(log.NewStatus))
                                 {
                                     <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 11px;">
                                         @if (!string.IsNullOrEmpty(log.PreviousStatus))
                                         {
-                                            <span style="padding: 2px 6px; border-radius: 4px; background: #f1f5f9; color: #475569;">@log.PreviousStatus</span>
+                                            <span style="padding: 3px 7px; border-radius: 4px; background: #f1f5f9; color: #475569; font-weight: 600;">@log.PreviousStatus</span>
                                         }
                                         @if (!string.IsNullOrEmpty(log.PreviousStatus) && !string.IsNullOrEmpty(log.NewStatus))
                                         {
-                                            <span style="color: #94a3b8;">→</span>
+                                            <span style="color: #94a3b8;">&rarr;</span>
                                         }
                                         @if (!string.IsNullOrEmpty(log.NewStatus))
                                         {
-                                            <span style="padding: 2px 6px; border-radius: 4px; background: #eef2ff; color: #4f46e5; font-weight: 700;">@log.NewStatus</span>
+                                            <span style="padding: 3px 7px; border-radius: 4px; background: #eef2ff; color: #4f46e5; font-weight: 700; border: 1px solid #e0e7ff;">@log.NewStatus</span>
                                         }
                                     </div>
                                 }
@@ -128,11 +153,11 @@
                                     <span style="color: #cbd5e1;">—</span>
                                 }
                             </td>
-                            <td style="max-width: 320px;">
-                                <p style="font-size: 12px; color: #475569; line-height: 1.5; margin: 0;">@log.Details</p>
+                            <td style="padding: 14px 18px; max-width: 380px; border-bottom: 1px solid #f1f5f9;">
+                                <p style="font-size: 12.5px; color: #334155; line-height: 1.5; margin: 0;">@log.Details</p>
                                 @if (!string.IsNullOrEmpty(log.Reason))
                                 {
-                                    <div style="margin-top: 5px; padding: 5px 8px; border-radius: 6px; background: #fffbeb; border: 1px solid #fde68a;">
+                                    <div style="margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: #fffbeb; border: 1px solid #fde68a;">
                                         <span style="font-size: 11px; font-weight: 700; color: #92400e;">Lý do: </span>
                                         <span style="font-size: 11px; color: #78350f;">@log.Reason</span>
                                     </div>
@@ -144,33 +169,38 @@
             </table>
         </div>
 
-        <!-- Pagination -->
+        <!-- Pagination & Footer -->
         @if (Model.TotalPages > 1)
         {
-            <div class="pagination">
-                @if (Model.CurrentPage > 1)
-                {
-                    <a href="?page=@(Model.CurrentPage-1)&search=@Model.SearchTerm&entityFilter=@Model.EntityFilter" class="page-link">
-                        <i class="bi bi-chevron-left"></i>
-                    </a>
-                }
-                @for (int i = Math.Max(1, Model.CurrentPage - 2); i <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); i++)
-                {
-                    <a href="?page=@i&search=@Model.SearchTerm&entityFilter=@Model.EntityFilter"
-                       class="page-link @(i == Model.CurrentPage ? "active" : "")">@i</a>
-                }
-                @if (Model.CurrentPage < Model.TotalPages)
-                {
-                    <a href="?page=@(Model.CurrentPage+1)&search=@Model.SearchTerm&entityFilter=@Model.EntityFilter" class="page-link">
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                }
+            <div style="padding: 16px 22px; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <span style="font-size: 12px; color: #64748b;">
+                    Trang <strong>@Model.CurrentPage</strong> / <strong>@Model.TotalPages</strong> (Hiển thị @Model.AuditLogs.Count / @Model.TotalCount bản ghi)
+                </span>
+                <div class="pagination" style="display: flex; align-items: center; gap: 6px; margin: 0;">
+                    @if (Model.CurrentPage > 1)
+                    {
+                        <a href="?page=@(Model.CurrentPage-1)&SearchTerm=@Model.SearchTerm&EntityFilter=@Model.EntityFilter" class="page-link" style="padding: 6px 12px; border-radius: 8px; font-size: 12px;">
+                            <i class="bi bi-chevron-left"></i> Trước
+                        </a>
+                    }
+                    @for (int i = Math.Max(1, Model.CurrentPage - 2); i <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); i++)
+                    {
+                        <a href="?page=@i&SearchTerm=@Model.SearchTerm&EntityFilter=@Model.EntityFilter"
+                           class="page-link @(i == Model.CurrentPage ? "active" : "")" style="padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;">@i</a>
+                    }
+                    @if (Model.CurrentPage < Model.TotalPages)
+                    {
+                        <a href="?page=@(Model.CurrentPage+1)&SearchTerm=@Model.SearchTerm&EntityFilter=@Model.EntityFilter" class="page-link" style="padding: 6px 12px; border-radius: 8px; font-size: 12px;">
+                            Sau <i class="bi bi-chevron-right"></i>
+                        </a>
+                    }
+                </div>
             </div>
         }
         else
         {
-            <div style="padding: 12px 20px; border-top: 1px solid #f1f5f9;">
-                <span style="font-size: 11.5px; color: #94a3b8;">Hiển thị @Model.AuditLogs.Count / @Model.TotalCount bản ghi</span>
+            <div style="padding: 14px 22px; border-top: 1px solid #f1f5f9; background: #fafafa;">
+                <span style="font-size: 12px; color: #64748b;">Hiển thị <strong>@Model.AuditLogs.Count</strong> / <strong>@Model.TotalCount</strong> bản ghi</span>
             </div>
         }
     </div>

@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Helpers;
+using BATT_PPMS.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -20,14 +20,15 @@ namespace BATT_PPMS.Helpers
         // Kiểm tra trạng thái đăng nhập
         protected bool IsLoggedIn => CurrentUserId > 0;
 
-        // --- Kiểm tra từng role (khớp hoàn toàn với use case diagram) ---
-        protected bool IsAdmin => CurrentRoleName == RoleConstants.Admin;
+        // --- Kiểm tra từng role (khớp hoàn toàn với use case diagram và DB mới) ---
+        protected bool IsAdmin => CurrentRoleName == RoleConstants.Admin || CurrentRoleName == RoleConstants.AdminShort || CurrentRoleName.Contains("Admin");
         protected bool IsOwner => CurrentRoleName == RoleConstants.Owner;
         protected bool IsManager => CurrentRoleName == RoleConstants.Manager;
         protected bool IsStaff => CurrentRoleName == RoleConstants.Staff;
         protected bool IsMaintenanceStaff => CurrentRoleName == RoleConstants.MaintenanceStaff;
         protected bool IsQCStaff => CurrentRoleName == RoleConstants.QCStaff;
         protected bool IsPurchasingStaff => CurrentRoleName == RoleConstants.PurchasingStaff;
+        protected bool IsWarehouseStaff => CurrentRoleName == RoleConstants.WarehouseStaff;
 
         // --- Helpers kết hợp hay dùng ---
         protected bool IsOwnerOrManager => IsOwner || IsManager;
@@ -50,7 +51,11 @@ namespace BATT_PPMS.Helpers
             var loginCheck = RequireLogin();
             if (loginCheck != null) return loginCheck;
 
-            if (!allowedRoles.Contains(CurrentRoleName))
+            var match = allowedRoles.Any(r => 
+                r.Equals(CurrentRoleName, StringComparison.OrdinalIgnoreCase) ||
+                (r.Contains("Admin") && CurrentRoleName.Contains("Admin")));
+
+            if (!match)
                 return RedirectToPage("/Auth/AccessDenied");
 
             return null;

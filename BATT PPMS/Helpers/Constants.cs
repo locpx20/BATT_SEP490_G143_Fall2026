@@ -1,4 +1,4 @@
-﻿namespace BATT_PPMS.Helpers
+namespace BATT_PPMS.Helpers
 {
     /// <summary>
     /// Định nghĩa đầy đủ 7 vai trò trong hệ thống (khớp toàn bộ use case diagram)
@@ -6,7 +6,8 @@
     public static class RoleConstants
     {
         // UC Admin: Quản lý người dùng hệ thống
-        public const string Admin = "Admin";
+        public const string Admin = "Admin System";
+        public const string AdminShort = "Admin";
 
         // UC Owner: Xem dashboard, báo cáo, quản lý Supplier/Customer
         public const string Owner = "Owner";
@@ -25,6 +26,9 @@
 
         // UC Purchasing Staff: Quản lý đơn mua hàng (tạo/sửa/xoá), xem nhà cung cấp
         public const string PurchasingStaff = "Purchasing Staff";
+
+        // UC Warehouse Staff: Quản lý kho nguyên liệu và thành phẩm
+        public const string WarehouseStaff = "Warehouse Staff";
     }
 
     /// <summary>

@@ -35,6 +35,7 @@ namespace BATT_PPMS.Pages.Dashboard
         public int MyAssignedPlansCount { get; set; }
         public decimal RevenueMillionVnd { get; set; } = 38.5m;
         public decimal RemainingDebtMillionVnd { get; set; } = 18.5m;
+        public int PendingQC { get; set; }
 
         public List<OperationalTaskItem> PendingTasks { get; set; } = new();
         public List<StockMovementItem> RecentMovements { get; set; } = new();

@@ -194,15 +194,61 @@ namespace BATT_PPMS.Pages.ShiftReports
 
             var currentUserId = CurrentUserId > 0 ? CurrentUserId : 4;
 
+            // Tìm phân công ca tương ứng hoặc tạo mới phân công ca
+            var assignment = await _context.PersonnelAssignments
+                .FirstOrDefaultAsync(p => p.StaffId == currentUserId && p.AssignmentDate == NewShiftDate);
+
+            if (assignment == null)
+            {
+                assignment = new PersonnelAssignment
+                {
+                    StaffId = currentUserId,
+                    AssignedBy = currentUserId,
+                    AssignmentDate = NewShiftDate,
+                    Shift = NewShift,
+                    TaskDescription = "Vận hành ca sản xuất viên nén",
+                    Status = "Completed"
+                };
+                _context.PersonnelAssignments.Add(assignment);
+                await _context.SaveChangesAsync();
+            }
+
+            // Ghi nhận lượng NVL thực xuất vào RawMaterialExport
+            var firstMaterial = await _context.RawMaterials.FirstOrDefaultAsync();
+            if (firstMaterial != null && NewRawMaterialUsed > 0)
+            {
+                var export = new RawMaterialExport
+                {
+                    MaterialId = firstMaterial.MaterialId,
+                    Quantity = NewRawMaterialUsed,
+                    ExportDate = NewShiftDate.ToDateTime(TimeOnly.MinValue),
+                    ExportedBy = currentUserId,
+                    Note = $"Xuất NVL cho {NewShift}"
+                };
+                _context.RawMaterialExports.Add(export);
+            }
+
+            // Ghi nhận sự cố phát sinh vào BrokenEquipmentReport
+            if (NewHasIncident && !string.IsNullOrWhiteSpace(NewIncidentDescription))
+            {
+                var incident = new BrokenEquipmentReport
+                {
+                    EquipmentName = "Dây chuyền sản xuất viên nén",
+                    Description = NewIncidentDescription.Trim(),
+                    ReportDate = NewShiftDate.ToDateTime(TimeOnly.MinValue),
+                    ReportedBy = currentUserId,
+                    Severity = "Medium",
+                    Status = "Reported"
+                };
+                _context.BrokenEquipmentReports.Add(incident);
+            }
+
             var report = new EndOfShiftReport
             {
+                AssignmentId = assignment.AssignmentId,
                 StaffId = currentUserId,
                 ShiftDate = NewShiftDate,
-                Shift = NewShift,
-                RawMaterialUsed = NewRawMaterialUsed,
                 ProductionQuantity = NewProductionQuantity,
-                HasIncident = NewHasIncident,
-                IncidentDescription = NewHasIncident ? NewIncidentDescription : null,
                 Note = NewNote,
                 Status = "Submitted",
                 CreatedAt = DateTime.Now

@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +25,7 @@ namespace BATT_PPMS.Pages.ShiftReports
         public string Status { get; set; } = "Submitted";
         public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string? LotCodeGenerated => Status == "Approved" ? $"LOT-{ShiftDate:yyyyMMdd}-{ReportId:D2}" : null;
     }
 
     public class IndexModel : BasePageModel
@@ -54,6 +55,7 @@ namespace BATT_PPMS.Pages.ShiftReports
         public int PendingApprovalCount { get; set; }
 
         public bool CanApprove => IsOwner;
+        public bool CanSubmitReport => IsStaff || IsOwnerOrManager;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -61,9 +63,18 @@ namespace BATT_PPMS.Pages.ShiftReports
         [TempData]
         public string? ErrorMessage { get; set; }
 
+        // Form properties for submitting a shift report
+        [BindProperty] public DateOnly NewShiftDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+        [BindProperty] public string NewShift { get; set; } = "Ca 1 (06:00 - 14:00)";
+        [BindProperty] public int NewRawMaterialUsed { get; set; } = 22000;
+        [BindProperty] public int NewProductionQuantity { get; set; } = 20000;
+        [BindProperty] public bool NewHasIncident { get; set; }
+        [BindProperty] public string? NewIncidentDescription { get; set; }
+        [BindProperty] public string? NewNote { get; set; }
+
         public async Task<IActionResult> OnGetAsync()
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.Staff);
             if (check != null) return check;
 
             await LoadReportsAsync();
@@ -133,6 +144,40 @@ namespace BATT_PPMS.Pages.ShiftReports
                 .ToList();
         }
 
+        public async Task<IActionResult> OnPostSubmitReportAsync()
+        {
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.Staff);
+            if (check != null) return check;
+
+            if (NewProductionQuantity <= 0 || NewRawMaterialUsed <= 0)
+            {
+                ErrorMessage = "Sản lượng thực tế và lượng NVL thực dùng phải lớn hơn 0 kg.";
+                return RedirectToPage();
+            }
+
+            var currentUserId = CurrentUserId > 0 ? CurrentUserId : 4;
+
+            var report = new EndOfShiftReport
+            {
+                StaffId = currentUserId,
+                ShiftDate = NewShiftDate,
+                Shift = NewShift,
+                RawMaterialUsed = NewRawMaterialUsed,
+                ProductionQuantity = NewProductionQuantity,
+                HasIncident = NewHasIncident,
+                IncidentDescription = NewHasIncident ? NewIncidentDescription : null,
+                Note = NewNote,
+                Status = "Submitted",
+                CreatedAt = DateTime.Now
+            };
+
+            _context.EndOfShiftReports.Add(report);
+            await _context.SaveChangesAsync();
+
+            SuccessMessage = $"Nộp báo cáo ca thành công (Mã: RP-{report.ReportId:D4}). Hồ sơ đã được chuyển cho Giám đốc phê duyệt để phát hành mã LOT.";
+            return RedirectToPage();
+        }
+
         public async Task<IActionResult> OnPostApproveReportAsync(int reportId)
         {
             var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
@@ -155,7 +200,7 @@ namespace BATT_PPMS.Pages.ShiftReports
             report.RejectionReason = null;
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã phê duyệt thành công báo cáo ca RP-{reportId:D4}.";
+            SuccessMessage = $"Đã phê duyệt thành công báo cáo ca RP-{reportId:D4}. Mã LOT: LOT-{report.ShiftDate:yyyyMMdd}-{reportId:D2} đã được phát hành cho phòng KCS.";
             return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
         }
 

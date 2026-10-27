@@ -204,6 +204,16 @@ a { text-decoration: none; color: inherit; }
 }
 .nav-item.active i { color: #ffffff; }
 
+/* =====================================================
+   SPACING UTILITIES
+   ===================================================== */
+.space-y-4 > * + * { margin-top: 16px; }
+.space-y-5 > * + * { margin-top: 20px; }
+.space-y-6 > * + * { margin-top: 24px; }
+.space-y-8 > * + * { margin-top: 32px; }
+
+
+
 /* Sidebar Footer */
 .sidebar-footer {
     padding: 12px;

@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -60,6 +60,7 @@ namespace BATT_PPMS.Pages.Maintenance
         public int CompletedCount { get; set; }
 
         public bool CanManage => IsOwner;
+        public bool CanReportFailure => IsStaff || IsOwnerOrManager;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -67,9 +68,14 @@ namespace BATT_PPMS.Pages.Maintenance
         [TempData]
         public string? ErrorMessage { get; set; }
 
+        [BindProperty] public string FailureEquipmentName { get; set; } = string.Empty;
+        [BindProperty] public string FailureSymptoms { get; set; } = string.Empty;
+        [BindProperty] public string FailureSeverity { get; set; } = "High";
+        [BindProperty] public string? FailureDescription { get; set; }
+
         public async Task<IActionResult> OnGetAsync()
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.MaintenanceStaff);
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.MaintenanceStaff, RoleConstants.Staff);
             if (check != null) return check;
 
             await LoadDataAsync();
@@ -247,6 +253,49 @@ namespace BATT_PPMS.Pages.Maintenance
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã từ chối yêu cầu sửa chữa REQ-{requestId:D4}. Lý do: {request.RejectionReason}";
+            return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+        }
+
+        public async Task<IActionResult> OnPostReportFailureAsync()
+        {
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.Staff, RoleConstants.MaintenanceStaff);
+            if (check != null) return check;
+
+            if (string.IsNullOrWhiteSpace(FailureEquipmentName) || string.IsNullOrWhiteSpace(FailureSymptoms))
+            {
+                ErrorMessage = "Vui lòng chọn tên thiết bị và mô tả hiện tượng sự cố.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
+            var currentUserId = CurrentUserId > 0 ? CurrentUserId : 4;
+
+            var report = new BrokenEquipmentReport
+            {
+                EquipmentName = FailureEquipmentName.Trim(),
+                Description = FailureSymptoms.Trim() + (!string.IsNullOrWhiteSpace(FailureDescription) ? $" | Ghi chú: {FailureDescription.Trim()}" : ""),
+                ReportedBy = currentUserId,
+                ReportDate = DateTime.Now,
+                Status = "Reported",
+                Severity = FailureSeverity
+            };
+
+            _context.BrokenEquipmentReports.Add(report);
+            await _context.SaveChangesAsync();
+
+            var req = new MaintenanceRequest
+            {
+                BrokenReportId = report.ReportId,
+                RequestedBy = currentUserId,
+                RequestDate = DateTime.Now,
+                Status = "Pending",
+                Priority = FailureSeverity,
+                Description = report.Description
+            };
+
+            _context.MaintenanceRequests.Add(req);
+            await _context.SaveChangesAsync();
+
+            SuccessMessage = $"Báo cáo sự cố thành công cho thiết bị '{report.EquipmentName}' (Mã: REQ-{req.RequestId:D4}). Kỹ thuật viên sẽ được tiếp nhận và xử lý.";
             return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
         }
     }

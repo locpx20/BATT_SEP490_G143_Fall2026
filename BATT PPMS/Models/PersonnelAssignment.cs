@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BATT_PPMS.Models
@@ -32,6 +32,10 @@ namespace BATT_PPMS.Models
         [MaxLength(50)]
         [Column("status")]
         public string Status { get; set; } = "Assigned";
+
+        /// <summary>Định mức sản lượng (kg) cho công đoạn này.</summary>
+        [Column("target_production")]
+        public int? TargetProduction { get; set; }
 
         [ForeignKey("StaffId")]
         public User? Staff { get; set; }

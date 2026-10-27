@@ -72,18 +72,10 @@
 
         @if (isAdmin)
         {
-            <!-- 1. QUẢN TRỊ & THU MUA (Role Admin) -->
-            <div class="nav-group" id="grp-admin-core">
-                <button class="nav-group-header @(ap=="Dashboard"?"active":"")" onclick="toggleGroup('admin-core')">
-                    <span>Quản trị &amp; Thu mua</span>
-                    <i class="bi bi-chevron-down nav-chevron @(ap=="Dashboard"?"rotated":"")" id="chevron-admin-core"></i>
-                </button>
-                <div class="nav-group-items @(ap=="Dashboard"?"open":"")" id="items-admin-core">
-                    <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
-                        <i class="bi bi-grid-fill"></i><span>Tổng quan Điều hành</span>
-                    </a>
-                </div>
-            </div>
+            <!-- Tổng quan Điều hành (standalone, Role Admin) -->
+            <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
+                <i class="bi bi-grid-fill"></i><span>Tổng quan Điều hành</span>
+            </a>
 
             <!-- 2. HỆ THỐNG & KIỂM TOÁN (Role Admin) -->
             <div class="nav-group" id="grp-admin">
@@ -96,7 +88,7 @@
                         <i class="bi bi-clock-history"></i><span>Nhật ký Kiểm toán Hệ thống</span>
                     </a>
                     <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
-                        <i class="bi bi-shield-person"></i><span>Quản trị Tài khoản &amp; Phân quyền</span>
+                        <i class="bi bi-people-fill"></i><span>Quản trị Tài khoản &amp; Phân quyền</span>
                     </a>
                 </div>
             </div>
@@ -196,24 +188,49 @@
 
         @if (isStaff)
         {
-            <div class="nav-group" id="grp-s-prod">
-                <button class="nav-group-header active" onclick="toggleGroup('s-prod')">
-                    <span>Quy trình Sản xuất</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-s-prod"></i>
+            <!-- CORE group (Staff) -->
+            <div class="nav-group" id="grp-s-core">
+                <button class="nav-group-header @(ap=="Dashboard"?"active":"")" onclick="toggleGroup('s-core')">
+                    <span>Quản trị &amp; Thu mua</span>
+                    <i class="bi bi-chevron-down nav-chevron @(ap=="Dashboard"?"rotated":"")" id="chevron-s-core"></i>
                 </button>
-                <div class="nav-group-items" id="items-s-prod">
+                <div class="nav-group-items @(ap=="Dashboard"?"open":"")" id="items-s-core">
+                    <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
+                        <i class="bi bi-speedometer2"></i><span>Tổng quan Điều hành</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- PRODUCTION group (Staff) -->
+            <div class="nav-group" id="grp-s-prod">
+                <button class="nav-group-header @(ap is "Personnel" or "ShiftReport" ? "active" : "")" onclick="toggleGroup('s-prod')">
+                    <span>Quy trình Sản xuất</span>
+                    <i class="bi bi-chevron-down nav-chevron @(ap is "Personnel" or "ShiftReport" ? "rotated" : "")" id="chevron-s-prod"></i>
+                </button>
+                <div class="nav-group-items @(ap is "Personnel" or "ShiftReport" ? "open" : "")" id="items-s-prod">
                     <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
-                        <i class="bi bi-calendar-week"></i><span>Lịch làm việc</span>
+                        <i class="bi bi-calendar-week"></i><span>Kế hoạch Sản xuất</span>
                     </a>
                     <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
-                        <i class="bi bi-clipboard-data"></i><span>Báo cáo Ca làm</span>
+                        <i class="bi bi-clipboard-data"></i><span>Báo cáo Ca Sản xuất</span>
                     </a>
-                    <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
-                        <i class="bi bi-exclamation-triangle"></i><span>Báo cáo Thiết bị hỏng</span>
+                </div>
+            </div>
+
+            <!-- EQUIPMENT group (Staff) -->
+            <div class="nav-group" id="grp-s-equip">
+                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" ? "active" : "")" onclick="toggleGroup('s-equip')">
+                    <span>Máy móc &amp; Cơ điện</span>
+                    <i class="bi bi-chevron-down nav-chevron @(ap is "BrokenReport" or "Maintenance" ? "rotated" : "")" id="chevron-s-equip"></i>
+                </button>
+                <div class="nav-group-items @(ap is "BrokenReport" or "Maintenance" ? "open" : "")" id="items-s-equip">
+                    <a class="nav-item @(ap is "BrokenReport" or "Maintenance" ? "active" : "")" href="/Maintenance/Index">
+                        <i class="bi bi-wrench-adjustable"></i><span>Sự cố &amp; Bảo trì Cơ điện</span>
                     </a>
                 </div>
             </div>
         }
+
 
         @if (isMaintenance)
         {
@@ -321,7 +338,7 @@
                 <i class="bi bi-list"></i>
             </button>
             <span class="topbar-page-title">@ViewData["Title"]</span>
-            <span class="topbar-role-badge">@(isAdmin ? "A" : isOwner ? "O" : isManager ? "M" : isQC ? "QC" : isPurchasing ? "P" : isMaintenance ? "MT" : "U")</span>
+            <span class="topbar-role-badge">@(isAdmin ? "A" : isOwner ? "O" : isManager ? "M" : isStaff ? "S" : isQC ? "QC" : isPurchasing ? "PS" : isMaintenance ? "MS" : "U")</span>
         </div>
 
         <div class="topbar-right">

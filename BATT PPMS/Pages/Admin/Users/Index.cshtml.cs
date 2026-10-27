@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -33,9 +33,16 @@ namespace BATT_PPMS.Pages.Admin.Users
         // ---- Display Data ----
         public List<UserViewModel> Users { get; set; } = new();
 
+        // ---- Current Logged In Admin Info ----
+        public int LoggedInUserId => CurrentUserId;
+        public string LoggedInUsername => CurrentUsername;
+
         // ---- Filters ----
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
+
+        [BindProperty(Name = "search", SupportsGet = true)]
+        public string? Search { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? RoleFilter { get; set; }
@@ -55,6 +62,11 @@ namespace BATT_PPMS.Pages.Admin.Users
         {
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
+
+            if (string.IsNullOrWhiteSpace(SearchTerm) && !string.IsNullOrWhiteSpace(Search))
+            {
+                SearchTerm = Search;
+            }
 
             await LoadDataAsync();
             return Page();
@@ -140,7 +152,7 @@ namespace BATT_PPMS.Pages.Admin.Users
                 return RedirectToPage();
             }
 
-            if (user.UserId == CurrentUserId)
+            if (user.UserId == CurrentUserId || user.Username.Equals(CurrentUsername, StringComparison.OrdinalIgnoreCase))
             {
                 ErrorMessage = "Bạn không thể tự khóa tài khoản Admin đang đăng nhập của chính mình.";
                 return RedirectToPage();
@@ -207,7 +219,10 @@ namespace BATT_PPMS.Pages.Admin.Users
             // Role filter
             if (!string.IsNullOrWhiteSpace(RoleFilter))
             {
-                query = query.Where(u => u.Role != null && u.Role.RoleName == RoleFilter);
+                if (RoleFilter == "Admin" || RoleFilter == "Admin System")
+                    query = query.Where(u => u.Role != null && (u.Role.RoleName == "Admin" || u.Role.RoleName == "Admin System"));
+                else
+                    query = query.Where(u => u.Role != null && u.Role.RoleName == RoleFilter);
             }
 
             // Status filter

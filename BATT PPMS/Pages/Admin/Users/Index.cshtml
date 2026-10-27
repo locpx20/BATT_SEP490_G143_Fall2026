@@ -38,51 +38,96 @@
     }
 
     <!-- Filter + Search -->
-    <div class="card" style="overflow: visible;">
-        <div class="card-body" style="padding: 14px 18px;">
-            <form method="get" class="filter-bar">
-                <div class="search-wrapper">
-                    <i class="bi bi-search"></i>
-                    <input type="text" name="search" value="@Model.SearchTerm"
-                           class="form-control" style="padding-left: 34px;"
-                           placeholder="Tên, username, email..." />
+    <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div class="card-body" style="padding: 16px 20px;">
+            <form method="get" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin: 0;">
+                <!-- Search Input with Clear Button -->
+                <div style="flex: 1; min-width: 280px; max-width: 440px; position: relative;">
+                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none;"></i>
+                    <input type="text" name="SearchTerm" value="@Model.SearchTerm"
+                           class="form-control"
+                           style="height: 42px; padding-left: 38px; padding-right: @(!string.IsNullOrEmpty(Model.SearchTerm) ? "36px" : "14px"); border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; transition: all 0.2s ease;"
+                           placeholder="Tìm theo họ tên, username, email..." />
+                    @if (!string.IsNullOrEmpty(Model.SearchTerm))
+                    {
+                        <a href="/Admin/Users/Index@(string.IsNullOrEmpty(Model.RoleFilter) && string.IsNullOrEmpty(Model.StatusFilter) ? "" : $"?RoleFilter={Model.RoleFilter}&StatusFilter={Model.StatusFilter}")" 
+                           style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 15px; text-decoration: none;"
+                           title="Xóa tìm kiếm">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </a>
+                    }
                 </div>
-                <select name="roleFilter" class="form-control" style="width: auto; min-width: 180px;">
-                    <option value="">Tất cả vai trò</option>
-                    <option value="Admin" selected="@(Model.RoleFilter=="Admin")">Admin System</option>
-                    <option value="Owner" selected="@(Model.RoleFilter=="Owner")">Owner (Chủ nhà máy)</option>
-                    <option value="Manager" selected="@(Model.RoleFilter=="Manager")">Manager (Quản lý)</option>
-                    <option value="Purchasing Staff" selected="@(Model.RoleFilter=="Purchasing Staff")">Purchasing Staff (Thu mua)</option>
-                    <option value="Warehouse Staff" selected="@(Model.RoleFilter=="Warehouse Staff")">Warehouse Staff (Thủ kho)</option>
-                    <option value="Staff" selected="@(Model.RoleFilter=="Staff")">Production Staff (Sản xuất)</option>
-                    <option value="QC Staff" selected="@(Model.RoleFilter=="QC Staff")">QC Staff (KCS)</option>
-                    <option value="Maintenance Staff" selected="@(Model.RoleFilter=="Maintenance Staff")">Maintenance Staff (Bảo trì)</option>
-                </select>
-                <select name="statusFilter" class="form-control" style="width: auto; min-width: 150px;">
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="active" selected="@(Model.StatusFilter=="active")">Đang hoạt động</option>
-                    <option value="inactive" selected="@(Model.StatusFilter=="inactive")">Đã khóa</option>
-                </select>
-                <button type="submit" class="btn btn-secondary">
-                    <i class="bi bi-funnel"></i> Lọc
-                </button>
 
+                <!-- Filters & Action Buttons -->
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <!-- Role Filter -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 12.5px; font-weight: 600; color: #475569; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
+                            <i class="bi bi-person-badge" style="color: #4f46e5;"></i> Vai trò:
+                        </span>
+                        <select name="RoleFilter" onchange="this.form.submit()" class="form-select"
+                                style="height: 42px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; padding: 0 36px 0 14px; min-width: 190px; background-color: #fff; color: #0f172a; font-weight: 500; cursor: pointer;">
+                            <option value="">Tất cả vai trò</option>
+                            <option value="Admin" selected="@(Model.RoleFilter=="Admin")">Admin System</option>
+                            <option value="Owner" selected="@(Model.RoleFilter=="Owner")">Owner (Chủ nhà máy)</option>
+                            <option value="Manager" selected="@(Model.RoleFilter=="Manager")">Manager (Quản lý)</option>
+                            <option value="Purchasing Staff" selected="@(Model.RoleFilter=="Purchasing Staff")">Purchasing Staff (Thu mua)</option>
+                            <option value="Warehouse Staff" selected="@(Model.RoleFilter=="Warehouse Staff")">Warehouse Staff (Thủ kho)</option>
+                            <option value="Staff" selected="@(Model.RoleFilter=="Staff")">Production Staff (Sản xuất)</option>
+                            <option value="QC Staff" selected="@(Model.RoleFilter=="QC Staff")">QC Staff (KCS)</option>
+                            <option value="Maintenance Staff" selected="@(Model.RoleFilter=="Maintenance Staff")">Maintenance Staff (Bảo trì)</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 12.5px; font-weight: 600; color: #475569; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
+                            <i class="bi bi-toggle-on" style="color: #4f46e5;"></i> Trạng thái:
+                        </span>
+                        <select name="StatusFilter" onchange="this.form.submit()" class="form-select"
+                                style="height: 42px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; padding: 0 36px 0 14px; min-width: 155px; background-color: #fff; color: #0f172a; font-weight: 500; cursor: pointer;">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="active" selected="@(Model.StatusFilter=="active")">Đang hoạt động</option>
+                            <option value="inactive" selected="@(Model.StatusFilter=="inactive")">Đã khóa</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="height: 42px; padding: 0 18px; border-radius: 10px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); background: #4f46e5; border-color: #4f46e5; color: #fff;">
+                        <i class="bi bi-funnel-fill"></i> Lọc
+                    </button>
+
+                    @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.RoleFilter) || !string.IsNullOrEmpty(Model.StatusFilter))
+                    {
+                        <a href="/Admin/Users/Index" class="btn btn-secondary" style="height: 42px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569;" title="Đặt lại bộ lọc">
+                            <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
+                        </a>
+                    }
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Users Table -->
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title" style="font-size: 14px;">
-                <i class="bi bi-people" style="color: #4f46e5; margin-right: 6px;"></i>
-                Danh sách tài khoản
-                <span style="font-size: 11px; font-weight: 600; background: #eef2ff; color: #4f46e5; padding: 2px 8px; border-radius: 20px; margin-left: 8px;">
-                    @Model.Users.Count tài khoản
-                </span>
-            </h2>
+    <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
+        <div class="card-header" style="background: #ffffff; padding: 16px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 34px; height: 34px; border-radius: 10px; background: #eef2ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div>
+                    <h2 style="font-size: 14.5px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.2;">
+                        Danh sách tài khoản hệ thống
+                    </h2>
+                    <span style="font-size: 11.5px; color: #64748b;">
+                        Phân quyền và quản lý tài khoản người dùng BATT PPMS
+                    </span>
+                </div>
+            </div>
+            <span style="font-size: 12px; font-weight: 700; background: #eef2ff; color: #4f46e5; padding: 5px 12px; border-radius: 20px; border: 1px solid #e0e7ff;">
+                Tổng số: <strong>@Model.Users.Count</strong> tài khoản
+            </span>
         </div>
-        <div class="table-wrapper">
+        <div class="table-wrapper" style="overflow-x: auto;">
             <table class="data-table">
                 <thead>
                     <tr>
@@ -121,17 +166,6 @@
                             "Warehouse Staff" => "#065f46",
                             _ => "#475569"
                         };
-                        var roleCode = user.RoleName switch {
-                            "Admin" => "A",
-                            "Owner" => "O",
-                            "Manager" => "M",
-                            "Staff" => "S",
-                            "QC Staff" => "QC",
-                            "Maintenance Staff" => "MS",
-                            "Purchasing Staff" => "PS",
-                            "Warehouse Staff" => "WS",
-                            _ => "?"
-                        };
                         <tr>
                             <td style="color: #94a3b8; font-size: 12px; font-weight: 600;">@(idx++)</td>
                             <td>
@@ -153,10 +187,7 @@
                             </td>
                             <td style="font-size: 12px; color: #475569;">@user.Email</td>
                             <td>
-                                <div style="display: flex; flex-direction: column; gap: 1px;">
-                                    <span style="font-size: 12px; font-weight: 700; color: @roleColor;">@user.RoleName</span>
-                                    <span style="font-size: 10px; font-family: monospace; color: #94a3b8; font-weight: 600;">[@roleCode]</span>
-                                </div>
+                                <span style="font-size: 12.5px; font-weight: 700; color: @roleColor;">@user.RoleName</span>
                             </td>
                             <td>
                                 @if (user.IsActive)
@@ -174,7 +205,25 @@
                             </td>
                             <td style="font-size: 12px; color: #94a3b8;">@user.CreatedAt.ToString("dd/MM/yyyy")</td>
                             <td style="text-align: center;">
-                                @if (user.RoleName != "Owner")
+                                @{
+                                    var isSelf = (user.UserId == Model.LoggedInUserId) || 
+                                                 (!string.IsNullOrEmpty(Model.LoggedInUsername) && user.Username.Equals(Model.LoggedInUsername, StringComparison.OrdinalIgnoreCase));
+                                }
+                                @if (isSelf)
+                                {
+                                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                                        <span class="badge" style="background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 6px; border: 1px solid #c7d2fe;" title="Tài khoản Admin của chính bạn (không thể tự khóa)">
+                                            <i class="bi bi-shield-check" style="margin-right: 3px;"></i> Tài khoản của bạn
+                                        </span>
+                                        <button type="button" class="btn btn-xs"
+                                                style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;"
+                                                onclick="openResetModal(@user.UserId, '@user.FullName')"
+                                                title="Đổi mật khẩu">
+                                            <i class="bi bi-key"></i>
+                                        </button>
+                                    </div>
+                                }
+                                else if (user.RoleName != "Owner")
                                 {
                                     <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
                                         <!-- Toggle Lock Button -->

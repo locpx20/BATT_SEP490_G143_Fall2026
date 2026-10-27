@@ -72,26 +72,15 @@
 
         @if (isAdmin)
         {
-            <!-- Tổng quan Điều hành (standalone, Role Admin) -->
+            <!-- Tổng quan Điều hành (Role Admin) -->
             <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
                 <i class="bi bi-grid-fill"></i><span>Tổng quan Điều hành</span>
             </a>
 
-            <!-- 2. HỆ THỐNG & KIỂM TOÁN (Role Admin) -->
-            <div class="nav-group" id="grp-admin">
-                <button class="nav-group-header @(ap is "AuditLogs" or "Users" ? "active" : "")" onclick="toggleGroup('admin')">
-                    <span>Hệ thống &amp; Kiểm toán</span>
-                    <i class="bi bi-chevron-down nav-chevron @(ap is "AuditLogs" or "Users" ? "rotated" : "")" id="chevron-admin"></i>
-                </button>
-                <div class="nav-group-items @(ap is "AuditLogs" or "Users" ? "open" : "")" id="items-admin">
-                    <a class="nav-item @(ap=="AuditLogs"?"active":"")" href="/Admin/AuditLogs/Index">
-                        <i class="bi bi-clock-history"></i><span>Nhật ký Kiểm toán Hệ thống</span>
-                    </a>
-                    <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
-                        <i class="bi bi-people-fill"></i><span>Quản trị Tài khoản &amp; Phân quyền</span>
-                    </a>
-                </div>
-            </div>
+            <!-- Quản trị Tài khoản & Phân quyền (Role Admin - Thẳng hàng với Tổng quan Điều hành) -->
+            <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
+                <i class="bi bi-people-fill"></i><span>Quản trị Tài khoản &amp; Phân quyền</span>
+            </a>
         }
 
         @if (isOwner || isManager)
@@ -171,18 +160,10 @@
                 </div>
             </div>
 
-            <!-- ADMINISTRATION group -->
-            <div class="nav-group" id="grp-admin2">
-                <button class="nav-group-header @(ap=="AuditLogs"?"active":"")" onclick="toggleGroup('admin2')">
-                    <span>Hệ thống &amp; Kiểm toán</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-admin2"></i>
-                </button>
-                <div class="nav-group-items" id="items-admin2">
-                    <a class="nav-item @(ap=="AuditLogs"?"active":"")" href="/Admin/AuditLogs/Index">
-                        <i class="bi bi-clock-history"></i><span>Nhật ký Kiểm toán Hệ thống</span>
-                    </a>
-                </div>
-            </div>
+            <!-- Nhật ký đăng nhập của hệ thống -->
+            <a class="nav-item @(ap=="AuditLogs"?"active":"")" href="/Admin/AuditLogs/Index">
+                <i class="bi bi-clock-history"></i><span>Nhật ký đăng nhập của hệ thống</span>
+            </a>
         }
 
         @if (isStaff)
@@ -337,7 +318,6 @@
                 <i class="bi bi-list"></i>
             </button>
             <span class="topbar-page-title">@ViewData["Title"]</span>
-            <span class="topbar-role-badge">@(isAdmin ? "A" : isOwner ? "O" : isManager ? "M" : isStaff ? "S" : isQC ? "QC" : isPurchasing ? "PS" : isMaintenance ? "MS" : "U")</span>
         </div>
 
         <div class="topbar-right">

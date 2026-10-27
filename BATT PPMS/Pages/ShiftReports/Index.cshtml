@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.ShiftReports.IndexModel
 @{
     ViewData["Title"] = "Báo cáo Ca Sản xuất";
@@ -24,15 +24,23 @@
     }
 
     <!-- Header Section -->
-    <div class="page-header" style="margin-bottom: 20px;">
+    <div class="page-header" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
         <div>
-            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
-                Báo cáo Ca Sản xuất (Giám đốc theo dõi &amp; phê duyệt)
+            <h1 class="page-title" style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 4px; letter-spacing: -0.3px;">
+                Báo cáo Ca Sản xuất
             </h1>
-            <p class="page-subtitle" style="font-size: 12px; color: #64748b;">
-                Ghi nhận NVL thực dùng, sản lượng thực tế ca máy và phê duyệt chất lượng để chuyển LOT sang phòng KCS
+            <p class="page-subtitle" style="font-size: 13px; color: #64748b; margin: 0;">
+                Ghi nhận NVL thực dùng, sản lượng thực tế và phát hành mã LOT cho phòng KCS
             </p>
         </div>
+        @if (Model.CanSubmitReport)
+        {
+            <div class="page-actions">
+                <button type="button" class="btn btn-primary" onclick="openSubmitReportModal()" style="display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-weight: 600; padding: 10px 18px; font-size: 13px;">
+                    <i class="bi bi-plus-lg"></i> Gửi báo cáo ca
+                </button>
+            </div>
+        }
     </div>
 
     <!-- KPI Metric Cards (BATT_PPMSss Style) -->
@@ -143,26 +151,27 @@
 
     <!-- Reports Table -->
     <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-        <div class="table-responsive">
-            <table class="table" style="margin-bottom: 0; vertical-align: middle; font-size: 12px;">
-                <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; color: #475569; font-weight: 700;">
+        <div class="table-wrapper">
+            <table class="data-table" style="width: 100%;">
+                <thead>
                     <tr>
-                        <th style="padding: 14px 16px;">Mã báo cáo</th>
-                        <th style="padding: 14px 16px;">Ngày / Ca làm việc</th>
-                        <th style="padding: 14px 16px; text-align: right;">NVL thực dùng</th>
-                        <th style="padding: 14px 16px; text-align: right;">Sản lượng hoàn thành</th>
-                        <th style="padding: 14px 16px; text-align: center;">Tỷ lệ thu hồi</th>
-                        <th style="padding: 14px 16px;">Trưởng ca / Người báo cáo</th>
-                        <th style="padding: 14px 16px; text-align: center;">Tình trạng sự cố</th>
-                        <th style="padding: 14px 16px; text-align: center;">Trạng thái</th>
-                        <th style="padding: 14px 16px; text-align: center;">Thao tác</th>
+                        <th style="white-space: nowrap;">Mã báo cáo</th>
+                        <th style="white-space: nowrap;">Ngày / Ca</th>
+                        <th style="white-space: nowrap; text-align: right;">NVL thực dùng</th>
+                        <th style="white-space: nowrap; text-align: right;">Sản lượng (kg)</th>
+                        <th style="white-space: nowrap; text-align: center;">Tỷ lệ thu hồi</th>
+                        <th style="white-space: nowrap;">Người báo cáo</th>
+                        <th style="white-space: nowrap;">Mã LOT tạo ra</th>
+                        <th style="white-space: nowrap; text-align: center;">Sự cố</th>
+                        <th style="white-space: nowrap; text-align: center;">Trạng thái</th>
+                        <th style="white-space: nowrap; text-align: center;">Thao tác</th>
                     </tr>
                 </thead>
-                <tbody style="divide-y: 1px solid #f1f5f9;">
+                <tbody>
                     @if (!Model.Reports.Any())
                     {
                         <tr>
-                            <td colspan="9" style="text-align: center; padding: 48px 16px; color: #94a3b8;">
+                            <td colspan="10" style="text-align: center; padding: 48px 16px; color: #94a3b8;">
                                 <i class="bi bi-file-earmark-bar-graph" style="font-size: 36px; display: block; margin-bottom: 8px;"></i>
                                 <span style="font-weight: 600; font-size: 13px;">Không tìm thấy báo cáo ca sản xuất nào</span>
                             </td>
@@ -176,68 +185,78 @@
                             var isApproved = string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase);
                             var isRejected = string.Equals(r.Status, "Rejected", StringComparison.OrdinalIgnoreCase);
 
-                            <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td style="padding: 14px 16px; font-weight: 700; font-family: monospace; color: #0f172a;">
+                            <tr>
+                                <td style="font-weight: 700; font-family: monospace; color: #0f172a; white-space: nowrap;">
                                     @r.Code
                                 </td>
-                                <td style="padding: 14px 16px;">
-                                    <div style="font-weight: 600; color: #1e293b;">@r.ShiftDate.ToString("dd/MM/yyyy")</div>
-                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px;">@r.Shift</div>
+                                <td>
+                                    <div style="font-weight: 600; color: #1e293b; white-space: nowrap;">@r.ShiftDate.ToString("dd/MM/yyyy")</div>
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 2px; white-space: nowrap;">@r.Shift</div>
                                 </td>
-                                <td style="padding: 14px 16px; text-align: right; font-weight: 600; color: #334155;">
+                                <td style="text-align: right; font-weight: 600; color: #334155;">
                                     @(r.RawMaterialUsed > 0 ? r.RawMaterialUsed.ToString("N0") + " kg" : "—")
                                 </td>
-                                <td style="padding: 14px 16px; text-align: right; font-weight: 800; color: #0f172a;">
+                                <td style="text-align: right; font-weight: 800; color: #0f172a;">
                                     @r.ProductionQuantity.ToString("N0") kg
                                 </td>
-                                <td style="padding: 14px 16px; text-align: center;">
+                                <td style="text-align: center;">
                                     @if (r.RecoveryRate > 0)
                                     {
-                                        <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                            <span style="font-weight: 700; color: @(r.RecoveryRate >= 90 ? "#15803d" : r.RecoveryRate >= 85 ? "#b45309" : "#b91c1c");">
-                                                @r.RecoveryRate.ToString("0.0")%
-                                            </span>
-                                        </div>
+                                        <span style="font-weight: 700; color: @(r.RecoveryRate >= 90 ? "#15803d" : r.RecoveryRate >= 85 ? "#b45309" : "#b91c1c");">
+                                            @r.RecoveryRate.ToString("0.0")%
+                                        </span>
                                     }
                                     else
                                     {
                                         <span style="color: #94a3b8;">—</span>
                                     }
                                 </td>
-                                <td style="padding: 14px 16px;">
+                                <td>
                                     <div style="font-weight: 600; color: #0f172a;">@r.StaffName</div>
-                                    <div style="font-size: 11px; color: #94a3b8;">Nộp lúc: @r.CreatedAt.ToString("HH:mm dd/MM")</div>
+                                    <div style="font-size: 11px; color: #94a3b8; white-space: nowrap;">Nộp lúc: @r.CreatedAt.ToString("HH:mm dd/MM")</div>
                                 </td>
-                                <td style="padding: 14px 16px; text-align: center;">
+                                <td>
+                                    @if (!string.IsNullOrEmpty(r.LotCodeGenerated))
+                                    {
+                                        <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; font-family: monospace; font-weight: 700; font-size: 11px;">
+                                            @r.LotCodeGenerated
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: #94a3b8; font-style: italic; font-size: 11px;">Chưa phát hành</span>
+                                    }
+                                </td>
+                                <td style="text-align: center;">
                                     @if (r.HasIncident)
                                     {
-                                        <span class="badge" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 700; padding: 4px 8px; border-radius: 6px;" title="@r.IncidentDescription">
+                                        <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; white-space: nowrap;" title="@r.IncidentDescription">
                                             <i class="bi bi-exclamation-triangle-fill"></i> Có sự cố
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge" style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; font-weight: 600; padding: 4px 8px; border-radius: 6px;">
+                                        <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; white-space: nowrap;">
                                             <i class="bi bi-check-circle-fill"></i> Bình thường
                                         </span>
                                     }
                                 </td>
-                                <td style="padding: 14px 16px; text-align: center;">
+                                <td style="text-align: center;">
                                     @if (isApproved)
                                     {
-                                        <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
+                                        <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; white-space: nowrap;">
                                             <i class="bi bi-check-circle"></i> Đã duyệt
                                         </span>
                                     }
                                     else if (isRejected)
                                     {
-                                        <span class="badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 700; padding: 5px 10px; border-radius: 8px;" title="@r.RejectionReason">
+                                        <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; white-space: nowrap;" title="@r.RejectionReason">
                                             <i class="bi bi-x-circle"></i> Từ chối
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
+                                        <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #fef3c7; color: #b45309; border: 1px solid #fde68a; white-space: nowrap;">
                                             <i class="bi bi-clock"></i> Chờ duyệt
                                         </span>
                                     }
@@ -282,6 +301,83 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL: GỬI BÁO CÁO CA SẢN XUẤT (Production Staff) -->
+@if (Model.CanSubmitReport)
+{
+    <div class="modal fade" id="submitShiftReportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                <form method="post" asp-page-handler="SubmitReport">
+                    <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
+                        <div>
+                            <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #0f172a;">
+                                <i class="bi bi-clipboard-plus" style="color: #4f46e5; margin-right: 8px;"></i>Gửi Báo cáo Ca Sản xuất
+                            </h5>
+                            <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Ghi nhận NVL thực dùng, sản lượng ca và chuyển phê duyệt phát hành mã LOT</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <div class="modal-body" style="padding: 24px;">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Ngày sản xuất <span style="color: #dc2626;">*</span></label>
+                                <input type="date" asp-for="NewShiftDate" class="form-control" required style="border-radius: 8px; font-size: 13px;" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Ca làm việc <span style="color: #dc2626;">*</span></label>
+                                <select asp-for="NewShift" class="form-select" style="border-radius: 8px; font-size: 13px;">
+                                    <option value="Ca 1 (06:00 - 14:00)">Ca 1 (06:00 - 14:00)</option>
+                                    <option value="Ca 2 (14:00 - 22:00)">Ca 2 (14:00 - 22:00)</option>
+                                    <option value="Ca 3 (22:00 - 06:00)">Ca 3 (22:00 - 06:00)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">NVL thực dùng (kg) <span style="color: #dc2626;">*</span></label>
+                                <input type="number" asp-for="NewRawMaterialUsed" class="form-control" min="100" step="50" required placeholder="Lượng mùn cưa xuất vào máy..." style="border-radius: 8px; font-size: 13px; font-weight: 700;" />
+                                <span style="font-size: 11px; color: #64748b; margin-top: 2px; display: block;">Khối lượng nguyên liệu đưa vào băm, sấy</span>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Sản lượng thực tế hoàn thành (kg) <span style="color: #dc2626;">*</span></label>
+                                <input type="number" asp-for="NewProductionQuantity" class="form-control" min="100" step="50" required placeholder="Khối lượng viên nén đóng bao..." style="border-radius: 8px; font-size: 13px; font-weight: 700; color: #16a34a;" />
+                                <span style="font-size: 11px; color: #64748b; margin-top: 2px; display: block;">Khối lượng viên nén gỗ thành phẩm đã cân đóng bao</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" asp-for="NewHasIncident" id="incidentToggle" onchange="toggleIncidentDescription(this.checked)" />
+                                <label class="form-check-label" for="incidentToggle" style="font-size: 12.5px; font-weight: 700; color: #b91c1c;">
+                                    Có phát sinh sự cố máy móc hoặc dừng chuyền trong ca
+                                </label>
+                            </div>
+                            <div id="incidentDescWrapper" style="display: none; margin-top: 10px;">
+                                <label class="form-label" style="font-size: 11.5px; font-weight: 600; color: #b91c1c;">Mô tả chi tiết sự cố:</label>
+                                <textarea asp-for="NewIncidentDescription" class="form-control" rows="2" placeholder="Ví dụ: Nghẹt máy sấy 45 phút, rách băng tải, sự cố biến tần..." style="border-radius: 8px; font-size: 12px;"></textarea>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Ghi chú ca làm việc</label>
+                            <textarea asp-for="NewNote" class="form-control" rows="2" placeholder="Tình hình vận hành, độ ẩm NVL, bàn giao ca tiếp theo..." style="border-radius: 8px; font-size: 12px;"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary" style="border-radius: 8px; font-size: 12px; font-weight: 700; background: #4f46e5; border-color: #4f46e5;">
+                            <i class="bi bi-send-check"></i> Xác nhận Gửi báo cáo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
 
 <!-- MODAL: XEM CHI TIẾT BÁO CÁO CA SẢN XUẤT -->
 <div class="modal fade" id="reportDetailModal" tabindex="-1" aria-hidden="true">
@@ -403,6 +499,15 @@
 
 @section Scripts {
     <script>
+        function openSubmitReportModal() {
+            var modal = new bootstrap.Modal(document.getElementById('submitShiftReportModal'));
+            modal.show();
+        }
+
+        function toggleIncidentDescription(isChecked) {
+            document.getElementById('incidentDescWrapper').style.display = isChecked ? 'block' : 'none';
+        }
+
         function openReportDetailModal(id, code, shiftDate, shift, staffName, rawMat, prodQty, rate, hasIncident, incidentDesc, note, status, rejectReason, canApprove) {
             document.getElementById('modalReportCode').innerText = code;
             document.getElementById('modalShiftDate').innerText = shiftDate;

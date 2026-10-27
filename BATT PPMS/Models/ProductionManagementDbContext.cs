@@ -57,7 +57,7 @@ public partial class ProductionManagementDbContext : DbContext
     {
         modelBuilder.Entity<BrokenEquipmentReport>(entity =>
         {
-            entity.HasKey(e => e.ReportId).HasName("PK__BrokenEq__779B7C5829BFB6FC");
+            entity.HasKey(e => e.ReportId).HasName("PK__BrokenEq__779B7C5899066451");
 
             entity.ToTable("BrokenEquipmentReport");
 
@@ -79,17 +79,17 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.Machine).WithMany(p => p.BrokenEquipmentReports)
                 .HasForeignKey(d => d.MachineId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BrokenEqu__machi__3E530F62");
+                .HasConstraintName("FK__BrokenEqu__machi__6CD828CA");
 
             entity.HasOne(d => d.ReportedByNavigation).WithMany(p => p.BrokenEquipmentReports)
                 .HasForeignKey(d => d.ReportedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BrokenEqu__repor__3F47339B");
+                .HasConstraintName("FK__BrokenEqu__repor__6DCC4D03");
         });
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__CD65CB859D3546F9");
+            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__CD65CB8559A941D7");
 
             entity.ToTable("Customer");
 
@@ -118,12 +118,12 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Customers)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Customer__create__07F6FEB1");
+                .HasConstraintName("FK__Customer__create__367C1819");
         });
 
         modelBuilder.Entity<Delivery>(entity =>
         {
-            entity.HasKey(e => e.DeliveryId).HasName("PK__Delivery__1C5CF4F527FDB80C");
+            entity.HasKey(e => e.DeliveryId).HasName("PK__Delivery__1C5CF4F56F12E9F9");
 
             entity.ToTable("Delivery");
 
@@ -147,17 +147,17 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.ConfirmedByNavigation).WithMany(p => p.Deliveries)
                 .HasForeignKey(d => d.ConfirmedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Delivery__confir__5AEF4E10");
+                .HasConstraintName("FK__Delivery__confir__09746778");
 
             entity.HasOne(d => d.Order).WithMany(p => p.Deliveries)
                 .HasForeignKey(d => d.OrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Delivery__order___59FB29D7");
+                .HasConstraintName("FK__Delivery__order___0880433F");
         });
 
         modelBuilder.Entity<EndOfShiftReport>(entity =>
         {
-            entity.HasKey(e => e.ReportId).HasName("PK__EndOfShi__779B7C585010E4D0");
+            entity.HasKey(e => e.ReportId).HasName("PK__EndOfShi__779B7C58F92EDD2C");
 
             entity.ToTable("EndOfShiftReport");
 
@@ -179,21 +179,21 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.Assignment).WithMany(p => p.EndOfShiftReports)
                 .HasForeignKey(d => d.AssignmentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EndOfShif__assig__35BDC961");
+                .HasConstraintName("FK__EndOfShif__assig__6442E2C9");
 
             entity.HasOne(d => d.Staff).WithMany(p => p.EndOfShiftReports)
                 .HasForeignKey(d => d.StaffId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EndOfShif__staff__36B1ED9A");
+                .HasConstraintName("FK__EndOfShif__staff__65370702");
         });
 
         modelBuilder.Entity<FinishedGoodBatch>(entity =>
         {
-            entity.HasKey(e => e.BatchId).HasName("PK__Finished__DBFC043125DFED0A");
+            entity.HasKey(e => e.BatchId).HasName("PK__Finished__DBFC0431F7A0934E");
 
             entity.ToTable("FinishedGoodBatch");
 
-            entity.HasIndex(e => e.BagNumber, "UQ__Finished__E71695E41FA0F038").IsUnique();
+            entity.HasIndex(e => e.BagNumber, "UQ__Finished__E71695E49F010973").IsUnique();
 
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
             entity.Property(e => e.BagNumber)
@@ -212,16 +212,16 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.FinishedGoodBatches)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__FinishedG__creat__25876198");
+                .HasConstraintName("FK__FinishedG__creat__540C7B00");
         });
 
         modelBuilder.Entity<InventoryItem>(entity =>
         {
-            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__B59ACC496E317D8F");
+            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__B59ACC49F4F5A1A0");
 
             entity.ToTable("InventoryItem");
 
-            entity.HasIndex(e => e.ItemCode, "UQ__Inventor__4A67201E0CCB841C").IsUnique();
+            entity.HasIndex(e => e.ItemCode, "UQ__Inventor__4A67201E81398A55").IsUnique();
 
             entity.Property(e => e.InventoryId).HasColumnName("inventory_id");
             entity.Property(e => e.ItemCode)
@@ -243,11 +243,11 @@ public partial class ProductionManagementDbContext : DbContext
 
         modelBuilder.Entity<Machine>(entity =>
         {
-            entity.HasKey(e => e.MachineId).HasName("PK__Machine__7B75BEA92B1D6C83");
+            entity.HasKey(e => e.MachineId).HasName("PK__Machine__7B75BEA9C637DBF7");
 
             entity.ToTable("Machine");
 
-            entity.HasIndex(e => e.MachineCode, "UQ__Machine__FDCF4D737458467C").IsUnique();
+            entity.HasIndex(e => e.MachineCode, "UQ__Machine__FDCF4D73A268A568").IsUnique();
 
             entity.Property(e => e.MachineId).HasColumnName("machine_id");
             entity.Property(e => e.Brand)
@@ -267,12 +267,12 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Machines)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Machine__created__3A827E7E");
+                .HasConstraintName("FK__Machine__created__690797E6");
         });
 
         modelBuilder.Entity<MaintenanceRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__Maintena__18D3B90F7A47A02E");
+            entity.HasKey(e => e.RequestId).HasName("PK__Maintena__18D3B90FBA9323A5");
 
             entity.ToTable("MaintenanceRequest");
 
@@ -294,22 +294,22 @@ public partial class ProductionManagementDbContext : DbContext
 
             entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.MaintenanceRequestAssignedToNavigations)
                 .HasForeignKey(d => d.AssignedTo)
-                .HasConstraintName("FK__Maintenan__assig__45000CF1");
+                .HasConstraintName("FK__Maintenan__assig__73852659");
 
             entity.HasOne(d => d.BrokenReport).WithMany(p => p.MaintenanceRequests)
                 .HasForeignKey(d => d.BrokenReportId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Maintenan__broke__4317C47F");
+                .HasConstraintName("FK__Maintenan__broke__719CDDE7");
 
             entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.MaintenanceRequestRequestedByNavigations)
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Maintenan__reque__440BE8B8");
+                .HasConstraintName("FK__Maintenan__reque__72910220");
         });
 
         modelBuilder.Entity<MaterialPurchaseRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__Material__18D3B90FA7B4E2CF");
+            entity.HasKey(e => e.RequestId).HasName("PK__Material__18D3B90FD345AB60");
 
             entity.ToTable("MaterialPurchaseRequest");
 
@@ -331,26 +331,26 @@ public partial class ProductionManagementDbContext : DbContext
 
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.MaterialPurchaseRequestApprovedByNavigations)
                 .HasForeignKey(d => d.ApprovedBy)
-                .HasConstraintName("FK__MaterialP__appro__4AB8E647");
+                .HasConstraintName("FK__MaterialP__appro__793DFFAF");
 
             entity.HasOne(d => d.MaintenanceRequest).WithMany(p => p.MaterialPurchaseRequests)
                 .HasForeignKey(d => d.MaintenanceRequestId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__MaterialP__maint__48D09DD5");
+                .HasConstraintName("FK__MaterialP__maint__7755B73D");
 
             entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.MaterialPurchaseRequestRequestedByNavigations)
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__MaterialP__reque__49C4C20E");
+                .HasConstraintName("FK__MaterialP__reque__7849DB76");
         });
 
         modelBuilder.Entity<Order>(entity =>
         {
-            entity.HasKey(e => e.OrderId).HasName("PK__Order__46596229EF0E8FCE");
+            entity.HasKey(e => e.OrderId).HasName("PK__Order__465962292D296CCB");
 
             entity.ToTable("Order");
 
-            entity.HasIndex(e => e.OrderCode, "UQ__Order__99D12D3F39600623").IsUnique();
+            entity.HasIndex(e => e.OrderCode, "UQ__Order__99D12D3F861860DE").IsUnique();
 
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
@@ -378,27 +378,27 @@ public partial class ProductionManagementDbContext : DbContext
 
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.OrderApprovedByNavigations)
                 .HasForeignKey(d => d.ApprovedBy)
-                .HasConstraintName("FK__Order__approved___5165E3D6");
+                .HasConstraintName("FK__Order__approved___7FEAFD3E");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.OrderCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Order__created_b__525A080F");
+                .HasConstraintName("FK__Order__created_b__00DF2177");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Order__customer___4F7D9B64");
+                .HasConstraintName("FK__Order__customer___7E02B4CC");
 
             entity.HasOne(d => d.Inventory).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.InventoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Order__inventory__5071BF9D");
+                .HasConstraintName("FK__Order__inventory__7EF6D905");
         });
 
         modelBuilder.Entity<OrderDetail>(entity =>
         {
-            entity.HasKey(e => e.OrderDetailId).HasName("PK__OrderDet__3C5A408015FE554B");
+            entity.HasKey(e => e.OrderDetailId).HasName("PK__OrderDet__3C5A40800C9EB3D2");
 
             entity.ToTable("OrderDetail");
 
@@ -412,17 +412,17 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.Batch).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.BatchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__OrderDeta__batch__562A98F3");
+                .HasConstraintName("FK__OrderDeta__batch__04AFB25B");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.OrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__OrderDeta__order__553674BA");
+                .HasConstraintName("FK__OrderDeta__order__03BB8E22");
         });
 
         modelBuilder.Entity<PersonnelAssignment>(entity =>
         {
-            entity.HasKey(e => e.AssignmentId).HasName("PK__Personne__DA8918144BFDFB94");
+            entity.HasKey(e => e.AssignmentId).HasName("PK__Personne__DA891814077A8438");
 
             entity.ToTable("PersonnelAssignment");
 
@@ -442,21 +442,21 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.AssignedByNavigation).WithMany(p => p.PersonnelAssignmentAssignedByNavigations)
                 .HasForeignKey(d => d.AssignedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Personnel__assig__30F91444");
+                .HasConstraintName("FK__Personnel__assig__5F7E2DAC");
 
             entity.HasOne(d => d.Staff).WithMany(p => p.PersonnelAssignmentStaffs)
                 .HasForeignKey(d => d.StaffId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Personnel__staff__3004F00B");
+                .HasConstraintName("FK__Personnel__staff__5E8A0973");
         });
 
         modelBuilder.Entity<PurchaseInvoice>(entity =>
         {
-            entity.HasKey(e => e.InvoiceId).HasName("PK__Purchase__F58DFD49986262BC");
+            entity.HasKey(e => e.InvoiceId).HasName("PK__Purchase__F58DFD497A2BBA7C");
 
             entity.ToTable("PurchaseInvoice");
 
-            entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__5ED70A35AA9FAFA1").IsUnique();
+            entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__5ED70A3535712598").IsUnique();
 
             entity.Property(e => e.InvoiceId).HasColumnName("invoice_id");
             entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
@@ -479,22 +479,22 @@ public partial class ProductionManagementDbContext : DbContext
 
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.PurchaseInvoiceApprovedByNavigations)
                 .HasForeignKey(d => d.ApprovedBy)
-                .HasConstraintName("FK__PurchaseI__appro__619C4B9F");
+                .HasConstraintName("FK__PurchaseI__appro__10216507");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.PurchaseInvoiceCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PurchaseI__creat__60A82766");
+                .HasConstraintName("FK__PurchaseI__creat__0F2D40CE");
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.PurchaseInvoices)
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PurchaseI__suppl__5FB4032D");
+                .HasConstraintName("FK__PurchaseI__suppl__0E391C95");
         });
 
         modelBuilder.Entity<PurchaseInvoiceDetail>(entity =>
         {
-            entity.HasKey(e => e.InvoiceDetailId).HasName("PK__Purchase__84908DB630791060");
+            entity.HasKey(e => e.InvoiceDetailId).HasName("PK__Purchase__84908DB613C0EB1C");
 
             entity.ToTable("PurchaseInvoiceDetail");
 
@@ -511,21 +511,21 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.Invoice).WithMany(p => p.PurchaseInvoiceDetails)
                 .HasForeignKey(d => d.InvoiceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PurchaseI__invoi__6478B84A");
+                .HasConstraintName("FK__PurchaseI__invoi__12FDD1B2");
 
             entity.HasOne(d => d.Material).WithMany(p => p.PurchaseInvoiceDetails)
                 .HasForeignKey(d => d.MaterialId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PurchaseI__mater__656CDC83");
+                .HasConstraintName("FK__PurchaseI__mater__13F1F5EB");
         });
 
         modelBuilder.Entity<Qcinspection>(entity =>
         {
-            entity.HasKey(e => e.InspectionId).HasName("PK__QCInspec__C3C4E743FA0ED0F2");
+            entity.HasKey(e => e.InspectionId).HasName("PK__QCInspec__C3C4E743006CC6A2");
 
             entity.ToTable("QCInspection");
 
-            entity.HasIndex(e => e.InspectionCode, "UQ__QCInspec__D84165E666310DEB").IsUnique();
+            entity.HasIndex(e => e.InspectionCode, "UQ__QCInspec__D84165E616C545DA").IsUnique();
 
             entity.Property(e => e.InspectionId).HasColumnName("inspection_id");
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
@@ -552,21 +552,21 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.Batch).WithMany(p => p.Qcinspections)
                 .HasForeignKey(d => d.BatchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__QCInspect__batch__2A4C16B5");
+                .HasConstraintName("FK__QCInspect__batch__58D1301D");
 
             entity.HasOne(d => d.InspectedByNavigation).WithMany(p => p.QcinspectionInspectedByNavigations)
                 .HasForeignKey(d => d.InspectedBy)
-                .HasConstraintName("FK__QCInspect__inspe__2C345F27");
+                .HasConstraintName("FK__QCInspect__inspe__5AB9788F");
 
             entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.QcinspectionRequestedByNavigations)
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__QCInspect__reque__2B403AEE");
+                .HasConstraintName("FK__QCInspect__reque__59C55456");
         });
 
         modelBuilder.Entity<RawMaterial>(entity =>
         {
-            entity.HasKey(e => e.MaterialId).HasName("PK__RawMater__6BFE1D283A04086D");
+            entity.HasKey(e => e.MaterialId).HasName("PK__RawMater__6BFE1D28887BBE9A");
 
             entity.ToTable("RawMaterial");
 
@@ -586,7 +586,7 @@ public partial class ProductionManagementDbContext : DbContext
 
         modelBuilder.Entity<RawMaterialExport>(entity =>
         {
-            entity.HasKey(e => e.ExportId).HasName("PK__RawMater__323057CFA794E08D");
+            entity.HasKey(e => e.ExportId).HasName("PK__RawMater__323057CF4AB86C41");
 
             entity.ToTable("RawMaterialExport");
 
@@ -605,17 +605,17 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.ExportedByNavigation).WithMany(p => p.RawMaterialExports)
                 .HasForeignKey(d => d.ExportedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__expor__20C2AC7B");
+                .HasConstraintName("FK__RawMateri__expor__4F47C5E3");
 
             entity.HasOne(d => d.Material).WithMany(p => p.RawMaterialExports)
                 .HasForeignKey(d => d.MaterialId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__mater__1FCE8842");
+                .HasConstraintName("FK__RawMateri__mater__4E53A1AA");
         });
 
         modelBuilder.Entity<RawMaterialImport>(entity =>
         {
-            entity.HasKey(e => e.ImportId).HasName("PK__RawMater__F3E6B05F0A95A948");
+            entity.HasKey(e => e.ImportId).HasName("PK__RawMater__F3E6B05F25E1D87C");
 
             entity.ToTable("RawMaterialImport");
 
@@ -638,26 +638,26 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.ImportedByNavigation).WithMany(p => p.RawMaterialImports)
                 .HasForeignKey(d => d.ImportedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__impor__1BFDF75E");
+                .HasConstraintName("FK__RawMateri__impor__4A8310C6");
 
             entity.HasOne(d => d.Material).WithMany(p => p.RawMaterialImports)
                 .HasForeignKey(d => d.MaterialId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__mater__1A15AEEC");
+                .HasConstraintName("FK__RawMateri__mater__489AC854");
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.RawMaterialImports)
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__suppl__1B09D325");
+                .HasConstraintName("FK__RawMateri__suppl__498EEC8D");
         });
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Role__760965CCA211D5C4");
+            entity.HasKey(e => e.RoleId).HasName("PK__Role__760965CC8B9AB9BF");
 
             entity.ToTable("Role");
 
-            entity.HasIndex(e => e.RoleName, "UQ__Role__783254B159D34428").IsUnique();
+            entity.HasIndex(e => e.RoleName, "UQ__Role__783254B13E9D29C4").IsUnique();
 
             entity.Property(e => e.RoleId).HasColumnName("role_id");
             entity.Property(e => e.Description).HasColumnName("description");
@@ -668,7 +668,7 @@ public partial class ProductionManagementDbContext : DbContext
 
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__6EE594E8A59C5873");
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__6EE594E87944E9E6");
 
             entity.ToTable("Supplier");
 
@@ -697,16 +697,16 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Suppliers)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Supplier__create__0BC78F95");
+                .HasConstraintName("FK__Supplier__create__3A4CA8FD");
         });
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__User__B9BE370F72CBE9A5");
+            entity.HasKey(e => e.UserId).HasName("PK__User__B9BE370FC707D735");
 
             entity.ToTable("User");
 
-            entity.HasIndex(e => e.Username, "UQ__User__F3DBC5724E1B7A67").IsUnique();
+            entity.HasIndex(e => e.Username, "UQ__User__F3DBC572FE197A53").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.Email)
@@ -736,7 +736,7 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__User__role_id__04266DCD");
+                .HasConstraintName("FK__User__role_id__32AB8735");
         });
 
         OnModelCreatingPartial(modelBuilder);

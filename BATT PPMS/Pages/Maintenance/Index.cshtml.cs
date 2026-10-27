@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -60,6 +60,7 @@ namespace BATT_PPMS.Pages.Maintenance
         public int CompletedCount { get; set; }
 
         public bool CanManage => IsOwner;
+        public bool CanReportFailure => IsStaff || IsOwnerOrManager;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -67,9 +68,16 @@ namespace BATT_PPMS.Pages.Maintenance
         [TempData]
         public string? ErrorMessage { get; set; }
 
+        [BindProperty] public int FailureMachineId { get; set; }
+        [BindProperty] public string FailureSymptoms { get; set; } = string.Empty;
+        [BindProperty] public string FailureSeverity { get; set; } = "High";
+        [BindProperty] public string? FailureDescription { get; set; }
+
+        public List<Machine> AvailableMachines { get; set; } = new();
+
         public async Task<IActionResult> OnGetAsync()
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.MaintenanceStaff);
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.MaintenanceStaff, RoleConstants.Staff);
             if (check != null) return check;
 
             await LoadDataAsync();
@@ -90,9 +98,13 @@ namespace BATT_PPMS.Pages.Maintenance
                 })
                 .ToListAsync();
 
+            // Load available machines for dropdown
+            AvailableMachines = await _context.Machines.OrderBy(m => m.MachineCode).ToListAsync();
+
             // Load maintenance requests with navigation properties
             var query = _context.MaintenanceRequests
                 .Include(m => m.BrokenReport)
+                    .ThenInclude(b => b.Machine)
                 .Include(m => m.RequestedByNavigation)
                 .Include(m => m.AssignedToNavigation)
                 .Include(m => m.MaterialPurchaseRequests)
@@ -115,7 +127,8 @@ namespace BATT_PPMS.Pages.Maintenance
                 var term = SearchTerm.Trim().ToLowerInvariant();
                 filtered = filtered.Where(r =>
                     $"REQ-{r.RequestId:D4}".ToLowerInvariant().Contains(term) ||
-                    (r.BrokenReport?.EquipmentName != null && r.BrokenReport.EquipmentName.ToLowerInvariant().Contains(term)) ||
+                    (r.BrokenReport?.Machine?.MachineName != null && r.BrokenReport.Machine.MachineName.ToLowerInvariant().Contains(term)) ||
+                    (r.BrokenReport?.Machine?.MachineCode != null && r.BrokenReport.Machine.MachineCode.ToLowerInvariant().Contains(term)) ||
                     (NoteTags.Plain(r.Description) != null && NoteTags.Plain(r.Description)!.ToLowerInvariant().Contains(term)) ||
                     (r.RequestedByNavigation?.FullName != null && r.RequestedByNavigation.FullName.ToLowerInvariant().Contains(term)) ||
                     (r.AssignedToNavigation?.FullName != null && r.AssignedToNavigation.FullName.ToLowerInvariant().Contains(term))
@@ -139,7 +152,9 @@ namespace BATT_PPMS.Pages.Maintenance
                 {
                     RequestId = r.RequestId,
                     BrokenReportId = r.BrokenReportId,
-                    EquipmentName = r.BrokenReport?.EquipmentName ?? "Thiết bị nhà máy",
+                    EquipmentName = r.BrokenReport?.Machine != null
+                        ? $"{r.BrokenReport.Machine.MachineCode} - {r.BrokenReport.Machine.MachineName}"
+                        : "Thiết bị nhà máy",
                     Symptoms = !string.IsNullOrWhiteSpace(NoteTags.Plain(r.Description)) ? NoteTags.Plain(r.Description)! : (r.BrokenReport?.Description ?? "Chưa có mô tả hiện tượng"),
                     Priority = !string.IsNullOrWhiteSpace(r.Priority) ? r.Priority : (r.BrokenReport?.Severity ?? "High"),
                     RequestedByStaffId = r.RequestedBy,
@@ -291,6 +306,56 @@ namespace BATT_PPMS.Pages.Maintenance
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã từ chối yêu cầu sửa chữa REQ-{requestId:D4}. Lý do: {rejectionReason.Trim()}";
+            return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+        }
+
+        public async Task<IActionResult> OnPostReportFailureAsync()
+        {
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.Staff, RoleConstants.MaintenanceStaff);
+            if (check != null) return check;
+
+            if (FailureMachineId <= 0 || string.IsNullOrWhiteSpace(FailureSymptoms))
+            {
+                ErrorMessage = "Vui lòng chọn thiết bị bị hỏng và mô tả hiện tượng sự cố.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
+            var currentUserId = CurrentUserId > 0 ? CurrentUserId : 4;
+
+            var machine = await _context.Machines.FindAsync(FailureMachineId);
+            if (machine == null)
+            {
+                ErrorMessage = "Không tìm thấy thiết bị được chọn. Vui lòng thử lại.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
+            var report = new BrokenEquipmentReport
+            {
+                MachineId = FailureMachineId,
+                Description = FailureSymptoms.Trim() + (!string.IsNullOrWhiteSpace(FailureDescription) ? $" | Ghi chú: {FailureDescription.Trim()}" : ""),
+                ReportedBy = currentUserId,
+                ReportDate = DateTime.Now,
+                Status = "Reported",
+                Severity = FailureSeverity
+            };
+
+            _context.BrokenEquipmentReports.Add(report);
+            await _context.SaveChangesAsync();
+
+            var req = new MaintenanceRequest
+            {
+                BrokenReportId = report.ReportId,
+                RequestedBy = currentUserId,
+                RequestDate = DateTime.Now,
+                Status = "Pending",
+                Priority = FailureSeverity,
+                Description = report.Description
+            };
+
+            _context.MaintenanceRequests.Add(req);
+            await _context.SaveChangesAsync();
+
+            SuccessMessage = $"Báo cáo sự cố thành công cho thiết bị '{machine.MachineCode} - {machine.MachineName}' (Mã: REQ-{req.RequestId:D4}). Kỹ thuật viên sẽ được tiếp nhận và xử lý.";
             return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
         }
     }

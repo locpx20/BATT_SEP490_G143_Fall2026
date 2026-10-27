@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Maintenance.IndexModel
 @{
     ViewData["Title"] = "Sự cố & Bảo trì Cơ điện";
@@ -24,15 +24,23 @@
     }
 
     <!-- Header Section -->
-    <div class="page-header" style="margin-bottom: 20px;">
+    <div class="page-header" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
         <div>
             <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
-                Sự cố &amp; Bảo trì Cơ điện (Giám đốc Quản lý &amp; Phân công)
+                Sự cố &amp; Bảo trì Cơ điện
             </h1>
-            <p class="page-subtitle" style="font-size: 12px; color: #64748b;">
-                Tiếp nhận sự cố máy móc 1 bước, chỉ định kỹ thuật viên phụ trách và nghiệm thu an toàn kỹ thuật trước khi tái vận hành
+            <p class="page-subtitle" style="font-size: 12px; color: #64748b; margin: 0;">
+                Báo cáo sự cố máy móc, phân công kỹ thuật viên phụ trách và nghiệm thu an toàn kỹ thuật
             </p>
         </div>
+        @if (Model.CanReportFailure)
+        {
+            <div class="page-actions">
+                <button type="button" class="btn btn-danger" onclick="openReportFailureModal()" style="display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-weight: 600; padding: 10px 18px; font-size: 13px;">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Báo cáo sự cố máy
+                </button>
+            </div>
+        }
     </div>
 
     <!-- KPI Metric Cards (BATT_PPMSss Style) -->
@@ -512,6 +520,66 @@
     </div>
 </div>
 
+<!-- MODAL: BÁO CÁO SỰ CỐ MÁY MÓC / THIẾT BỊ (Production Staff) -->
+@if (Model.CanReportFailure)
+{
+    <div class="modal fade" id="reportFailureModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                <form method="post" asp-page-handler="ReportFailure">
+                    <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
+                        <div>
+                            <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #b91c1c;">
+                                <i class="bi bi-exclamation-triangle-fill" style="margin-right: 8px;"></i>Báo cáo Sự cố Máy móc
+                            </h5>
+                            <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Ghi nhận sự cố thiết bị dây chuyền sản xuất để điều động kỹ thuật viên</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 24px;">
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Thiết bị / Máy móc gặp sự cố <span style="color: #dc2626;">*</span></label>
+                            <select asp-for="FailureMachineId" class="form-select" required style="font-size: 12.5px; border-radius: 8px;">
+                                <option value="0">-- Chọn máy móc dây chuyền --</option>
+                                @foreach (var m in Model.AvailableMachines)
+                                {
+                                    <option value="@m.MachineId">@m.MachineCode - @m.MachineName (@m.ProcessName)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Mức độ nghiêm trọng <span style="color: #dc2626;">*</span></label>
+                            <select asp-for="FailureSeverity" class="form-select" style="font-size: 12.5px; border-radius: 8px;">
+                                <option value="Critical">Khẩn cấp — Dừng toàn bộ chuyền sản xuất</option>
+                                <option value="High" selected>Mức độ cao — Nguy cơ hỏng cụm máy chính</option>
+                                <option value="Medium">Trung bình — Hoạt động rung giật, giảm tải</option>
+                                <option value="Low">Thấp — Cần kiểm tra bảo dưỡng định kỳ</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Hiện tượng / Triệu chứng hư hỏng <span style="color: #dc2626;">*</span></label>
+                            <textarea asp-for="FailureSymptoms" class="form-control" rows="3" required placeholder="Ví dụ: Rung lắc mạnh ở ổ bi chính trục lăn, nhiệt độ gối đỡ tăng quá 85°C..." style="font-size: 12px; border-radius: 10px;"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Ghi chú thêm</label>
+                            <textarea asp-for="FailureDescription" class="form-control" rows="2" placeholder="Thời điểm bắt đầu phát sinh, biện pháp sơ bộ đã xử lý..." style="font-size: 12px; border-radius: 8px;"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
+                            <i class="bi bi-send-exclamation"></i> Gửi báo cáo sự cố
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <script>
         function openRequestDetailModal(id, code, equip, symptoms, priority, reporter, technician, reqDate, status, compNote, rejReason, canManage) {
@@ -635,6 +703,14 @@
             document.getElementById('rejectReqModalCode').innerText = code;
             var modal = new bootstrap.Modal(document.getElementById('rejectRequestModal'));
             modal.show();
+        }
+
+        function openReportFailureModal() {
+            var modalEl = document.getElementById('reportFailureModal');
+            if (modalEl) {
+                var modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }
         }
     </script>
 }

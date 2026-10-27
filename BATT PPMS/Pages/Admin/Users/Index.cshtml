@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Admin.Users.IndexModel
 @{
     ViewData["Title"] = "Quản trị Tài khoản & Phân quyền";
@@ -10,7 +10,9 @@
     <!-- Page Header -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">Quản trị Tài khoản &amp; Phân quyền</h1>
+            <h1 class="page-title">
+                <i class="bi bi-people-fill" style="color: #4f46e5; margin-right: 8px;"></i>Quản trị Tài khoản &amp; Phân quyền
+            </h1>
             <p class="page-subtitle">Quản lý tài khoản người dùng, vai trò và trạng thái hoạt động trong hệ thống nội bộ BATT PPMS</p>
         </div>
         <div class="page-actions">
@@ -20,16 +22,6 @@
         </div>
     </div>
 
-    <!-- Admin Isolation Banner -->
-    <div style="background: linear-gradient(135deg,#eff6ff,#f0fdf4); border: 1px solid #bfdbfe; border-left: 4px solid #4f46e5; border-radius: 10px; padding: 14px 18px; display: flex; gap: 12px; align-items: flex-start;">
-        <i class="bi bi-shield-check" style="font-size: 20px; color: #4f46e5; flex-shrink: 0; margin-top: 1px;"></i>
-        <div>
-            <p style="font-size: 13px; font-weight: 700; color: #1e40af; margin: 0 0 3px;">Chính sách Cách ly Quản trị (Admin Isolation)</p>
-            <p style="font-size: 12px; color: #475569; margin: 0; line-height: 1.6;">
-                Admin chỉ quản trị tài khoản người dùng và kiểm tra tính toàn vẹn hệ thống. Quyền Admin <strong>không bao gồm</strong> xem dữ liệu tài chính, doanh thu, giá bán hoặc thao tác phê duyệt nghiệp vụ sản xuất.
-            </p>
-        </div>
-    </div>
 
     <!-- Alerts -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
@@ -44,38 +36,6 @@
             <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
         </div>
     }
-
-    <!-- Stat Cards -->
-    <div class="stat-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
-        <div class="stat-card">
-            <div class="stat-icon indigo"><i class="bi bi-people-fill"></i></div>
-            <div>
-                <div class="stat-number">@Model.Users.Count</div>
-                <div class="stat-label">Tổng tài khoản</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="bi bi-person-check-fill"></i></div>
-            <div>
-                <div class="stat-number">@Model.Users.Count(u => u.IsActive)</div>
-                <div class="stat-label">Đang hoạt động</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon red"><i class="bi bi-person-lock"></i></div>
-            <div>
-                <div class="stat-number">@Model.Users.Count(u => !u.IsActive)</div>
-                <div class="stat-label">Đã khóa</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon violet"><i class="bi bi-person-badge-fill"></i></div>
-            <div>
-                <div class="stat-number">@Model.Users.Select(u => u.RoleName).Distinct().Count()</div>
-                <div class="stat-label">Vai trò được cấp</div>
-            </div>
-        </div>
-    </div>
 
     <!-- Filter + Search -->
     <div class="card" style="overflow: visible;">
@@ -106,12 +66,7 @@
                 <button type="submit" class="btn btn-secondary">
                     <i class="bi bi-funnel"></i> Lọc
                 </button>
-                @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.RoleFilter) || !string.IsNullOrEmpty(Model.StatusFilter))
-                {
-                    <a href="/Admin/Users/Index" class="btn btn-outline btn-sm">
-                        <i class="bi bi-x"></i> Xóa lọc
-                    </a>
-                }
+
             </form>
         </div>
     </div>

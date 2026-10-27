@@ -92,9 +92,9 @@ namespace BATT_PPMS.Pages.Maintenance
 
             // Load maintenance requests with navigation properties
             var query = _context.MaintenanceRequests
-                .Include(m => m.BrokenEquipmentReport)
-                .Include(m => m.Requester)
-                .Include(m => m.Assignee)
+                .Include(m => m.BrokenReport)
+                .Include(m => m.RequestedByNavigation)
+                .Include(m => m.AssignedToNavigation)
                 .Include(m => m.MaterialPurchaseRequests)
                 .AsNoTracking()
                 .AsQueryable();
@@ -115,10 +115,10 @@ namespace BATT_PPMS.Pages.Maintenance
                 var term = SearchTerm.Trim().ToLowerInvariant();
                 filtered = filtered.Where(r =>
                     $"REQ-{r.RequestId:D4}".ToLowerInvariant().Contains(term) ||
-                    (r.BrokenEquipmentReport?.EquipmentName != null && r.BrokenEquipmentReport.EquipmentName.ToLowerInvariant().Contains(term)) ||
-                    (r.Description != null && r.Description.ToLowerInvariant().Contains(term)) ||
-                    (r.Requester?.FullName != null && r.Requester.FullName.ToLowerInvariant().Contains(term)) ||
-                    (r.Assignee?.FullName != null && r.Assignee.FullName.ToLowerInvariant().Contains(term))
+                    (r.BrokenReport?.EquipmentName != null && r.BrokenReport.EquipmentName.ToLowerInvariant().Contains(term)) ||
+                    (NoteTags.Plain(r.Description) != null && NoteTags.Plain(r.Description)!.ToLowerInvariant().Contains(term)) ||
+                    (r.RequestedByNavigation?.FullName != null && r.RequestedByNavigation.FullName.ToLowerInvariant().Contains(term)) ||
+                    (r.AssignedToNavigation?.FullName != null && r.AssignedToNavigation.FullName.ToLowerInvariant().Contains(term))
                 );
             }
 
@@ -139,17 +139,18 @@ namespace BATT_PPMS.Pages.Maintenance
                 {
                     RequestId = r.RequestId,
                     BrokenReportId = r.BrokenReportId,
-                    EquipmentName = r.BrokenEquipmentReport?.EquipmentName ?? "Thiết bị nhà máy",
-                    Symptoms = !string.IsNullOrWhiteSpace(r.Description) ? r.Description : (r.BrokenEquipmentReport?.Description ?? "Chưa có mô tả hiện tượng"),
-                    Priority = !string.IsNullOrWhiteSpace(r.Priority) ? r.Priority : (r.BrokenEquipmentReport?.Severity ?? "High"),
+                    EquipmentName = r.BrokenReport?.EquipmentName ?? "Thiết bị nhà máy",
+                    Symptoms = !string.IsNullOrWhiteSpace(NoteTags.Plain(r.Description)) ? NoteTags.Plain(r.Description)! : (r.BrokenReport?.Description ?? "Chưa có mô tả hiện tượng"),
+                    Priority = !string.IsNullOrWhiteSpace(r.Priority) ? r.Priority : (r.BrokenReport?.Severity ?? "High"),
                     RequestedByStaffId = r.RequestedBy,
-                    RequestedByName = r.Requester?.FullName ?? "Công nhân vận hành",
+                    RequestedByName = r.RequestedByNavigation?.FullName ?? "Công nhân vận hành",
                     AssignedToStaffId = r.AssignedTo,
-                    AssignedStaffName = r.Assignee?.FullName,
+                    AssignedStaffName = r.AssignedToNavigation?.FullName,
                     RequestDate = r.RequestDate,
-                    Status = r.Status,
-                    CompletionNote = r.CompletionNote,
-                    RejectionReason = r.RejectionReason,
+                    Status = r.Status ?? "Pending",
+                    // Schema mới không có cột CompletionNote / RejectionReason: đọc từ dòng gắn thẻ trong Description
+                    CompletionNote = NoteTags.Get(r.Description, NoteTags.Completed),
+                    RejectionReason = NoteTags.Get(r.Description, NoteTags.Rejected),
                     MaterialRequestsCount = r.MaterialPurchaseRequests?.Count ?? 0
                 })
                 .ToList();
@@ -173,15 +174,30 @@ namespace BATT_PPMS.Pages.Maintenance
                 return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
             }
 
-            var staff = await _context.Users.FindAsync(assignedStaffId);
-            if (staff == null)
+            if (!string.Equals(request.Status, "Pending", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(request.Status, "Reported", StringComparison.OrdinalIgnoreCase))
             {
-                ErrorMessage = "Không tìm thấy nhân viên được phân công.";
+                ErrorMessage = $"Yêu cầu REQ-{requestId:D4} đang ở trạng thái '{request.Status}', không thể phân công.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
+            var priorityError = InputValidator.Status(priority, StatusSets.PriorityLevels, "Độ ưu tiên");
+            if (priorityError != null)
+            {
+                ErrorMessage = priorityError;
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
+            var staff = await _context.Users.FindAsync(assignedStaffId);
+            if (staff == null || staff.Status != StatusConstants.Active)
+            {
+                ErrorMessage = "Không tìm thấy nhân viên được phân công hoặc tài khoản đã bị khóa.";
                 return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
             }
 
             request.AssignedTo = assignedStaffId;
             request.Status = "InProgress";
+            request.Description = NoteTags.Remove(request.Description, NoteTags.Rejected);
             if (!string.IsNullOrWhiteSpace(priority))
             {
                 request.Priority = priority;
@@ -210,8 +226,23 @@ namespace BATT_PPMS.Pages.Maintenance
                 return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
             }
 
+            if (!string.Equals(request.Status, "InProgress", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(request.Status, "In Progress", StringComparison.OrdinalIgnoreCase))
+            {
+                ErrorMessage = $"Chỉ nghiệm thu được yêu cầu đang sửa chữa (hiện tại: '{request.Status}').";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
+            var noteError = InputValidator.Text(completionNote, "Ghi chú nghiệm thu", 500);
+            if (noteError != null)
+            {
+                ErrorMessage = noteError;
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
             request.Status = "Completed";
-            request.CompletionNote = string.IsNullOrWhiteSpace(completionNote) ? "Nghiệm thu máy chạy thử đạt chuẩn, đảm bảo an toàn kỹ thuật." : completionNote.Trim();
+            request.Description = NoteTags.Set(request.Description, NoteTags.Completed,
+                string.IsNullOrWhiteSpace(completionNote) ? "Nghiệm thu máy chạy thử đạt chuẩn, đảm bảo an toàn kỹ thuật." : completionNote.Trim());
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã nghiệm thu hoàn thành sửa chữa cho yêu cầu REQ-{requestId:D4}. Thiết bị sẵn sàng vận hành.";
@@ -242,11 +273,24 @@ namespace BATT_PPMS.Pages.Maintenance
                 return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
             }
 
+            var reasonError = InputValidator.Text(rejectionReason, "Lý do từ chối", 500);
+            if (reasonError != null)
+            {
+                ErrorMessage = reasonError;
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
+            if (string.Equals(request.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+            {
+                ErrorMessage = "Không thể từ chối yêu cầu đã hoàn thành.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+
             request.Status = "Rejected";
-            request.RejectionReason = rejectionReason.Trim();
+            request.Description = NoteTags.Set(request.Description, NoteTags.Rejected, rejectionReason.Trim());
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã từ chối yêu cầu sửa chữa REQ-{requestId:D4}. Lý do: {request.RejectionReason}";
+            SuccessMessage = $"Đã từ chối yêu cầu sửa chữa REQ-{requestId:D4}. Lý do: {rejectionReason.Trim()}";
             return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
         }
     }

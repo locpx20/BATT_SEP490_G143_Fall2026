@@ -38,7 +38,7 @@ namespace BATT_PPMS.Pages.Dashboard
             TodayDeliveries = await _context.Deliveries
                 .CountAsync(d => d.PickupDate.Date == DateTime.Today);
 
-            PendingQC = await _context.QCInspections
+            PendingQC = await _context.Qcinspections
                 .CountAsync(q => q.Status == StatusConstants.Pending);
 
             BrokenEquipment = await _context.BrokenEquipmentReports

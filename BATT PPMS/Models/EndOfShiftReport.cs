@@ -1,54 +1,27 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class EndOfShiftReport
 {
-    [Table("EndOfShiftReport")]
-    public class EndOfShiftReport
-    {
-        [Key]
-        [Column("report_id")]
-        public int ReportId { get; set; }
+    public int ReportId { get; set; }
 
-        [Required]
-        [Column("staff_id")]
-        public int StaffId { get; set; }
+    public int AssignmentId { get; set; }
 
-        [Required]
-        [Column("shift_date")]
-        public DateOnly ShiftDate { get; set; }
+    public int StaffId { get; set; }
 
-        [Required]
-        [Column("production_quantity")]
-        public int ProductionQuantity { get; set; }
+    public DateOnly ShiftDate { get; set; }
 
-        [Column("note")]
-        public string? Note { get; set; }
+    public int ProductionQuantity { get; set; }
 
-        [MaxLength(50)]
-        [Column("status")]
-        public string Status { get; set; } = "Submitted";
+    public string? Note { get; set; }
 
-        [Column("created_at")]
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public string? Status { get; set; }
 
-        [MaxLength(50)]
-        [Column("shift")]
-        public string? Shift { get; set; }
+    public DateTime? CreatedAt { get; set; }
 
-        [Column("raw_material_used")]
-        public int? RawMaterialUsed { get; set; }
+    public virtual PersonnelAssignment Assignment { get; set; } = null!;
 
-        [Column("has_incident")]
-        public bool? HasIncident { get; set; }
-
-        [Column("incident_description")]
-        public string? IncidentDescription { get; set; }
-
-        [Column("rejection_reason")]
-        public string? RejectionReason { get; set; }
-
-        [ForeignKey("StaffId")]
-        public User? Staff { get; set; }
-    }
+    public virtual User Staff { get; set; } = null!;
 }

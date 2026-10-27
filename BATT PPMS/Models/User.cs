@@ -1,48 +1,65 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class User
 {
-    [Table("User")]
-    public class User
-    {
-        [Key]
-        [Column("user_id")]
-        public int UserId { get; set; }
+    public int UserId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        [Column("username")]
-        public string Username { get; set; } = string.Empty;
+    public string Username { get; set; } = null!;
 
-        [Required]
-        [MaxLength(255)]
-        [Column("password")]
-        public string Password { get; set; } = string.Empty;
+    public string Password { get; set; } = null!;
 
-        [Required]
-        [MaxLength(100)]
-        [Column("full_name")]
-        public string FullName { get; set; } = string.Empty;
+    public string FullName { get; set; } = null!;
 
-        [Required]
-        [Column("role_id")]
-        public int RoleId { get; set; }
+    public string? Status { get; set; }
 
-        [MaxLength(20)]
-        [Column("phone")]
-        public string? Phone { get; set; }
+    public string? Phone { get; set; }
 
-        [MaxLength(100)]
-        [Column("email")]
-        public string? Email { get; set; }
+    public string? Email { get; set; }
 
-        [MaxLength(20)]
-        [Column("status")]
-        public string Status { get; set; } = "Active";
+    public int RoleId { get; set; }
 
-        // Navigation
-        [ForeignKey("RoleId")]
-        public Role? Role { get; set; }
-    }
+    public virtual ICollection<BrokenEquipmentReport> BrokenEquipmentReports { get; set; } = new List<BrokenEquipmentReport>();
+
+    public virtual ICollection<Customer> Customers { get; set; } = new List<Customer>();
+
+    public virtual ICollection<Delivery> Deliveries { get; set; } = new List<Delivery>();
+
+    public virtual ICollection<EndOfShiftReport> EndOfShiftReports { get; set; } = new List<EndOfShiftReport>();
+
+    public virtual ICollection<FinishedGoodBatch> FinishedGoodBatches { get; set; } = new List<FinishedGoodBatch>();
+
+    public virtual ICollection<MaintenanceRequest> MaintenanceRequestAssignedToNavigations { get; set; } = new List<MaintenanceRequest>();
+
+    public virtual ICollection<MaintenanceRequest> MaintenanceRequestRequestedByNavigations { get; set; } = new List<MaintenanceRequest>();
+
+    public virtual ICollection<MaterialPurchaseRequest> MaterialPurchaseRequestApprovedByNavigations { get; set; } = new List<MaterialPurchaseRequest>();
+
+    public virtual ICollection<MaterialPurchaseRequest> MaterialPurchaseRequestRequestedByNavigations { get; set; } = new List<MaterialPurchaseRequest>();
+
+    public virtual ICollection<Order> OrderApprovedByNavigations { get; set; } = new List<Order>();
+
+    public virtual ICollection<Order> OrderCreatedByNavigations { get; set; } = new List<Order>();
+
+    public virtual ICollection<PersonnelAssignment> PersonnelAssignmentAssignedByNavigations { get; set; } = new List<PersonnelAssignment>();
+
+    public virtual ICollection<PersonnelAssignment> PersonnelAssignmentStaffs { get; set; } = new List<PersonnelAssignment>();
+
+    public virtual ICollection<PurchaseInvoice> PurchaseInvoiceApprovedByNavigations { get; set; } = new List<PurchaseInvoice>();
+
+    public virtual ICollection<PurchaseInvoice> PurchaseInvoiceCreatedByNavigations { get; set; } = new List<PurchaseInvoice>();
+
+    public virtual ICollection<Qcinspection> QcinspectionInspectedByNavigations { get; set; } = new List<Qcinspection>();
+
+    public virtual ICollection<Qcinspection> QcinspectionRequestedByNavigations { get; set; } = new List<Qcinspection>();
+
+    public virtual ICollection<RawMaterialExport> RawMaterialExports { get; set; } = new List<RawMaterialExport>();
+
+    public virtual ICollection<RawMaterialImport> RawMaterialImports { get; set; } = new List<RawMaterialImport>();
+
+    public virtual Role Role { get; set; } = null!;
+
+    public virtual ICollection<Supplier> Suppliers { get; set; } = new List<Supplier>();
 }

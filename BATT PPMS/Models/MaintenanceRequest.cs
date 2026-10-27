@@ -1,56 +1,31 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
 
-namespace BATT_PPMS.Models
+namespace BATT_PPMS.Models;
+
+public partial class MaintenanceRequest
 {
-    [Table("MaintenanceRequest")]
-    public class MaintenanceRequest
-    {
-        [Key]
-        [Column("request_id")]
-        public int RequestId { get; set; }
+    public int RequestId { get; set; }
 
-        [Required]
-        [Column("broken_report_id")]
-        public int BrokenReportId { get; set; }
+    public int BrokenReportId { get; set; }
 
-        [Required]
-        [Column("requested_by")]
-        public int RequestedBy { get; set; }
+    public int RequestedBy { get; set; }
 
-        [Column("assigned_to")]
-        public int? AssignedTo { get; set; }
+    public int? AssignedTo { get; set; }
 
-        [Required]
-        [Column("request_date")]
-        public DateTime RequestDate { get; set; }
+    public DateTime RequestDate { get; set; }
 
-        [MaxLength(50)]
-        [Column("status")]
-        public string Status { get; set; } = "Pending";
+    public string? Status { get; set; }
 
-        [MaxLength(20)]
-        [Column("priority")]
-        public string? Priority { get; set; }
+    public string? Priority { get; set; }
 
-        [Column("description")]
-        public string? Description { get; set; }
+    public string? Description { get; set; }
 
-        [Column("completion_note")]
-        public string? CompletionNote { get; set; }
+    public virtual User? AssignedToNavigation { get; set; }
 
-        [Column("rejection_reason")]
-        public string? RejectionReason { get; set; }
+    public virtual BrokenEquipmentReport BrokenReport { get; set; } = null!;
 
-        [ForeignKey("BrokenReportId")]
-        public BrokenEquipmentReport? BrokenEquipmentReport { get; set; }
+    public virtual ICollection<MaterialPurchaseRequest> MaterialPurchaseRequests { get; set; } = new List<MaterialPurchaseRequest>();
 
-        [ForeignKey("RequestedBy")]
-        public User? Requester { get; set; }
-
-        [ForeignKey("AssignedTo")]
-        public User? Assignee { get; set; }
-
-        public ICollection<MaterialPurchaseRequest> MaterialPurchaseRequests { get; set; } = new List<MaterialPurchaseRequest>();
-    }
+    public virtual User RequestedByNavigation { get; set; } = null!;
 }

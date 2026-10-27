@@ -1,38 +1,62 @@
 ﻿@page
+@using BATT_PPMS.Pages.Orders
 @model BATT_PPMS.Pages.Orders.IndexModel
 @{
-    ViewData["Title"] = "Quản lý Đơn hàng";
+    ViewData["Title"] = "Quản lý đơn hàng xuất kho";
     ViewData["ActivePage"] = "OrderList";
+}
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success" style="border-radius:12px;">
+        <i class="bi bi-check-circle-fill" style="margin-right:8px;"></i><span>@Model.SuccessMessage</span>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i><span>@Model.ErrorMessage</span>
+    </div>
 }
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Quản lý Đơn hàng</h1>
-        <p class="page-subtitle">Danh sách các đơn hàng trong hệ thống</p>
+        <h1 class="page-title">Quản lý đơn hàng xuất kho</h1>
+        <p class="page-subtitle">@Model.TotalCount đơn hàng@(string.IsNullOrWhiteSpace(Model.SearchTerm) && string.IsNullOrWhiteSpace(Model.Status) ? "" : " phù hợp bộ lọc")</p>
     </div>
-    <div class="page-actions">
-        <a href="/Orders/Create" class="btn btn-primary" id="btn-create-order">
-            <i class="bi bi-plus-lg"></i> Tạo đơn hàng
-        </a>
-    </div>
+    @if (Model.CanManage)
+    {
+        <div class="page-actions">
+            <a href="/Orders/Create" class="btn btn-primary" id="btn-create-order">
+                <i class="bi bi-plus-lg"></i> Tạo đơn hàng
+            </a>
+        </div>
+    }
 </div>
 
 <div class="card">
     <div class="card-header">
-        <div class="filter-bar" style="margin-bottom:0; flex:1;">
-            <div class="search-input" style="position:relative;">
+        <form method="get" class="filter-bar" style="margin-bottom:0;flex:1;">
+            <div style="position:relative;">
                 <i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;"></i>
-                <input type="text" class="form-control" style="padding-left:36px;" placeholder="Tìm kiếm đơn hàng..." id="searchOrder" />
+                <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control" style="padding-left:36px;"
+                       placeholder="Tìm theo mã đơn hoặc khách hàng..." id="searchOrder" />
             </div>
-            <select class="form-control" style="width:auto;" id="filterStatus">
+            <select class="form-control" style="width:auto;" name="Status" id="filterStatus" onchange="this.form.submit()">
                 <option value="">Tất cả trạng thái</option>
-                <option value="Pending">Chờ duyệt</option>
-                <option value="Approved">Đã duyệt</option>
-                <option value="Rejected">Từ chối</option>
-                <option value="Completed">Hoàn thành</option>
+                @foreach (var s in OrderWorkflow.AllStatuses)
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@OrderWorkflow.Label(s)</option>
+                }
             </select>
-        </div>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Lọc</button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.Status))
+            {
+                <a href="/Orders/Index" class="btn btn-secondary">Xóa lọc</a>
+            }
+        </form>
     </div>
+
     <div class="table-wrapper">
         <table class="data-table">
             <thead>
@@ -55,38 +79,50 @@
                         <td colspan="9">
                             <div class="empty-state">
                                 <i class="bi bi-clipboard-x"></i>
-                                <h3>Chưa có đơn hàng nào</h3>
-                                <p>Nhấn "Tạo đơn hàng" để bắt đầu</p>
+                                <h3>Không có đơn hàng nào</h3>
+                                @if (Model.CanManage)
+                                {
+                                    <p>Nhấn "Tạo đơn hàng" để bắt đầu</p>
+                                }
                             </div>
                         </td>
                     </tr>
                 }
-                @foreach (var (order, index) in Model.Orders.Select((o, i) => (o, i + 1)))
+                @{ var rowNo = (Model.PageNumber - 1) * IndexModel.PageSize; }
+                @foreach (var order in Model.Orders)
                 {
+                    rowNo++;
                     <tr>
-                        <td>@index</td>
+                        <td>@rowNo</td>
                         <td><strong>@order.OrderCode</strong></td>
-                        <td>@order.Customer?.CustomerName</td>
-                        <td>@order.InventoryItem?.ItemName</td>
-                        <td>@order.Quantity</td>
+                        <td>@order.Customer.CustomerName</td>
+                        <td>@order.Inventory.ItemName</td>
+                        <td>@order.Quantity.ToString("N0") @order.Inventory.Unit</td>
                         <td>@order.TotalAmount.ToString("N0") ₫</td>
-                        <td>@order.OrderDate.ToString("dd/MM/yyyy")</td>
-                        <td>
-                            <span class="badge @(order.Status == "Pending" ? "badge-pending" : order.Status == "Approved" ? "badge-approved" : order.Status == "Rejected" ? "badge-rejected" : "badge-completed")">
-                                @order.Status
-                            </span>
-                        </td>
-                        <td>
-                            <a href="/Orders/Detail?id=@order.OrderId" class="btn btn-sm btn-outline" title="Xem chi tiết">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="/Orders/Edit?id=@order.OrderId" class="btn btn-sm btn-outline" title="Chỉnh sửa">
-                                <i class="bi bi-pencil"></i>
-                            </a>
+                        <td>@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="badge @OrderWorkflow.Badge(order.Status)">@OrderWorkflow.Label(order.Status)</span></td>
+                        <td style="white-space:nowrap;">
+                            <a href="/Orders/Detail?id=@order.OrderId" class="btn btn-sm btn-outline" title="Xem chi tiết"><i class="bi bi-eye"></i></a>
+                            @if (Model.CanManage && OrderWorkflow.CanModify(order.Status))
+                            {
+                                <a href="/Orders/Edit?id=@order.OrderId" class="btn btn-sm btn-outline" title="Chỉnh sửa"><i class="bi bi-pencil"></i></a>
+                                <a href="/Orders/Delete?id=@order.OrderId" class="btn btn-sm btn-outline" title="Xóa" style="color:#b91c1c;"><i class="bi bi-trash"></i></a>
+                            }
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
     </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pagination" style="padding:14px;">
+            @for (var p = 1; p <= Model.TotalPages; p++)
+            {
+                <a class="page-link @(p == Model.PageNumber ? "active" : "")"
+                   href="/Orders/Index?PageNumber=@p&SearchTerm=@Uri.EscapeDataString(Model.SearchTerm ?? "")&Status=@Uri.EscapeDataString(Model.Status ?? "")">@p</a>
+            }
+        </div>
+    }
 </div>

@@ -1,0 +1,17 @@
+﻿@page
+@model BATT_PPMS.Pages.Orders.EditModel
+@{
+    ViewData["Title"] = "Cập nhật đơn hàng xuất kho";
+    ViewData["ActivePage"] = "OrderList";
+    ViewData["CancelUrl"] = $"/Orders/Detail?id={Model.OrderId}";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Cập nhật đơn hàng <span style="color:var(--primary);">@Model.EditingOrderCode</span></h1>
+        <p class="page-subtitle">Chỉ có thể chỉnh sửa khi đơn còn ở trạng thái Chờ duyệt.</p>
+    </div>
+    <a href="/Orders/Detail?id=@Model.OrderId" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+</div>
+
+<partial name="_OrderForm" model="Model" />

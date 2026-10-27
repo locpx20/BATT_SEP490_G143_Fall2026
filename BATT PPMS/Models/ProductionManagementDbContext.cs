@@ -23,6 +23,8 @@ public partial class ProductionManagementDbContext : DbContext
 
     public virtual DbSet<InventoryItem> InventoryItems { get; set; }
 
+    public virtual DbSet<Machine> Machines { get; set; }
+
     public virtual DbSet<MaintenanceRequest> MaintenanceRequests { get; set; }
 
     public virtual DbSet<MaterialPurchaseRequest> MaterialPurchaseRequests { get; set; }
@@ -55,56 +57,50 @@ public partial class ProductionManagementDbContext : DbContext
     {
         modelBuilder.Entity<BrokenEquipmentReport>(entity =>
         {
-            entity.HasKey(e => e.ReportId).HasName("PK__BrokenEq__779B7C586643EB5D");
+            entity.HasKey(e => e.ReportId).HasName("PK__BrokenEq__779B7C5829BFB6FC");
 
             entity.ToTable("BrokenEquipmentReport");
 
             entity.Property(e => e.ReportId).HasColumnName("report_id");
-            entity.Property(e => e.Description)
-                .IsUnicode(false)
-                .HasColumnName("description");
-            entity.Property(e => e.EquipmentName)
-                .HasMaxLength(100)
-                .IsUnicode(false)
-                .HasColumnName("equipment_name");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.MachineId).HasColumnName("machine_id");
             entity.Property(e => e.ReportDate)
                 .HasColumnType("datetime")
                 .HasColumnName("report_date");
             entity.Property(e => e.ReportedBy).HasColumnName("reported_by");
             entity.Property(e => e.Severity)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasColumnName("severity");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Reported")
                 .HasColumnName("status");
+
+            entity.HasOne(d => d.Machine).WithMany(p => p.BrokenEquipmentReports)
+                .HasForeignKey(d => d.MachineId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__BrokenEqu__machi__3E530F62");
 
             entity.HasOne(d => d.ReportedByNavigation).WithMany(p => p.BrokenEquipmentReports)
                 .HasForeignKey(d => d.ReportedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BrokenEqu__repor__39A368DE");
+                .HasConstraintName("FK__BrokenEqu__repor__3F47339B");
         });
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__CD65CB85371A6FC8");
+            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__CD65CB859D3546F9");
 
             entity.ToTable("Customer");
 
             entity.Property(e => e.CustomerId).HasColumnName("customer_id");
-            entity.Property(e => e.Address)
-                .IsUnicode(false)
-                .HasColumnName("address");
+            entity.Property(e => e.Address).HasColumnName("address");
             entity.Property(e => e.ContactPerson)
                 .HasMaxLength(100)
-                .IsUnicode(false)
                 .HasColumnName("contact_person");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.CustomerName)
                 .HasMaxLength(100)
-                .IsUnicode(false)
                 .HasColumnName("customer_name");
             entity.Property(e => e.Email)
                 .HasMaxLength(100)
@@ -116,19 +112,18 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnName("phone");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasDefaultValue("Active")
                 .HasColumnName("status");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Customers)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Customer__create__76E18148");
+                .HasConstraintName("FK__Customer__create__07F6FEB1");
         });
 
         modelBuilder.Entity<Delivery>(entity =>
         {
-            entity.HasKey(e => e.DeliveryId).HasName("PK__Delivery__1C5CF4F5688A8D9F");
+            entity.HasKey(e => e.DeliveryId).HasName("PK__Delivery__1C5CF4F527FDB80C");
 
             entity.ToTable("Delivery");
 
@@ -136,16 +131,13 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.ConfirmedBy).HasColumnName("confirmed_by");
             entity.Property(e => e.DeliveryStatus)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Prepared")
                 .HasColumnName("delivery_status");
             entity.Property(e => e.DriverName)
                 .HasMaxLength(100)
-                .IsUnicode(false)
                 .HasColumnName("driver_name");
             entity.Property(e => e.LicensePlate)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasColumnName("license_plate");
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.PickupDate)
@@ -155,17 +147,17 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.ConfirmedByNavigation).WithMany(p => p.Deliveries)
                 .HasForeignKey(d => d.ConfirmedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Delivery__confir__35D2D7FA");
+                .HasConstraintName("FK__Delivery__confir__5AEF4E10");
 
             entity.HasOne(d => d.Order).WithMany(p => p.Deliveries)
                 .HasForeignKey(d => d.OrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Delivery__order___34DEB3C1");
+                .HasConstraintName("FK__Delivery__order___59FB29D7");
         });
 
         modelBuilder.Entity<EndOfShiftReport>(entity =>
         {
-            entity.HasKey(e => e.ReportId).HasName("PK__EndOfShi__779B7C58B3F0299E");
+            entity.HasKey(e => e.ReportId).HasName("PK__EndOfShi__779B7C585010E4D0");
 
             entity.ToTable("EndOfShiftReport");
 
@@ -175,41 +167,37 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
                 .HasColumnName("created_at");
-            entity.Property(e => e.Note)
-                .IsUnicode(false)
-                .HasColumnName("note");
+            entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.ProductionQuantity).HasColumnName("production_quantity");
             entity.Property(e => e.ShiftDate).HasColumnName("shift_date");
             entity.Property(e => e.StaffId).HasColumnName("staff_id");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Submitted")
                 .HasColumnName("status");
 
             entity.HasOne(d => d.Assignment).WithMany(p => p.EndOfShiftReports)
                 .HasForeignKey(d => d.AssignmentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EndOfShif__assig__24A84BF8");
+                .HasConstraintName("FK__EndOfShif__assig__35BDC961");
 
             entity.HasOne(d => d.Staff).WithMany(p => p.EndOfShiftReports)
                 .HasForeignKey(d => d.StaffId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EndOfShif__staff__259C7031");
+                .HasConstraintName("FK__EndOfShif__staff__36B1ED9A");
         });
 
         modelBuilder.Entity<FinishedGoodBatch>(entity =>
         {
-            entity.HasKey(e => e.BatchId).HasName("PK__Finished__DBFC0431190A0F20");
+            entity.HasKey(e => e.BatchId).HasName("PK__Finished__DBFC043125DFED0A");
 
             entity.ToTable("FinishedGoodBatch");
 
-            entity.HasIndex(e => e.BagNumber, "UQ__Finished__E71695E48169652C").IsUnique();
+            entity.HasIndex(e => e.BagNumber, "UQ__Finished__E71695E41FA0F038").IsUnique();
 
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
             entity.Property(e => e.BagNumber)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasColumnName("bag_number");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.ProductionDate).HasColumnName("production_date");
@@ -218,61 +206,82 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnName("quantity");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("In Stock")
                 .HasColumnName("status");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.FinishedGoodBatches)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__FinishedG__creat__1471E42F");
+                .HasConstraintName("FK__FinishedG__creat__25876198");
         });
 
         modelBuilder.Entity<InventoryItem>(entity =>
         {
-            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__B59ACC4959E5281B");
+            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__B59ACC496E317D8F");
 
             entity.ToTable("InventoryItem");
 
-            entity.HasIndex(e => e.ItemCode, "UQ__Inventor__4A67201E77AB0E0A").IsUnique();
+            entity.HasIndex(e => e.ItemCode, "UQ__Inventor__4A67201E0CCB841C").IsUnique();
 
             entity.Property(e => e.InventoryId).HasColumnName("inventory_id");
             entity.Property(e => e.ItemCode)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasColumnName("item_code");
             entity.Property(e => e.ItemName)
                 .HasMaxLength(100)
-                .IsUnicode(false)
                 .HasColumnName("item_name");
             entity.Property(e => e.MinQuantity).HasColumnName("min_quantity");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasDefaultValue("Available")
                 .HasColumnName("status");
             entity.Property(e => e.Unit)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasColumnName("unit");
+        });
+
+        modelBuilder.Entity<Machine>(entity =>
+        {
+            entity.HasKey(e => e.MachineId).HasName("PK__Machine__7B75BEA92B1D6C83");
+
+            entity.ToTable("Machine");
+
+            entity.HasIndex(e => e.MachineCode, "UQ__Machine__FDCF4D737458467C").IsUnique();
+
+            entity.Property(e => e.MachineId).HasColumnName("machine_id");
+            entity.Property(e => e.Brand)
+                .HasMaxLength(100)
+                .HasColumnName("brand");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.MachineCode)
+                .HasMaxLength(50)
+                .HasColumnName("machine_code");
+            entity.Property(e => e.MachineName)
+                .HasMaxLength(100)
+                .HasColumnName("machine_name");
+            entity.Property(e => e.ProcessName)
+                .HasMaxLength(100)
+                .HasColumnName("process_name");
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Machines)
+                .HasForeignKey(d => d.CreatedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Machine__created__3A827E7E");
         });
 
         modelBuilder.Entity<MaintenanceRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__Maintena__18D3B90FEDED129C");
+            entity.HasKey(e => e.RequestId).HasName("PK__Maintena__18D3B90F7A47A02E");
 
             entity.ToTable("MaintenanceRequest");
 
             entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.AssignedTo).HasColumnName("assigned_to");
             entity.Property(e => e.BrokenReportId).HasColumnName("broken_report_id");
-            entity.Property(e => e.Description)
-                .IsUnicode(false)
-                .HasColumnName("description");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.Priority)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasColumnName("priority");
             entity.Property(e => e.RequestDate)
                 .HasColumnType("datetime")
@@ -280,28 +289,27 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.RequestedBy).HasColumnName("requested_by");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Pending")
                 .HasColumnName("status");
 
             entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.MaintenanceRequestAssignedToNavigations)
                 .HasForeignKey(d => d.AssignedTo)
-                .HasConstraintName("FK__Maintenan__assig__3F5C4234");
+                .HasConstraintName("FK__Maintenan__assig__45000CF1");
 
             entity.HasOne(d => d.BrokenReport).WithMany(p => p.MaintenanceRequests)
                 .HasForeignKey(d => d.BrokenReportId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Maintenan__broke__3D73F9C2");
+                .HasConstraintName("FK__Maintenan__broke__4317C47F");
 
             entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.MaintenanceRequestRequestedByNavigations)
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Maintenan__reque__3E681DFB");
+                .HasConstraintName("FK__Maintenan__reque__440BE8B8");
         });
 
         modelBuilder.Entity<MaterialPurchaseRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__Material__18D3B90F36671B1A");
+            entity.HasKey(e => e.RequestId).HasName("PK__Material__18D3B90FA7B4E2CF");
 
             entity.ToTable("MaterialPurchaseRequest");
 
@@ -309,7 +317,6 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
             entity.Property(e => e.ItemName)
                 .HasMaxLength(100)
-                .IsUnicode(false)
                 .HasColumnName("item_name");
             entity.Property(e => e.MaintenanceRequestId).HasColumnName("maintenance_request_id");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
@@ -319,32 +326,31 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.RequestedBy).HasColumnName("requested_by");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Pending")
                 .HasColumnName("status");
 
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.MaterialPurchaseRequestApprovedByNavigations)
                 .HasForeignKey(d => d.ApprovedBy)
-                .HasConstraintName("FK__MaterialP__appro__45151B8A");
+                .HasConstraintName("FK__MaterialP__appro__4AB8E647");
 
             entity.HasOne(d => d.MaintenanceRequest).WithMany(p => p.MaterialPurchaseRequests)
                 .HasForeignKey(d => d.MaintenanceRequestId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__MaterialP__maint__432CD318");
+                .HasConstraintName("FK__MaterialP__maint__48D09DD5");
 
             entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.MaterialPurchaseRequestRequestedByNavigations)
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__MaterialP__reque__4420F751");
+                .HasConstraintName("FK__MaterialP__reque__49C4C20E");
         });
 
         modelBuilder.Entity<Order>(entity =>
         {
-            entity.HasKey(e => e.OrderId).HasName("PK__Order__4659622981F92C85");
+            entity.HasKey(e => e.OrderId).HasName("PK__Order__46596229EF0E8FCE");
 
             entity.ToTable("Order");
 
-            entity.HasIndex(e => e.OrderCode, "UQ__Order__99D12D3FCD69B1B0").IsUnique();
+            entity.HasIndex(e => e.OrderCode, "UQ__Order__99D12D3F39600623").IsUnique();
 
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
@@ -353,18 +359,14 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.InventoryId).HasColumnName("inventory_id");
             entity.Property(e => e.OrderCode)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasColumnName("order_code");
             entity.Property(e => e.OrderDate)
                 .HasColumnType("datetime")
                 .HasColumnName("order_date");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
-            entity.Property(e => e.RejectionReason)
-                .IsUnicode(false)
-                .HasColumnName("rejection_reason");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Pending")
                 .HasColumnName("status");
             entity.Property(e => e.TotalAmount)
@@ -376,27 +378,27 @@ public partial class ProductionManagementDbContext : DbContext
 
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.OrderApprovedByNavigations)
                 .HasForeignKey(d => d.ApprovedBy)
-                .HasConstraintName("FK__Order__approved___2C496DC0");
+                .HasConstraintName("FK__Order__approved___5165E3D6");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.OrderCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Order__created_b__2D3D91F9");
+                .HasConstraintName("FK__Order__created_b__525A080F");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Order__customer___2A61254E");
+                .HasConstraintName("FK__Order__customer___4F7D9B64");
 
             entity.HasOne(d => d.Inventory).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.InventoryId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Order__inventory__2B554987");
+                .HasConstraintName("FK__Order__inventory__5071BF9D");
         });
 
         modelBuilder.Entity<OrderDetail>(entity =>
         {
-            entity.HasKey(e => e.OrderDetailId).HasName("PK__OrderDet__3C5A40807CAEE4DD");
+            entity.HasKey(e => e.OrderDetailId).HasName("PK__OrderDet__3C5A408015FE554B");
 
             entity.ToTable("OrderDetail");
 
@@ -410,17 +412,17 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.Batch).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.BatchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__OrderDeta__batch__310E22DD");
+                .HasConstraintName("FK__OrderDeta__batch__562A98F3");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.OrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__OrderDeta__order__3019FEA4");
+                .HasConstraintName("FK__OrderDeta__order__553674BA");
         });
 
         modelBuilder.Entity<PersonnelAssignment>(entity =>
         {
-            entity.HasKey(e => e.AssignmentId).HasName("PK__Personne__DA8918140E9498F6");
+            entity.HasKey(e => e.AssignmentId).HasName("PK__Personne__DA8918144BFDFB94");
 
             entity.ToTable("PersonnelAssignment");
 
@@ -429,53 +431,45 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.AssignmentDate).HasColumnName("assignment_date");
             entity.Property(e => e.Shift)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasColumnName("shift");
             entity.Property(e => e.StaffId).HasColumnName("staff_id");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Assigned")
                 .HasColumnName("status");
-            entity.Property(e => e.TaskDescription)
-                .IsUnicode(false)
-                .HasColumnName("task_description");
+            entity.Property(e => e.TaskDescription).HasColumnName("task_description");
 
             entity.HasOne(d => d.AssignedByNavigation).WithMany(p => p.PersonnelAssignmentAssignedByNavigations)
                 .HasForeignKey(d => d.AssignedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Personnel__assig__1FE396DB");
+                .HasConstraintName("FK__Personnel__assig__30F91444");
 
             entity.HasOne(d => d.Staff).WithMany(p => p.PersonnelAssignmentStaffs)
                 .HasForeignKey(d => d.StaffId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Personnel__staff__1EEF72A2");
+                .HasConstraintName("FK__Personnel__staff__3004F00B");
         });
 
         modelBuilder.Entity<PurchaseInvoice>(entity =>
         {
-            entity.HasKey(e => e.InvoiceId).HasName("PK__Purchase__F58DFD493ED1D0D9");
+            entity.HasKey(e => e.InvoiceId).HasName("PK__Purchase__F58DFD49986262BC");
 
             entity.ToTable("PurchaseInvoice");
 
-            entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__5ED70A35BF9A5EC3").IsUnique();
+            entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__5ED70A35AA9FAFA1").IsUnique();
 
             entity.Property(e => e.InvoiceId).HasColumnName("invoice_id");
             entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.InvoiceCode)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasColumnName("invoice_code");
-            entity.Property(e => e.Note)
-                .IsUnicode(false)
-                .HasColumnName("note");
+            entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.PurchaseDate)
                 .HasColumnType("datetime")
                 .HasColumnName("purchase_date");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Pending")
                 .HasColumnName("status");
             entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
@@ -485,22 +479,22 @@ public partial class ProductionManagementDbContext : DbContext
 
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.PurchaseInvoiceApprovedByNavigations)
                 .HasForeignKey(d => d.ApprovedBy)
-                .HasConstraintName("FK__PurchaseI__appro__4BC21919");
+                .HasConstraintName("FK__PurchaseI__appro__619C4B9F");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.PurchaseInvoiceCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PurchaseI__creat__4ACDF4E0");
+                .HasConstraintName("FK__PurchaseI__creat__60A82766");
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.PurchaseInvoices)
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PurchaseI__suppl__49D9D0A7");
+                .HasConstraintName("FK__PurchaseI__suppl__5FB4032D");
         });
 
         modelBuilder.Entity<PurchaseInvoiceDetail>(entity =>
         {
-            entity.HasKey(e => e.InvoiceDetailId).HasName("PK__Purchase__84908DB6C60A9B9C");
+            entity.HasKey(e => e.InvoiceDetailId).HasName("PK__Purchase__84908DB630791060");
 
             entity.ToTable("PurchaseInvoiceDetail");
 
@@ -517,21 +511,21 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.Invoice).WithMany(p => p.PurchaseInvoiceDetails)
                 .HasForeignKey(d => d.InvoiceId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PurchaseI__invoi__4E9E85C4");
+                .HasConstraintName("FK__PurchaseI__invoi__6478B84A");
 
             entity.HasOne(d => d.Material).WithMany(p => p.PurchaseInvoiceDetails)
                 .HasForeignKey(d => d.MaterialId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PurchaseI__mater__4F92A9FD");
+                .HasConstraintName("FK__PurchaseI__mater__656CDC83");
         });
 
         modelBuilder.Entity<Qcinspection>(entity =>
         {
-            entity.HasKey(e => e.InspectionId).HasName("PK__QCInspec__C3C4E743E533FC3D");
+            entity.HasKey(e => e.InspectionId).HasName("PK__QCInspec__C3C4E743FA0ED0F2");
 
             entity.ToTable("QCInspection");
 
-            entity.HasIndex(e => e.InspectionCode, "UQ__QCInspec__D84165E6C0436F27").IsUnique();
+            entity.HasIndex(e => e.InspectionCode, "UQ__QCInspec__D84165E666310DEB").IsUnique();
 
             entity.Property(e => e.InspectionId).HasColumnName("inspection_id");
             entity.Property(e => e.BatchId).HasColumnName("batch_id");
@@ -541,43 +535,38 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.InspectedBy).HasColumnName("inspected_by");
             entity.Property(e => e.InspectionCode)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasColumnName("inspection_code");
-            entity.Property(e => e.Note)
-                .IsUnicode(false)
-                .HasColumnName("note");
+            entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.RequestDate)
                 .HasColumnType("datetime")
                 .HasColumnName("request_date");
             entity.Property(e => e.RequestedBy).HasColumnName("requested_by");
             entity.Property(e => e.Result)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasColumnName("result");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasDefaultValue("Pending")
                 .HasColumnName("status");
 
             entity.HasOne(d => d.Batch).WithMany(p => p.Qcinspections)
                 .HasForeignKey(d => d.BatchId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__QCInspect__batch__1936994C");
+                .HasConstraintName("FK__QCInspect__batch__2A4C16B5");
 
             entity.HasOne(d => d.InspectedByNavigation).WithMany(p => p.QcinspectionInspectedByNavigations)
                 .HasForeignKey(d => d.InspectedBy)
-                .HasConstraintName("FK__QCInspect__inspe__1B1EE1BE");
+                .HasConstraintName("FK__QCInspect__inspe__2C345F27");
 
             entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.QcinspectionRequestedByNavigations)
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__QCInspect__reque__1A2ABD85");
+                .HasConstraintName("FK__QCInspect__reque__2B403AEE");
         });
 
         modelBuilder.Entity<RawMaterial>(entity =>
         {
-            entity.HasKey(e => e.MaterialId).HasName("PK__RawMater__6BFE1D28B46CC657");
+            entity.HasKey(e => e.MaterialId).HasName("PK__RawMater__6BFE1D283A04086D");
 
             entity.ToTable("RawMaterial");
 
@@ -587,19 +576,17 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnName("current_quantity");
             entity.Property(e => e.MaterialName)
                 .HasMaxLength(100)
-                .IsUnicode(false)
-                .HasDefaultValue("Nguyên li?u s?n xu?t chính")
+                .HasDefaultValue("Nguyên liệu sản xuất chính")
                 .HasColumnName("material_name");
             entity.Property(e => e.Unit)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasDefaultValue("kg")
                 .HasColumnName("unit");
         });
 
         modelBuilder.Entity<RawMaterialExport>(entity =>
         {
-            entity.HasKey(e => e.ExportId).HasName("PK__RawMater__323057CF5707B163");
+            entity.HasKey(e => e.ExportId).HasName("PK__RawMater__323057CFA794E08D");
 
             entity.ToTable("RawMaterialExport");
 
@@ -610,9 +597,7 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnName("export_date");
             entity.Property(e => e.ExportedBy).HasColumnName("exported_by");
             entity.Property(e => e.MaterialId).HasColumnName("material_id");
-            entity.Property(e => e.Note)
-                .IsUnicode(false)
-                .HasColumnName("note");
+            entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.Quantity)
                 .HasColumnType("decimal(12, 2)")
                 .HasColumnName("quantity");
@@ -620,17 +605,17 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.ExportedByNavigation).WithMany(p => p.RawMaterialExports)
                 .HasForeignKey(d => d.ExportedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__expor__0FAD2F12");
+                .HasConstraintName("FK__RawMateri__expor__20C2AC7B");
 
             entity.HasOne(d => d.Material).WithMany(p => p.RawMaterialExports)
                 .HasForeignKey(d => d.MaterialId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__mater__0EB90AD9");
+                .HasConstraintName("FK__RawMateri__mater__1FCE8842");
         });
 
         modelBuilder.Entity<RawMaterialImport>(entity =>
         {
-            entity.HasKey(e => e.ImportId).HasName("PK__RawMater__F3E6B05F53C4056E");
+            entity.HasKey(e => e.ImportId).HasName("PK__RawMater__F3E6B05F0A95A948");
 
             entity.ToTable("RawMaterialImport");
 
@@ -641,9 +626,7 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnName("import_date");
             entity.Property(e => e.ImportedBy).HasColumnName("imported_by");
             entity.Property(e => e.MaterialId).HasColumnName("material_id");
-            entity.Property(e => e.Note)
-                .IsUnicode(false)
-                .HasColumnName("note");
+            entity.Property(e => e.Note).HasColumnName("note");
             entity.Property(e => e.Quantity)
                 .HasColumnType("decimal(12, 2)")
                 .HasColumnName("quantity");
@@ -655,50 +638,44 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasOne(d => d.ImportedByNavigation).WithMany(p => p.RawMaterialImports)
                 .HasForeignKey(d => d.ImportedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__impor__0AE879F5");
+                .HasConstraintName("FK__RawMateri__impor__1BFDF75E");
 
             entity.HasOne(d => d.Material).WithMany(p => p.RawMaterialImports)
                 .HasForeignKey(d => d.MaterialId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__mater__09003183");
+                .HasConstraintName("FK__RawMateri__mater__1A15AEEC");
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.RawMaterialImports)
                 .HasForeignKey(d => d.SupplierId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RawMateri__suppl__09F455BC");
+                .HasConstraintName("FK__RawMateri__suppl__1B09D325");
         });
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Role__760965CCF451A7FF");
+            entity.HasKey(e => e.RoleId).HasName("PK__Role__760965CCA211D5C4");
 
             entity.ToTable("Role");
 
-            entity.HasIndex(e => e.RoleName, "UQ__Role__783254B1C432CBC1").IsUnique();
+            entity.HasIndex(e => e.RoleName, "UQ__Role__783254B159D34428").IsUnique();
 
             entity.Property(e => e.RoleId).HasColumnName("role_id");
-            entity.Property(e => e.Description)
-                .IsUnicode(false)
-                .HasColumnName("description");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.RoleName)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasColumnName("role_name");
         });
 
         modelBuilder.Entity<Supplier>(entity =>
         {
-            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__6EE594E8CBD7D0C1");
+            entity.HasKey(e => e.SupplierId).HasName("PK__Supplier__6EE594E8A59C5873");
 
             entity.ToTable("Supplier");
 
             entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
-            entity.Property(e => e.Address)
-                .IsUnicode(false)
-                .HasColumnName("address");
+            entity.Property(e => e.Address).HasColumnName("address");
             entity.Property(e => e.ContactPerson)
                 .HasMaxLength(100)
-                .IsUnicode(false)
                 .HasColumnName("contact_person");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.Email)
@@ -711,27 +688,25 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnName("phone");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasDefaultValue("Active")
                 .HasColumnName("status");
             entity.Property(e => e.SupplierName)
                 .HasMaxLength(100)
-                .IsUnicode(false)
                 .HasColumnName("supplier_name");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Suppliers)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Supplier__create__7AB2122C");
+                .HasConstraintName("FK__Supplier__create__0BC78F95");
         });
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__User__B9BE370F773D5C07");
+            entity.HasKey(e => e.UserId).HasName("PK__User__B9BE370F72CBE9A5");
 
             entity.ToTable("User");
 
-            entity.HasIndex(e => e.Username, "UQ__User__F3DBC572CE8B5CD6").IsUnique();
+            entity.HasIndex(e => e.Username, "UQ__User__F3DBC5724E1B7A67").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.Email)
@@ -740,7 +715,6 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnName("email");
             entity.Property(e => e.FullName)
                 .HasMaxLength(100)
-                .IsUnicode(false)
                 .HasColumnName("full_name");
             entity.Property(e => e.Password)
                 .HasMaxLength(255)
@@ -753,18 +727,16 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.RoleId).HasColumnName("role_id");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
-                .IsUnicode(false)
                 .HasDefaultValue("Active")
                 .HasColumnName("status");
             entity.Property(e => e.Username)
                 .HasMaxLength(50)
-                .IsUnicode(false)
                 .HasColumnName("username");
 
             entity.HasOne(d => d.Role).WithMany(p => p.Users)
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__User__role_id__7310F064");
+                .HasConstraintName("FK__User__role_id__04266DCD");
         });
 
         OnModelCreatingPartial(modelBuilder);

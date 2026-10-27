@@ -7,7 +7,7 @@ public partial class BrokenEquipmentReport
 {
     public int ReportId { get; set; }
 
-    public string EquipmentName { get; set; } = null!;
+    public int MachineId { get; set; }
 
     public string? Description { get; set; }
 
@@ -18,6 +18,8 @@ public partial class BrokenEquipmentReport
     public string? Status { get; set; }
 
     public string? Severity { get; set; }
+
+    public virtual Machine Machine { get; set; } = null!;
 
     public virtual ICollection<MaintenanceRequest> MaintenanceRequests { get; set; } = new List<MaintenanceRequest>();
 

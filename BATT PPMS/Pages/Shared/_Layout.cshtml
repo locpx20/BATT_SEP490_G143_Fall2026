@@ -16,7 +16,7 @@
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";
     var fullName        = Context.Session.GetString("FullName") ?? "User";
-    bool isAdmin        = roleName == "Admin";
+    bool isAdmin        = roleName == "Admin System";
     bool isOwner        = roleName == "Owner";
     bool isManager      = roleName == "Manager";
     bool isStaff        = roleName == "Staff";
@@ -35,7 +35,7 @@
 
     // Role display
     string roleDisplay = roleName switch {
-        "Admin"             => "Quản trị viên",
+        "Admin System"             => "Quản trị viên",
         "Owner"             => "Chủ nhà máy",
         "Manager"           => "Quản lý Vận hành",
         "Staff"             => "Nhân viên Sản xuất",

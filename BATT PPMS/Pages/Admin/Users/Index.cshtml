@@ -5,15 +5,52 @@
     ViewData["ActivePage"] = "Users";
 }
 
+@section Styles {
+    <style>
+        .admin-page-title {
+            font-size: 32px !important;
+            font-weight: 700 !important;
+            line-height: 1.25 !important;
+            letter-spacing: -0.6px !important;
+            color: #0f172a !important;
+            margin-bottom: 6px !important;
+        }
+        @@media (max-width: 575px) {
+            .admin-page-title {
+                font-size: 26px !important;
+            }
+        }
+        .btn-edit-account {
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+            width: 32px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 14px;
+        }
+        .btn-edit-account:hover {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border-color: #93c5fd;
+        }
+    </style>
+}
+
 <div class="space-y-6">
 
     <!-- Page Header -->
-    <div class="page-header">
+    <div class="page-header" style="margin-bottom: 24px;">
         <div>
-            <h1 class="page-title">
-                <i class="bi bi-people-fill" style="color: #4f46e5; margin-right: 8px;"></i>Quản trị Tài khoản &amp; Phân quyền
+            <h1 class="page-title admin-page-title">
+                <i class="bi bi-people heading-icon" aria-hidden="true"></i>Quản trị Tài khoản &amp; Phân quyền
             </h1>
-            <p class="page-subtitle">Quản lý tài khoản người dùng, vai trò và trạng thái hoạt động trong hệ thống nội bộ BATT PPMS</p>
+            <p class="page-subtitle" style="color: #64748b; font-size: 13px; line-height: 1.6; margin: 0;">Quản lý tài khoản người dùng, vai trò và trạng thái hoạt động trong hệ thống nội bộ BATT PPMS</p>
         </div>
         <div class="page-actions">
             <button type="button" class="btn btn-primary" onclick="showModal('createUserModal')">
@@ -21,7 +58,6 @@
             </button>
         </div>
     </div>
-
 
     <!-- Alerts -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
@@ -156,7 +192,7 @@
                     @foreach (var user in Model.Users)
                     {
                         var roleColor = user.RoleName switch {
-                            "Admin" => "#7c3aed",
+                            "Admin" or "Admin System" => "#7c3aed",
                             "Owner" => "#b45309",
                             "Manager" => "#1d4ed8",
                             "Staff" => "#0f766e",
@@ -166,6 +202,8 @@
                             "Warehouse Staff" => "#065f46",
                             _ => "#475569"
                         };
+                        var isSelf = (user.UserId == Model.LoggedInUserId) || 
+                                     (!string.IsNullOrEmpty(Model.LoggedInUsername) && user.Username.Equals(Model.LoggedInUsername, StringComparison.OrdinalIgnoreCase));
                         <tr>
                             <td style="color: #94a3b8; font-size: 12px; font-weight: 600;">@(idx++)</td>
                             <td>
@@ -205,27 +243,45 @@
                             </td>
                             <td style="font-size: 12px; color: #94a3b8;">@user.CreatedAt.ToString("dd/MM/yyyy")</td>
                             <td style="text-align: center;">
-                                @{
-                                    var isSelf = (user.UserId == Model.LoggedInUserId) || 
-                                                 (!string.IsNullOrEmpty(Model.LoggedInUsername) && user.Username.Equals(Model.LoggedInUsername, StringComparison.OrdinalIgnoreCase));
-                                }
                                 @if (isSelf)
                                 {
-                                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
-                                        <span class="badge" style="background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 6px; border: 1px solid #c7d2fe;" title="Tài khoản Admin của chính bạn (không thể tự khóa)">
+                                    <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                                        <span class="badge" style="background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 6px; border: 1px solid #c7d2fe;" title="Tài khoản Admin của chính bạn">
                                             <i class="bi bi-shield-check" style="margin-right: 3px;"></i> Tài khoản của bạn
                                         </span>
-                                        <button type="button" class="btn btn-xs"
-                                                style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;"
-                                                onclick="openResetModal(@user.UserId, '@user.FullName')"
-                                                title="Đổi mật khẩu">
-                                            <i class="bi bi-key"></i>
+                                        <button type="button" class="btn-edit-account"
+                                                data-user-id="@user.UserId"
+                                                data-full-name="@user.FullName"
+                                                data-username="@user.Username"
+                                                data-email="@user.Email"
+                                                data-phone="@user.PhoneNumber"
+                                                data-role-id="@user.RoleId"
+                                                data-role-name="@user.RoleName"
+                                                data-is-self="true"
+                                                onclick="handleEditUserClick(this)"
+                                                title="Chỉnh sửa thông tin & đổi mật khẩu">
+                                            <i class="bi bi-pencil-square"></i>
                                         </button>
                                     </div>
                                 }
-                                else if (user.RoleName != "Owner")
+                                else
                                 {
-                                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                                    <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                                        <!-- Nút Sửa (Hình cái bút) -->
+                                        <button type="button" class="btn-edit-account"
+                                                data-user-id="@user.UserId"
+                                                data-full-name="@user.FullName"
+                                                data-username="@user.Username"
+                                                data-email="@user.Email"
+                                                data-phone="@user.PhoneNumber"
+                                                data-role-id="@user.RoleId"
+                                                data-role-name="@user.RoleName"
+                                                data-is-self="false"
+                                                onclick="handleEditUserClick(this)"
+                                                title="Chỉnh sửa thông tin, vai trò, mật khẩu">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+
                                         <!-- Toggle Lock Button -->
                                         <form method="post" asp-page-handler="ToggleStatus" style="margin: 0;">
                                             <input type="hidden" name="userId" value="@user.UserId" />
@@ -233,7 +289,7 @@
                                             @if (user.IsActive)
                                             {
                                                 <button type="submit" class="btn btn-xs"
-                                                        style="background:#fff0f0;color:#dc2626;border:1px solid #fecaca;"
+                                                        style="background:#fff0f0;color:#dc2626;border:1px solid #fecaca;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-weight:600;font-size:12px;border-radius:6px;cursor:pointer;"
                                                         onclick="return confirm('Khóa tài khoản @user.FullName?')"
                                                         title="Khóa tài khoản">
                                                     <i class="bi bi-lock-fill"></i> Khóa
@@ -242,25 +298,13 @@
                                             else
                                             {
                                                 <button type="submit" class="btn btn-xs"
-                                                        style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;"
+                                                        style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-weight:600;font-size:12px;border-radius:6px;cursor:pointer;"
                                                         title="Mở khóa tài khoản">
                                                     <i class="bi bi-unlock-fill"></i> Mở khóa
                                                 </button>
                                             }
                                         </form>
-
-                                        <!-- Reset Password Button -->
-                                        <button type="button" class="btn btn-xs"
-                                                style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;"
-                                                onclick="openResetModal(@user.UserId, '@user.FullName')"
-                                                title="Đặt lại mật khẩu">
-                                            <i class="bi bi-key"></i>
-                                        </button>
                                     </div>
-                                }
-                                else
-                                {
-                                    <span style="font-size: 11px; color: #94a3b8; font-style: italic;">Bảo vệ</span>
                                 }
                             </td>
                         </tr>
@@ -271,11 +315,107 @@
     </div>
 </div>
 
+<!-- ===== MODAL: CHỈNH SỬA TÀI KHOẢN & PHÂN QUYỀN ===== -->
+<div class="modal-overlay" id="editUserModal">
+    <div class="modal-box" style="max-width: 520px;">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i class="bi bi-pencil-square heading-icon" aria-hidden="true"></i>Chỉnh sửa Thông tin Tài khoản
+            </h3>
+            <button class="modal-close" onclick="hideModal('editUserModal')" type="button">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form method="post" asp-page-handler="UpdateUser">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="UserId" id="editUserId" />
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+                <!-- Header Banner -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Tên đăng nhập</span>
+                        <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-top: 2px;">
+                            <code style="color: #4f46e5; font-size: 14px;" id="editDisplayUsername"></code>
+                        </div>
+                    </div>
+                    <div>
+                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Vai trò hiện tại</span>
+                        <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px;" id="editDisplayRoleName"></div>
+                    </div>
+                </div>
+
+                <!-- Form fields -->
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Họ và tên nhân viên <span class="required-star">*</span></label>
+                        <input type="text" name="FullName" id="editFullName" class="form-control"
+                               placeholder="Nguyễn Văn A" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Vai trò <span class="required-star">*</span></label>
+                        <select name="RoleId" id="editRoleId" class="form-control" required style="cursor: pointer;">
+                            @if (Model.AllRoles != null && Model.AllRoles.Any())
+                            {
+                                @foreach (var r in Model.AllRoles)
+                                {
+                                    <option value="@r.RoleId">@r.RoleName @(!string.IsNullOrEmpty(r.Description) ? $"({r.Description})" : "")</option>
+                                }
+                            }
+                            else
+                            {
+                                <option value="1">Admin System (Quản trị hệ thống)</option>
+                                <option value="2">Owner (Chủ doanh nghiệp)</option>
+                                <option value="3">Manager (Quản lý)</option>
+                                <option value="4">Warehouse Staff (Thủ kho)</option>
+                                <option value="5">QC Staff (KCS)</option>
+                                <option value="6">Maintenance Staff (Bảo trì)</option>
+                                <option value="7">Staff (Sản xuất)</option>
+                                <option value="8">Purchasing Staff (Thu mua)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label">Email công ty</label>
+                        <input type="email" name="Email" id="editEmail" class="form-control"
+                               placeholder="email@battenergy.vn" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Số điện thoại</label>
+                        <input type="text" name="Phone" id="editPhone" class="form-control"
+                               placeholder="09xx.xxx.xxx" />
+                    </div>
+                </div>
+
+                <div class="form-group" style="background: #faf5ff; border: 1px solid #f3e8ff; border-radius: 10px; padding: 12px 14px;">
+                    <label class="form-label" style="font-weight: 700; color: #6b21a8; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                        <i class="bi bi-key-fill"></i> Đổi Mật khẩu Mới
+                    </label>
+                    <input type="password" name="NewPassword" id="editNewPassword" class="form-control"
+                           placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)..." minlength="6" autocomplete="new-password"
+                           style="background: #fff;" />
+                    <span class="form-hint" style="font-size: 11.5px; color: #7e22ce; margin-top: 4px; display: block;">
+                        <i class="bi bi-info-circle"></i> Để trống trường này nếu không muốn thay đổi mật khẩu hiện tại.
+                    </span>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-secondary" onclick="hideModal('editUserModal')">Hủy</button>
+                <button type="submit" class="btn btn-primary" style="background: #4f46e5; border-color: #4f46e5;">
+                    <i class="bi bi-check-lg"></i> Lưu thay đổi
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- ===== MODAL: TẠO TÀI KHOẢN ===== -->
 <div class="modal-overlay" id="createUserModal">
     <div class="modal-box">
         <div class="modal-header">
-            <h3 class="modal-title"><i class="bi bi-person-plus" style="color:#4f46e5;margin-right:6px;"></i>Cấp Tài khoản Người dùng Mới</h3>
+            <h3 class="modal-title"><i class="bi bi-person-plus heading-icon" aria-hidden="true"></i>Cấp Tài khoản Người dùng Mới</h3>
             <button class="modal-close" onclick="hideModal('createUserModal')" type="button">
                 <i class="bi bi-x-lg"></i>
             </button>
@@ -291,14 +431,25 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Vai trò được cấp <span class="required-star">*</span></label>
-                        <select name="RoleName" class="form-control" required>
-                            <option value="Manager">Manager (Quản lý Vận hành)</option>
-                            <option value="Purchasing Staff">Purchasing Staff (Thu mua)</option>
-                            <option value="Warehouse Staff">Warehouse Staff (Thủ kho)</option>
-                            <option value="Staff">Production Staff (Sản xuất)</option>
-                            <option value="QC Staff">QC Staff (Kiểm tra KCS)</option>
-                            <option value="Maintenance Staff">Maintenance Staff (Bảo trì)</option>
-                            <option value="Admin">Admin System (Quản trị hệ thống)</option>
+                        <select name="RoleId" class="form-control" required style="cursor: pointer;">
+                            @if (Model.AllRoles != null && Model.AllRoles.Any())
+                            {
+                                @foreach (var r in Model.AllRoles)
+                                {
+                                    <option value="@r.RoleId" selected="@(r.RoleName == "Manager")">@r.RoleName @(!string.IsNullOrEmpty(r.Description) ? $"({r.Description})" : "")</option>
+                                }
+                            }
+                            else
+                            {
+                                <option value="3" selected>Manager (Quản lý Vận hành)</option>
+                                <option value="8">Purchasing Staff (Thu mua)</option>
+                                <option value="4">Warehouse Staff (Thủ kho)</option>
+                                <option value="7">Staff (Sản xuất)</option>
+                                <option value="5">QC Staff (Kiểm tra KCS)</option>
+                                <option value="6">Maintenance Staff (Bảo trì)</option>
+                                <option value="1">Admin System (Quản trị hệ thống)</option>
+                                <option value="2">Owner (Chủ doanh nghiệp)</option>
+                            }
                         </select>
                     </div>
                 </div>
@@ -333,43 +484,6 @@
     </div>
 </div>
 
-<!-- ===== MODAL: ĐẶT LẠI MẬT KHẨU ===== -->
-<div class="modal-overlay" id="resetPasswordModal">
-    <div class="modal-box" style="max-width: 400px;">
-        <div class="modal-header">
-            <h3 class="modal-title"><i class="bi bi-key" style="color:#d97706;margin-right:6px;"></i>Đặt lại Mật khẩu</h3>
-            <button class="modal-close" onclick="hideModal('resetPasswordModal')" type="button">
-                <i class="bi bi-x-lg"></i>
-            </button>
-        </div>
-        <form method="post" asp-page-handler="ResetPassword">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="UserId" id="resetUserId" />
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
-                <p style="font-size: 13px; color: #475569;">
-                    Bạn đang đặt lại mật khẩu cho tài khoản: <strong id="resetUserName" style="color:#0f172a;"></strong>
-                </p>
-                <div class="form-group">
-                    <label class="form-label">Mật khẩu mới <span class="required-star">*</span></label>
-                    <input type="password" name="NewPassword" class="form-control"
-                           placeholder="Nhập mật khẩu mới..." required minlength="6" />
-                    <span class="form-hint">Tối thiểu 6 ký tự</span>
-                </div>
-                <div class="info-box" style="border-color: #fde68a; background: #fffbeb;">
-                    <i class="bi bi-exclamation-triangle" style="color: #d97706; margin-right: 6px;"></i>
-                    Người dùng sẽ cần sử dụng mật khẩu mới này trong lần đăng nhập tiếp theo.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="hideModal('resetPasswordModal')">Hủy</button>
-                <button type="submit" class="btn btn-warning">
-                    <i class="bi bi-key"></i> Đặt lại mật khẩu
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 @section Scripts {
 <script>
     function showModal(id) {
@@ -378,10 +492,31 @@
     function hideModal(id) {
         document.getElementById(id).classList.remove('show');
     }
-    function openResetModal(userId, userName) {
-        document.getElementById('resetUserId').value = userId;
-        document.getElementById('resetUserName').textContent = userName;
-        showModal('resetPasswordModal');
+    function openEditUserModal(userId, fullName, username, email, phone, roleId, roleName, isSelf) {
+        document.getElementById('editUserId').value = userId;
+        document.getElementById('editDisplayUsername').textContent = username;
+        document.getElementById('editDisplayRoleName').textContent = roleName;
+        document.getElementById('editFullName').value = fullName;
+        document.getElementById('editEmail').value = email || '';
+        document.getElementById('editPhone').value = phone || '';
+        document.getElementById('editNewPassword').value = '';
+        
+        var roleSelect = document.getElementById('editRoleId');
+        if (roleSelect && roleId) {
+            roleSelect.value = roleId;
+        }
+        showModal('editUserModal');
+    }
+    function handleEditUserClick(btn) {
+        var userId = btn.getAttribute('data-user-id');
+        var fullName = btn.getAttribute('data-full-name');
+        var username = btn.getAttribute('data-username');
+        var email = btn.getAttribute('data-email');
+        var phone = btn.getAttribute('data-phone');
+        var roleId = btn.getAttribute('data-role-id');
+        var roleName = btn.getAttribute('data-role-name');
+        var isSelf = btn.getAttribute('data-is-self') === 'true';
+        openEditUserModal(userId, fullName, username, email, phone, roleId, roleName, isSelf);
     }
     // Close modal on backdrop click
     document.querySelectorAll('.modal-overlay').forEach(el => {

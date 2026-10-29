@@ -13,6 +13,19 @@ namespace BATT_PPMS.Pages.Profile
 
         public User? User { get; set; }
 
+        public string RoleDisplayName => User?.Role?.RoleName switch
+        {
+            RoleConstants.Admin or RoleConstants.AdminShort => "Quản trị viên hệ thống",
+            RoleConstants.Owner => "Giám đốc / Chủ sở hữu",
+            RoleConstants.Manager => "Quản lý vận hành",
+            RoleConstants.Staff => "Nhân viên sản xuất",
+            RoleConstants.WarehouseStaff => "Thủ kho",
+            RoleConstants.PurchasingStaff => "Nhân viên thu mua",
+            RoleConstants.QCStaff => "Nhân viên kiểm tra chất lượng",
+            RoleConstants.MaintenanceStaff => "Nhân viên bảo trì",
+            _ => User?.Role?.RoleName ?? "Chưa phân vai trò"
+        };
+
         [TempData]
         public string? ErrorMessage { get; set; }
 
@@ -23,8 +36,6 @@ namespace BATT_PPMS.Pages.Profile
         public string FullName { get; set; } = string.Empty;
         [BindProperty]
         public string? Phone { get; set; }
-        [BindProperty]
-        public string? Email { get; set; }
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -48,13 +59,7 @@ namespace BATT_PPMS.Pages.Profile
 
             var error = InputValidator.First(
                 InputValidator.Text(FullName, "Họ và tên", 100, required: true),
-                InputValidator.Phone(Phone),
-                InputValidator.Email(Email));
-
-            var cleanEmail = InputValidator.Clean(Email);
-            if (error == null && cleanEmail != null &&
-                await _context.Users.AnyAsync(u => u.UserId != CurrentUserId && u.Email != null && u.Email.ToLower() == cleanEmail.ToLower()))
-                error = $"Email '{cleanEmail}' đã được liên kết với một tài khoản khác.";
+                InputValidator.Phone(Phone));
 
             if (error != null)
             {
@@ -64,7 +69,6 @@ namespace BATT_PPMS.Pages.Profile
 
             user.FullName = FullName.Trim();
             user.Phone = InputValidator.Clean(Phone);
-            user.Email = cleanEmail;
             await _context.SaveChangesAsync();
 
             // Cập nhật lại session

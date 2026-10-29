@@ -5,18 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="BATT PPMS - Hệ thống Quản lý Sản xuất Nhà máy Viên nén Gỗ" />
     <title>@ViewData["Title"] - BATT PPMS</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/topbar-menus.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body>
+<body class="@ViewData["PageClass"]">
 
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";
     var fullName        = Context.Session.GetString("FullName") ?? "User";
-    bool isAdmin        = roleName == "Admin System";
+    bool isAdmin        = roleName == "Admin System" || roleName == "Admin";
     bool isOwner        = roleName == "Owner";
     bool isManager      = roleName == "Manager";
     bool isStaff        = roleName == "Staff";
@@ -160,12 +159,8 @@
                 </div>
             </div>
 
-            <!-- Nhật ký đăng nhập của hệ thống -->
-            <a class="nav-item @(ap=="AuditLogs"?"active":"")" href="/Admin/AuditLogs/Index">
-                <i class="bi bi-clock-history"></i><span>Nhật ký đăng nhập của hệ thống</span>
-            </a>
+         
         }
-
         @if (isStaff)
         {
             <!-- CORE group (Staff) -->
@@ -281,7 +276,9 @@
             </div>
         }
 
-        <!-- Tài khoản (all roles) -->
+        @if (!isAdmin)
+        {
+        <!-- Account navigation for other roles -->
         <div class="nav-group" id="grp-account">
             <button class="nav-group-header @(ap is "Profile" or "ChangePassword" ? "active":"")" onclick="toggleGroup('account')">
                 <span>Tài khoản</span>
@@ -297,6 +294,7 @@
             </div>
         </div>
 
+        }
     </nav>
 
     <!-- Sidebar Footer -->
@@ -317,16 +315,51 @@
             <button class="sidebar-toggle" id="sidebarToggle" onclick="openSidebar()" title="Mở menu">
                 <i class="bi bi-list"></i>
             </button>
-            <span class="topbar-page-title">@ViewData["Title"]</span>
+            @if (!isAdmin && ap != "Profile" && ap != "ChangePassword")
+            {
+                <span class="topbar-page-title">@ViewData["Title"]</span>
+            }
         </div>
 
         <div class="topbar-right">
-            <div class="role-switch-badge" title="Chuyển đổi vai trò">
-                <i class="bi bi-person-gear"></i>
-                <span>Đổi vai trò: <strong>@(isAdmin ? "Admin System" : roleDisplay)</strong></span>
-                <i class="bi bi-chevron-down"></i>
-            </div>
+            @if (!isAdmin)
+            {
+                <div class="role-switch-badge" title="Chuyển đổi vai trò">
+                    <i class="bi bi-person-gear"></i>
+                    <span>Đổi vai trò: <strong>@roleDisplay</strong></span>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+            }
 
+            @if (isAdmin)
+            {
+                <div class="topbar-dropdown">
+                    <button type="button" class="topbar-bell-btn topbar-menu-trigger" id="notificationsTrigger" aria-label="Xem thông báo" aria-expanded="false" aria-controls="notificationsPanel" data-topbar-panel="notificationsPanel">
+                        <i class="bi bi-bell" aria-hidden="true"></i>
+                    </button>
+                    <section class="topbar-panel notifications-panel" id="notificationsPanel" aria-labelledby="notificationsTitle" hidden>
+                        <div class="topbar-panel-header"><h2 id="notificationsTitle"><i class="bi bi-bell heading-icon" aria-hidden="true"></i>Thông báo</h2></div>
+                        <div id="notificationsContent" class="notifications-content" aria-live="polite" data-url="@Url.Page("/Admin/Notifications/Index")"></div>
+                    </section>
+                </div>
+                <div class="topbar-dropdown">
+                    <button type="button" class="topbar-user topbar-menu-trigger account-menu-trigger" aria-label="Mở menu tài khoản" aria-expanded="false" aria-controls="accountPanel" data-topbar-panel="accountPanel">
+                        <span class="user-avatar-circle">@initials</span>
+                        <span class="account-menu-identity d-none d-sm-block">
+                            <span class="user-display-name">@fullName</span>
+                            <span class="user-display-role">Quản trị viên</span>
+                        </span>
+                        <i class="bi bi-chevron-down user-chevron" aria-hidden="true"></i>
+                    </button>
+                    <nav class="topbar-panel account-panel" id="accountPanel" aria-label="Tài khoản cá nhân" hidden>
+                        <a href="/Profile/Index"><i class="bi bi-person-circle" aria-hidden="true"></i>Hồ sơ cá nhân</a>
+                        <a href="/Profile/ChangePassword"><i class="bi bi-shield-lock" aria-hidden="true"></i>Đổi mật khẩu</a>
+                        <a href="/Auth/Logout" class="account-signout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Đăng xuất</a>
+                    </nav>
+                </div>
+            }
+            else
+            {
             <div class="topbar-bell-btn" title="Thông báo">
                 <i class="bi bi-bell"></i>
             </div>
@@ -343,6 +376,7 @@
             <a href="/Auth/Logout" class="btn-logout" title="Đăng xuất">
                 <i class="bi bi-box-arrow-right"></i>
             </a>
+            }
         </div>
     </header>
 
@@ -354,6 +388,7 @@
 
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/js/topbar-menus.js" asp-append-version="true"></script>
 <script>
     // ===== Accordion sidebar =====
     function toggleGroup(key) {

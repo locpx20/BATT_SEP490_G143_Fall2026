@@ -73,12 +73,6 @@ namespace BATT_PPMS.Pages.Auth
             HttpContext.Session.SetInt32(SessionKeys.RoleId, user.RoleId);
             HttpContext.Session.SetString(SessionKeys.RoleName, user.Role?.RoleName ?? string.Empty);
 
-            // Nếu là Admin, chuyển thẳng đến trang Quản trị người dùng & phân quyền
-            if (user.Role?.RoleName == RoleConstants.Admin)
-            {
-                return RedirectToPage("/Admin/Users/Index");
-            }
-
             return RedirectToPage("/Dashboard/Index");
         }
     }

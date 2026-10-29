@@ -41,7 +41,7 @@
     --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.08), 0 4px 6px -4px rgba(0,0,0,.03);
 
     --transition: all 0.2s ease;
-    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
 }
 
 /* ---- RESET ---- */
@@ -56,6 +56,18 @@ body {
     overflow-x: hidden;
 }
 a { text-decoration: none; color: inherit; }
+
+/* Shared heading accents use the existing blue palette. */
+.heading-icon {
+    display: inline-block;
+    margin-right: .4em;
+    color: var(--primary);
+    font-size: .9em;
+    font-weight: normal;
+    vertical-align: -.04em;
+    line-height: 1;
+}
+h1, h2, h3, button, input, select, textarea { font-family: var(--font); }
 
 /* =====================================================
    SIDEBAR

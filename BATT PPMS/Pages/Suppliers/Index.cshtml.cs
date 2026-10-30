@@ -95,17 +95,15 @@ namespace BATT_PPMS.Pages.Suppliers
 
             if (string.IsNullOrWhiteSpace(Tab))
                 Tab = "suppliers";
-            Tab = Tab.ToLowerInvariant();
+            Tab = Tab.Trim().Equals("customers", StringComparison.OrdinalIgnoreCase) ? "customers" : "suppliers";
 
             if (!CanViewCustomers)
                 Tab = "suppliers";
 
             await LoadDataAsync();
-            if (IsOwner)
-            {
-                PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
-                PartnerPagination = new PageWindow(Tab == "customers" ? Customers.Count : Suppliers.Count, PageNumber);
-            }
+            PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
+            PartnerPagination = new PageWindow(Tab == "customers" ? Customers.Count : Suppliers.Count, PageNumber);
+            PageNumber = PartnerPagination.CurrentPage;
             return Page();
         }
 
@@ -351,7 +349,7 @@ namespace BATT_PPMS.Pages.Suppliers
             {
                 var kw = SearchTerm.Trim().ToLower();
                 supQuery = supQuery.Where(s =>
-                    s.SupplierName.ToLower().Contains(kw) ||
+                    s.SupplierName.Trim().ToLower() == kw ||
                     (s.ContactPerson != null && s.ContactPerson.ToLower().Contains(kw)) ||
                     (s.Phone != null && s.Phone.Contains(kw)) ||
                     (s.Email != null && s.Email.ToLower().Contains(kw)) ||

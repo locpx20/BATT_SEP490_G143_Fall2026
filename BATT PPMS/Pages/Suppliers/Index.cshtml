@@ -127,7 +127,7 @@ else
         else
         {
             <div class="partner-grid">
-                @foreach (var sup in Model.Suppliers)
+                @foreach (var sup in Model.Suppliers.Skip(Model.PartnerPagination.Offset).Take(BATT_PPMS.Helpers.PageWindow.Size))
                 {
                     var isActive = sup.Status == "Active";
                     <div class="partner-card">
@@ -199,7 +199,7 @@ else
                         <!-- Footer Actions -->
                         <div class="partner-card-footer">
                             <button type="button"
-                                    class="btn btn-outline btn-xs"
+                                    class="btn btn-outline btn-xs partner-history-action" hidden
                                     onclick="viewSupplierHistory(@sup.SupplierId, '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Code))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Name))')">
                                 <i class="bi bi-clock-history"></i> Lịch sử thu mua
                             </button>
@@ -257,7 +257,7 @@ else
         else
         {
             <div class="partner-grid">
-                @foreach (var cus in Model.Customers)
+                @foreach (var cus in Model.Customers.Skip(Model.PartnerPagination.Offset).Take(BATT_PPMS.Helpers.PageWindow.Size))
                 {
                     var isActive = cus.Status == "Active";
                     <div class="partner-card">
@@ -325,7 +325,7 @@ else
                         <!-- Footer Actions -->
                         <div class="partner-card-footer">
                             <button type="button"
-                                    class="btn btn-outline btn-xs"
+                                    class="btn btn-outline btn-xs partner-history-action" hidden
                                     onclick="viewCustomerHistory(@cus.CustomerId, '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Code))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Name))')">
                                 <i class="bi bi-clock-history"></i> Lịch sử đơn hàng
                             </button>
@@ -358,6 +358,8 @@ else
         }
     }
 
+    <partial name="~/Pages/Shared/_AdminPagination.cshtml"
+             model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.PartnerPagination, "/Suppliers/Index", new() { ["tab"] = Model.Tab, ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter })' />
 </div>
 
 }
@@ -365,7 +367,7 @@ else
 <!-- =====================================================
      MODAL: THÊM NHÀ CUNG CẤP (ADD SUPPLIER - Matches BATT_PPMSss)
      ===================================================== -->
-<div class="modal-overlay partner-create-modal" id="modalAddSupplier">
+<div class="modal-overlay partner-form-modal" id="modalAddSupplier">
     <div class="modal-box">
         <div class="modal-header">
             <h3 class="modal-title">Thêm Nhà cung cấp Nguyên vật liệu</h3>
@@ -443,7 +445,7 @@ else
 <!-- =====================================================
      MODAL: THÊM KHÁCH HÀNG (ADD CUSTOMER - Matches BATT_PPMSss)
      ===================================================== -->
-<div class="modal-overlay partner-create-modal" id="modalAddCustomer">
+<div class="modal-overlay partner-form-modal" id="modalAddCustomer">
     <div class="modal-box">
         <div class="modal-header">
             <h3 class="modal-title">Thêm Khách hàng Thu mua</h3>
@@ -521,8 +523,8 @@ else
 <!-- =====================================================
      MODAL: CHỈNH SỬA ĐỐI TÁC (EDIT MODAL - Matches BATT_PPMSss)
      ===================================================== -->
-<div class="modal-overlay" id="modalEditPartner">
-    <div class="modal-box" style="max-width: 520px;">
+<div class="modal-overlay partner-form-modal" id="modalEditPartner">
+    <div class="modal-box">
         <div class="modal-header">
             <h3 class="modal-title" id="editModalTitle">Chỉnh sửa đối tác</h3>
             <button type="button" class="modal-close" onclick="closeModal('modalEditPartner')">
@@ -532,7 +534,7 @@ else
         <form method="post" id="editPartnerForm">
             <input type="hidden" name="SupplierId" id="editSupplierId" />
             <input type="hidden" name="CustomerId" id="editCustomerId" />
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="modal-body">
                 <!-- Name -->
                 <div class="form-group">
                     <label class="form-label">TÊN ĐỐI TÁC *</label>
@@ -595,6 +597,7 @@ else
 </div>
 
 @section Scripts {
+    <script src="~/js/partner-status.js" asp-append-version="true"></script>
     <script>
         function openModal(id) {
             const el = document.getElementById(id);

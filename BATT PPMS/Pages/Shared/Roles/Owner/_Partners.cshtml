@@ -1,0 +1,76 @@
+@model BATT_PPMS.Pages.Suppliers.IndexModel
+@{
+    var suppliers = Model.Tab != "customers";
+    var rows = suppliers
+        ? Model.Suppliers.Select(s => new { Id = s.SupplierId, s.Code, s.Name, s.ContactPerson, s.Phone, s.Email, s.Address, s.Status, Value = s.TotalPaidVnd })
+        : Model.Customers.Select(c => new { Id = c.CustomerId, c.Code, c.Name, c.ContactPerson, c.Phone, c.Email, c.Address, c.Status, Value = c.TotalRevenueVnd });
+}
+<div class="owner-partners">
+    <div class="page-header owner-page-header">
+        <div>
+            <h1 class="page-title"><i class="bi @(suppliers ? "bi-buildings" : "bi-people") heading-icon" aria-hidden="true"></i>@(suppliers ? "Nhà cung cấp" : "Khách hàng")</h1>
+            <p class="page-subtitle">Thông tin liên hệ và lịch sử giao dịch.</p>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="@(suppliers ? "openAddSupplierModal()" : "openAddCustomerModal()")">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>@(suppliers ? "Thêm nhà cung cấp" : "Thêm khách hàng")
+        </button>
+    </div>
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage)) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
+    <section class="owner-partner-card" aria-label="@(suppliers ? "Danh sách nhà cung cấp" : "Danh sách khách hàng")">
+        <form method="get" class="owner-partner-filters" role="search">
+            <input type="hidden" name="tab" value="@Model.Tab" />
+            <div class="owner-search-field">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input name="SearchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tìm kiếm trong danh sách..." aria-label="Tìm đối tác" />
+            </div>
+            <div>
+                <label for="owner-status">Trạng thái</label>
+                <select class="form-select" id="owner-status" name="StatusFilter" onchange="this.form.requestSubmit()">
+                    <option value="">Tất cả</option>
+                    <option value="Active" selected="@(Model.StatusFilter == "Active")">Đang hợp tác</option>
+                    <option value="Inactive" selected="@(Model.StatusFilter == "Inactive")">Ngừng hợp tác</option>
+                </select>
+            </div>
+            <button class="btn btn-secondary" type="submit">Tìm kiếm</button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.StatusFilter))
+            {
+                <a asp-page="/Suppliers/Index" asp-route-tab="@Model.Tab" class="owner-text-action">Đặt lại</a>
+            }
+        </form>
+        <div class="owner-table-scroll">
+            <table class="data-table owner-partner-table">
+                <thead><tr>
+                    <th scope="col">@(suppliers ? "Mã NCC" : "Mã KH")</th>
+                    <th scope="col">@(suppliers ? "Nhà cung cấp" : "Khách hàng")</th>
+                    <th scope="col">Người liên hệ</th><th scope="col">Điện thoại</th>
+                    <th scope="col">@(suppliers ? "Giá trị thu mua" : "Giá trị đơn hàng")</th>
+                    <th scope="col">Trạng thái</th><th scope="col">Chi tiết</th>
+                </tr></thead>
+                <tbody>
+                    @foreach (var row in rows.Skip(Model.PartnerPagination.Offset).Take(BATT_PPMS.Helpers.PageWindow.Size))
+                    {
+                        <tr>
+                            <td><span class="owner-partner-code">@row.Code</span></td>
+                            <td><strong>@row.Name</strong><small>@row.Code</small></td>
+                            <td>@row.ContactPerson</td><td class="owner-nowrap">@row.Phone</td>
+                            <td class="owner-amount">@row.Value.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("vi-VN")) VNĐ</td>
+                            <td><span class="owner-partner-status @(row.Status == "Active" ? "is-active" : "is-inactive")">@(row.Status == "Active" ? "Đang hợp tác" : "Ngừng hợp tác")</span></td>
+                            <td>
+                                <div class="owner-row-actions">
+                                    <button type="button" class="owner-text-action" onclick="@(suppliers ? $"viewSupplierHistory({row.Id}, '', '')" : $"viewCustomerHistory({row.Id}, '', '')")">Xem lịch sử giao dịch</button>
+                                    <button type="button" class="owner-edit-action" title="Chỉnh sửa đối tác" aria-label="Chỉnh sửa @row.Name"
+                                            data-type="@(suppliers ? "SUPPLIER" : "CUSTOMER")" data-id="@row.Id" data-code="@row.Code" data-name="@row.Name" data-contact="@row.ContactPerson" data-phone="@row.Phone" data-email="@row.Email" data-address="@row.Address" data-status="@row.Status"
+                                            onclick="openEditModal(this.dataset.type, Number(this.dataset.id), this.dataset.code, this.dataset.name, this.dataset.contact, this.dataset.phone, this.dataset.email, this.dataset.address, this.dataset.status)"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @if (!rows.Any()) { <tr><td colspan="7" class="owner-partner-empty">Không tìm thấy đối tác phù hợp.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml"
+                 model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.PartnerPagination, "/Suppliers/Index", new() { ["tab"] = Model.Tab, ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter })' />
+    </section>
+</div>

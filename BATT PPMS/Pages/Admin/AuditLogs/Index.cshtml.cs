@@ -25,7 +25,7 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
     public class IndexModel : BasePageModel
     {
         private readonly AppDbContext _context;
-        private const int PageSize = 15;
+        private const int PageSize = PageWindow.Size;
 
         public IndexModel(AppDbContext context)
         {
@@ -33,6 +33,7 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
         }
 
         public List<AuditLogEntry> AuditLogs { get; set; } = new();
+        public PageWindow Pagination { get; private set; } = new(0, 1);
         public int TotalCount { get; set; }
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; } = 1;
@@ -46,8 +47,8 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
         [BindProperty(SupportsGet = true)]
         public string? EntityFilter { get; set; }
 
-        [BindProperty(Name = "page", SupportsGet = true)]
-        public new int Page { get; set; } = 1;
+        [BindProperty(SupportsGet = true)]
+        public int PageNumber { get; set; } = 1;
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -59,7 +60,7 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                 SearchTerm = Search;
             }
 
-            CurrentPage = Math.Max(1, Page);
+            CurrentPage = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
 
             var logs = new List<AuditLogEntry>();
 
@@ -71,7 +72,6 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                     .Include(o => o.ApprovedByNavigation)
                     .Include(o => o.Customer)
                     .OrderByDescending(o => o.OrderDate)
-                    .Take(30)
                     .ToListAsync();
 
                 foreach (var o in orders)
@@ -114,7 +114,6 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                     .Include(q => q.RequestedByNavigation)
                     .Include(q => q.InspectedByNavigation)
                     .OrderByDescending(q => q.RequestDate)
-                    .Take(20)
                     .ToListAsync();
 
                 foreach (var q in qcList)
@@ -143,7 +142,6 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                 var purchases = await _context.MaterialPurchaseRequests
                     .Include(p => p.RequestedByNavigation)
                     .OrderByDescending(p => p.RequestDate)
-                    .Take(20)
                     .ToListAsync();
 
                 foreach (var p in purchases)
@@ -168,7 +166,6 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
             {
                 var users = await _context.Users
                     .Include(u => u.Role)
-                    .Take(15)
                     .ToListAsync();
 
                 foreach (var u in users)
@@ -194,7 +191,6 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                 var maintenances = await _context.MaintenanceRequests
                     .Include(m => m.RequestedByNavigation)
                     .OrderByDescending(m => m.RequestDate)
-                    .Take(15)
                     .ToListAsync();
 
                 foreach (var m in maintenances)
@@ -226,11 +222,11 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                     l.Details.ToLower().Contains(kw));
             }
 
-            var sorted = filtered.OrderByDescending(l => l.CreatedAt).ToList();
+            var sorted = filtered.OrderByDescending(l => l.CreatedAt).ThenBy(l => l.EntityType).ThenBy(l => l.EntityCode).ThenBy(l => l.Action).ToList();
             TotalCount = sorted.Count;
-            TotalPages = (int)Math.Ceiling((double)TotalCount / PageSize);
-            TotalPages = Math.Max(1, TotalPages);
-            CurrentPage = Math.Min(CurrentPage, TotalPages);
+            Pagination = new PageWindow(TotalCount, CurrentPage);
+            TotalPages = Pagination.TotalPages;
+            CurrentPage = Pagination.CurrentPage;
 
             AuditLogs = sorted
                 .Skip((CurrentPage - 1) * PageSize)

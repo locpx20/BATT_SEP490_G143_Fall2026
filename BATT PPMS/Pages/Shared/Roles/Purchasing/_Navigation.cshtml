@@ -1,0 +1,17 @@
+@model string
+@{ var ap = Model; }
+<div class="nav-group" id="grp-ps">
+                <button class="nav-group-header active" onclick="toggleGroup('ps')">
+                    <span>Quản trị &amp; Thu mua</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-ps"></i>
+                </button>
+                <div class="nav-group-items" id="items-ps">
+                    <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
+                        <i class="bi bi-bag-check"></i><span>Thu mua Nguyên liệu</span>
+                    </a>
+                    <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
+                        <i class="bi bi-building"></i><span>Nhà cung cấp</span>
+                    </a>
+                </div>
+            </div>
+<partial name="~/Pages/Shared/_AccountNavigation.cshtml" model="Model" />

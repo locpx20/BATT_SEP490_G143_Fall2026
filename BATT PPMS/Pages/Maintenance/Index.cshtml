@@ -26,10 +26,10 @@
     <!-- Header Section -->
     <div class="page-header" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
         <div>
-            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
+            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #243d35; margin-bottom: 4px;">
                 Sự cố &amp; Bảo trì Cơ điện
             </h1>
-            <p class="page-subtitle" style="font-size: 12px; color: #64748b; margin: 0;">
+            <p class="page-subtitle" style="font-size: 12px; color: #7a887f; margin: 0;">
                 Báo cáo sự cố máy móc, phân công kỹ thuật viên phụ trách và nghiệm thu an toàn kỹ thuật
             </p>
         </div>
@@ -45,61 +45,61 @@
 
     <!-- KPI Metric Cards (BATT_PPMSss Style) -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
-        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Tổng sự cố &amp; yêu cầu</span>
-                <div style="width: 32px; height: 32px; border-radius: 8px; background: #e0e7ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Tổng sự cố &amp; yêu cầu</span>
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #dce7dc; color: #193f35; display: flex; align-items: center; justify-content: center; font-size: 16px;">
                     <i class="bi bi-tools"></i>
                 </div>
             </div>
             <div style="margin-top: 12px;">
-                <div style="font-size: 22px; font-weight: 800; color: #0f172a;">@Model.TotalRequests <span style="font-size: 13px; font-weight: 600; color: #64748b;">yêu cầu</span></div>
-                <div style="font-size: 11px; color: #6366f1; margin-top: 4px; font-weight: 600;">
+                <div style="font-size: 22px; font-weight: 800; color: #243d35;">@Model.TotalRequests <span style="font-size: 13px; font-weight: 600; color: #7a887f;">yêu cầu</span></div>
+                <div style="font-size: 11px; color: #2c5548; margin-top: 4px; font-weight: 600;">
                     Toàn bộ máy móc dây chuyền
                 </div>
             </div>
         </div>
 
-        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Chờ tiếp nhận &amp; phân công</span>
-                <div style="width: 32px; height: 32px; border-radius: 8px; background: #fffbeb; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Chờ tiếp nhận &amp; phân công</span>
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #faf5e5; color: #a17b35; display: flex; align-items: center; justify-content: center; font-size: 16px;">
                     <i class="bi bi-hourglass-split"></i>
                 </div>
             </div>
             <div style="margin-top: 12px;">
-                <div style="font-size: 22px; font-weight: 800; color: #d97706;">@Model.PendingAssignCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">máy</span></div>
-                <div style="font-size: 11px; color: #b45309; margin-top: 4px; font-weight: 600;">
+                <div style="font-size: 22px; font-weight: 800; color: #a17b35;">@Model.PendingAssignCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">máy</span></div>
+                <div style="font-size: 11px; color: #8e6a2c; margin-top: 4px; font-weight: 600;">
                     @(Model.PendingAssignCount > 0 ? "Cần Giám đốc giao việc" : "Đã giao việc toàn bộ")
                 </div>
             </div>
         </div>
 
-        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Đang tiến hành sửa chữa</span>
-                <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Đang tiến hành sửa chữa</span>
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #eef2e9; color: #2f6153; display: flex; align-items: center; justify-content: center; font-size: 16px;">
                     <i class="bi bi-gear-wide-connected"></i>
                 </div>
             </div>
             <div style="margin-top: 12px;">
-                <div style="font-size: 22px; font-weight: 800; color: #2563eb;">@Model.InProgressCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">thiết bị</span></div>
-                <div style="font-size: 11px; color: #2563eb; margin-top: 4px; font-weight: 600;">
+                <div style="font-size: 22px; font-weight: 800; color: #2f6153;">@Model.InProgressCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">thiết bị</span></div>
+                <div style="font-size: 11px; color: #2f6153; margin-top: 4px; font-weight: 600;">
                     Kỹ thuật viên đang khắc phục
                 </div>
             </div>
         </div>
 
-        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Đã nghiệm thu hoàn thành</span>
-                <div style="width: 32px; height: 32px; border-radius: 8px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Đã nghiệm thu hoàn thành</span>
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #e2eee4; color: #356e51; display: flex; align-items: center; justify-content: center; font-size: 16px;">
                     <i class="bi bi-check-circle-fill"></i>
                 </div>
             </div>
             <div style="margin-top: 12px;">
-                <div style="font-size: 22px; font-weight: 800; color: #059669;">@Model.CompletedCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">máy</span></div>
-                <div style="font-size: 11px; color: #10b981; margin-top: 4px; font-weight: 600;">
+                <div style="font-size: 22px; font-weight: 800; color: #356e51;">@Model.CompletedCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">máy</span></div>
+                <div style="font-size: 11px; color: #4d8264; margin-top: 4px; font-weight: 600;">
                     Sẵn sàng chạy sản xuất
                 </div>
             </div>
@@ -107,10 +107,10 @@
     </div>
 
     <!-- Filter & Search Toolbar -->
-    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; margin-bottom: 20px;">
+    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
         <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
             <div class="search-wrapper" style="flex: 1; min-width: 260px; margin: 0; position: relative;">
-                <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #96a298;"></i>
                 <input type="text"
                        name="SearchTerm"
                        value="@Model.SearchTerm"
@@ -119,7 +119,7 @@
                        style="padding-left: 36px; border-radius: 10px; font-size: 12px;" />
                 @if (!string.IsNullOrEmpty(Model.SearchTerm))
                 {
-                    <a href="/Maintenance/Index" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;">
+                    <a href="/Maintenance/Index" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #96a298;">
                         <i class="bi bi-x-circle-fill"></i>
                     </a>
                 }
@@ -127,7 +127,7 @@
 
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">Mức độ:</span>
+                    <span style="font-size: 12px; color: #7a887f; font-weight: 600;">Mức độ:</span>
                     <select name="PriorityFilter" onchange="this.form.submit()" class="form-select" style="font-size: 12px; border-radius: 8px; padding: 6px 12px;">
                         <option value="ALL" selected="@(Model.PriorityFilter == "ALL" || string.IsNullOrEmpty(Model.PriorityFilter))">Tất cả mức độ</option>
                         <option value="Critical" selected="@(Model.PriorityFilter == "Critical")">Nghiêm trọng (Khẩn cấp)</option>
@@ -137,7 +137,7 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">Trạng thái:</span>
+                    <span style="font-size: 12px; color: #7a887f; font-weight: 600;">Trạng thái:</span>
                     <select name="StatusFilter" onchange="this.form.submit()" class="form-select" style="font-size: 12px; border-radius: 8px; padding: 6px 12px;">
                         <option value="ALL" selected="@(Model.StatusFilter == "ALL" || string.IsNullOrEmpty(Model.StatusFilter))">Tất cả trạng thái</option>
                         <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Chờ phân công</option>
@@ -151,10 +151,10 @@
     </div>
 
     <!-- Repair Requests Table -->
-    <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
         <div class="table-responsive">
             <table class="table" style="margin-bottom: 0; vertical-align: middle; font-size: 12px;">
-                <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; font-size: 11px; color: #475569; font-weight: 700;">
+                <thead style="background: #f4f2ea; border-bottom: 1px solid #e1e5da; text-transform: uppercase; font-size: 11px; color: #52675d; font-weight: 700;">
                     <tr>
                         <th style="padding: 14px 16px;">Mã yêu cầu</th>
                         <th style="padding: 14px 16px;">Thiết bị máy móc</th>
@@ -166,11 +166,11 @@
                         <th style="padding: 14px 16px; text-align: center;">Thao tác</th>
                     </tr>
                 </thead>
-                <tbody style="divide-y: 1px solid #f1f5f9;">
+                <tbody style="divide-y: 1px solid #efefe7;">
                     @if (!Model.Requests.Any())
                     {
                         <tr>
-                            <td colspan="8" style="text-align: center; padding: 48px 16px; color: #94a3b8;">
+                            <td colspan="8" style="text-align: center; padding: 48px 16px; color: #96a298;">
                                 <i class="bi bi-tools" style="font-size: 36px; display: block; margin-bottom: 8px;"></i>
                                 <span style="font-weight: 600; font-size: 13px;">Không tìm thấy yêu cầu sửa chữa máy móc nào</span>
                             </td>
@@ -188,21 +188,21 @@
                             var isCritical = string.Equals(r.Priority, "Critical", StringComparison.OrdinalIgnoreCase);
                             var isHigh = string.Equals(r.Priority, "High", StringComparison.OrdinalIgnoreCase);
 
-                            <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td style="padding: 14px 16px; font-weight: 700; font-family: monospace; color: #0f172a;">
+                            <tr style="border-bottom: 1px solid #efefe7;">
+                                <td style="padding: 14px 16px; font-weight: 700; font-family: monospace; color: #243d35;">
                                     @r.Code
                                 </td>
                                 <td style="padding: 14px 16px;">
-                                    <div style="font-weight: 700; color: #1e293b; font-size: 13px;">@r.EquipmentName</div>
-                                    <div style="font-size: 11px; color: #64748b;">Yêu cầu lúc: @r.RequestDate.ToString("HH:mm dd/MM/yyyy")</div>
+                                    <div style="font-weight: 700; color: #30483f; font-size: 13px;">@r.EquipmentName</div>
+                                    <div style="font-size: 11px; color: #7a887f;">Yêu cầu lúc: @r.RequestDate.ToString("HH:mm dd/MM/yyyy")</div>
                                 </td>
                                 <td style="padding: 14px 16px; max-width: 260px;">
-                                    <div style="color: #334155; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@r.Symptoms">
+                                    <div style="color: #45594f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="@r.Symptoms">
                                         @r.Symptoms
                                     </div>
                                     @if (!string.IsNullOrEmpty(r.CompletionNote))
                                     {
-                                        <div style="font-size: 11px; color: #059669; margin-top: 2px;">
+                                        <div style="font-size: 11px; color: #356e51; margin-top: 2px;">
                                             <i class="bi bi-check2-circle"></i> @r.CompletionNote
                                         </div>
                                     }
@@ -210,60 +210,60 @@
                                 <td style="padding: 14px 16px; text-align: center;">
                                     @if (isCritical)
                                     {
-                                        <span class="badge" style="background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; font-weight: 700; padding: 4px 8px; border-radius: 6px;">
+                                        <span class="badge" style="background: #f1e2da; color: #88473f; border: 1px solid #d6aaa0; font-weight: 700; padding: 4px 8px; border-radius: 6px;">
                                             Nghiêm trọng
                                         </span>
                                     }
                                     else if (isHigh)
                                     {
-                                        <span class="badge" style="background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; font-weight: 700; padding: 4px 8px; border-radius: 6px;">
+                                        <span class="badge" style="background: #f4ead8; color: #865b35; border: 1px solid #dec5a0; font-weight: 700; padding: 4px 8px; border-radius: 6px;">
                                             Cao
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 600; padding: 4px 8px; border-radius: 6px;">
+                                        <span class="badge" style="background: #efefe7; color: #52675d; border: 1px solid #e1e5da; font-weight: 600; padding: 4px 8px; border-radius: 6px;">
                                             Bình thường
                                         </span>
                                     }
                                 </td>
                                 <td style="padding: 14px 16px;">
-                                    <div style="font-weight: 600; color: #0f172a;">@r.RequestedByName</div>
+                                    <div style="font-weight: 600; color: #243d35;">@r.RequestedByName</div>
                                 </td>
                                 <td style="padding: 14px 16px;">
                                     @if (!string.IsNullOrEmpty(r.AssignedStaffName))
                                     {
-                                        <div style="font-weight: 700; color: #4338ca;">
+                                        <div style="font-weight: 700; color: #123329;">
                                             <i class="bi bi-person-check"></i> @r.AssignedStaffName
                                         </div>
                                     }
                                     else
                                     {
-                                        <span style="color: #94a3b8; font-style: italic;">Chưa phân công</span>
+                                        <span style="color: #96a298; font-style: italic;">Chưa phân công</span>
                                     }
                                 </td>
                                 <td style="padding: 14px 16px; text-align: center;">
                                     @if (isCompleted)
                                     {
-                                        <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
+                                        <span class="badge" style="background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
                                             <i class="bi bi-check-circle-fill"></i> Hoàn thành
                                         </span>
                                     }
                                     else if (isInProgress)
                                     {
-                                        <span class="badge" style="background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
+                                        <span class="badge" style="background: #e1ebe2; color: #254e43; border: 1px solid #c7d8cc; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
                                             <i class="bi bi-gear-fill"></i> Đang sửa chữa
                                         </span>
                                     }
                                     else if (isRejected)
                                     {
-                                        <span class="badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 700; padding: 5px 10px; border-radius: 8px;" title="@r.RejectionReason">
+                                        <span class="badge" style="background: #f1e2da; color: #94473e; border: 1px solid #e4c8bf; font-weight: 700; padding: 5px 10px; border-radius: 8px;" title="@r.RejectionReason">
                                             <i class="bi bi-x-circle-fill"></i> Đã từ chối
                                         </span>
                                     }
                                     else
                                     {
-                                        <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
+                                        <span class="badge" style="background: #f2e9cb; color: #8e6a2c; border: 1px solid #e5d6a9; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
                                             <i class="bi bi-clock-history"></i> Chờ tiếp nhận
                                         </span>
                                     }
@@ -323,72 +323,72 @@
 <!-- MODAL: XEM CHI TIẾT YÊU CẦU BẢO TRÌ SỬA CHỮA -->
 <div class="modal fade" id="requestDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-            <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
+        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+            <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 18px 24px;">
                 <div>
-                    <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #0f172a;">
-                        Chi tiết Sự cố &amp; Yêu cầu Sửa chữa <span id="modalReqCode" style="font-family: monospace; color: #4f46e5;"></span>
+                    <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #243d35;">
+                        Chi tiết Sự cố &amp; Yêu cầu Sửa chữa <span id="modalReqCode" style="font-family: monospace; color: #193f35;"></span>
                     </h5>
-                    <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Theo dõi quy trình xử lý cơ điện, chỉ định kỹ thuật viên và kết quả nghiệm thu máy</p>
+                    <p style="font-size: 12px; color: #7a887f; margin-bottom: 0;">Theo dõi quy trình xử lý cơ điện, chỉ định kỹ thuật viên và kết quả nghiệm thu máy</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" style="padding: 24px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; background: #f4f2ea; padding: 16px; border-radius: 12px; border: 1px solid #e1e5da;">
                     <div>
-                        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">Thiết bị máy móc:</span>
-                        <strong id="modalReqEquipment" style="font-size: 14px; color: #0f172a;"></strong>
+                        <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Thiết bị máy móc:</span>
+                        <strong id="modalReqEquipment" style="font-size: 14px; color: #243d35;"></strong>
                     </div>
                     <div>
-                        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">Mức độ ưu tiên:</span>
+                        <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Mức độ ưu tiên:</span>
                         <span id="modalReqPriorityBadge"></span>
                     </div>
                     <div>
-                        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">Người phát hiện:</span>
-                        <strong id="modalReqReporter" style="font-size: 13px; color: #334155;"></strong>
+                        <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Người phát hiện:</span>
+                        <strong id="modalReqReporter" style="font-size: 13px; color: #45594f;"></strong>
                     </div>
                     <div>
-                        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">Trạng thái xử lý:</span>
+                        <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Trạng thái xử lý:</span>
                         <span id="modalReqStatusBadge"></span>
                     </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 20px;">
-                    <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;">
-                        <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Thời gian phát hiện sự cố</span>
-                        <div id="modalReqDate" style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 4px;"></div>
+                    <div style="background: #fffefa; border: 1px solid #e1e5da; border-radius: 10px; padding: 14px;">
+                        <span style="font-size: 11px; color: #7a887f; font-weight: 700; text-transform: uppercase;">Thời gian phát hiện sự cố</span>
+                        <div id="modalReqDate" style="font-size: 13px; font-weight: 700; color: #243d35; margin-top: 4px;"></div>
                     </div>
-                    <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;">
-                        <span style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase;">Kỹ thuật viên phụ trách</span>
-                        <div id="modalReqTechnician" style="font-size: 13px; font-weight: 700; color: #4338ca; margin-top: 4px;"></div>
+                    <div style="background: #fffefa; border: 1px solid #e1e5da; border-radius: 10px; padding: 14px;">
+                        <span style="font-size: 11px; color: #7a887f; font-weight: 700; text-transform: uppercase;">Kỹ thuật viên phụ trách</span>
+                        <div id="modalReqTechnician" style="font-size: 13px; font-weight: 700; color: #123329; margin-top: 4px;"></div>
                     </div>
                 </div>
 
                 <!-- Box Mô tả hiện tượng -->
-                <div style="margin-bottom: 16px; padding: 14px; border-radius: 10px; background: #fff; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
-                        <i class="bi bi-exclamation-triangle" style="color: #ea580c;"></i> Mô tả hiện tượng sự cố:
+                <div style="margin-bottom: 16px; padding: 14px; border-radius: 10px; background: #fffefa; border: 1px solid #e1e5da;">
+                    <div style="font-size: 12px; font-weight: 700; color: #243d35; margin-bottom: 4px;">
+                        <i class="bi bi-exclamation-triangle" style="color: #a57740;"></i> Mô tả hiện tượng sự cố:
                     </div>
-                    <p id="modalReqSymptoms" style="font-size: 12px; color: #334155; margin-bottom: 0; line-height: 1.5;"></p>
+                    <p id="modalReqSymptoms" style="font-size: 12px; color: #45594f; margin-bottom: 0; line-height: 1.5;"></p>
                 </div>
 
                 <!-- Box Nghiệm thu hoàn thành nếu có -->
-                <div id="modalReqCompleteBox" style="display: none; margin-bottom: 16px; padding: 14px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0;">
-                    <div style="font-size: 12px; font-weight: 700; color: #065f46; margin-bottom: 4px;">
-                        <i class="bi bi-check-circle-fill" style="color: #059669;"></i> Kết quả sửa chữa &amp; Nghiệm thu an toàn:
+                <div id="modalReqCompleteBox" style="display: none; margin-bottom: 16px; padding: 14px; border-radius: 10px; background: #e2eee4; border: 1px solid #c6dbc9;">
+                    <div style="font-size: 12px; font-weight: 700; color: #28543f; margin-bottom: 4px;">
+                        <i class="bi bi-check-circle-fill" style="color: #356e51;"></i> Kết quả sửa chữa &amp; Nghiệm thu an toàn:
                     </div>
-                    <p id="modalReqCompletionNote" style="font-size: 12px; color: #047857; margin-bottom: 0;"></p>
+                    <p id="modalReqCompletionNote" style="font-size: 12px; color: #356e51; margin-bottom: 0;"></p>
                 </div>
 
                 <!-- Box Lý do từ chối nếu có -->
-                <div id="modalReqRejectBox" style="display: none; padding: 14px; border-radius: 10px; background: #fff1f2; border: 1px solid #ffe4e6;">
-                    <div style="font-size: 12px; font-weight: 700; color: #e11d48; margin-bottom: 4px;">
+                <div id="modalReqRejectBox" style="display: none; padding: 14px; border-radius: 10px; background: #faf0e9; border: 1px solid #f1e2da;">
+                    <div style="font-size: 12px; font-weight: 700; color: #a55449; margin-bottom: 4px;">
                         <i class="bi bi-x-octagon-fill"></i> Lý do từ chối của Lãnh đạo:
                     </div>
-                    <p id="modalReqRejectionReason" style="font-size: 12px; color: #9f1239; margin-bottom: 0;"></p>
+                    <p id="modalReqRejectionReason" style="font-size: 12px; color: #88473f; margin-bottom: 0;"></p>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: space-between;">
+            <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 14px 24px; display: flex; justify-content: space-between;">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Đóng</button>
                 <div id="modalReqActionButtons" style="display: flex; gap: 8px;">
                     <!-- Sẽ được fill bằng JavaScript nếu canManage -->
@@ -401,26 +401,26 @@
 <!-- MODAL: PHÂN CÔNG KỸ THUẬT VIÊN BẢO TRÌ -->
 <div class="modal fade" id="assignStaffModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
             <form method="post" asp-page-handler="AssignStaff">
                 <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
                 <input type="hidden" name="PriorityFilter" value="@Model.PriorityFilter" />
                 <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
                 <input type="hidden" id="assignModalRequestId" name="requestId" value="" />
 
-                <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 16px 20px;">
-                    <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #0f172a;">
-                        <i class="bi bi-person-gear"></i> Tiếp nhận &amp; Phân công Sửa chữa <span id="assignModalReqCode" style="font-family: monospace; color: #4f46e5;"></span>
+                <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                    <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;">
+                        <i class="bi bi-person-gear"></i> Tiếp nhận &amp; Phân công Sửa chữa <span id="assignModalReqCode" style="font-family: monospace; color: #193f35;"></span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" style="padding: 20px;">
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12px;">
-                        Thiết bị: <strong id="assignModalEquipment" style="color: #0f172a;"></strong>
+                    <div style="background: #f4f2ea; border: 1px solid #e1e5da; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12px;">
+                        Thiết bị: <strong id="assignModalEquipment" style="color: #243d35;"></strong>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Chỉ định Kỹ thuật viên phụ trách <span style="color: #dc2626;">*</span></label>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Chỉ định Kỹ thuật viên phụ trách <span style="color: #a55449;">*</span></label>
                         <select name="assignedStaffId" class="form-select" required style="font-size: 12px; border-radius: 10px;">
                             <option value="">-- Chọn kỹ thuật viên cơ điện --</option>
                             @foreach (var tech in Model.AvailableTechnicians)
@@ -431,7 +431,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Mức độ ưu tiên xử lý <span style="color: #dc2626;">*</span></label>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Mức độ ưu tiên xử lý <span style="color: #a55449;">*</span></label>
                         <select id="assignModalPriority" name="priority" class="form-select" style="font-size: 12px; border-radius: 10px;">
                             <option value="Critical">Nghiêm trọng (Xử lý ngay lập tức)</option>
                             <option value="High" selected>Mức độ cao (Trong ca làm việc)</option>
@@ -439,7 +439,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 12px 20px;">
+                <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
                     <button type="submit" class="btn btn-primary" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
                         <i class="bi bi-check2-circle"></i> Xác nhận Phân công
@@ -453,30 +453,30 @@
 <!-- MODAL: NGHIỆM THU HOÀN THÀNH SỬA CHỮA -->
 <div class="modal fade" id="completeRequestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
             <form method="post" asp-page-handler="CompleteRequest">
                 <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
                 <input type="hidden" name="PriorityFilter" value="@Model.PriorityFilter" />
                 <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
                 <input type="hidden" id="completeModalRequestId" name="requestId" value="" />
 
-                <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 16px 20px;">
-                    <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #059669;">
+                <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                    <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #356e51;">
                         <i class="bi bi-check-circle-fill"></i> Nghiệm thu Hoàn thành Sửa chữa <span id="completeModalReqCode" style="font-family: monospace;"></span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" style="padding: 20px;">
-                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12px;">
-                        Thiết bị: <strong id="completeModalEquipment" style="color: #065f46;"></strong>
+                    <div style="background: #edf3e9; border: 1px solid #c6dbc9; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12px;">
+                        Thiết bị: <strong id="completeModalEquipment" style="color: #28543f;"></strong>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Ghi chú nghiệm thu an toàn kỹ thuật</label>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ghi chú nghiệm thu an toàn kỹ thuật</label>
                         <textarea name="completionNote" class="form-control" rows="3" placeholder="Đã thay thế linh kiện, chạy thử 30 phút đạt công suất thiết kế, đảm bảo an toàn..." style="font-size: 12px; border-radius: 10px;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 12px 20px;">
+                <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
                     <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
                         <i class="bi bi-shield-check"></i> Xác nhận Nghiệm thu
@@ -490,26 +490,26 @@
 <!-- MODAL: TỪ CHỐI YÊU CẦU SỬA CHỮA -->
 <div class="modal fade" id="rejectRequestModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
             <form method="post" asp-page-handler="RejectRequest">
                 <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
                 <input type="hidden" name="PriorityFilter" value="@Model.PriorityFilter" />
                 <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
                 <input type="hidden" id="rejectReqModalId" name="requestId" value="" />
 
-                <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 16px 20px;">
-                    <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #b91c1c;">
+                <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                    <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #94473e;">
                         <i class="bi bi-x-circle-fill"></i> Từ chối Yêu cầu Sửa chữa <span id="rejectReqModalCode" style="font-family: monospace;"></span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" style="padding: 20px;">
                     <div class="mb-3">
-                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Lý do từ chối <span style="color: #dc2626;">*</span></label>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Lý do từ chối <span style="color: #a55449;">*</span></label>
                         <textarea name="rejectionReason" class="form-control" rows="4" required placeholder="Nhập lý do chi tiết..." style="font-size: 12px; border-radius: 10px;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 12px 20px;">
+                <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
                     <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-size: 12px; font-weight: 600;">
                         <i class="bi bi-check2"></i> Xác nhận Từ chối
@@ -525,20 +525,20 @@
 {
     <div class="modal fade" id="reportFailureModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
                 <form method="post" asp-page-handler="ReportFailure">
-                    <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 18px 24px;">
                         <div>
-                            <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #b91c1c;">
+                            <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #94473e;">
                                 <i class="bi bi-exclamation-triangle-fill" style="margin-right: 8px;"></i>Báo cáo Sự cố Máy móc
                             </h5>
-                            <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Ghi nhận sự cố thiết bị dây chuyền sản xuất để điều động kỹ thuật viên</p>
+                            <p style="font-size: 12px; color: #7a887f; margin-bottom: 0;">Ghi nhận sự cố thiết bị dây chuyền sản xuất để điều động kỹ thuật viên</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body" style="padding: 24px;">
                         <div class="mb-3">
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Thiết bị / Máy móc gặp sự cố <span style="color: #dc2626;">*</span></label>
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Thiết bị / Máy móc gặp sự cố <span style="color: #a55449;">*</span></label>
                             <select asp-for="FailureMachineId" class="form-select" required style="font-size: 12.5px; border-radius: 8px;">
                                 <option value="0">-- Chọn máy móc dây chuyền --</option>
                                 @foreach (var m in Model.AvailableMachines)
@@ -549,7 +549,7 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Mức độ nghiêm trọng <span style="color: #dc2626;">*</span></label>
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Mức độ nghiêm trọng <span style="color: #a55449;">*</span></label>
                             <select asp-for="FailureSeverity" class="form-select" style="font-size: 12.5px; border-radius: 8px;">
                                 <option value="Critical">Khẩn cấp — Dừng toàn bộ chuyền sản xuất</option>
                                 <option value="High" selected>Mức độ cao — Nguy cơ hỏng cụm máy chính</option>
@@ -559,16 +559,16 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #0f172a;">Hiện tượng / Triệu chứng hư hỏng <span style="color: #dc2626;">*</span></label>
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Hiện tượng / Triệu chứng hư hỏng <span style="color: #a55449;">*</span></label>
                             <textarea asp-for="FailureSymptoms" class="form-control" rows="3" required placeholder="Ví dụ: Rung lắc mạnh ở ổ bi chính trục lăn, nhiệt độ gối đỡ tăng quá 85°C..." style="font-size: 12px; border-radius: 10px;"></textarea>
                         </div>
 
                         <div>
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Ghi chú thêm</label>
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ghi chú thêm</label>
                             <textarea asp-for="FailureDescription" class="form-control" rows="2" placeholder="Thời điểm bắt đầu phát sinh, biện pháp sơ bộ đã xử lý..." style="font-size: 12px; border-radius: 8px;"></textarea>
                         </div>
                     </div>
-                    <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
                         <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
                             <i class="bi bi-send-exclamation"></i> Gửi báo cáo sự cố
@@ -593,11 +593,11 @@
             // Priority badge
             var priBadge = document.getElementById('modalReqPriorityBadge');
             if (priority.toLowerCase() === 'critical') {
-                priBadge.innerHTML = '<span class="badge" style="background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; font-size: 11px;">Nghiêm trọng</span>';
+                priBadge.innerHTML = '<span class="badge" style="background: #f1e2da; color: #88473f; border: 1px solid #d6aaa0; font-size: 11px;">Nghiêm trọng</span>';
             } else if (priority.toLowerCase() === 'high') {
-                priBadge.innerHTML = '<span class="badge" style="background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; font-size: 11px;">Mức độ cao</span>';
+                priBadge.innerHTML = '<span class="badge" style="background: #f4ead8; color: #865b35; border: 1px solid #dec5a0; font-size: 11px;">Mức độ cao</span>';
             } else {
-                priBadge.innerHTML = '<span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-size: 11px;">Bình thường</span>';
+                priBadge.innerHTML = '<span class="badge" style="background: #efefe7; color: #52675d; border: 1px solid #e1e5da; font-size: 11px;">Bình thường</span>';
             }
 
             // Status badge
@@ -608,13 +608,13 @@
             var isRejected = (status.toLowerCase() === 'rejected');
 
             if (isCompleted) {
-                statBadge.innerHTML = '<span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-size: 11px;">Đã hoàn thành</span>';
+                statBadge.innerHTML = '<span class="badge" style="background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; font-size: 11px;">Đã hoàn thành</span>';
             } else if (isInProgress) {
-                statBadge.innerHTML = '<span class="badge" style="background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11px;">Đang sửa chữa</span>';
+                statBadge.innerHTML = '<span class="badge" style="background: #e1ebe2; color: #254e43; border: 1px solid #c7d8cc; font-size: 11px;">Đang sửa chữa</span>';
             } else if (isRejected) {
-                statBadge.innerHTML = '<span class="badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; font-size: 11px;">Đã từ chối</span>';
+                statBadge.innerHTML = '<span class="badge" style="background: #f1e2da; color: #94473e; border: 1px solid #e4c8bf; font-size: 11px;">Đã từ chối</span>';
             } else {
-                statBadge.innerHTML = '<span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 11px;">Chờ tiếp nhận</span>';
+                statBadge.innerHTML = '<span class="badge" style="background: #f2e9cb; color: #8e6a2c; border: 1px solid #e5d6a9; font-size: 11px;">Chờ tiếp nhận</span>';
             }
 
             // Complete note box

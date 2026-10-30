@@ -10,10 +10,10 @@
     <!-- Page Header -->
     <div class="page-header" style="margin-bottom: 20px;">
         <div>
-            <h1 class="page-title" style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 4px; letter-spacing: -0.3px;">
+            <h1 class="page-title" style="font-size: 22px; font-weight: 800; color: #243d35; margin-bottom: 4px; letter-spacing: -0.3px;">
                 Kế hoạch Sản xuất
             </h1>
-            <p class="page-subtitle" style="font-size: 13px; color: #64748b;">
+            <p class="page-subtitle" style="font-size: 13px; color: #7a887f;">
                 Lập kế hoạch ca máy, phân công công nhân vận hành và định mức sản lượng Viên nén gỗ
             </p>
         </div>
@@ -42,16 +42,16 @@
     }
 
     <!-- Filter Bar -->
-    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; margin-bottom: 20px;">
+    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
         <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
             <div class="search-wrapper" style="flex: 1; min-width: 260px; margin: 0; position: relative;">
-                <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #96a298;"></i>
                 <input type="text" name="SearchTerm" value="@Model.SearchTerm"
                        class="form-control" style="padding-left: 36px; border-radius: 10px; font-size: 12px;"
                        placeholder="Tìm mã kế hoạch, ngày, người tạo, công nhân..." />
                 @if (!string.IsNullOrEmpty(Model.SearchTerm))
                 {
-                    <a href="/Personnel/Index" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;">
+                    <a href="/Personnel/Index" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #96a298;">
                         <i class="bi bi-x-circle-fill"></i>
                     </a>
                 }
@@ -77,19 +77,19 @@
     <div style="display: flex; flex-direction: column; gap: 16px;">
         @if (!Model.Plans.Any())
         {
-            <div class="card" style="padding: 40px; text-align: center; border-radius: 14px; border: 1px solid #e2e8f0; background: #fff;">
-                <i class="bi bi-calendar-x" style="font-size: 40px; color: #cbd5e1; display: block; margin-bottom: 10px;"></i>
-                <p style="font-size: 14px; font-weight: 700; color: #475569; margin-bottom: 4px;">Chưa có kế hoạch sản xuất nào</p>
-                <p style="font-size: 12px; color: #94a3b8;">Kế hoạch do Giám đốc hoặc Quản lý ca tạo và phân công dây chuyền</p>
+            <div class="card" style="padding: 40px; text-align: center; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa;">
+                <i class="bi bi-calendar-x" style="font-size: 40px; color: #b1bdb0; display: block; margin-bottom: 10px;"></i>
+                <p style="font-size: 14px; font-weight: 700; color: #52675d; margin-bottom: 4px;">Chưa có kế hoạch sản xuất nào</p>
+                <p style="font-size: 12px; color: #96a298;">Kế hoạch do Giám đốc hoặc Quản lý ca tạo và phân công dây chuyền</p>
             </div>
         }
         @foreach (var plan in Model.Plans)
         {
             var statusColor = plan.Status switch {
-                "Completed"  => "#16a34a",
-                "InProgress" => "#2563eb",
-                "Assigned"   => "#d97706",
-                _            => "#64748b"
+                "Completed"  => "#356e51",
+                "InProgress" => "#2f6153",
+                "Assigned"   => "#a17b35",
+                _            => "#7a887f"
             };
             var statusLabel = plan.Status switch {
                 "Completed"  => "Hoàn thành",
@@ -104,10 +104,10 @@
                 _            => "bi-circle"
             };
             var statusBg = plan.Status switch {
-                "Completed"  => "#f0fdf4",
-                "InProgress" => "#eff6ff",
-                "Assigned"   => "#fffbeb",
-                _            => "#f8fafc"
+                "Completed"  => "#edf3e9",
+                "InProgress" => "#eef2e9",
+                "Assigned"   => "#faf5e5",
+                _            => "#f4f2ea"
             };
             var shiftTime = plan.Shift switch {
                 "Ca 1" => "06:00 – 14:00",
@@ -117,30 +117,30 @@
             };
 
             <!-- Plan Card (Matching BATT_PPMSss ProductionPlanView) -->
-            <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
+            <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
 
                 <!-- Card Header -->
-                <div style="padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="padding: 16px 20px; border-bottom: 1px solid #efefe7; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                         <!-- Plan Code -->
-                        <span style="font-size: 13px; font-weight: 800; color: #4338ca; font-family: monospace; background: #eef2ff; padding: 6px 12px; border-radius: 8px; border: 1px solid #c7d2fe;">
+                        <span style="font-size: 13px; font-weight: 800; color: #123329; font-family: monospace; background: #e5eee7; padding: 6px 12px; border-radius: 8px; border: 1px solid #c7d8cc;">
                             @plan.Code
                         </span>
                         <div>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <h3 style="font-size: 14px; font-weight: 800; color: #0f172a; margin: 0;">Viên nén gỗ</h3>
-                                <span style="font-size: 10.5px; font-weight: 600; background: #ecfdf5; color: #059669; border: 1px solid #bbf7d0; padding: 2px 8px; border-radius: 6px;">
+                                <h3 style="font-size: 14px; font-weight: 800; color: #243d35; margin: 0;">Viên nén gỗ</h3>
+                                <span style="font-size: 10.5px; font-weight: 600; background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; padding: 2px 8px; border-radius: 6px;">
                                     Sản phẩm chuẩn
                                 </span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; margin-top: 4px;">
-                                <span><i class="bi bi-calendar3" style="color: #94a3b8; margin-right: 4px;"></i>Ngày: <strong>@plan.AssignmentDate.ToString("yyyy-MM-dd")</strong></span>
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #7a887f; margin-top: 4px;">
+                                <span><i class="bi bi-calendar3" style="color: #96a298; margin-right: 4px;"></i>Ngày: <strong>@plan.AssignmentDate.ToString("yyyy-MM-dd")</strong></span>
                                 <span>•</span>
-                                <span><i class="bi bi-clock" style="color: #94a3b8; margin-right: 4px;"></i><strong>@plan.Shift</strong> @(!string.IsNullOrEmpty(shiftTime) ? $"({shiftTime})" : "")</span>
+                                <span><i class="bi bi-clock" style="color: #96a298; margin-right: 4px;"></i><strong>@plan.Shift</strong> @(!string.IsNullOrEmpty(shiftTime) ? $"({shiftTime})" : "")</span>
                                 @if (plan.Assigner != null)
                                 {
                                     <span>•</span>
-                                    <span><i class="bi bi-person-gear" style="color: #94a3b8; margin-right: 4px;"></i>Người tạo: <strong>@plan.Assigner.FullName</strong></span>
+                                    <span><i class="bi bi-person-gear" style="color: #96a298; margin-right: 4px;"></i>Người tạo: <strong>@plan.Assigner.FullName</strong></span>
                                 }
                             </div>
                         </div>
@@ -149,9 +149,9 @@
                     <!-- Target & Status -->
                     <div style="display: flex; align-items: center; gap: 16px;">
                         <div style="text-align: right;">
-                            <span style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; display: block;">MỤC TIÊU</span>
-                            <span style="font-size: 18px; font-weight: 800; color: #0f172a; line-height: 1.2;">
-                                @plan.ProductionTarget.ToString("N0") <span style="font-size: 12px; color: #64748b; font-weight: 600;">kg</span>
+                            <span style="font-size: 11px; font-weight: 700; color: #96a298; text-transform: uppercase; letter-spacing: 0.5px; display: block;">MỤC TIÊU</span>
+                            <span style="font-size: 18px; font-weight: 800; color: #243d35; line-height: 1.2;">
+                                @plan.ProductionTarget.ToString("N0") <span style="font-size: 12px; color: #7a887f; font-weight: 600;">kg</span>
                             </span>
                         </div>
                         <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: @statusColor; background: @statusBg; padding: 6px 14px; border-radius: 20px; border: 1px solid @(statusColor)33;">
@@ -166,7 +166,7 @@
                     @{
                         var stageItems = Model.GetStagesForPlan(plan.PlanId);
                     }
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
                         PHÂN CÔNG MÁY &amp; CÔNG NHÂN (@stageItems.Count CÔNG ĐOẠN)
                     </div>
 
@@ -176,18 +176,18 @@
                             @foreach (var (stage, idx) in stageItems.Select((s, i) => (s, i + 1)))
                             {
                                 var stageName = stage.TaskDescription ?? "Công đoạn sản xuất";
-                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
-                                    <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-bottom: 4px; line-height: 1.4;">
+                                <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 12px; padding: 12px 14px;">
+                                    <div style="font-size: 12px; font-weight: 700; color: #243d35; margin-bottom: 4px; line-height: 1.4;">
                                         @stageName
                                     </div>
-                                    <div style="font-size: 11.5px; color: #475569; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0;">
+                                    <div style="font-size: 11.5px; color: #52675d; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e1e5da;">
                                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                                            <span style="color: #94a3b8;">Nhân sự:</span>
-                                            <span style="color: #0f172a; font-weight: 700;">@(stage.Staff?.FullName ?? "Chưa phân công")</span>
+                                            <span style="color: #96a298;">Nhân sự:</span>
+                                            <span style="color: #243d35; font-weight: 700;">@(stage.Staff?.FullName ?? "Chưa phân công")</span>
                                         </div>
                                         <div style="display: flex; align-items: center; justify-content: space-between;">
-                                            <span style="color: #94a3b8;">Chỉ tiêu:</span>
-                                            <span style="font-weight: 800; color: #4f46e5;">—</span>
+                                            <span style="color: #96a298;">Chỉ tiêu:</span>
+                                            <span style="font-weight: 800; color: #193f35;">—</span>
                                         </div>
                                     </div>
                                 </div>
@@ -206,11 +206,11 @@
 {
     <div class="modal fade" id="createPlanModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
                 <form method="post" asp-page-handler="CreatePlan">
-                    <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
-                        <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #0f172a;">
-                            <i class="bi bi-calendar-plus" style="color: #4f46e5; margin-right: 8px;"></i>Lập Kế hoạch Sản xuất
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 18px 24px;">
+                        <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #243d35;">
+                            <i class="bi bi-calendar-plus" style="color: #193f35; margin-right: 8px;"></i>Lập Kế hoạch Sản xuất
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -218,11 +218,11 @@
                     <div class="modal-body" style="padding: 24px;">
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Ngày sản xuất</label>
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ngày sản xuất</label>
                                 <input type="date" asp-for="NewPlanDate" class="form-control" required style="border-radius: 8px; font-size: 13px;" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Ca sản xuất</label>
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ca sản xuất</label>
                                 <select asp-for="NewPlanShift" class="form-select" style="border-radius: 8px; font-size: 13px;">
                                     <option value="Ca 1">Ca 1 (06:00 – 14:00)</option>
                                     <option value="Ca 2">Ca 2 (14:00 – 22:00)</option>
@@ -230,21 +230,21 @@
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Sản lượng mục tiêu (kg)</label>
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Sản lượng mục tiêu (kg)</label>
                                 <input type="number" asp-for="NewPlanTargetKg" class="form-control" min="1000" step="500" value="25000" required style="border-radius: 8px; font-size: 13px; font-weight: 700;" />
                             </div>
                         </div>
 
-                        <div style="font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+                        <div style="font-size: 12px; font-weight: 800; color: #243d35; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
                             Phân công 4 Công đoạn Dây chuyền chính
                         </div>
 
                         <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
                             <!-- Stage 1 -->
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                            <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
                                 <div style="min-width: 220px;">
-                                    <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">1. Sàng lọc tạp chất &amp; băm dăm</span>
-                                    <span style="font-size: 11px; color: #64748b;">Máy băm nghiền thô M-01</span>
+                                    <span style="font-size: 12.5px; font-weight: 700; color: #243d35; display: block;">1. Sàng lọc tạp chất &amp; băm dăm</span>
+                                    <span style="font-size: 11px; color: #7a887f;">Máy băm nghiền thô M-01</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
                                     <select asp-for="Stage1StaffId" class="form-select" style="font-size: 12px; border-radius: 8px;">
@@ -255,16 +255,16 @@
                                     </select>
                                     <div style="display: flex; align-items: center; gap: 4px; width: 140px;">
                                         <input type="number" asp-for="Stage1TargetKg" class="form-control" style="font-size: 12px; border-radius: 8px;" value="28000" />
-                                        <span style="font-size: 11px; color: #64748b;">kg</span>
+                                        <span style="font-size: 11px; color: #7a887f;">kg</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Stage 2 -->
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                            <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
                                 <div style="min-width: 220px;">
-                                    <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">2. Sấy mùn cưa hạ ẩm</span>
-                                    <span style="font-size: 11px; color: #64748b;">Máy sấy thùng quay M-02</span>
+                                    <span style="font-size: 12.5px; font-weight: 700; color: #243d35; display: block;">2. Sấy mùn cưa hạ ẩm</span>
+                                    <span style="font-size: 11px; color: #7a887f;">Máy sấy thùng quay M-02</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
                                     <select asp-for="Stage2StaffId" class="form-select" style="font-size: 12px; border-radius: 8px;">
@@ -275,16 +275,16 @@
                                     </select>
                                     <div style="display: flex; align-items: center; gap: 4px; width: 140px;">
                                         <input type="number" asp-for="Stage2TargetKg" class="form-control" style="font-size: 12px; border-radius: 8px;" value="26000" />
-                                        <span style="font-size: 11px; color: #64748b;">kg</span>
+                                        <span style="font-size: 11px; color: #7a887f;">kg</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Stage 3 -->
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                            <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
                                 <div style="min-width: 220px;">
-                                    <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">3. Ép viên nén sinh khối</span>
-                                    <span style="font-size: 11px; color: #64748b;">Cụm máy ép viên M-03A</span>
+                                    <span style="font-size: 12.5px; font-weight: 700; color: #243d35; display: block;">3. Ép viên nén sinh khối</span>
+                                    <span style="font-size: 11px; color: #7a887f;">Cụm máy ép viên M-03A</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
                                     <select asp-for="Stage3StaffId" class="form-select" style="font-size: 12px; border-radius: 8px;">
@@ -295,16 +295,16 @@
                                     </select>
                                     <div style="display: flex; align-items: center; gap: 4px; width: 140px;">
                                         <input type="number" asp-for="Stage3TargetKg" class="form-control" style="font-size: 12px; border-radius: 8px;" value="25000" />
-                                        <span style="font-size: 11px; color: #64748b;">kg</span>
+                                        <span style="font-size: 11px; color: #7a887f;">kg</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Stage 4 -->
-                            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                            <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
                                 <div style="min-width: 220px;">
-                                    <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">4. Đóng bao Jumbo 650kg &amp; lưu kho</span>
-                                    <span style="font-size: 11px; color: #64748b;">Cân đóng bao M-04</span>
+                                    <span style="font-size: 12.5px; font-weight: 700; color: #243d35; display: block;">4. Đóng bao Jumbo 650kg &amp; lưu kho</span>
+                                    <span style="font-size: 11px; color: #7a887f;">Cân đóng bao M-04</span>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
                                     <select asp-for="Stage4StaffId" class="form-select" style="font-size: 12px; border-radius: 8px;">
@@ -315,21 +315,21 @@
                                     </select>
                                     <div style="display: flex; align-items: center; gap: 4px; width: 140px;">
                                         <input type="number" asp-for="Stage4TargetKg" class="form-control" style="font-size: 12px; border-radius: 8px;" value="25000" />
-                                        <span style="font-size: 11px; color: #64748b;">kg</span>
+                                        <span style="font-size: 11px; color: #7a887f;">kg</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div>
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #475569;">Ghi chú kế hoạch</label>
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ghi chú kế hoạch</label>
                             <textarea asp-for="NewPlanNotes" class="form-control" rows="2" placeholder="Ghi chú kỹ thuật, lưu ý độ ẩm đầu vào..." style="border-radius: 8px; font-size: 12px;"></textarea>
                         </div>
                     </div>
 
-                    <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
-                        <button type="submit" class="btn btn-primary" style="border-radius: 8px; font-size: 12px; font-weight: 700; background: #4f46e5; border-color: #4f46e5;">
+                        <button type="submit" class="btn btn-primary" style="border-radius: 8px; font-size: 12px; font-weight: 700; background: #193f35; border-color: #193f35;">
                             <i class="bi bi-check2-circle"></i> Xác nhận lập kế hoạch
                         </button>
                     </div>

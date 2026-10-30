@@ -73,6 +73,9 @@ namespace BATT_PPMS.Pages.Auth
             HttpContext.Session.SetInt32(SessionKeys.RoleId, user.RoleId);
             HttpContext.Session.SetString(SessionKeys.RoleName, user.Role?.RoleName ?? string.Empty);
 
+            if (InitialPasswordPolicy.RequiresChange(user.Role?.RoleName, user.Password))
+                return RedirectToPage("/Auth/FirstLoginPassword");
+
             return RedirectToPage("/Dashboard/Index");
         }
     }

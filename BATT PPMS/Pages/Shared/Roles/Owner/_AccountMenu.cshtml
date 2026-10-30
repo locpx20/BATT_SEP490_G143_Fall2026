@@ -1,0 +1,16 @@
+@model BATT_PPMS.Helpers.RoleHeaderViewModel
+                <div class="topbar-dropdown sidebar-account">
+                    <button type="button" class="topbar-user topbar-menu-trigger account-menu-trigger" aria-label="Mở menu tài khoản" aria-expanded="false" aria-controls="accountPanel" data-topbar-panel="accountPanel">
+                        <span class="user-avatar-circle">@Model.Initials</span>
+                        <span class="account-menu-identity">
+                            <span class="user-display-name">@Model.FullName</span>
+                            <span class="user-display-role">Chủ doanh nghiệp</span>
+                        </span>
+                        <i class="bi bi-chevron-down user-chevron" aria-hidden="true"></i>
+                    </button>
+                    <nav class="topbar-panel account-panel" id="accountPanel" aria-label="Tài khoản cá nhân" hidden>
+                        <a href="/Profile/Index"><i class="bi bi-person-circle" aria-hidden="true"></i>Hồ sơ cá nhân</a>
+                        <a href="/Profile/ChangePassword"><i class="bi bi-shield-lock" aria-hidden="true"></i>Đổi mật khẩu</a>
+                        <a href="/Auth/Logout" class="account-signout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Đăng xuất</a>
+                    </nav>
+                </div>

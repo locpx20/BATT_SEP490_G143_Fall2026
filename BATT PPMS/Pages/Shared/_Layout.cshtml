@@ -8,21 +8,20 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/topbar-menus.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin-pagination.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
+    <link rel="stylesheet" href="~/css/theme-colors.css" asp-append-version="true" />
+    @if (Context.Session.GetString("RoleName") == "Owner")
+    {
+        <link rel="stylesheet" href="~/css/owner-workspace.css" asp-append-version="true" />
+    }
 </head>
-<body class="@ViewData["PageClass"]">
+<body class="@(Context.Session.GetString("RoleName") == "Owner" ? "owner-workspace" : "") @ViewData["PageClass"]">
 
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";
     var fullName        = Context.Session.GetString("FullName") ?? "User";
     bool isAdmin        = roleName == "Admin System" || roleName == "Admin";
-    bool isOwner        = roleName == "Owner";
-    bool isManager      = roleName == "Manager";
-    bool isStaff        = roleName == "Staff";
-    bool isMaintenance  = roleName == "Maintenance Staff";
-    bool isQC           = roleName == "QC Staff";
-    bool isPurchasing   = roleName == "Purchasing Staff";
-    bool isWarehouse    = roleName == "Warehouse Staff";
     string ap           = ViewData["ActivePage"]?.ToString() ?? "";
 
     // Initials for avatar
@@ -53,13 +52,11 @@
 <aside class="sidebar" id="sidebar">
     <!-- Brand Header -->
     <div class="sidebar-header">
-        <div class="sidebar-logo-box">B</div>
+        <div class="sidebar-logo-box" aria-label="BATT">BATT</div>
         <div class="sidebar-brand-info">
             <div class="sidebar-brand-row">
                 <span class="brand-name">BATT PPMS</span>
-                <span class="badge-version">v6.1</span>
             </div>
-            <span class="brand-sub">Năng lượng tái tạo</span>
         </div>
         <button class="sidebar-close-btn d-lg-none" onclick="closeSidebar()">
             <i class="bi bi-x-lg"></i>
@@ -69,240 +66,31 @@
     <!-- Navigation -->
     <nav class="sidebar-nav" id="sidebarNav">
 
-        @if (isAdmin)
+        @if (BATT_PPMS.Helpers.RoleViews.Folder(roleName) is string roleFolder)
         {
-            <!-- Tổng quan Điều hành (Role Admin) -->
-            <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
-                <i class="bi bi-grid-fill"></i><span>Tổng quan Điều hành</span>
-            </a>
-
-            <!-- Quản trị Tài khoản & Phân quyền (Role Admin - Thẳng hàng với Tổng quan Điều hành) -->
-            <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
-                <i class="bi bi-people-fill"></i><span>Quản trị Tài khoản &amp; Phân quyền</span>
-            </a>
-        }
-
-        @if (isOwner || isManager)
-        {
-            <!-- CORE group -->
-            <div class="nav-group" id="grp-core">
-                <button class="nav-group-header @(ap is "Dashboard" or "PurchaseInvoice" or "Suppliers" or "Customers" ? "active":"")" onclick="toggleGroup('core')">
-                    <span>Quản trị &amp; Thu mua</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-core"></i>
-                </button>
-                <div class="nav-group-items" id="items-core">
-                    <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
-                        <i class="bi bi-speedometer2"></i><span>Tổng quan Điều hành</span>
-                    </a>
-
-                        <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
-                            <i class="bi bi-building"></i><span>Đối tác Cung ứng &amp; Khách hàng</span>
-                        </a>
-
-                    <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
-                        <i class="bi bi-bag-check"></i><span>Thu mua Nguyên liệu</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- PRODUCTION group -->
-            <div class="nav-group" id="grp-production">
-                <button class="nav-group-header @(ap is "ShiftReport" or "QC" ? "active":"")" onclick="toggleGroup('production')">
-                    <span>Quy trình Sản xuất</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-production"></i>
-                </button>
-                <div class="nav-group-items" id="items-production">
-                    <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
-                        <i class="bi bi-calendar-week"></i><span>Kế hoạch Sản xuất</span>
-                    </a>
-                    <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
-                        <i class="bi bi-clipboard-data"></i><span>Báo cáo Ca Sản xuất</span>
-                    </a>
-                    <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
-                        <i class="bi bi-patch-check"></i><span>Kiểm tra Chất lượng (KCS)</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- WAREHOUSE group -->
-            <div class="nav-group" id="grp-warehouse">
-                <button class="nav-group-header @(ap is "Inventory" or "OrderList" ? "active":"")" onclick="toggleGroup('warehouse')">
-                    <span>Kho vận &amp; Xuất xưởng</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-warehouse"></i>
-                </button>
-                <div class="nav-group-items" id="items-warehouse">
-                    <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
-                        <i class="bi bi-boxes"></i><span>Kho Nguyên liệu &amp; Thành phẩm</span>
-                    </a>
-                    <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
-                        <i class="bi bi-truck"></i><span>Xuất xưởng &amp; Bàn giao</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- EQUIPMENT group -->
-            <div class="nav-group" id="grp-equipment">
-                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" or "MaterialPurchase" ? "active":"")" onclick="toggleGroup('equipment')">
-                    <span>Máy móc &amp; Cơ điện</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-equipment"></i>
-                </button>
-                <div class="nav-group-items" id="items-equipment">
-                    <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
-                        <i class="bi bi-exclamation-triangle"></i><span>Sự cố &amp; Bảo trì Cơ điện</span>
-                    </a>
-                    <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
-                        <i class="bi bi-tools"></i><span>Danh mục Máy móc</span>
-                    </a>
-                    <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
-                        <i class="bi bi-cart3"></i><span>Vật tư Bảo trì</span>
-                    </a>
-                </div>
-            </div>
-
-         
-        }
-        @if (isStaff)
-        {
-            <!-- CORE group (Staff) -->
-            <div class="nav-group" id="grp-s-core">
-                <button class="nav-group-header @(ap=="Dashboard"?"active":"")" onclick="toggleGroup('s-core')">
-                    <span>Quản trị &amp; Thu mua</span>
-                    <i class="bi bi-chevron-down nav-chevron @(ap=="Dashboard"?"rotated":"")" id="chevron-s-core"></i>
-                </button>
-                <div class="nav-group-items @(ap=="Dashboard"?"open":"")" id="items-s-core">
-                    <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
-                        <i class="bi bi-speedometer2"></i><span>Tổng quan Điều hành</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- PRODUCTION group (Staff) -->
-            <div class="nav-group" id="grp-s-prod">
-                <button class="nav-group-header @(ap is "Personnel" or "ShiftReport" ? "active" : "")" onclick="toggleGroup('s-prod')">
-                    <span>Quy trình Sản xuất</span>
-                    <i class="bi bi-chevron-down nav-chevron @(ap is "Personnel" or "ShiftReport" ? "rotated" : "")" id="chevron-s-prod"></i>
-                </button>
-                <div class="nav-group-items @(ap is "Personnel" or "ShiftReport" ? "open" : "")" id="items-s-prod">
-                    <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
-                        <i class="bi bi-calendar-week"></i><span>Kế hoạch Sản xuất</span>
-                    </a>
-                    <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
-                        <i class="bi bi-clipboard-data"></i><span>Báo cáo Ca Sản xuất</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- EQUIPMENT group (Staff) -->
-            <div class="nav-group" id="grp-s-equip">
-                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" ? "active" : "")" onclick="toggleGroup('s-equip')">
-                    <span>Máy móc &amp; Cơ điện</span>
-                    <i class="bi bi-chevron-down nav-chevron @(ap is "BrokenReport" or "Maintenance" ? "rotated" : "")" id="chevron-s-equip"></i>
-                </button>
-                <div class="nav-group-items @(ap is "BrokenReport" or "Maintenance" ? "open" : "")" id="items-s-equip">
-                    <a class="nav-item @(ap is "BrokenReport" or "Maintenance" ? "active" : "")" href="/Maintenance/Index">
-                        <i class="bi bi-wrench-adjustable"></i><span>Sự cố &amp; Bảo trì Cơ điện</span>
-                    </a>
-                </div>
-            </div>
-        }
-
-
-        @if (isMaintenance)
-        {
-            <div class="nav-group" id="grp-ms">
-                <button class="nav-group-header active" onclick="toggleGroup('ms')">
-                    <span>Máy móc &amp; Cơ điện</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-ms"></i>
-                </button>
-                <div class="nav-group-items" id="items-ms">
-                    <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
-                        <i class="bi bi-tools"></i><span>Yêu cầu Bảo trì</span>
-                    </a>
-                    <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
-                        <i class="bi bi-cart3"></i><span>Mua vật tư</span>
-                    </a>
-                </div>
-            </div>
-        }
-
-        @if (isQC)
-        {
-            <div class="nav-group" id="grp-qc">
-                <button class="nav-group-header active" onclick="toggleGroup('qc')">
-                    <span>Kiểm soát Chất lượng</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-qc"></i>
-                </button>
-                <div class="nav-group-items" id="items-qc">
-                    <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
-                        <i class="bi bi-patch-check"></i><span>Kiểm tra KCS</span>
-                    </a>
-                </div>
-            </div>
-        }
-
-        @if (isPurchasing)
-        {
-            <div class="nav-group" id="grp-ps">
-                <button class="nav-group-header active" onclick="toggleGroup('ps')">
-                    <span>Quản trị &amp; Thu mua</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-ps"></i>
-                </button>
-                <div class="nav-group-items" id="items-ps">
-                    <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
-                        <i class="bi bi-bag-check"></i><span>Thu mua Nguyên liệu</span>
-                    </a>
-                    <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
-                        <i class="bi bi-building"></i><span>Nhà cung cấp</span>
-                    </a>
-                </div>
-            </div>
-        }
-
-        @if (isWarehouse)
-        {
-            <div class="nav-group" id="grp-ws">
-                <button class="nav-group-header active" onclick="toggleGroup('ws')">
-                    <span>Kho vận &amp; Xuất xưởng</span>
-                    <i class="bi bi-chevron-down nav-chevron" id="chevron-ws"></i>
-                </button>
-                <div class="nav-group-items" id="items-ws">
-                    <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
-                        <i class="bi bi-boxes"></i><span>Kho nguyên liệu</span>
-                    </a>
-                    <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
-                        <i class="bi bi-truck"></i><span>Xuất xưởng</span>
-                    </a>
-                </div>
-            </div>
-        }
-
-        @if (!isAdmin)
-        {
-        <!-- Account navigation for other roles -->
-        <div class="nav-group" id="grp-account">
-            <button class="nav-group-header @(ap is "Profile" or "ChangePassword" ? "active":"")" onclick="toggleGroup('account')">
-                <span>Tài khoản</span>
-                <i class="bi bi-chevron-down nav-chevron" id="chevron-account"></i>
-            </button>
-            <div class="nav-group-items" id="items-account">
-                <a class="nav-item @(ap=="Profile"?"active":"")" href="/Profile/Index">
-                    <i class="bi bi-person-circle"></i><span>Hồ sơ cá nhân</span>
-                </a>
-                <a class="nav-item @(ap=="ChangePassword"?"active":"")" href="/Profile/ChangePassword">
-                    <i class="bi bi-shield-lock"></i><span>Đổi mật khẩu</span>
-                </a>
-            </div>
-        </div>
-
+            <partial name="@($"~/Pages/Shared/Roles/{roleFolder}/_Navigation.cshtml")" model="ap" />
         }
     </nav>
 
     <!-- Sidebar Footer -->
     <div class="sidebar-footer">
+        @if (isAdmin)
+        {
+            <partial name="~/Pages/Shared/Roles/Admin/_AccountMenu.cshtml"
+                     model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
+        }
+        else if (roleName == "Owner")
+        {
+            <partial name="~/Pages/Shared/Roles/Owner/_AccountMenu.cshtml"
+                     model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
+        }
+        else
+        {
         <div class="sidebar-factory-card">
             <p class="factory-name">Nhà máy Viên nén Gỗ BATT</p>
             <p class="factory-loc">Hàm Kiệm, Bình Thuận</p>
         </div>
+        }
     </div>
 </aside>
 
@@ -310,78 +98,41 @@
 <div class="main-wrapper" id="mainWrapper">
 
     <!-- Topbar -->
+    @if (!isAdmin && roleName != "Owner")
+    {
     <header class="topbar">
         <div class="topbar-left">
             <button class="sidebar-toggle" id="sidebarToggle" onclick="openSidebar()" title="Mở menu">
                 <i class="bi bi-list"></i>
             </button>
-            @if (!isAdmin && ap != "Profile" && ap != "ChangePassword")
+            @if (roleName == "Owner")
+            {
+                <span class="owner-breadcrumb">BATT PPMS / @ViewData["Title"]</span>
+            }
+            else if (!isAdmin && ap != "Profile" && ap != "ChangePassword")
             {
                 <span class="topbar-page-title">@ViewData["Title"]</span>
             }
         </div>
 
         <div class="topbar-right">
-            @if (!isAdmin)
+            @if (BATT_PPMS.Helpers.RoleViews.Folder(roleName) is string headerFolder)
             {
-                <div class="role-switch-badge" title="Chuyển đổi vai trò">
-                    <i class="bi bi-person-gear"></i>
-                    <span>Đổi vai trò: <strong>@roleDisplay</strong></span>
-                    <i class="bi bi-chevron-down"></i>
-                </div>
-            }
-
-            @if (isAdmin)
-            {
-                <div class="topbar-dropdown">
-                    <button type="button" class="topbar-bell-btn topbar-menu-trigger" id="notificationsTrigger" aria-label="Xem thông báo" aria-expanded="false" aria-controls="notificationsPanel" data-topbar-panel="notificationsPanel">
-                        <i class="bi bi-bell" aria-hidden="true"></i>
-                    </button>
-                    <section class="topbar-panel notifications-panel" id="notificationsPanel" aria-labelledby="notificationsTitle" hidden>
-                        <div class="topbar-panel-header"><h2 id="notificationsTitle"><i class="bi bi-bell heading-icon" aria-hidden="true"></i>Thông báo</h2></div>
-                        <div id="notificationsContent" class="notifications-content" aria-live="polite" data-url="@Url.Page("/Admin/Notifications/Index")"></div>
-                    </section>
-                </div>
-                <div class="topbar-dropdown">
-                    <button type="button" class="topbar-user topbar-menu-trigger account-menu-trigger" aria-label="Mở menu tài khoản" aria-expanded="false" aria-controls="accountPanel" data-topbar-panel="accountPanel">
-                        <span class="user-avatar-circle">@initials</span>
-                        <span class="account-menu-identity d-none d-sm-block">
-                            <span class="user-display-name">@fullName</span>
-                            <span class="user-display-role">Quản trị viên</span>
-                        </span>
-                        <i class="bi bi-chevron-down user-chevron" aria-hidden="true"></i>
-                    </button>
-                    <nav class="topbar-panel account-panel" id="accountPanel" aria-label="Tài khoản cá nhân" hidden>
-                        <a href="/Profile/Index"><i class="bi bi-person-circle" aria-hidden="true"></i>Hồ sơ cá nhân</a>
-                        <a href="/Profile/ChangePassword"><i class="bi bi-shield-lock" aria-hidden="true"></i>Đổi mật khẩu</a>
-                        <a href="/Auth/Logout" class="account-signout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Đăng xuất</a>
-                    </nav>
-                </div>
-            }
-            else
-            {
-            <div class="topbar-bell-btn" title="Thông báo">
-                <i class="bi bi-bell"></i>
-            </div>
-
-            <div class="topbar-user">
-                <div class="user-avatar-circle">@initials</div>
-                <div class="d-none d-sm-block">
-                    <div class="user-display-name">@fullName</div>
-                    <div class="user-display-role">@roleDisplay</div>
-                </div>
-                <i class="bi bi-chevron-down user-chevron"></i>
-            </div>
-
-            <a href="/Auth/Logout" class="btn-logout" title="Đăng xuất">
-                <i class="bi bi-box-arrow-right"></i>
-            </a>
+                <partial name="@($"~/Pages/Shared/Roles/{headerFolder}/_Topbar.cshtml")"
+                         model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
             }
         </div>
     </header>
+    }
 
     <!-- Page Content -->
     <main class="page-content">
+        @if (isAdmin || roleName == "Owner")
+        {
+            <button type="button" class="admin-mobile-menu" onclick="openSidebar()" aria-label="Mở menu điều hướng">
+                <i class="bi bi-list" aria-hidden="true"></i>
+            </button>
+        }
         @RenderBody()
     </main>
 </div>
@@ -443,6 +194,7 @@
     function closeSidebar() {
         document.getElementById('sidebar').classList.remove('open');
         document.getElementById('mobileBackdrop').classList.remove('show');
+
     }
 </script>
 @await RenderSectionAsync("Scripts", required: false)

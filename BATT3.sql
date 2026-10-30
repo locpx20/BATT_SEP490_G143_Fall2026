@@ -53,6 +53,7 @@ GO
 -- 5. Bảng User (Người dùng / Nhân sự - Liên kết Role)
 CREATE TABLE [User] (
     user_id INT IDENTITY(1,1) PRIMARY KEY,
+    created_at DATETIME2(0) NULL CONSTRAINT DF_User_CreatedAt DEFAULT SYSUTCDATETIME(),
     username NVARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     full_name NVARCHAR(100) NOT NULL,

@@ -14,7 +14,10 @@ namespace BATT_PPMS
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-            builder.Services.AddRazorPages();
+            builder.Services.AddScoped<BATT_PPMS.Helpers.InitialPasswordFilter>();
+            builder.Services.AddRazorPages(options =>
+                options.Conventions.ConfigureFilter(new Microsoft.AspNetCore.Mvc.ServiceFilterAttribute(
+                    typeof(BATT_PPMS.Helpers.InitialPasswordFilter))));
 
             // Entity Framework Core - SQL Server
             builder.Services.AddDbContext<AppDbContext>(options =>

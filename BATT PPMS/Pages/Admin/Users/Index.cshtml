@@ -7,12 +7,20 @@
 
 @section Styles {
     <style>
+        .account-page-header { align-items: center; }
+        .account-search-form .account-create-button { min-height: 52px; padding: 14px 24px; font-size: 16px; gap: 10px; margin-left: auto; }
+        .account-search-form .account-create-button i { font-size: 19px; }
+        .account-search-form { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 12px; margin: 0; }
+        .account-search-input { flex: 0 1 300px; min-width: 200px; position: relative; }
+        @@media (max-width: 575px) {
+            .account-search-input { width: 100%; flex-basis: 100%; }
+        }
         .admin-page-title {
             font-size: 32px !important;
             font-weight: 700 !important;
             line-height: 1.25 !important;
             letter-spacing: -0.6px !important;
-            color: #0f172a !important;
+            color: #243d35 !important;
             margin-bottom: 6px !important;
         }
         @@media (max-width: 575px) {
@@ -21,9 +29,9 @@
             }
         }
         .btn-edit-account {
-            background: #eff6ff;
-            color: #2563eb;
-            border: 1px solid #bfdbfe;
+            background: #eef2e9;
+            color: #2f6153;
+            border: 1px solid #c7d8cc;
             width: 32px;
             height: 30px;
             display: inline-flex;
@@ -35,9 +43,9 @@
             font-size: 14px;
         }
         .btn-edit-account:hover {
-            background: #dbeafe;
-            color: #1d4ed8;
-            border-color: #93c5fd;
+            background: #e1ebe2;
+            color: #254e43;
+            border-color: #a6beb2;
         }
     </style>
 }
@@ -45,17 +53,11 @@
 <div class="space-y-6">
 
     <!-- Page Header -->
-    <div class="page-header" style="margin-bottom: 24px;">
+    <div class="page-header account-page-header" style="margin-bottom: 24px;">
         <div>
             <h1 class="page-title admin-page-title">
                 <i class="bi bi-people heading-icon" aria-hidden="true"></i>Quản trị Tài khoản &amp; Phân quyền
             </h1>
-            <p class="page-subtitle" style="color: #64748b; font-size: 13px; line-height: 1.6; margin: 0;">Quản lý tài khoản người dùng, vai trò và trạng thái hoạt động trong hệ thống nội bộ BATT PPMS</p>
-        </div>
-        <div class="page-actions">
-            <button type="button" class="btn btn-primary" onclick="showModal('createUserModal')">
-                <i class="bi bi-plus-lg"></i> Cấp Tài khoản Mới
-            </button>
         </div>
     </div>
 
@@ -74,20 +76,20 @@
     }
 
     <!-- Filter + Search -->
-    <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+    <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
         <div class="card-body" style="padding: 16px 20px;">
-            <form method="get" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin: 0;">
+            <form method="get" class="account-search-form" role="search" aria-label="Tìm kiếm tài khoản">
                 <!-- Search Input with Clear Button -->
-                <div style="flex: 1; min-width: 280px; max-width: 440px; position: relative;">
-                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none;"></i>
+                <div class="account-search-input">
+                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #96a298; font-size: 14px; pointer-events: none;"></i>
                     <input type="text" name="SearchTerm" value="@Model.SearchTerm"
                            class="form-control"
-                           style="height: 42px; padding-left: 38px; padding-right: @(!string.IsNullOrEmpty(Model.SearchTerm) ? "36px" : "14px"); border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; background: #f8fafc; transition: all 0.2s ease;"
-                           placeholder="Tìm theo họ tên, username, email..." />
+                           style="height: 42px; padding-left: 38px; padding-right: @(!string.IsNullOrEmpty(Model.SearchTerm) ? "36px" : "14px"); border-radius: 10px; border: 1px solid #b1bdb0; font-size: 13px; background: #f4f2ea; transition: all 0.2s ease;"
+                           aria-label="Nội dung tìm kiếm" placeholder="Tìm theo họ tên, tên đăng nhập, số điện thoại..." />
                     @if (!string.IsNullOrEmpty(Model.SearchTerm))
                     {
-                        <a href="/Admin/Users/Index@(string.IsNullOrEmpty(Model.RoleFilter) && string.IsNullOrEmpty(Model.StatusFilter) ? "" : $"?RoleFilter={Model.RoleFilter}&StatusFilter={Model.StatusFilter}")" 
-                           style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 15px; text-decoration: none;"
+                        <a asp-page="/Admin/Users/Index" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter"
+                           style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #96a298; font-size: 15px; text-decoration: none;"
                            title="Xóa tìm kiếm">
                             <i class="bi bi-x-circle-fill"></i>
                         </a>
@@ -98,11 +100,11 @@
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <!-- Role Filter -->
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 12.5px; font-weight: 600; color: #475569; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
-                            <i class="bi bi-person-badge" style="color: #4f46e5;"></i> Vai trò:
+                        <span style="font-size: 12.5px; font-weight: 600; color: #52675d; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
+                            <i class="bi bi-person-badge" style="color: #193f35;"></i> Vai trò:
                         </span>
                         <select name="RoleFilter" onchange="this.form.submit()" class="form-select"
-                                style="height: 42px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; padding: 0 36px 0 14px; min-width: 190px; background-color: #fff; color: #0f172a; font-weight: 500; cursor: pointer;">
+                                style="height: 42px; border-radius: 10px; border: 1px solid #b1bdb0; font-size: 13px; padding: 0 36px 0 14px; min-width: 190px; background-color: #fffefa; color: #243d35; font-weight: 500; cursor: pointer;">
                             <option value="">Tất cả vai trò</option>
                             <option value="Admin" selected="@(Model.RoleFilter=="Admin")">Admin System</option>
                             <option value="Owner" selected="@(Model.RoleFilter=="Owner")">Owner (Chủ nhà máy)</option>
@@ -117,51 +119,48 @@
 
                     <!-- Status Filter -->
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 12.5px; font-weight: 600; color: #475569; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
-                            <i class="bi bi-toggle-on" style="color: #4f46e5;"></i> Trạng thái:
+                        <span style="font-size: 12.5px; font-weight: 600; color: #52675d; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
+                            <i class="bi bi-toggle-on" style="color: #193f35;"></i> Trạng thái:
                         </span>
                         <select name="StatusFilter" onchange="this.form.submit()" class="form-select"
-                                style="height: 42px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; padding: 0 36px 0 14px; min-width: 155px; background-color: #fff; color: #0f172a; font-weight: 500; cursor: pointer;">
+                                style="height: 42px; border-radius: 10px; border: 1px solid #b1bdb0; font-size: 13px; padding: 0 36px 0 14px; min-width: 155px; background-color: #fffefa; color: #243d35; font-weight: 500; cursor: pointer;">
                             <option value="">Tất cả trạng thái</option>
                             <option value="active" selected="@(Model.StatusFilter=="active")">Đang hoạt động</option>
                             <option value="inactive" selected="@(Model.StatusFilter=="inactive")">Đã khóa</option>
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="height: 42px; padding: 0 18px; border-radius: 10px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); background: #4f46e5; border-color: #4f46e5; color: #fff;">
+                    <button type="submit" class="btn btn-primary" style="height: 42px; padding: 0 18px; border-radius: 10px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(25, 63, 53, 0.2); background: #193f35; border-color: #193f35; color: #fffefa;">
                         <i class="bi bi-funnel-fill"></i> Lọc
                     </button>
 
                     @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.RoleFilter) || !string.IsNullOrEmpty(Model.StatusFilter))
                     {
-                        <a href="/Admin/Users/Index" class="btn btn-secondary" style="height: 42px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569;" title="Đặt lại bộ lọc">
+                        <a href="/Admin/Users/Index" class="btn btn-secondary" style="height: 42px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #b1bdb0; background: #f4f2ea; color: #52675d;" title="Đặt lại bộ lọc">
                             <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
                         </a>
                     }
                 </div>
+                <button type="button" class="btn btn-primary account-create-button" onclick="showModal('createUserModal')">
+                    <i class="bi bi-plus-lg"></i> Cấp Tài khoản Mới
+                </button>
             </form>
         </div>
     </div>
 
     <!-- Users Table -->
-    <div class="card" style="border-radius: 14px; border: 1px solid #e2e8f0; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
-        <div class="card-header" style="background: #ffffff; padding: 16px 22px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
+        <div class="card-header" style="background: #fffefa; padding: 16px 22px; border-bottom: 1px solid #efefe7; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 34px; height: 34px; border-radius: 10px; background: #eef2ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                <div style="width: 34px; height: 34px; border-radius: 10px; background: #e5eee7; color: #193f35; display: flex; align-items: center; justify-content: center; font-size: 16px;">
                     <i class="bi bi-people-fill"></i>
                 </div>
                 <div>
-                    <h2 style="font-size: 14.5px; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.2;">
+                    <h2 style="font-size: 14.5px; font-weight: 700; color: #243d35; margin: 0; line-height: 1.2;">
                         Danh sách tài khoản hệ thống
                     </h2>
-                    <span style="font-size: 11.5px; color: #64748b;">
-                        Phân quyền và quản lý tài khoản người dùng BATT PPMS
-                    </span>
                 </div>
             </div>
-            <span style="font-size: 12px; font-weight: 700; background: #eef2ff; color: #4f46e5; padding: 5px 12px; border-radius: 20px; border: 1px solid #e0e7ff;">
-                Tổng số: <strong>@Model.Users.Count</strong> tài khoản
-            </span>
         </div>
         <div class="table-wrapper" style="overflow-x: auto;">
             <table class="data-table">
@@ -170,7 +169,6 @@
                         <th>#</th>
                         <th>Người dùng</th>
                         <th>Tên đăng nhập</th>
-                        <th>Email</th>
                         <th>Vai trò</th>
                         <th>Trạng thái</th>
                         <th>Ngày tạo</th>
@@ -181,49 +179,48 @@
                     @if (!Model.Users.Any())
                     {
                         <tr>
-                            <td colspan="8" class="empty-state">
+                            <td colspan="7" class="empty-state">
                                 <i class="bi bi-people"></i>
-                                <p style="font-size: 14px; font-weight: 600; color: #475569; margin-top: 8px;">Không tìm thấy tài khoản nào</p>
-                                <p style="font-size: 12px; color: #94a3b8;">Thử thay đổi bộ lọc hoặc tạo tài khoản mới</p>
+                                <p style="font-size: 14px; font-weight: 600; color: #52675d; margin-top: 8px;">Không tìm thấy tài khoản nào</p>
+                                <p style="font-size: 12px; color: #96a298;">Thử thay đổi bộ lọc hoặc tạo tài khoản mới</p>
                             </td>
                         </tr>
                     }
-                    @{ int idx = 1; }
+                    @{ int idx = Model.Pagination.Offset + 1; }
                     @foreach (var user in Model.Users)
                     {
                         var roleColor = user.RoleName switch {
-                            "Admin" or "Admin System" => "#7c3aed",
-                            "Owner" => "#b45309",
-                            "Manager" => "#1d4ed8",
-                            "Staff" => "#0f766e",
-                            "QC Staff" => "#0e7490",
-                            "Maintenance Staff" => "#9a3412",
-                            "Purchasing Staff" => "#6d28d9",
-                            "Warehouse Staff" => "#065f46",
-                            _ => "#475569"
+                            "Admin" or "Admin System" => "#576b49",
+                            "Owner" => "#8e6a2c",
+                            "Manager" => "#254e43",
+                            "Staff" => "#356456",
+                            "QC Staff" => "#356456",
+                            "Maintenance Staff" => "#865b35",
+                            "Purchasing Staff" => "#45573b",
+                            "Warehouse Staff" => "#28543f",
+                            _ => "#52675d"
                         };
                         var isSelf = (user.UserId == Model.LoggedInUserId) || 
                                      (!string.IsNullOrEmpty(Model.LoggedInUsername) && user.Username.Equals(Model.LoggedInUsername, StringComparison.OrdinalIgnoreCase));
                         <tr>
-                            <td style="color: #94a3b8; font-size: 12px; font-weight: 600;">@(idx++)</td>
+                            <td style="color: #96a298; font-size: 12px; font-weight: 600;">@(idx++)</td>
                             <td>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">
+                                    <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#193f35,#2c5548);color:#fffefa;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">
                                         @(user.FullName.Length > 0 ? user.FullName[0].ToString().ToUpper() : "?")
                                     </div>
                                     <div>
-                                        <div style="font-weight: 700; font-size: 13px; color: #0f172a;">@user.FullName</div>
+                                        <div style="font-weight: 700; font-size: 13px; color: #243d35;">@user.FullName</div>
                                         @if (!string.IsNullOrEmpty(user.PhoneNumber))
                                         {
-                                            <div style="font-size: 11px; color: #94a3b8;">@user.PhoneNumber</div>
+                                            <div style="font-size: 11px; color: #96a298;">@user.PhoneNumber</div>
                                         }
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <code style="font-size: 12px; font-weight: 700; color: #0f172a; background: #f1f5f9; padding: 2px 7px; border-radius: 5px;">@user.Username</code>
+                                <code style="font-size: 12px; font-weight: 700; color: #243d35; background: #efefe7; padding: 2px 7px; border-radius: 5px;">@user.Username</code>
                             </td>
-                            <td style="font-size: 12px; color: #475569;">@user.Email</td>
                             <td>
                                 <span style="font-size: 12.5px; font-weight: 700; color: @roleColor;">@user.RoleName</span>
                             </td>
@@ -241,19 +238,18 @@
                                     </span>
                                 }
                             </td>
-                            <td style="font-size: 12px; color: #94a3b8;">@user.CreatedAt.ToString("dd/MM/yyyy")</td>
+                            <td style="font-size: 12px; color: #96a298;" title="@(user.CreatedAt?.AddHours(7).ToString("HH:mm:ss dd/MM/yyyy"))">@(user.CreatedAt?.AddHours(7).ToString("dd/MM/yyyy") ?? "Chưa ghi nhận")</td>
                             <td style="text-align: center;">
                                 @if (isSelf)
                                 {
                                     <div style="display: flex; gap: 8px; justify-content: center; align-items: center;">
-                                        <span class="badge" style="background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 6px; border: 1px solid #c7d2fe;" title="Tài khoản Admin của chính bạn">
+                                        <span class="badge" style="background: #e5eee7; color: #193f35; font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 6px; border: 1px solid #c7d8cc;" title="Tài khoản Admin của chính bạn">
                                             <i class="bi bi-shield-check" style="margin-right: 3px;"></i> Tài khoản của bạn
                                         </span>
                                         <button type="button" class="btn-edit-account"
                                                 data-user-id="@user.UserId"
                                                 data-full-name="@user.FullName"
                                                 data-username="@user.Username"
-                                                data-email="@user.Email"
                                                 data-phone="@user.PhoneNumber"
                                                 data-role-id="@user.RoleId"
                                                 data-role-name="@user.RoleName"
@@ -272,7 +268,6 @@
                                                 data-user-id="@user.UserId"
                                                 data-full-name="@user.FullName"
                                                 data-username="@user.Username"
-                                                data-email="@user.Email"
                                                 data-phone="@user.PhoneNumber"
                                                 data-role-id="@user.RoleId"
                                                 data-role-name="@user.RoleName"
@@ -283,13 +278,14 @@
                                         </button>
 
                                         <!-- Toggle Lock Button -->
-                                        <form method="post" asp-page-handler="ToggleStatus" style="margin: 0;">
+                                        <form method="post" asp-route-SearchTerm="@Model.SearchTerm" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter" asp-page-handler="ToggleStatus" style="margin: 0;">
+                <input type="hidden" name="PageNumber" value="@Model.Pagination.CurrentPage" />
                                             <input type="hidden" name="userId" value="@user.UserId" />
                                             @Html.AntiForgeryToken()
                                             @if (user.IsActive)
                                             {
                                                 <button type="submit" class="btn btn-xs"
-                                                        style="background:#fff0f0;color:#dc2626;border:1px solid #fecaca;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-weight:600;font-size:12px;border-radius:6px;cursor:pointer;"
+                                                        style="background:#faf0e9;color:#a55449;border:1px solid #e4c8bf;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-weight:600;font-size:12px;border-radius:6px;cursor:pointer;"
                                                         onclick="return confirm('Khóa tài khoản @user.FullName?')"
                                                         title="Khóa tài khoản">
                                                     <i class="bi bi-lock-fill"></i> Khóa
@@ -298,7 +294,7 @@
                                             else
                                             {
                                                 <button type="submit" class="btn btn-xs"
-                                                        style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-weight:600;font-size:12px;border-radius:6px;cursor:pointer;"
+                                                        style="background:#edf3e9;color:#356e51;border:1px solid #c6dbc9;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-weight:600;font-size:12px;border-radius:6px;cursor:pointer;"
                                                         title="Mở khóa tài khoản">
                                                     <i class="bi bi-unlock-fill"></i> Mở khóa
                                                 </button>
@@ -312,6 +308,8 @@
                 </tbody>
             </table>
         </div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml"
+                 model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/Admin/Users/Index", new() { ["SearchTerm"] = Model.SearchTerm, ["RoleFilter"] = Model.RoleFilter, ["StatusFilter"] = Model.StatusFilter })' />
     </div>
 </div>
 
@@ -326,21 +324,22 @@
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
-        <form method="post" asp-page-handler="UpdateUser">
+        <form method="post" asp-route-SearchTerm="@Model.SearchTerm" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter" asp-page-handler="UpdateUser">
+                <input type="hidden" name="PageNumber" value="@Model.Pagination.CurrentPage" />
             @Html.AntiForgeryToken()
             <input type="hidden" name="UserId" id="editUserId" />
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
                 <!-- Header Banner -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
                     <div>
-                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Tên đăng nhập</span>
-                        <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-top: 2px;">
-                            <code style="color: #4f46e5; font-size: 14px;" id="editDisplayUsername"></code>
+                        <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Tên đăng nhập</span>
+                        <div style="font-size: 15px; font-weight: 700; color: #243d35; margin-top: 2px;">
+                            <code style="color: #193f35; font-size: 14px;" id="editDisplayUsername"></code>
                         </div>
                     </div>
                     <div>
-                        <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Vai trò hiện tại</span>
-                        <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px;" id="editDisplayRoleName"></div>
+                        <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Vai trò hiện tại</span>
+                        <div style="font-size: 13px; font-weight: 700; color: #243d35; margin-top: 2px;" id="editDisplayRoleName"></div>
                     </div>
                 </div>
 
@@ -376,34 +375,27 @@
                     </div>
                 </div>
 
-                <div class="form-grid-2">
-                    <div class="form-group">
-                        <label class="form-label">Email công ty</label>
-                        <input type="email" name="Email" id="editEmail" class="form-control"
-                               placeholder="email@battenergy.vn" />
-                    </div>
-                    <div class="form-group">
+                <div class="form-group">
                         <label class="form-label">Số điện thoại</label>
                         <input type="text" name="Phone" id="editPhone" class="form-control"
                                placeholder="09xx.xxx.xxx" />
                     </div>
-                </div>
 
-                <div class="form-group" style="background: #faf5ff; border: 1px solid #f3e8ff; border-radius: 10px; padding: 12px 14px;">
-                    <label class="form-label" style="font-weight: 700; color: #6b21a8; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                <div class="form-group" style="background: #f5f4ed; border: 1px solid #e8ecdf; border-radius: 10px; padding: 12px 14px;">
+                    <label class="form-label" style="font-weight: 700; color: #45573b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
                         <i class="bi bi-key-fill"></i> Đổi Mật khẩu Mới
                     </label>
                     <input type="password" name="NewPassword" id="editNewPassword" class="form-control"
                            placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)..." minlength="6" autocomplete="new-password"
-                           style="background: #fff;" />
-                    <span class="form-hint" style="font-size: 11.5px; color: #7e22ce; margin-top: 4px; display: block;">
+                           style="background: #fffefa;" />
+                    <span class="form-hint" style="font-size: 11.5px; color: #576b49; margin-top: 4px; display: block;">
                         <i class="bi bi-info-circle"></i> Để trống trường này nếu không muốn thay đổi mật khẩu hiện tại.
                     </span>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+            <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid #efefe7; display: flex; justify-content: flex-end; gap: 10px;">
                 <button type="button" class="btn btn-secondary" onclick="hideModal('editUserModal')">Hủy</button>
-                <button type="submit" class="btn btn-primary" style="background: #4f46e5; border-color: #4f46e5;">
+                <button type="submit" class="btn btn-primary" style="background: #193f35; border-color: #193f35;">
                     <i class="bi bi-check-lg"></i> Lưu thay đổi
                 </button>
             </div>
@@ -420,7 +412,8 @@
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
-        <form method="post" asp-page-handler="CreateUser">
+        <form method="post" asp-route-SearchTerm="@Model.SearchTerm" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter" asp-page-handler="CreateUser">
+                <input type="hidden" name="PageNumber" value="@Model.Pagination.CurrentPage" />
             @Html.AntiForgeryToken()
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
                 <div class="form-grid-2">
@@ -458,20 +451,13 @@
                     <input type="text" name="FullName" class="form-control"
                            placeholder="Ví dụ: Nguyễn Văn An" required />
                 </div>
-                <div class="form-grid-2">
-                    <div class="form-group">
-                        <label class="form-label">Email công ty <span class="required-star">*</span></label>
-                        <input type="email" name="Email" class="form-control"
-                               placeholder="an.nv@battenergy.vn" required />
-                    </div>
-                    <div class="form-group">
+                <div class="form-group">
                         <label class="form-label">Số điện thoại</label>
                         <input type="text" name="Phone" class="form-control"
                                placeholder="09xx.xxx.xxx" />
                     </div>
-                </div>
                 <div class="info-box">
-                    Mật khẩu khởi tạo ban đầu là <code>123456</code>. Người dùng có thể tự thay đổi mật khẩu trong mục <strong>Hồ sơ cá nhân</strong> sau khi đăng nhập.
+                    Mật khẩu khởi tạo là <code>123456</code>. Các tài khoản ngoài Admin bắt buộc đổi mật khẩu ngay sau lần đăng nhập bằng mật khẩu khởi tạo.
                 </div>
             </div>
             <div class="modal-footer">
@@ -492,12 +478,11 @@
     function hideModal(id) {
         document.getElementById(id).classList.remove('show');
     }
-    function openEditUserModal(userId, fullName, username, email, phone, roleId, roleName, isSelf) {
+    function openEditUserModal(userId, fullName, username, phone, roleId, roleName, isSelf) {
         document.getElementById('editUserId').value = userId;
         document.getElementById('editDisplayUsername').textContent = username;
         document.getElementById('editDisplayRoleName').textContent = roleName;
         document.getElementById('editFullName').value = fullName;
-        document.getElementById('editEmail').value = email || '';
         document.getElementById('editPhone').value = phone || '';
         document.getElementById('editNewPassword').value = '';
         
@@ -511,12 +496,11 @@
         var userId = btn.getAttribute('data-user-id');
         var fullName = btn.getAttribute('data-full-name');
         var username = btn.getAttribute('data-username');
-        var email = btn.getAttribute('data-email');
         var phone = btn.getAttribute('data-phone');
         var roleId = btn.getAttribute('data-role-id');
         var roleName = btn.getAttribute('data-role-name');
         var isSelf = btn.getAttribute('data-is-self') === 'true';
-        openEditUserModal(userId, fullName, username, email, phone, roleId, roleName, isSelf);
+        openEditUserModal(userId, fullName, username, phone, roleId, roleName, isSelf);
     }
     // Close modal on backdrop click
     document.querySelectorAll('.modal-overlay').forEach(el => {

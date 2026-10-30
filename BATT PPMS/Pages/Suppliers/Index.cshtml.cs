@@ -72,6 +72,10 @@ namespace BATT_PPMS.Pages.Suppliers
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
 
+        [BindProperty(SupportsGet = true)] public string? StatusFilter { get; set; }
+        [BindProperty(SupportsGet = true)] public int PageNumber { get; set; } = 1;
+        public PageWindow PartnerPagination { get; private set; } = new(0, 1);
+
         public List<SupplierViewModel> Suppliers { get; set; } = new();
         public List<CustomerViewModel> Customers { get; set; } = new();
 
@@ -97,6 +101,11 @@ namespace BATT_PPMS.Pages.Suppliers
                 Tab = "suppliers";
 
             await LoadDataAsync();
+            if (IsOwner)
+            {
+                PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
+                PartnerPagination = new PageWindow(Tab == "customers" ? Customers.Count : Suppliers.Count, PageNumber);
+            }
             return Page();
         }
 
@@ -349,6 +358,8 @@ namespace BATT_PPMS.Pages.Suppliers
                     (s.Address != null && s.Address.ToLower().Contains(kw)));
             }
 
+            if (IsOwner && StatusFilter is "Active" or "Inactive")
+                supQuery = supQuery.Where(s => s.Status == StatusFilter);
             var rawSuppliers = await supQuery.OrderBy(s => s.SupplierId).ToListAsync();
             Suppliers = rawSuppliers.Select(s => {
                 var invoices = s.PurchaseInvoices.ToList();
@@ -397,6 +408,8 @@ namespace BATT_PPMS.Pages.Suppliers
                     (c.Address != null && c.Address.ToLower().Contains(kw)));
             }
 
+            if (IsOwner && StatusFilter is "Active" or "Inactive")
+                cusQuery = cusQuery.Where(c => c.Status == StatusFilter);
             var rawCustomers = await cusQuery.OrderBy(c => c.CustomerId).ToListAsync();
             Customers = rawCustomers.Select(c => {
                 var orders = c.Orders.ToList();

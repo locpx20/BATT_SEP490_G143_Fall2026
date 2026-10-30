@@ -10,9 +10,12 @@
         <div>
             <h1 class="page-title"><i class="bi @(suppliers ? "bi-buildings" : "bi-people") heading-icon" aria-hidden="true"></i>@(suppliers ? "Nhà cung cấp" : "Khách hàng")</h1>
         </div>
-        <button type="button" class="btn btn-primary" onclick="@(suppliers ? "openAddSupplierModal()" : "openAddCustomerModal()")">
-            <i class="bi bi-plus-lg" aria-hidden="true"></i>@(suppliers ? "Thêm nhà cung cấp" : "Thêm khách hàng")
-        </button>
+        @if (Model.CanManage)
+        {
+            <button type="button" class="btn btn-primary" onclick="@(suppliers ? "openAddSupplierModal()" : "openAddCustomerModal()")">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>@(suppliers ? "Thêm nhà cung cấp" : "Thêm khách hàng")
+            </button>
+        }
     </div>
     @if (!string.IsNullOrEmpty(Model.SuccessMessage)) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
     @if (!string.IsNullOrEmpty(Model.ErrorMessage)) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
@@ -23,18 +26,19 @@
                 <i class="bi bi-search" aria-hidden="true"></i>
                 <input name="SearchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tìm kiếm trong danh sách..." aria-label="Tìm đối tác" />
             </div>
-            <div class="owner-status-field">
-                <label class="owner-filter-label" for="owner-status">Trạng thái</label>
-                <div class="owner-status-control">
-                    <select class="form-select" id="owner-status" name="StatusFilter">
-                        <option value="">Tất cả</option>
-                        <option value="Active" selected="@(Model.StatusFilter == "Active")">Đang hợp tác</option>
-                        <option value="Inactive" selected="@(Model.StatusFilter == "Inactive")">Ngừng hợp tác</option>
-                    </select>
-                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                </div>
+            <div>
+                <label for="owner-status">Trạng thái</label>
+                <select class="form-select" id="owner-status" name="StatusFilter" onchange="this.form.requestSubmit()">
+                    <option value="">Tất cả</option>
+                    <option value="Active" selected="@(Model.StatusFilter == "Active")">Đang hợp tác</option>
+                    <option value="Inactive" selected="@(Model.StatusFilter == "Inactive")">Ngừng hợp tác</option>
+                </select>
             </div>
             <button class="btn btn-secondary" type="submit">Tìm kiếm</button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.StatusFilter))
+            {
+                <a asp-page="/Suppliers/Index" asp-route-tab="@Model.Tab" class="owner-text-action">Đặt lại</a>
+            }
         </form>
         <div class="owner-table-scroll">
             <table class="data-table owner-partner-table">
@@ -56,10 +60,13 @@
                             <td><span class="owner-partner-status @(row.Status == "Active" ? "is-active" : "is-inactive")">@(row.Status == "Active" ? "Đang hợp tác" : "Ngừng hợp tác")</span></td>
                             <td>
                                 <div class="owner-row-actions">
-                                    <button type="button" class="owner-text-action partner-history-action" hidden onclick="@(suppliers ? $"viewSupplierHistory({row.Id}, '', '')" : $"viewCustomerHistory({row.Id}, '', '')")">Xem lịch sử giao dịch</button>
+                                    <button type="button" class="owner-text-action" onclick="@(suppliers ? $"viewSupplierHistory({row.Id}, '', '')" : $"viewCustomerHistory({row.Id}, '', '')")">Xem lịch sử giao dịch</button>
+                                    @if (Model.CanManage)
+                                    {
                                     <button type="button" class="owner-edit-action" title="Chỉnh sửa đối tác" aria-label="Chỉnh sửa @row.Name"
                                             data-type="@(suppliers ? "SUPPLIER" : "CUSTOMER")" data-id="@row.Id" data-code="@row.Code" data-name="@row.Name" data-contact="@row.ContactPerson" data-phone="@row.Phone" data-email="@row.Email" data-address="@row.Address" data-status="@row.Status"
                                             onclick="openEditModal(this.dataset.type, Number(this.dataset.id), this.dataset.code, this.dataset.name, this.dataset.contact, this.dataset.phone, this.dataset.email, this.dataset.address, this.dataset.status)"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
+                                    }
                                 </div>
                             </td>
                         </tr>

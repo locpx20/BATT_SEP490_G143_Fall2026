@@ -7,6 +7,10 @@
     var isSuppliersTab = Model.Tab == "suppliers";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/partner-forms.css" asp-append-version="true" />
+}
+
 @if (Model.CanManage)
 {
     <partial name="~/Pages/Shared/Roles/Owner/_Partners.cshtml" model="Model" />
@@ -361,8 +365,8 @@ else
 <!-- =====================================================
      MODAL: THÊM NHÀ CUNG CẤP (ADD SUPPLIER - Matches BATT_PPMSss)
      ===================================================== -->
-<div class="modal-overlay" id="modalAddSupplier">
-    <div class="modal-box" style="max-width: 520px;">
+<div class="modal-overlay partner-create-modal" id="modalAddSupplier">
+    <div class="modal-box">
         <div class="modal-header">
             <h3 class="modal-title">Thêm Nhà cung cấp Nguyên vật liệu</h3>
             <button type="button" class="modal-close" onclick="closeModal('modalAddSupplier')">
@@ -370,7 +374,7 @@ else
             </button>
         </div>
         <form method="post" asp-page-handler="CreateSupplier">
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="modal-body">
                 <!-- Row 1: Code & Category -->
                 <div class="form-grid-2">
                     <div class="form-group">
@@ -379,7 +383,7 @@ else
                                value="NCC-0@(Model.Suppliers.Count + 1)"
                                readonly
                                class="form-control"
-                               style="font-family: monospace; font-weight: 700; background: #f4f2ea;" />
+                               style="font-weight: 700; background: #f4f2ea;" />
                     </div>
                     <div class="form-group">
                         <label class="form-label">MẶT HÀNG</label>
@@ -439,8 +443,8 @@ else
 <!-- =====================================================
      MODAL: THÊM KHÁCH HÀNG (ADD CUSTOMER - Matches BATT_PPMSss)
      ===================================================== -->
-<div class="modal-overlay" id="modalAddCustomer">
-    <div class="modal-box" style="max-width: 520px;">
+<div class="modal-overlay partner-create-modal" id="modalAddCustomer">
+    <div class="modal-box">
         <div class="modal-header">
             <h3 class="modal-title">Thêm Khách hàng Thu mua</h3>
             <button type="button" class="modal-close" onclick="closeModal('modalAddCustomer')">
@@ -448,7 +452,7 @@ else
             </button>
         </div>
         <form method="post" asp-page-handler="CreateCustomer">
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="modal-body">
                 <!-- Row 1: Code & Category -->
                 <div class="form-grid-2">
                     <div class="form-group">
@@ -457,7 +461,7 @@ else
                                value="KH-0@(Model.Customers.Count + 1)"
                                readonly
                                class="form-control"
-                               style="font-family: monospace; font-weight: 700; background: #f4f2ea;" />
+                               style="font-weight: 700; background: #f4f2ea;" />
                     </div>
                     <div class="form-group">
                         <label class="form-label">MẶT HÀNG MUA</label>

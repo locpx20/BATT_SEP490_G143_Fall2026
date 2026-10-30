@@ -1,4 +1,4 @@
-@model string
+﻿@model string
 @{ var ap = Model; }
 <!-- CORE group -->
             <div class="nav-group" id="grp-core">
@@ -58,15 +58,15 @@
 
             <!-- EQUIPMENT group -->
             <div class="nav-group" id="grp-equipment">
-                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" or "MaterialPurchase" ? "active":"")" onclick="toggleGroup('equipment')">
+                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" or "Machines" or "MaterialPurchase" ? "active":"")" onclick="toggleGroup('equipment')">
                     <span>Máy móc &amp; Cơ điện</span>
                     <i class="bi bi-chevron-down nav-chevron" id="chevron-equipment"></i>
                 </button>
                 <div class="nav-group-items" id="items-equipment">
-                    <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
+                    <a class="nav-item @(ap is "BrokenReport" or "Maintenance" ? "active":"")" href="/Maintenance/Index">
                         <i class="bi bi-exclamation-triangle"></i><span>Sự cố &amp; Bảo trì Cơ điện</span>
                     </a>
-                    <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
+                    <a class="nav-item @(ap=="Machines"?"active":"")" href="/Machines/Index">
                         <i class="bi bi-tools"></i><span>Danh mục Máy móc</span>
                     </a>
                     <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">

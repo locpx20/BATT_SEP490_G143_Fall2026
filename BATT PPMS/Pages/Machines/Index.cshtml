@@ -1,0 +1,871 @@
+@page
+@model BATT_PPMS.Pages.Machines.IndexModel
+@{
+    ViewData["Title"] = "Danh mục Máy móc & Thiết bị";
+    ViewData["ActivePage"] = "Machines";
+}
+
+@section Styles {
+<style>
+    /* ── Machine Card Styles ── */
+    .machine-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 18px;
+    }
+
+    .machine-card {
+        background: #fffefa;
+        border: 1px solid #e1e5da;
+        border-radius: 14px;
+        padding: 18px 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .machine-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(25, 63, 53, 0.08);
+        border-color: #36594c;
+    }
+
+    .machine-code-badge {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.5px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        background: #e5eee7;
+        color: #193f35;
+        border: 1px solid #d2ded5;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+
+    .status-pill .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .status-pill.active {
+        background: #e2eee4;
+        color: #356e51;
+        border: 1px solid #cbe0cf;
+    }
+    .status-pill.active .dot { background: #356e51; }
+
+    .status-pill.warning {
+        background: #faf5e5;
+        color: #a17b35;
+        border: 1px solid #f2e5c4;
+    }
+    .status-pill.warning .dot { background: #a17b35; }
+
+    .status-pill.down {
+        background: #fae8e5;
+        color: #a55449;
+        border: 1px solid #f3cfc9;
+    }
+    .status-pill.down .dot { background: #a55449; }
+
+    .machine-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: #243d35;
+        margin: 12px 0 4px;
+        line-height: 1.35;
+        min-height: 40px;
+    }
+
+    .process-tag {
+        font-size: 12px;
+        color: #7a887f;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .info-box {
+        background: #f8f6f0;
+        border: 1px solid #ece7de;
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .info-label {
+        font-size: 11px;
+        color: #7a887f;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-bottom: 2px;
+    }
+
+    .info-value {
+        font-size: 12px;
+        font-weight: 700;
+        color: #243d35;
+    }
+
+    .card-footer-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 10px;
+        border-top: 1px dashed #e1e5da;
+    }
+
+    .btn-edit-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #e5eee7;
+        color: #193f35;
+        border: 1px solid #cddcd0;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .btn-edit-action:hover {
+        background: #193f35;
+        color: #fffefa;
+        border-color: #193f35;
+    }
+
+    .btn-delete-action {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: transparent;
+        border: 1px solid #f2cfc9;
+        color: #a55449;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .btn-delete-action:hover {
+        background: #fae8e5;
+    }
+
+    /* ── Custom Modal Overlay (Chỉ hiện khi bấm nút) ── */
+    .mmodal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(18, 51, 41, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 2100;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        animation: mmFadeIn 0.18s ease;
+    }
+
+    .mmodal-overlay.open {
+        display: flex;
+    }
+
+    @@keyframes mmFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .mmodal-box {
+        background: #fffefa;
+        border: 1px solid #e1e5da;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 530px;
+        box-shadow: 0 20px 50px rgba(18, 51, 41, 0.22);
+        animation: mmSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        overflow: hidden;
+    }
+
+    @@keyframes mmSlideUp {
+        from { opacity: 0; transform: translateY(20px) scale(0.97); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .mmodal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e1e5da;
+        background: #fffefa;
+    }
+
+    .mmodal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .mmodal-icon-box {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #e5eee7;
+        color: #193f35;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    .mmodal-icon-box.edit {
+        background: #faf5e5;
+        color: #a17b35;
+    }
+
+    .mmodal-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #243d35;
+        margin: 0;
+    }
+
+    .mmodal-subtitle {
+        font-size: 12px;
+        color: #7a887f;
+        margin: 2px 0 0;
+    }
+
+    .mmodal-close-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        color: #7a887f;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .mmodal-close-btn:hover {
+        background: #f4f2ea;
+        color: #243d35;
+    }
+
+    .mmodal-body {
+        padding: 22px 24px;
+    }
+
+    .mform-group {
+        margin-bottom: 16px;
+    }
+
+    .mform-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .mform-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: #243d35;
+        margin-bottom: 6px;
+    }
+
+    .mform-label .req {
+        color: #a55449;
+        margin-left: 3px;
+    }
+
+    .mform-label .hint {
+        font-size: 11px;
+        font-weight: 500;
+        color: #7a887f;
+        margin-left: 6px;
+    }
+
+    .mform-input {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1px solid #e1e5da;
+        background: #fffefa;
+        font-size: 13px;
+        color: #243d35;
+        outline: none;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .mform-input:focus {
+        border-color: #193f35;
+        box-shadow: 0 0 0 3px rgba(25, 63, 53, 0.12);
+    }
+
+    .mmodal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 16px 24px;
+        border-top: 1px solid #e1e5da;
+        background: #fbfaf6;
+    }
+
+    .btn-mmodal-cancel {
+        padding: 9px 20px;
+        border-radius: 10px;
+        border: 1px solid #e1e5da;
+        background: #fffefa;
+        color: #7a887f;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .btn-mmodal-cancel:hover {
+        background: #f4f2ea;
+        color: #243d35;
+    }
+
+    .btn-mmodal-submit {
+        padding: 9px 22px;
+        border-radius: 10px;
+        border: none;
+        background: #193f35;
+        color: #fffefa;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s ease;
+    }
+
+    .btn-mmodal-submit:hover {
+        background: #123329;
+        box-shadow: 0 4px 12px rgba(25, 63, 53, 0.25);
+    }
+</style>
+}
+
+<div class="space-y-6">
+
+    <!-- Alerts / Messages -->
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success" style="border-radius: 12px; margin-bottom: 20px; background: #e2eee4; color: #243d35; border: 1px solid #cce3d0;">
+            <i class="bi bi-check-circle-fill" style="font-size: 16px; margin-right: 8px; color: #356e51;"></i>
+            <span>@Model.SuccessMessage</span>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger" style="border-radius: 12px; margin-bottom: 20px; background: #fae8e5; color: #a55449; border: 1px solid #f2cfc9;">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size: 16px; margin-right: 8px; color: #a55449;"></i>
+            <span>@Model.ErrorMessage</span>
+        </div>
+    }
+
+    <!-- Header Section -->
+    <div class="page-header" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #243d35; margin-bottom: 4px;">
+                Danh mục Máy móc &amp; Thiết bị
+            </h1>
+            <p class="page-subtitle" style="font-size: 12px; color: #7a887f; margin: 0;">
+                Quản lý trang thiết bị dây chuyền 7 công đoạn sản xuất viên nén gỗ
+            </p>
+        </div>
+        @if (Model.CanManage)
+        {
+            <div class="page-actions">
+                <button type="button" class="btn btn-primary" onclick="openAddMachineModal()"
+                        style="display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-weight: 600; padding: 10px 18px; font-size: 13px; background: #193f35; border: none; color: #fffefa; box-shadow: 0 4px 10px rgba(25,63,53,0.15);">
+                    <i class="bi bi-plus-lg"></i> Thêm thiết bị mới
+                </button>
+            </div>
+        }
+    </div>
+
+    <!-- KPI Metric Cards (Đồng bộ BATT_PPMS Theme) -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+        <!-- Card 1: Tổng thiết bị -->
+        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Tổng thiết bị</span>
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #dce7dc; color: #193f35; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="bi bi-cpu"></i>
+                </div>
+            </div>
+            <div style="margin-top: 12px;">
+                <div style="font-size: 22px; font-weight: 800; color: #243d35;">
+                    @Model.TotalMachines <span style="font-size: 13px; font-weight: 600; color: #7a887f;">thiết bị</span>
+                </div>
+                <div style="font-size: 11px; color: #2c5548; margin-top: 4px; font-weight: 600;">
+                    Toàn bộ máy móc dây chuyền
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Đang hoạt động -->
+        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Đang hoạt động</span>
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #e2eee4; color: #356e51; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+            </div>
+            <div style="margin-top: 12px;">
+                <div style="font-size: 22px; font-weight: 800; color: #356e51;">
+                    @Model.NormalCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">máy</span>
+                </div>
+                <div style="font-size: 11px; color: #4d8264; margin-top: 4px; font-weight: 600;">
+                    Sẵn sàng chạy sản xuất
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Cần bảo trì -->
+        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Cần bảo trì</span>
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #faf5e5; color: #a17b35; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+            <div style="margin-top: 12px;">
+                <div style="font-size: 22px; font-weight: 800; color: #a17b35;">
+                    @Model.WarningCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">thiết bị</span>
+                </div>
+                <div style="font-size: 11px; color: #8e6a2c; margin-top: 4px; font-weight: 600;">
+                    Có sự cố đang khắc phục
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Ngừng hoạt động -->
+        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Ngừng hoạt động</span>
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #fae8e5; color: #a55449; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="bi bi-x-circle-fill"></i>
+                </div>
+            </div>
+            <div style="margin-top: 12px;">
+                <div style="font-size: 22px; font-weight: 800; color: #a55449;">
+                    @Model.DownCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">máy</span>
+                </div>
+                <div style="font-size: 11px; color: #9c4c42; margin-top: 4px; font-weight: 600;">
+                    Sự cố nghiêm trọng
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar -->
+    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
+        <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+            <div style="flex: 1; min-width: 260px; position: relative;">
+                <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #96a298;"></i>
+                <input type="text"
+                       name="SearchTerm"
+                       value="@Model.SearchTerm"
+                       placeholder="Tìm theo mã máy, tên thiết bị, hãng sản xuất..."
+                       class="form-control"
+                       style="padding-left: 36px; border-radius: 10px; font-size: 12px; border: 1px solid #e1e5da; background: #fffefa;" />
+                @if (!string.IsNullOrEmpty(Model.SearchTerm))
+                {
+                    <a href="/Machines/Index" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #96a298;">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </a>
+                }
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 12px; color: #7a887f; font-weight: 600;">Công đoạn:</span>
+                    <select name="ProcessFilter" onchange="this.form.submit()" class="form-select" style="font-size: 12px; border-radius: 8px; padding: 6px 12px; border: 1px solid #e1e5da; background: #fffefa;">
+                        <option value="ALL" selected="@(Model.ProcessFilter == "ALL" || string.IsNullOrEmpty(Model.ProcessFilter))">Tất cả công đoạn</option>
+                        @foreach (var p in Model.ProcessNames)
+                        {
+                            <option value="@p" selected="@(Model.ProcessFilter == p)">@p</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn" style="background: #193f35; color: #fffefa; border-radius: 8px; padding: 6px 16px; font-size: 12px; font-weight: 600;">
+                    <i class="bi bi-funnel me-1"></i> Lọc
+                </button>
+
+                @if (!string.IsNullOrEmpty(Model.SearchTerm) || (!string.IsNullOrEmpty(Model.ProcessFilter) && Model.ProcessFilter != "ALL"))
+                {
+                    <a href="/Machines/Index" class="btn btn-outline-secondary" style="border-radius: 8px; padding: 6px 12px; font-size: 12px; border-color: #e1e5da;">
+                        <i class="bi bi-x me-1"></i> Xóa lọc
+                    </a>
+                }
+            </div>
+        </form>
+    </div>
+
+    <!-- Machine Cards Grid -->
+    @if (Model.Machines.Any())
+    {
+        <div class="machine-grid">
+            @foreach (var m in Model.Machines)
+            {
+                var statusClass = m.Status == "Active" ? "active" :
+                                  m.Status == "Warning" ? "warning" : "down";
+                var statusText = m.Status == "Active" ? "Đang hoạt động" :
+                                 m.Status == "Warning" ? "Cần bảo trì" : "Ngừng hoạt động";
+
+                <div class="machine-card">
+                    <div>
+                        <!-- Top Row: Code & Status -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                            <span class="machine-code-badge">@m.MachineCode</span>
+                            <span class="status-pill @statusClass">
+                                <span class="dot"></span>
+                                <span>@statusText</span>
+                            </span>
+                        </div>
+
+                        <!-- Machine Name -->
+                        <div class="machine-title">
+                            @m.MachineName
+                        </div>
+
+                        <!-- Process -->
+                        <div class="process-tag">
+                            <i class="bi bi-gear" style="color: #96a298; font-size: 13px;"></i>
+                            <span>Công đoạn: <strong style="color: #243d35;">@m.ProcessName</strong></span>
+                        </div>
+
+                        <!-- Info Details -->
+                        <div class="info-box">
+                            <div>
+                                <div class="info-label">Model / Hãng</div>
+                                <div class="info-value">@(string.IsNullOrWhiteSpace(m.Brand) ? "—" : m.Brand)</div>
+                            </div>
+                            <div>
+                                <div class="info-label">Tổng sự cố</div>
+                                <div class="info-value">@m.TotalIncidents lần</div>
+                            </div>
+                            @if (m.LastIncidentDate.HasValue)
+                            {
+                                <div style="grid-column: 1 / -1; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #e1e5da;">
+                                    <div class="info-label">Sự cố gần nhất</div>
+                                    <div class="info-value" style="font-size: 11px;">@m.LastIncidentDate.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Footer Row: Status note & Action Buttons -->
+                    <div class="card-footer-actions">
+                        <div>
+                            @if (m.ActiveIncidents > 0)
+                            {
+                                <span style="font-size: 11px; font-weight: 700; color: #a17b35; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="bi bi-wrench"></i> @m.ActiveIncidents sự cố đang xử lý
+                                </span>
+                            }
+                            else
+                            {
+                                <span style="font-size: 11px; font-weight: 700; color: #356e51; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="bi bi-check2"></i> Vận hành bình thường
+                                </span>
+                            }
+                        </div>
+
+                        @if (Model.CanManage)
+                        {
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <button type="button" class="btn-edit-action" title="Cập nhật thông tin"
+                                        onclick="openEditMachineModal(@m.MachineId, '@Html.Raw(m.MachineCode)', '@Html.Raw(m.MachineName.Replace("'","\\'"))', '@Html.Raw(m.ProcessName.Replace("'","\\'"))', '@Html.Raw((m.Brand ?? "").Replace("'","\\'"))')">
+                                    <i class="bi bi-pencil-square"></i> Cập nhật
+                                </button>
+
+                                @if (Model.CanDelete && m.TotalIncidents == 0)
+                                {
+                                    <form method="post" asp-page-handler="DeleteMachine" style="display: inline;"
+                                          onsubmit="return confirm('Bạn có chắc chắn muốn xóa thiết bị \'@m.MachineName\'?\nThao tác này không thể hoàn tác.')">
+                                        <input type="hidden" name="machineId" value="@m.MachineId" />
+                                        <button type="submit" class="btn-delete-action" title="Xóa thiết bị">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="card" style="padding: 60px 20px; text-align: center; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa;">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: #f4f2ea; color: #7a887f; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 12px;">
+                <i class="bi bi-cpu"></i>
+            </div>
+            <div style="font-size: 15px; font-weight: 800; color: #243d35; margin-bottom: 4px;">Chưa có thiết bị nào</div>
+            <div style="font-size: 12px; color: #7a887f;">
+                @if (!string.IsNullOrEmpty(Model.SearchTerm))
+                {
+                    <span>Không tìm thấy máy móc phù hợp với từ khóa "<strong>@Model.SearchTerm</strong>"</span>
+                }
+                else
+                {
+                    <span>Bấm nút <strong>"Thêm thiết bị mới"</strong> ở góc trên để tạo máy móc cho dây chuyền.</span>
+                }
+            </div>
+        </div>
+    }
+
+</div>
+
+@if (Model.CanManage)
+{
+    <!-- Datalist gợi ý công đoạn -->
+    <datalist id="machine-process-list">
+        @foreach (var p in Model.ProcessNames)
+        {
+            <option value="@p" />
+        }
+        <option value="Làm sạch" />
+        <option value="Băm dăm" />
+        <option value="Nghiền mùn cưa" />
+        <option value="Sấy" />
+        <option value="Kiểm tra sau sấy" />
+        <option value="Ép viên" />
+        <option value="Đóng bao Jumbo" />
+    </datalist>
+
+    <!-- ══════════════════════════════════════════════
+         MODAL 1: THÊM THIẾT BỊ MỚI (CHỈ HIỆN KHI BẤM)
+    ══════════════════════════════════════════════ -->
+    <div class="mmodal-overlay" id="addMachineModal" onclick="closeModalOnBackdrop(event, 'addMachineModal')">
+        <div class="mmodal-box">
+            <div class="mmodal-header">
+                <div class="mmodal-header-info">
+                    <div class="mmodal-icon-box">
+                        <i class="bi bi-plus-circle-fill"></i>
+                    </div>
+                    <div>
+                        <h4 class="mmodal-title">Thêm thiết bị mới</h4>
+                        <p class="mmodal-subtitle">Điền thông tin trang thiết bị vào dây chuyền sản xuất</p>
+                    </div>
+                </div>
+                <button type="button" class="mmodal-close-btn" onclick="closeModal('addMachineModal')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <form method="post" asp-page-handler="AddMachine">
+                <div class="mmodal-body">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div class="mform-group">
+                            <label class="mform-label">
+                                Mã máy <span class="req">*</span>
+                                <span class="hint">→ Viết HOA</span>
+                            </label>
+                            <input type="text" name="NewMachineCode" class="mform-input"
+                                   placeholder="Vd: M-CLEAN-01" required autocomplete="off" />
+                        </div>
+                        <div class="mform-group">
+                            <label class="mform-label">
+                                Công đoạn <span class="req">*</span>
+                            </label>
+                            <input type="text" name="NewProcessName" class="mform-input"
+                                   placeholder="Vd: Làm sạch" list="machine-process-list" required autocomplete="off" />
+                        </div>
+                    </div>
+
+                    <div class="mform-group">
+                        <label class="mform-label">
+                            Tên thiết bị <span class="req">*</span>
+                        </label>
+                        <input type="text" name="NewMachineName" class="mform-input"
+                               placeholder="Vd: Máy sàng làm sạch tạp chất và tách kim loại" required />
+                    </div>
+
+                    <div class="mform-group">
+                        <label class="mform-label">
+                            Model / Hãng sản xuất <span class="hint">— Không bắt buộc</span>
+                        </label>
+                        <input type="text" name="NewBrand" class="mform-input"
+                               placeholder="Vd: Rotary Screen BATT-50T" />
+                    </div>
+                </div>
+
+                <div class="mmodal-footer">
+                    <button type="button" class="btn-mmodal-cancel" onclick="closeModal('addMachineModal')">
+                        Hủy bỏ
+                    </button>
+                    <button type="submit" class="btn-mmodal-submit">
+                        <i class="bi bi-plus-lg"></i> Thêm thiết bị
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════
+         MODAL 2: CẬP NHẬT THIẾT BỊ (CHỈ HIỆN KHI BẤM)
+    ══════════════════════════════════════════════ -->
+    <div class="mmodal-overlay" id="editMachineModal" onclick="closeModalOnBackdrop(event, 'editMachineModal')">
+        <div class="mmodal-box">
+            <div class="mmodal-header">
+                <div class="mmodal-header-info">
+                    <div class="mmodal-icon-box edit">
+                        <i class="bi bi-pencil-square"></i>
+                    </div>
+                    <div>
+                        <h4 class="mmodal-title">Cập nhật thông tin thiết bị</h4>
+                        <p class="mmodal-subtitle" id="editModalMachineSubtitle">Chỉnh sửa thông số thiết bị trong hệ thống</p>
+                    </div>
+                </div>
+                <button type="button" class="mmodal-close-btn" onclick="closeModal('editMachineModal')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <form method="post" asp-page-handler="EditMachine">
+                <input type="hidden" name="EditMachineId" id="editMachineId" />
+
+                <div class="mmodal-body">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div class="mform-group">
+                            <label class="mform-label">
+                                Mã máy <span class="hint">→ Giữ nguyên hoặc sửa</span>
+                            </label>
+                            <input type="text" name="NewMachineCode" id="editMachineCode" class="mform-input" autocomplete="off" />
+                        </div>
+                        <div class="mform-group">
+                            <label class="mform-label">
+                                Công đoạn <span class="req">*</span>
+                            </label>
+                            <input type="text" name="NewProcessName" id="editMachineProcess" class="mform-input"
+                                   list="machine-process-list" required autocomplete="off" />
+                        </div>
+                    </div>
+
+                    <div class="mform-group">
+                        <label class="mform-label">
+                            Tên thiết bị <span class="req">*</span>
+                        </label>
+                        <input type="text" name="NewMachineName" id="editMachineName" class="mform-input" required />
+                    </div>
+
+                    <div class="mform-group">
+                        <label class="mform-label">
+                            Model / Hãng sản xuất <span class="hint">— Không bắt buộc</span>
+                        </label>
+                        <input type="text" name="NewBrand" id="editMachineBrand" class="mform-input" />
+                    </div>
+                </div>
+
+                <div class="mmodal-footer">
+                    <button type="button" class="btn-mmodal-cancel" onclick="closeModal('editMachineModal')">
+                        Hủy bỏ
+                    </button>
+                    <button type="submit" class="btn-mmodal-submit">
+                        <i class="bi bi-check-lg"></i> Lưu thay đổi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    function openAddMachineModal() {
+        const modal = document.getElementById('addMachineModal');
+        if (modal) {
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                const inp = modal.querySelector('input[name="NewMachineCode"]');
+                if (inp) inp.focus();
+            }, 200);
+        }
+    }
+
+    function openEditMachineModal(id, code, name, process, brand) {
+        document.getElementById('editMachineId').value = id;
+        document.getElementById('editMachineCode').value = code;
+        document.getElementById('editMachineName').value = name;
+        document.getElementById('editMachineProcess').value = process;
+        document.getElementById('editMachineBrand').value = brand;
+
+        const sub = document.getElementById('editModalMachineSubtitle');
+        if (sub) {
+            sub.textContent = code + ' — ' + name;
+        }
+
+        const modal = document.getElementById('editMachineModal');
+        if (modal) {
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                const inp = document.getElementById('editMachineName');
+                if (inp) {
+                    inp.focus();
+                    inp.select();
+                }
+            }, 200);
+        }
+    }
+
+    function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function closeModalOnBackdrop(event, modalId) {
+        if (event.target === document.getElementById(modalId)) {
+            closeModal(modalId);
+        }
+    }
+
+    // Nhấn phím Escape để đóng modal
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeModal('addMachineModal');
+            closeModal('editMachineModal');
+        }
+    });
+</script>
+}
+

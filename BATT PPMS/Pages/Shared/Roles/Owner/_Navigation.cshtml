@@ -1,4 +1,4 @@
-@model string
+﻿@model string
 @{ var ap = Model; var tab = ViewContext.HttpContext.Request.Query["tab"].ToString(); }
 <div class="owner-nav-section">
     <div class="owner-nav-label">Tổng quan</div>
@@ -12,9 +12,10 @@
         <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index">Kế hoạch sản xuất</a>
         <a class="nav-item @(ap == "QC" ? "active" : "")" href="/QC/Index">Kiểm tra chất lượng</a>
     </details>
-    <details class="owner-nav-details" open="@(ap is "Maintenance" or "MaterialPurchase" or "BrokenReport")">
+    <details class="owner-nav-details" open="@(ap is "Maintenance" or "MaterialPurchase" or "BrokenReport" or "Machines")">
         <summary class="nav-item"><i class="bi bi-wrench"></i><span>Sự cố &amp; bảo trì</span><i class="bi bi-chevron-down"></i></summary>
         <a class="nav-item @(ap is "Maintenance" or "BrokenReport" ? "active" : "")" href="/Maintenance/Index">Sự cố &amp; máy móc</a>
+        <a class="nav-item @(ap == "Machines" ? "active" : "")" href="/Machines/Index">Danh mục Máy móc</a>
         <a class="nav-item @(ap == "MaterialPurchase" ? "active" : "")" href="/MaterialPurchases/Index">Vật tư bảo trì</a>
     </details>
     <a class="nav-item @(ap == "OrderList" ? "active" : "")" href="/Orders/Index"><i class="bi bi-truck"></i><span>Đề xuất xuất hàng</span></a>

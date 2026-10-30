@@ -9,7 +9,6 @@
     <div class="page-header owner-page-header">
         <div>
             <h1 class="page-title"><i class="bi @(suppliers ? "bi-buildings" : "bi-people") heading-icon" aria-hidden="true"></i>@(suppliers ? "Nhà cung cấp" : "Khách hàng")</h1>
-            <p class="page-subtitle">Thông tin liên hệ và lịch sử giao dịch.</p>
         </div>
         <button type="button" class="btn btn-primary" onclick="@(suppliers ? "openAddSupplierModal()" : "openAddCustomerModal()")">
             <i class="bi bi-plus-lg" aria-hidden="true"></i>@(suppliers ? "Thêm nhà cung cấp" : "Thêm khách hàng")

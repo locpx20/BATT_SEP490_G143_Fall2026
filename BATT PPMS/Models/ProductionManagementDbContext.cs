@@ -709,6 +709,10 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasIndex(e => e.Username, "UQ__User__F3DBC572FE197A53").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasColumnType("datetime2(0)")
+                .HasDefaultValueSql("SYSUTCDATETIME()");
             entity.Property(e => e.Email)
                 .HasMaxLength(100)
                 .IsUnicode(false)

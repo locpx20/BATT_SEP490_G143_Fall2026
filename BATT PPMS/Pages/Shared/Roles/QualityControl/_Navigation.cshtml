@@ -1,0 +1,14 @@
+@model string
+@{ var ap = Model; }
+<div class="nav-group" id="grp-qc">
+                <button class="nav-group-header active" onclick="toggleGroup('qc')">
+                    <span>Kiểm soát Chất lượng</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-qc"></i>
+                </button>
+                <div class="nav-group-items" id="items-qc">
+                    <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
+                        <i class="bi bi-patch-check"></i><span>Kiểm tra KCS</span>
+                    </a>
+                </div>
+            </div>
+<partial name="~/Pages/Shared/_AccountNavigation.cshtml" model="Model" />

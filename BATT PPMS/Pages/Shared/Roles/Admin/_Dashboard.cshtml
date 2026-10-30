@@ -1,0 +1,92 @@
+@model BATT_PPMS.Pages.Dashboard.IndexModel
+<div class="admin-overview">
+        <div class="page-header admin-overview-header">
+            <div>
+                <h1 class="page-title"><i class="bi bi-grid heading-icon" aria-hidden="true"></i>Tổng quan vận hành</h1>
+            </div>
+        </div>
+
+        <div class="admin-metrics">
+            <div class="card admin-metric">
+                <div class="admin-metric-heading">
+                    <span class="admin-metric-label">Tổng số tài khoản</span>
+                    <span class="admin-metric-icon" aria-hidden="true"><i class="bi bi-people"></i></span>
+                </div>
+                <div class="admin-metric-value">@Model.TotalAccounts.ToString("N0")</div>
+                <p class="admin-metric-description">Tài khoản trong hệ thống</p>
+            </div>
+            <div class="card admin-metric">
+                <div class="admin-metric-heading">
+                    <span class="admin-metric-label">Tài khoản hoạt động</span>
+                    <span class="admin-metric-icon admin-metric-icon-active" aria-hidden="true"><i class="bi bi-check-circle"></i></span>
+                </div>
+                <div class="admin-metric-value">@Model.ActiveAccounts.ToString("N0")</div>
+                <p class="admin-metric-description">Được phép truy cập hệ thống</p>
+            </div>
+            <div class="card admin-metric">
+                <div class="admin-metric-heading">
+                    <span class="admin-metric-label">Tài khoản tạm khóa</span>
+                    <span class="admin-metric-icon admin-metric-icon-locked" aria-hidden="true"><i class="bi bi-lock"></i></span>
+                </div>
+                <div class="admin-metric-value">@Model.LockedAccounts.ToString("N0")</div>
+                <p class="admin-metric-description">Đã tạm ngừng quyền truy cập</p>
+            </div>
+        </div>
+
+        <section class="card admin-activity" aria-labelledby="admin-activity-title">
+            <div class="admin-activity-header">
+                <h2 id="admin-activity-title"><i class="bi bi-clock-history heading-icon" aria-hidden="true"></i>Nhật ký quản trị gần đây</h2>
+                <a href="/Admin/AuditLogs/Index" class="admin-activity-link">
+                    Xem tất cả <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+            </div>
+            @if (Model.RecentUserLogs.Any())
+            {
+                <div class="table-responsive">
+                    <table class="data-table admin-activity-table" aria-labelledby="admin-activity-title">
+                        <thead>
+                            <tr>
+                                <th scope="col">Thời gian</th>
+                                <th scope="col">Hành động</th>
+                                <th scope="col">Tài khoản / Người dùng</th>
+                                <th scope="col">Vai trò</th>
+                                <th scope="col" class="admin-status-cell">Trạng thái</th>
+                                <th scope="col">Chi tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in Model.RecentUserLogs)
+                            {
+                                <tr>
+                                    <td class="admin-time-cell">@log.CreatedAt.ToString("HH:mm dd/MM/yyyy")</td>
+                                    <td class="admin-action-cell">@log.Action</td>
+                                    <td class="admin-user-cell">@log.TargetUser</td>
+                                    <td><span class="admin-role-label">@log.RoleName</span></td>
+                                    <td class="admin-status-cell">
+                                        @if (log.Status == "Active")
+                                        {
+                                            <span class="admin-status admin-status-active">Hoạt động</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="admin-status admin-status-locked">Đã khóa</span>
+                                        }
+                                    </td>
+                                    <td class="admin-detail-cell">@log.Details</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="admin-empty-state">
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    <p>Chưa có hoạt động quản trị để hiển thị.</p>
+                </div>
+            }
+            <partial name="~/Pages/Shared/_AdminPagination.cshtml"
+                     model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.AdminPagination, "/Dashboard/Index", new())' />
+        </section>
+    </div>

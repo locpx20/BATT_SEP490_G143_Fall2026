@@ -2,14 +2,14 @@
    BATT PPMS - Authentication & Zalo Notification Styles
    ===================================================== */
 :root {
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --zalo-blue: #0068ff;
-    --zalo-blue-dark: #0052cc;
-    --success: #10b981;
-    --success-hover: #059669;
-    --danger: #ef4444;
-    --bg-dark: #0b1329;
+    --primary: #2f6153;
+    --primary-hover: #254e43;
+    --zalo-blue: #2f6153;
+    --zalo-blue-dark: #254e43;
+    --success: #4d8264;
+    --success-hover: #356e51;
+    --danger: #b46a5c;
+    --bg-dark: #243d35;
     --card-bg: rgba(255, 255, 255, 0.06);
     --border-color: rgba(255, 255, 255, 0.12);
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -23,12 +23,12 @@
 
 body {
     font-family: var(--font);
-    background: radial-gradient(circle at 50% 10%, #1e3a8a 0%, #0f172a 60%, #030712 100%);
+    background: radial-gradient(circle at 50% 10%, #193f35 0%, #243d35 60%, #243d35 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #f8fafc;
+    color: #f4f2ea;
     padding: 24px 16px;
     line-height: 1.5;
 }
@@ -77,7 +77,7 @@ body {
 .login-logo h1 {
     font-size: 24px;
     font-weight: 800;
-    color: #ffffff;
+    color: #fffefa;
     letter-spacing: -0.5px;
 }
 
@@ -95,7 +95,7 @@ body {
     gap: 6px;
     background: rgba(59, 130, 246, 0.12);
     border: 1px solid rgba(96, 165, 250, 0.3);
-    color: #93c5fd;
+    color: #a6beb2;
     padding: 5px 14px;
     border-radius: 999px;
     font-size: 12px;
@@ -132,19 +132,19 @@ body {
     margin: 0 0 4px 0;
     font-size: 12.5px;
     font-weight: 700;
-    color: #e2e8f0;
+    color: #e1e5da;
     letter-spacing: 0.2px;
 }
 
 .internal-notice-box .notice-desc {
     margin: 0;
     font-size: 12px;
-    color: #94a3b8;
+    color: #96a298;
     line-height: 1.5;
 }
 
 .internal-notice-box .notice-desc strong {
-    color: #38bdf8;
+    color: #71988a;
     font-weight: 600;
 }
 
@@ -184,13 +184,13 @@ body {
 
 .step-item.active .step-number {
     background: var(--zalo-blue);
-    color: #fff;
+    color: #fffefa;
     box-shadow: 0 0 10px rgba(0, 104, 255, 0.5);
 }
 
 .step-item.completed .step-number {
     background: var(--success);
-    color: #fff;
+    color: #fffefa;
 }
 
 .step-title {
@@ -235,7 +235,7 @@ body {
 .zalo-tag {
     font-size: 11.5px;
     font-weight: 700;
-    color: #93c5fd;
+    color: #a6beb2;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -247,7 +247,7 @@ body {
 
 .zalo-demo-body p {
     font-size: 13.5px;
-    color: #f1f5f9;
+    color: #efefe7;
     margin-bottom: 4px;
 }
 
@@ -260,7 +260,7 @@ body {
 .otp-highlight {
     font-size: 17px;
     font-weight: 800;
-    color: #fef08a;
+    color: #e5d6a9;
     background: rgba(234, 179, 8, 0.2);
     padding: 2px 8px;
     border-radius: 6px;
@@ -272,7 +272,7 @@ body {
     width: 100%;
     background: rgba(255, 255, 255, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.25);
-    color: #ffffff;
+    color: #fffefa;
     font-size: 12.5px;
     font-weight: 600;
     padding: 7px 12px;
@@ -308,12 +308,12 @@ body {
 }
 
 .summary-value {
-    color: #ffffff;
+    color: #fffefa;
     font-weight: 600;
 }
 
 .highlight-phone {
-    color: #60a5fa;
+    color: #71988a;
     font-family: monospace;
     font-size: 14px;
 }
@@ -352,7 +352,7 @@ body {
 }
 
 .form-group label .required {
-    color: #f87171;
+    color: #c78f7f;
 }
 
 .form-control {
@@ -361,7 +361,7 @@ body {
     border-radius: 9px;
     border: 1px solid rgba(255, 255, 255, 0.15);
     background: rgba(255, 255, 255, 0.07);
-    color: #ffffff;
+    color: #fffefa;
     font-size: 14px;
     font-family: var(--font);
     transition: all 0.2s ease-in-out;
@@ -373,7 +373,7 @@ body {
 
 .form-control:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: #477566;
     background: rgba(59, 130, 246, 0.1);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
 }
@@ -386,7 +386,7 @@ body {
 }
 
 .text-danger {
-    color: #fca5a5;
+    color: #d6aaa0;
     font-size: 11.5px;
     display: block;
     margin-top: 3px;
@@ -394,13 +394,13 @@ body {
 
 .form-link-subtle {
     font-size: 12.5px;
-    color: #93c5fd;
+    color: #a6beb2;
     text-decoration: none;
     transition: color 0.2s;
 }
 
 .form-link-subtle:hover {
-    color: #bfdbfe;
+    color: #c7d8cc;
     text-decoration: underline;
 }
 
@@ -417,11 +417,11 @@ body {
     padding: 14px;
     background: rgba(255, 255, 255, 0.09);
     border: 2px solid rgba(96, 165, 250, 0.4);
-    color: #60a5fa;
+    color: #71988a;
 }
 
 .otp-input:focus {
-    border-color: #60a5fa;
+    border-color: #71988a;
     box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.3);
 }
 
@@ -430,7 +430,7 @@ body {
     width: 100%;
     padding: 12px 16px;
     background: var(--primary);
-    color: #ffffff;
+    color: #fffefa;
     font-size: 15px;
     font-weight: 600;
     border: none;
@@ -452,22 +452,22 @@ body {
 }
 
 .btn-zalo-primary {
-    background: linear-gradient(135deg, #0068ff 0%, #0050cc 100%);
+    background: linear-gradient(135deg, #2f6153 0%, #254e43 100%);
     box-shadow: 0 4px 14px rgba(0, 104, 255, 0.35);
 }
 
 .btn-zalo-primary:hover {
-    background: linear-gradient(135deg, #0a73ff 0%, #0045b5 100%);
+    background: linear-gradient(135deg, #2f6153 0%, #193f35 100%);
     box-shadow: 0 6px 20px rgba(0, 104, 255, 0.5);
 }
 
 .btn-success-action {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(135deg, #4d8264 0%, #356e51 100%);
     box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
 .btn-success-action:hover {
-    background: linear-gradient(135deg, #34d399 0%, #047857 100%);
+    background: linear-gradient(135deg, #80a88b 0%, #356e51 100%);
     box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
 }
 
@@ -491,7 +491,7 @@ body {
 .btn-link-action {
     background: none;
     border: none;
-    color: #93c5fd;
+    color: #a6beb2;
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -502,7 +502,7 @@ body {
 }
 
 .btn-link-action:hover {
-    color: #ffffff;
+    color: #fffefa;
     text-decoration: underline;
 }
 
@@ -529,13 +529,13 @@ body {
 
 .alert-danger {
     background: rgba(239, 68, 68, 0.16);
-    color: #fca5a5;
+    color: #d6aaa0;
     border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .alert-success {
     background: rgba(16, 185, 129, 0.16);
-    color: #6ee7b7;
+    color: #accbb1;
     border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
@@ -570,14 +570,14 @@ body {
 }
 
 .link-register {
-    color: #60a5fa;
+    color: #71988a;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.2s;
 }
 
 .link-register:hover {
-    color: #93c5fd;
+    color: #a6beb2;
     text-decoration: underline;
 }
 
@@ -612,5 +612,5 @@ body {
     background: rgba(255, 255, 255, 0.1);
     padding: 2px 5px;
     border-radius: 4px;
-    color: #93c5fd;
+    color: #a6beb2;
 }

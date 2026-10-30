@@ -23,6 +23,9 @@ namespace BATT_PPMS.Pages.Dashboard
         public int ActiveAccounts { get; set; }
         public int LockedAccounts { get; set; }
         public List<UserAuditSummaryItem> RecentUserLogs { get; set; } = new();
+        public PageWindow AdminPagination { get; private set; } = new(0, 1);
+        [BindProperty(SupportsGet = true)]
+        public int PageNumber { get; set; } = 1;
 
         // Operational stats (Matching BATT_PPMSss DashboardView)
         public decimal RawInventoryTons { get; set; } = 46.8m;
@@ -42,6 +45,7 @@ namespace BATT_PPMS.Pages.Dashboard
 
         public async Task<IActionResult> OnGetAsync()
         {
+            PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
             var check = RequireLogin();
             if (check != null) return check;
 
@@ -56,10 +60,11 @@ namespace BATT_PPMS.Pages.Dashboard
                 ActiveAccounts = await _context.Users.CountAsync(u => u.Status == "Active");
                 LockedAccounts = await _context.Users.CountAsync(u => u.Status != "Active");
 
+                AdminPagination = new PageWindow(TotalAccounts, PageNumber);
                 var users = await _context.Users
                     .Include(u => u.Role)
                     .OrderByDescending(u => u.UserId)
-                    .Take(6)
+                    .Skip(AdminPagination.Offset).Take(PageWindow.Size)
                     .ToListAsync();
 
                 RecentUserLogs = users.Select(u => new UserAuditSummaryItem

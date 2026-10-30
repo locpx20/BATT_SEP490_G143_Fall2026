@@ -1,0 +1,17 @@
+@model string
+@{ var ap = Model; }
+<!-- Account navigation for other roles -->
+        <div class="nav-group" id="grp-account">
+            <button class="nav-group-header @(ap is "Profile" or "ChangePassword" ? "active":"")" onclick="toggleGroup('account')">
+                <span>Tài khoản</span>
+                <i class="bi bi-chevron-down nav-chevron" id="chevron-account"></i>
+            </button>
+            <div class="nav-group-items" id="items-account">
+                <a class="nav-item @(ap=="Profile"?"active":"")" href="/Profile/Index">
+                    <i class="bi bi-person-circle"></i><span>Hồ sơ cá nhân</span>
+                </a>
+                <a class="nav-item @(ap=="ChangePassword"?"active":"")" href="/Profile/ChangePassword">
+                    <i class="bi bi-shield-lock"></i><span>Đổi mật khẩu</span>
+                </a>
+            </div>
+        </div>

@@ -2,10 +2,17 @@
 @model BATT_PPMS.Pages.Suppliers.IndexModel
 @{
     ViewData["Title"] = "Đối tác Cung ứng & Khách hàng";
-    ViewData["ActivePage"] = "Suppliers";
+    ViewData["ActivePage"] = Model.CanManage && Model.Tab == "customers" ? "Customers" : "Suppliers";
+    if (Model.CanManage) ViewData["Title"] = Model.Tab == "customers" ? "Khách hàng" : "Nhà cung cấp";
     var isSuppliersTab = Model.Tab == "suppliers";
 }
 
+@if (Model.CanManage)
+{
+    <partial name="~/Pages/Shared/Roles/Owner/_Partners.cshtml" model="Model" />
+}
+else
+{
 <div class="space-y-6">
 
     <!-- Alerts / Messages -->
@@ -27,10 +34,10 @@
     <!-- Header Section -->
     <div class="page-header" style="margin-bottom: 20px;">
         <div>
-            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 4px;">
+            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #243d35; margin-bottom: 4px;">
                 Đối tác Cung ứng &amp; Khách hàng
             </h1>
-            <p class="page-subtitle" style="font-size: 12px; color: #64748b;">
+            <p class="page-subtitle" style="font-size: 12px; color: #7a887f;">
                 Quản lý nhà cung cấp nguyên vật liệu và khách hàng tiêu thụ viên nén gỗ (Chỉ Giám đốc toàn quyền tạo/sửa)
             </p>
         </div>
@@ -83,7 +90,7 @@
                    class="form-control" />
             @if (!string.IsNullOrEmpty(Model.SearchTerm))
             {
-                <a href="?tab=@Model.Tab" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;">
+                <a href="?tab=@Model.Tab" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #96a298;">
                     <i class="bi bi-x-circle-fill"></i>
                 </a>
             }
@@ -99,8 +106,8 @@
                 <div class="card-body">
                     <div class="empty-state">
                         <i class="bi bi-truck"></i>
-                        <h3 style="font-size: 15px; font-weight: 700; color: #334155;">Không tìm thấy nhà cung cấp nào</h3>
-                        <p style="font-size: 12px; color: #94a3b8; margin-top: 4px;">
+                        <h3 style="font-size: 15px; font-weight: 700; color: #45594f;">Không tìm thấy nhà cung cấp nào</h3>
+                        <p style="font-size: 12px; color: #96a298; margin-top: 4px;">
                             @(string.IsNullOrEmpty(Model.SearchTerm) ? "Chưa có nhà cung cấp nào trong hệ thống." : "Không có kết quả khớp với từ khóa tìm kiếm.")
                         </p>
                         @if (Model.CanManage && string.IsNullOrEmpty(Model.SearchTerm))
@@ -126,13 +133,13 @@
                                 <span class="partner-badge-sup">@sup.Code</span>
                                 @if (isActive)
                                 {
-                                    <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">
+                                    <span class="badge" style="background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">
                                         ● Đang hợp tác
                                     </span>
                                 }
                                 else
                                 {
-                                    <span class="badge" style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">
+                                    <span class="badge" style="background: #efefe7; color: #7a887f; border: 1px solid #e1e5da; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">
                                         ○ Ngừng hợp tác
                                     </span>
                                 }
@@ -145,7 +152,7 @@
                             <div class="partner-details">
                                 <div class="partner-detail-row">
                                     <i class="bi bi-person"></i>
-                                    <span style="font-weight: 600; color: #1e293b;">@sup.ContactPerson</span>
+                                    <span style="font-weight: 600; color: #30483f;">@sup.ContactPerson</span>
                                 </div>
                                 <div class="partner-detail-row">
                                     <i class="bi bi-telephone"></i>
@@ -160,7 +167,7 @@
                                 }
                                 <div class="partner-detail-row">
                                     <i class="bi bi-geo-alt"></i>
-                                    <span style="color: #64748b; line-height: 1.3;">@sup.Address</span>
+                                    <span style="color: #7a887f; line-height: 1.3;">@sup.Address</span>
                                 </div>
                             </div>
 
@@ -168,19 +175,19 @@
                             <div class="partner-stat-box">
                                 <div class="partner-stat-row">
                                     <span>Mặt hàng cung cấp:</span>
-                                    <span style="font-weight: 600; color: #0f172a;">Nguyên vật liệu</span>
+                                    <span style="font-weight: 600; color: #243d35;">Nguyên vật liệu</span>
                                 </div>
                                 <div class="partner-stat-row">
                                     <span>Đơn thu mua:</span>
-                                    <span style="font-weight: 700; color: #4f46e5;">@sup.TotalPurchasesCount đơn</span>
+                                    <span style="font-weight: 700; color: #193f35;">@sup.TotalPurchasesCount đơn</span>
                                 </div>
                                 <div class="partner-stat-row">
                                     <span>Tổng khối lượng:</span>
-                                    <span style="font-weight: 700; color: #4338ca;">@sup.TotalPurchasesKg.ToString("N0") kg</span>
+                                    <span style="font-weight: 700; color: #123329;">@sup.TotalPurchasesKg.ToString("N0") kg</span>
                                 </div>
                                 <div class="partner-stat-row">
                                     <span>Tổng giá trị giao dịch:</span>
-                                    <span style="font-weight: 800; color: #0f172a;">@sup.TotalPaidVnd.ToString("N0") đ</span>
+                                    <span style="font-weight: 800; color: #243d35;">@sup.TotalPaidVnd.ToString("N0") đ</span>
                                 </div>
                             </div>
                         </div>
@@ -200,7 +207,7 @@
                                             class="btn btn-outline btn-xs"
                                             title="Chỉnh sửa thông tin"
                                             onclick="openEditModal('SUPPLIER', @sup.SupplierId, '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Code))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Name))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.ContactPerson ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Phone ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Email ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(sup.Address ?? ""))', '@sup.Status')">
-                                        <i class="bi bi-pencil-square" style="color: #4f46e5;"></i>
+                                        <i class="bi bi-pencil-square" style="color: #193f35;"></i>
                                     </button>
 
                                     <form method="post" asp-page-handler="ToggleSupplierStatus" style="display: inline; margin: 0;">
@@ -209,7 +216,7 @@
                                                 class="btn btn-xs @(isActive ? "btn-outline" : "btn-success")"
                                                 title="@(isActive ? "Ngừng hợp tác" : "Kích hoạt lại")"
                                                 onclick="return confirm('Bạn có chắc muốn @(isActive ? "ngừng hợp tác với" : "kích hoạt lại") NCC \'@sup.Name\'?');">
-                                            <i class="bi bi-power" style="@(isActive ? "color: #dc2626;" : "")"></i>
+                                            <i class="bi bi-power" style="@(isActive ? "color: #a55449;" : "")"></i>
                                         </button>
                                     </form>
                                 </div>
@@ -229,8 +236,8 @@
                 <div class="card-body">
                     <div class="empty-state">
                         <i class="bi bi-building-check"></i>
-                        <h3 style="font-size: 15px; font-weight: 700; color: #334155;">Không tìm thấy khách hàng nào</h3>
-                        <p style="font-size: 12px; color: #94a3b8; margin-top: 4px;">
+                        <h3 style="font-size: 15px; font-weight: 700; color: #45594f;">Không tìm thấy khách hàng nào</h3>
+                        <p style="font-size: 12px; color: #96a298; margin-top: 4px;">
                             @(string.IsNullOrEmpty(Model.SearchTerm) ? "Chưa có khách hàng nào trong hệ thống." : "Không có kết quả khớp với từ khóa tìm kiếm.")
                         </p>
                         @if (Model.CanManage && string.IsNullOrEmpty(Model.SearchTerm))
@@ -256,13 +263,13 @@
                                 <span class="partner-badge-cus">@cus.Code</span>
                                 @if (isActive)
                                 {
-                                    <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">
+                                    <span class="badge" style="background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">
                                         ● Đang hợp tác
                                     </span>
                                 }
                                 else
                                 {
-                                    <span class="badge" style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">
+                                    <span class="badge" style="background: #efefe7; color: #7a887f; border: 1px solid #e1e5da; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;">
                                         ○ Ngừng hợp tác
                                     </span>
                                 }
@@ -275,7 +282,7 @@
                             <div class="partner-details">
                                 <div class="partner-detail-row">
                                     <i class="bi bi-person"></i>
-                                    <span style="font-weight: 600; color: #1e293b;">@cus.ContactPerson</span>
+                                    <span style="font-weight: 600; color: #30483f;">@cus.ContactPerson</span>
                                 </div>
                                 <div class="partner-detail-row">
                                     <i class="bi bi-telephone"></i>
@@ -290,7 +297,7 @@
                                 }
                                 <div class="partner-detail-row">
                                     <i class="bi bi-geo-alt"></i>
-                                    <span style="color: #64748b; line-height: 1.3;">@cus.Address</span>
+                                    <span style="color: #7a887f; line-height: 1.3;">@cus.Address</span>
                                 </div>
                             </div>
 
@@ -298,15 +305,15 @@
                             <div class="partner-stat-box">
                                 <div class="partner-stat-row">
                                     <span>Đơn đặt hàng:</span>
-                                    <span style="font-weight: 700; color: #059669;">@cus.TotalOrdersCount đơn</span>
+                                    <span style="font-weight: 700; color: #356e51;">@cus.TotalOrdersCount đơn</span>
                                 </div>
                                 <div class="partner-stat-row">
                                     <span>Tổng khối lượng mua:</span>
-                                    <span style="font-weight: 700; color: #047857;">@cus.TotalOrderedKg.ToString("N0") kg</span>
+                                    <span style="font-weight: 700; color: #356e51;">@cus.TotalOrderedKg.ToString("N0") kg</span>
                                 </div>
                                 <div class="partner-stat-row">
                                     <span>Tổng giá trị đơn hàng:</span>
-                                    <span style="font-weight: 800; color: #0f172a;">@cus.TotalRevenueVnd.ToString("N0") đ</span>
+                                    <span style="font-weight: 800; color: #243d35;">@cus.TotalRevenueVnd.ToString("N0") đ</span>
                                 </div>
                             </div>
                         </div>
@@ -326,7 +333,7 @@
                                             class="btn btn-outline btn-xs"
                                             title="Chỉnh sửa thông tin"
                                             onclick="openEditModal('CUSTOMER', @cus.CustomerId, '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Code))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Name))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.ContactPerson ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Phone ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Email ?? ""))', '@Html.Raw(JavaScriptEncoder.Default.Encode(cus.Address ?? ""))', '@cus.Status')">
-                                        <i class="bi bi-pencil-square" style="color: #4f46e5;"></i>
+                                        <i class="bi bi-pencil-square" style="color: #193f35;"></i>
                                     </button>
 
                                     <form method="post" asp-page-handler="ToggleCustomerStatus" style="display: inline; margin: 0;">
@@ -335,7 +342,7 @@
                                                 class="btn btn-xs @(isActive ? "btn-outline" : "btn-success")"
                                                 title="@(isActive ? "Ngừng hợp tác" : "Kích hoạt lại")"
                                                 onclick="return confirm('Bạn có chắc muốn @(isActive ? "ngừng hợp tác với" : "kích hoạt lại") Khách hàng \'@cus.Name\'?');">
-                                            <i class="bi bi-power" style="@(isActive ? "color: #dc2626;" : "")"></i>
+                                            <i class="bi bi-power" style="@(isActive ? "color: #a55449;" : "")"></i>
                                         </button>
                                     </form>
                                 </div>
@@ -348,6 +355,8 @@
     }
 
 </div>
+
+}
 
 <!-- =====================================================
      MODAL: THÊM NHÀ CUNG CẤP (ADD SUPPLIER - Matches BATT_PPMSss)
@@ -370,7 +379,7 @@
                                value="NCC-0@(Model.Suppliers.Count + 1)"
                                readonly
                                class="form-control"
-                               style="font-family: monospace; font-weight: 700; background: #f8fafc;" />
+                               style="font-family: monospace; font-weight: 700; background: #f4f2ea;" />
                     </div>
                     <div class="form-group">
                         <label class="form-label">MẶT HÀNG</label>
@@ -378,7 +387,7 @@
                                value="Nguyên vật liệu"
                                disabled
                                class="form-control"
-                               style="background: #f1f5f9; color: #64748b; cursor: not-allowed;" />
+                               style="background: #efefe7; color: #7a887f; cursor: not-allowed;" />
                     </div>
                 </div>
 
@@ -448,7 +457,7 @@
                                value="KH-0@(Model.Customers.Count + 1)"
                                readonly
                                class="form-control"
-                               style="font-family: monospace; font-weight: 700; background: #f8fafc;" />
+                               style="font-family: monospace; font-weight: 700; background: #f4f2ea;" />
                     </div>
                     <div class="form-group">
                         <label class="form-label">MẶT HÀNG MUA</label>
@@ -456,7 +465,7 @@
                                value="Viên nén gỗ"
                                disabled
                                class="form-control"
-                               style="background: #f1f5f9; color: #64748b; cursor: not-allowed;" />
+                               style="background: #efefe7; color: #7a887f; cursor: not-allowed;" />
                     </div>
                 </div>
 
@@ -607,13 +616,13 @@
             const nameInput = document.getElementById('editPartnerName');
 
             if (type === 'SUPPLIER') {
-                title.innerHTML = `Chỉnh sửa: <span style="font-family:monospace; color:#4338ca;">${code}</span> — Nhà cung cấp`;
+                title.innerHTML = `Chỉnh sửa: <span style="font-family:monospace; color:#123329;">${code}</span> — Nhà cung cấp`;
                 form.action = '?handler=UpdateSupplier';
                 document.getElementById('editSupplierId').value = id;
                 document.getElementById('editCustomerId').value = '';
                 nameInput.name = 'SupplierName';
             } else {
-                title.innerHTML = `Chỉnh sửa: <span style="font-family:monospace; color:#065f46;">${code}</span> — Khách hàng`;
+                title.innerHTML = `Chỉnh sửa: <span style="font-family:monospace; color:#28543f;">${code}</span> — Khách hàng`;
                 form.action = '?handler=UpdateCustomer';
                 document.getElementById('editCustomerId').value = id;
                 document.getElementById('editSupplierId').value = '';
@@ -635,14 +644,14 @@
         function viewSupplierHistory(id, code, name) {
             const sup = suppliersData.find(s => s.SupplierId === id);
             document.getElementById('historyModalTitle').innerHTML =
-                `<i class="bi bi-clock-history" style="color: #4f46e5; margin-right: 6px;"></i> Lịch sử các phiếu thu mua nguyên vật liệu (${sup && sup.RecentPurchases ? sup.RecentPurchases.length : 0})`;
+                `<i class="bi bi-clock-history" style="color: #193f35; margin-right: 6px;"></i> Lịch sử các phiếu thu mua nguyên vật liệu (${sup && sup.RecentPurchases ? sup.RecentPurchases.length : 0})`;
 
             let html = '';
             if (!sup || !sup.RecentPurchases || sup.RecentPurchases.length === 0) {
                 html = `
                     <div class="empty-state" style="padding: 30px;">
-                        <i class="bi bi-receipt" style="font-size: 32px; color: #94a3b8;"></i>
-                        <p style="font-size: 13px; font-weight: 600; color: #64748b; margin-top: 8px;">Chưa có phiếu thu mua nguyên vật liệu nào với NCC này</p>
+                        <i class="bi bi-receipt" style="font-size: 32px; color: #96a298;"></i>
+                        <p style="font-size: 13px; font-weight: 600; color: #7a887f; margin-top: 8px;">Chưa có phiếu thu mua nguyên vật liệu nào với NCC này</p>
                     </div>`;
             } else {
                 html = `
@@ -662,11 +671,11 @@
                     const dt = new Date(p.Date).toLocaleDateString('vi-VN');
                     html += `
                         <tr>
-                            <td><code style="font-weight:700; color:#4f46e5;">${p.Code}</code></td>
+                            <td><code style="font-weight:700; color:#193f35;">${p.Code}</code></td>
                             <td>${dt}</td>
                             <td style="text-align: right; font-weight: 600;">${Number(p.Quantity).toLocaleString('vi-VN')} kg</td>
-                            <td style="text-align: right; font-weight: 700; color: #0f172a;">${Number(p.TotalAmount).toLocaleString('vi-VN')} đ</td>
-                            <td><span class="badge" style="background:#eef2ff; color:#4338ca; border-radius:20px; font-size:10px; padding:2px 7px;">${p.Status}</span></td>
+                            <td style="text-align: right; font-weight: 700; color: #243d35;">${Number(p.TotalAmount).toLocaleString('vi-VN')} đ</td>
+                            <td><span class="badge" style="background:#e5eee7; color:#123329; border-radius:20px; font-size:10px; padding:2px 7px;">${p.Status}</span></td>
                         </tr>`;
                 });
                 html += `</tbody></table></div>`;
@@ -678,14 +687,14 @@
         function viewCustomerHistory(id, code, name) {
             const cus = customersData.find(c => c.CustomerId === id);
             document.getElementById('historyModalTitle').innerHTML =
-                `<i class="bi bi-clock-history" style="color: #059669; margin-right: 6px;"></i> Lịch sử các đề xuất xuất hàng &amp; Đơn hàng (${cus && cus.RecentOrders ? cus.RecentOrders.length : 0})`;
+                `<i class="bi bi-clock-history" style="color: #356e51; margin-right: 6px;"></i> Lịch sử các đề xuất xuất hàng &amp; Đơn hàng (${cus && cus.RecentOrders ? cus.RecentOrders.length : 0})`;
 
             let html = '';
             if (!cus || !cus.RecentOrders || cus.RecentOrders.length === 0) {
                 html = `
                     <div class="empty-state" style="padding: 30px;">
-                        <i class="bi bi-box-seam" style="font-size: 32px; color: #94a3b8;"></i>
-                        <p style="font-size: 13px; font-weight: 600; color: #64748b; margin-top: 8px;">Chưa có đơn đặt hàng nào từ khách hàng này</p>
+                        <i class="bi bi-box-seam" style="font-size: 32px; color: #96a298;"></i>
+                        <p style="font-size: 13px; font-weight: 600; color: #7a887f; margin-top: 8px;">Chưa có đơn đặt hàng nào từ khách hàng này</p>
                     </div>`;
             } else {
                 html = `
@@ -706,12 +715,12 @@
                     const dt = new Date(o.OrderDate).toLocaleDateString('vi-VN');
                     html += `
                         <tr>
-                            <td><code style="font-weight:700; color:#059669;">${o.OrderCode}</code></td>
+                            <td><code style="font-weight:700; color:#356e51;">${o.OrderCode}</code></td>
                             <td>${dt}</td>
                             <td style="text-align: right; font-weight: 600;">${Number(o.Quantity).toLocaleString('vi-VN')} kg</td>
                             <td style="text-align: right;">${Number(o.UnitPrice).toLocaleString('vi-VN')} đ/kg</td>
-                            <td style="text-align: right; font-weight: 700; color: #0f172a;">${Number(o.TotalAmount).toLocaleString('vi-VN')} đ</td>
-                            <td><span class="badge" style="background:#ecfdf5; color:#065f46; border-radius:20px; font-size:10px; padding:2px 7px;">${o.Status}</span></td>
+                            <td style="text-align: right; font-weight: 700; color: #243d35;">${Number(o.TotalAmount).toLocaleString('vi-VN')} đ</td>
+                            <td><span class="badge" style="background:#e2eee4; color:#28543f; border-radius:20px; font-size:10px; padding:2px 7px;">${o.Status}</span></td>
                         </tr>`;
                 });
                 html += `</tbody></table></div>`;

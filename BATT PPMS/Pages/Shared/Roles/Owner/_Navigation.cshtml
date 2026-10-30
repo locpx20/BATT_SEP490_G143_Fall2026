@@ -1,0 +1,30 @@
+@model string
+@{ var ap = Model; var tab = ViewContext.HttpContext.Request.Query["tab"].ToString(); }
+<div class="owner-nav-section">
+    <div class="owner-nav-label">Tổng quan</div>
+    <a class="nav-item @(ap == "Dashboard" ? "active" : "")" href="/Dashboard/Index"><i class="bi bi-grid"></i><span>Tổng quan</span></a>
+</div>
+<div class="owner-nav-section">
+    <div class="owner-nav-label">Vận hành</div>
+    <a class="nav-item @(ap == "PurchaseInvoice" ? "active" : "")" href="/PurchaseInvoices/Index"><i class="bi bi-inbox"></i><span>Thu mua NVL thô</span></a>
+    <details class="owner-nav-details" open="@(ap is "Personnel" or "QC")">
+        <summary class="nav-item"><i class="bi bi-layers"></i><span>Sản xuất &amp; QC</span><i class="bi bi-chevron-down"></i></summary>
+        <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index">Kế hoạch sản xuất</a>
+        <a class="nav-item @(ap == "QC" ? "active" : "")" href="/QC/Index">Kiểm tra chất lượng</a>
+    </details>
+    <details class="owner-nav-details" open="@(ap is "Maintenance" or "MaterialPurchase" or "BrokenReport")">
+        <summary class="nav-item"><i class="bi bi-wrench"></i><span>Sự cố &amp; bảo trì</span><i class="bi bi-chevron-down"></i></summary>
+        <a class="nav-item @(ap is "Maintenance" or "BrokenReport" ? "active" : "")" href="/Maintenance/Index">Sự cố &amp; máy móc</a>
+        <a class="nav-item @(ap == "MaterialPurchase" ? "active" : "")" href="/MaterialPurchases/Index">Vật tư bảo trì</a>
+    </details>
+    <a class="nav-item @(ap == "OrderList" ? "active" : "")" href="/Orders/Index"><i class="bi bi-truck"></i><span>Đề xuất xuất hàng</span></a>
+    <a class="nav-item @(ap == "Inventory" && tab != "finished" ? "active" : "")" href="/Inventory/Index?tab=raw"><i class="bi bi-box"></i><span>Kho nguyên liệu thô</span></a>
+    <a class="nav-item @(ap == "Inventory" && tab == "finished" ? "active" : "")" href="/Inventory/Index?tab=finished"><i class="bi bi-stack"></i><span>Kho viên nén thành phẩm</span></a>
+</div>
+<div class="owner-nav-section">
+    <div class="owner-nav-label">Dữ liệu</div>
+    <a class="nav-item @(ap == "Suppliers" ? "active" : "")" href="/Suppliers/Index?tab=suppliers"><i class="bi bi-buildings"></i><span>Nhà cung cấp</span></a>
+    <a class="nav-item @(ap == "Customers" ? "active" : "")" href="/Suppliers/Index?tab=customers"><i class="bi bi-people"></i><span>Khách hàng</span></a>
+    <a class="nav-item" href="/Dashboard/Index#owner-finance"><i class="bi bi-cash-coin"></i><span>Công nợ &amp; tài chính</span></a>
+    <a class="nav-item @(ap == "ShiftReport" ? "active" : "")" href="/ShiftReports/Index"><i class="bi bi-graph-up"></i><span>Báo cáo vận hành</span></a>
+</div>

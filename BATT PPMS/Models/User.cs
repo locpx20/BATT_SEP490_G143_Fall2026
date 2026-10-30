@@ -7,6 +7,9 @@ public partial class User
 {
     public int UserId { get; set; }
 
+    // Stored in UTC; null for legacy accounts with no recorded creation date.
+    public DateTime? CreatedAt { get; set; }
+
     public string Username { get; set; } = null!;
 
     public string Password { get; set; } = null!;

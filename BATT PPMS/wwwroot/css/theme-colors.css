@@ -1,0 +1,44 @@
+/* Reference palette. Color overrides only; geometry and typography stay in their original stylesheets. */
+:root {
+    --primary: #193f35;
+    --primary-dark: #123329;
+    --primary-light: #e5eee7;
+    --sidebar-bg: #193f35;
+    --sidebar-border: #36594c;
+    --sidebar-hover: #254c40;
+    --sidebar-active: #2c5548;
+    --sidebar-text: #dbe5db;
+    --sidebar-text-active: #fffefa;
+    --bg-page: #f4f2ea;
+    --bg-card: #fffefa;
+    --topbar-bg: #fffefa;
+    --topbar-border: #e1e5da;
+    --border: #e1e5da;
+    --text-primary: #243d35;
+    --text-secondary: #7a887f;
+    --text-muted: #96a298;
+    --secondary: #7a887f;
+    --success: #356e51;
+    --warning: #a17b35;
+    --danger: #a55449;
+    --info: #477566;
+}
+.sidebar-header, .sidebar-footer { background: #193f35; border-color: #36594c; }
+.sidebar .brand-name, .sidebar .user-display-name, .sidebar .factory-name { color: #fffefa; }
+.sidebar .brand-sub, .sidebar .user-display-role, .sidebar .factory-loc { color: #a8beb0; }
+.sidebar-logo-box { background: linear-gradient(135deg, #193f35, #193f35); color: #dfc983; }
+.sidebar .badge-version { background: #2c5548; color: #dfc983; border-color: #527263; }
+.sidebar .nav-group-header, .sidebar .nav-chevron { color: #a8beb0; }
+.sidebar .nav-group-header:hover, .sidebar .nav-group-header.active { color: #fffefa; background-color: #254c40; }
+.sidebar .nav-item, .sidebar .nav-item i { color: #dbe5db; }
+.sidebar .nav-item:hover { color: #fffefa; background: #254c40; }
+.sidebar .nav-item.active { color: #fffefa; background: #2c5548; box-shadow: inset 2px 0 0 #dfc983; }
+.sidebar .nav-item.active i { color: #dfc983; }
+.sidebar .sidebar-close-btn { color: #dbe5db; }
+.sidebar .sidebar-close-btn:hover { color: #fffefa; background: #2c5548; }
+.sidebar-factory-card { background: #2c5548; border-color: #36594c; }
+.sidebar-account .account-menu-trigger { background: #2c5548; }
+.sidebar-account .account-menu-trigger:hover, .sidebar-account .account-menu-trigger[aria-expanded="true"] { background: #365f50; }
+.sidebar-account .user-avatar-circle { background: #e5d6a9; color: #193f35; border-color: #dfc983; }
+.sidebar-account .user-chevron { color: #dbe5db; }
+::selection { background: #dce7dc; color: #193f35; }

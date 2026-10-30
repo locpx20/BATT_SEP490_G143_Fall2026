@@ -1,0 +1,77 @@
+@model string
+@{ var ap = Model; }
+<!-- CORE group -->
+            <div class="nav-group" id="grp-core">
+                <button class="nav-group-header @(ap is "Dashboard" or "PurchaseInvoice" or "Suppliers" or "Customers" ? "active":"")" onclick="toggleGroup('core')">
+                    <span>Quản trị &amp; Thu mua</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-core"></i>
+                </button>
+                <div class="nav-group-items" id="items-core">
+                    <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
+                        <i class="bi bi-speedometer2"></i><span>Tổng quan Điều hành</span>
+                    </a>
+
+                        <a class="nav-item @(ap=="Suppliers"?"active":"")" href="/Suppliers/Index">
+                            <i class="bi bi-building"></i><span>Đối tác Cung ứng &amp; Khách hàng</span>
+                        </a>
+
+                    <a class="nav-item @(ap=="PurchaseInvoice"?"active":"")" href="/PurchaseInvoices/Index">
+                        <i class="bi bi-bag-check"></i><span>Thu mua Nguyên liệu</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- PRODUCTION group -->
+            <div class="nav-group" id="grp-production">
+                <button class="nav-group-header @(ap is "ShiftReport" or "QC" ? "active":"")" onclick="toggleGroup('production')">
+                    <span>Quy trình Sản xuất</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-production"></i>
+                </button>
+                <div class="nav-group-items" id="items-production">
+                    <a class="nav-item @(ap=="Personnel"?"active":"")" href="/Personnel/Index">
+                        <i class="bi bi-calendar-week"></i><span>Kế hoạch Sản xuất</span>
+                    </a>
+                    <a class="nav-item @(ap=="ShiftReport"?"active":"")" href="/ShiftReports/Index">
+                        <i class="bi bi-clipboard-data"></i><span>Báo cáo Ca Sản xuất</span>
+                    </a>
+                    <a class="nav-item @(ap=="QC"?"active":"")" href="/QC/Index">
+                        <i class="bi bi-patch-check"></i><span>Kiểm tra Chất lượng (KCS)</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- WAREHOUSE group -->
+            <div class="nav-group" id="grp-warehouse">
+                <button class="nav-group-header @(ap is "Inventory" or "OrderList" ? "active":"")" onclick="toggleGroup('warehouse')">
+                    <span>Kho vận &amp; Xuất xưởng</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-warehouse"></i>
+                </button>
+                <div class="nav-group-items" id="items-warehouse">
+                    <a class="nav-item @(ap=="Inventory"?"active":"")" href="/Inventory/Index">
+                        <i class="bi bi-boxes"></i><span>Kho Nguyên liệu &amp; Thành phẩm</span>
+                    </a>
+                    <a class="nav-item @(ap=="OrderList"?"active":"")" href="/Orders/Index">
+                        <i class="bi bi-truck"></i><span>Xuất xưởng &amp; Bàn giao</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- EQUIPMENT group -->
+            <div class="nav-group" id="grp-equipment">
+                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" or "MaterialPurchase" ? "active":"")" onclick="toggleGroup('equipment')">
+                    <span>Máy móc &amp; Cơ điện</span>
+                    <i class="bi bi-chevron-down nav-chevron" id="chevron-equipment"></i>
+                </button>
+                <div class="nav-group-items" id="items-equipment">
+                    <a class="nav-item @(ap=="BrokenReport"?"active":"")" href="/BrokenEquipment/Index">
+                        <i class="bi bi-exclamation-triangle"></i><span>Sự cố &amp; Bảo trì Cơ điện</span>
+                    </a>
+                    <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
+                        <i class="bi bi-tools"></i><span>Danh mục Máy móc</span>
+                    </a>
+                    <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
+                        <i class="bi bi-cart3"></i><span>Vật tư Bảo trì</span>
+                    </a>
+                </div>
+            </div>
+<partial name="~/Pages/Shared/_AccountNavigation.cshtml" model="Model" />

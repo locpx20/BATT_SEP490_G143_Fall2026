@@ -1,0 +1,9 @@
+.admin-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; }
+.admin-pagination nav { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.admin-pagination nav a, .admin-pagination nav span { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; min-height: 34px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; }
+.admin-pagination nav a { color: var(--primary); background: var(--bg-card); }
+.admin-pagination nav a:hover { background: var(--primary-light); }
+.admin-pagination nav a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.admin-pagination nav .current { color: var(--bg-card); background: var(--primary); border-color: var(--primary); }
+.admin-pagination nav .disabled { color: var(--text-muted); background: var(--bg-page); }
+.admin-pagination nav .page-position { border: 0; color: var(--text-primary); background: transparent; white-space: nowrap; }

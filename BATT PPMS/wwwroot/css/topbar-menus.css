@@ -1,4 +1,9 @@
 .topbar-dropdown { position: relative; }
+.admin-mobile-menu { display: none; }
+@media (max-width: 1024px) {
+    .admin-mobile-menu { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; color: var(--primary); background: var(--bg-card); font-size: 24px; cursor: pointer; }
+    .admin-mobile-menu:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+}
 .topbar-menu-trigger { border: 0; background: transparent; font: inherit; cursor: pointer; }
 .topbar-menu-trigger:focus-visible, .topbar-panel a:focus-visible, .notification-retry:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .account-menu-trigger { padding: 6px 8px; border-radius: 8px; text-align: left; }
@@ -7,9 +12,16 @@
 .account-menu-identity .user-display-role { margin-top: 4px; }
 .account-menu-trigger .user-chevron { color: var(--primary); margin-left: 6px; transition: transform .15s ease; }
 .account-menu-trigger[aria-expanded="true"] .user-chevron { transform: rotate(180deg); }
-.topbar-panel { position: absolute; top: calc(100% + 12px); right: 0; z-index: 110; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); overflow: hidden; }
+.topbar-panel { position: absolute; top: calc(100% + 12px); right: 0; z-index: 110; background: #fffefa; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); overflow: hidden; }
 .topbar-panel[hidden] { display: none; }
 .account-panel { width: 225px; padding: 6px; }
+.sidebar-account .account-menu-trigger { width: 100%; padding: 12px 8px; }
+.sidebar-account .account-menu-identity { flex: 1; min-width: 0; }
+.sidebar-account .user-display-name { font-size: 14px; }
+.sidebar-account .user-display-role { font-size: 12px; }
+.sidebar-account .user-display-name { line-height: 1.5; overflow-wrap: anywhere; }
+.sidebar-account .user-display-role { line-height: 1.4; }
+.sidebar-account .account-panel { top: auto; bottom: calc(100% + 8px); left: 0; right: 0; width: 100%; }
 .account-panel a { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 6px; font-size: 13px; color: var(--text-primary); }
 .account-panel a:hover { background: var(--primary-light); color: var(--primary); }
 .account-panel a i { font-size: 16px; color: var(--primary); }
@@ -18,7 +30,7 @@
 .topbar-panel-header { padding: 18px 20px; border-bottom: 1px solid var(--border); }
 .topbar-panel-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary); }
 .notifications-content { max-height: min(420px, 65vh); overflow-y: auto; }
-.notification-item { display: block; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; }
+.notification-item { display: block; padding: 16px 20px; border-bottom: 1px solid #efefe7; }
 .notification-item:hover { background: var(--primary-light); }
 .notification-item strong { display: block; font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 5px; }
 .notification-item p { color: var(--text-secondary); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }

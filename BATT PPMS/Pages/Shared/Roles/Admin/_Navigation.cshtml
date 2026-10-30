@@ -1,0 +1,11 @@
+@model string
+@{ var ap = Model; }
+<!-- Tổng quan Điều hành (Role Admin) -->
+            <a class="nav-item @(ap=="Dashboard"?"active":"")" href="/Dashboard/Index">
+                <i class="bi bi-grid-fill"></i><span>Tổng quan Điều hành</span>
+            </a>
+
+            <!-- Quản trị Tài khoản & Phân quyền (Role Admin - Thẳng hàng với Tổng quan Điều hành) -->
+            <a class="nav-item @(ap=="Users"?"active":"")" href="/Admin/Users/Index">
+                <i class="bi bi-people-fill"></i><span>Quản trị Tài khoản &amp; Phân quyền</span>
+            </a>

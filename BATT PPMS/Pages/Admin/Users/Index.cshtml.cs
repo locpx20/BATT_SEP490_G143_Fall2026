@@ -19,7 +19,7 @@ namespace BATT_PPMS.Pages.Admin.Users
         public int RoleId { get; set; }
         public string RoleName { get; set; } = "";
         public bool IsActive { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTime? CreatedAt { get; set; }
     }
 
     public class IndexModel : BasePageModel
@@ -34,6 +34,10 @@ namespace BATT_PPMS.Pages.Admin.Users
         // ---- Display Data ----
         public List<UserViewModel> Users { get; set; } = new();
         public List<Role> AllRoles { get; set; } = new();
+        public PageWindow Pagination { get; private set; } = new(0, 1);
+
+        [BindProperty(SupportsGet = true)]
+        public int PageNumber { get; set; } = 1;
 
         // ---- Current Logged In Admin Info ----
         public int LoggedInUserId => CurrentUserId;
@@ -42,6 +46,7 @@ namespace BATT_PPMS.Pages.Admin.Users
         // ---- Filters ----
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
+
 
         [BindProperty(Name = "search", SupportsGet = true)]
         public string? Search { get; set; }
@@ -62,6 +67,7 @@ namespace BATT_PPMS.Pages.Admin.Users
         // ---- GET ----
         public async Task<IActionResult> OnGetAsync()
         {
+            PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
 
@@ -76,7 +82,7 @@ namespace BATT_PPMS.Pages.Admin.Users
 
         // ---- POST: Create User ----
         public async Task<IActionResult> OnPostCreateUserAsync(
-            string Username, string FullName, string? Email, string? Phone, string? RoleName, int? RoleId = null)
+            string Username, string FullName, string? Phone, string? RoleName, int? RoleId = null)
         {
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
@@ -84,35 +90,24 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(FullName) || (!RoleId.HasValue && string.IsNullOrWhiteSpace(RoleName)))
             {
                 ErrorMessage = "Vui lòng điền đầy đủ tên đăng nhập, họ tên và chọn vai trò.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             var inputError = InputValidator.First(
                 InputValidator.Username(Username),
                 InputValidator.Text(FullName, "Họ tên", 100, required: true),
-                InputValidator.Email(Email),
                 InputValidator.Phone(Phone));
             if (inputError != null)
             {
                 ErrorMessage = inputError;
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             var cleanUsername = Username.Trim().ToLower();
             if (await _context.Users.AnyAsync(u => u.Username.ToLower() == cleanUsername))
             {
                 ErrorMessage = $"Tên đăng nhập '{cleanUsername}' đã tồn tại trong hệ thống.";
-                return RedirectToPage();
-            }
-
-            if (!string.IsNullOrWhiteSpace(Email))
-            {
-                var cleanEmail = Email.Trim().ToLower();
-                if (await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == cleanEmail))
-                {
-                    ErrorMessage = $"Email '{Email}' đã được liên kết với một tài khoản khác.";
-                    return RedirectToPage();
-                }
+                return RedirectToList();
             }
 
             // Look up role
@@ -132,15 +127,15 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (role == null)
             {
                 ErrorMessage = "Vai trò được chọn không tồn tại trong hệ thống.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             var newUser = new User
             {
+                CreatedAt = DateTime.UtcNow,
                 Username = cleanUsername,
                 FullName = FullName.Trim(),
                 Password = "123456",           // Default password as per policy
-                Email = InputValidator.Clean(Email),
                 Phone = InputValidator.Clean(Phone),
                 RoleId = role.RoleId,
                 Status = StatusConstants.Active
@@ -150,7 +145,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Tạo tài khoản '{newUser.Username}' thành công cho nhân viên {newUser.FullName}. Mật khẩu mặc định: 123456";
-            return RedirectToPage();
+            return RedirectToList();
         }
 
         // ---- POST: Update User (Full: Info, Role, Password) ----
@@ -159,7 +154,6 @@ namespace BATT_PPMS.Pages.Admin.Users
             string FullName,
             int? RoleId,
             string? RoleName,
-            string? Email,
             string? Phone,
             string? NewPassword)
         {
@@ -169,17 +163,16 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (string.IsNullOrWhiteSpace(FullName))
             {
                 ErrorMessage = "Họ và tên không được để trống.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             var inputError = InputValidator.First(
                 InputValidator.Text(FullName, "Họ tên", 100, required: true),
-                InputValidator.Email(Email),
                 InputValidator.Phone(Phone));
             if (inputError != null)
             {
                 ErrorMessage = inputError;
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             if (!string.IsNullOrWhiteSpace(NewPassword))
@@ -188,7 +181,7 @@ namespace BATT_PPMS.Pages.Admin.Users
                 if (pwError != null)
                 {
                     ErrorMessage = pwError;
-                    return RedirectToPage();
+                    return RedirectToList();
                 }
             }
 
@@ -196,18 +189,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (user == null)
             {
                 ErrorMessage = "Không tìm thấy người dùng.";
-                return RedirectToPage();
-            }
-
-            // Check email uniqueness if changed
-            if (!string.IsNullOrWhiteSpace(Email))
-            {
-                var cleanEmail = Email.Trim().ToLower();
-                if (await _context.Users.AnyAsync(u => u.UserId != UserId && u.Email != null && u.Email.ToLower() == cleanEmail))
-                {
-                    ErrorMessage = $"Email '{Email}' đã được liên kết với một tài khoản khác.";
-                    return RedirectToPage();
-                }
+                return RedirectToList();
             }
 
             // Look up target role if provided
@@ -229,7 +211,7 @@ namespace BATT_PPMS.Pages.Admin.Users
                 if (role == null)
                 {
                     ErrorMessage = "Vai trò được chọn không hợp lệ hoặc không tồn tại.";
-                    return RedirectToPage();
+                    return RedirectToList();
                 }
 
                 var isSelf = (user.UserId == CurrentUserId) || 
@@ -237,14 +219,13 @@ namespace BATT_PPMS.Pages.Admin.Users
                 if (isSelf && !role.RoleName.Contains("Admin"))
                 {
                     ErrorMessage = "Bạn không thể đổi vai trò của tài khoản Admin đang đăng nhập sang vai trò khác để tránh mất quyền quản trị.";
-                    return RedirectToPage();
+                    return RedirectToList();
                 }
 
                 user.RoleId = role.RoleId;
             }
 
             user.FullName = FullName.Trim();
-            user.Email = InputValidator.Clean(Email);
             user.Phone = InputValidator.Clean(Phone);
 
             bool passwordChanged = false;
@@ -259,7 +240,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             SuccessMessage = passwordChanged
                 ? $"Đã cập nhật thông tin và mật khẩu mới cho tài khoản '{user.Username}' thành công."
                 : $"Đã cập nhật thông tin cho tài khoản '{user.Username}' thành công.";
-            return RedirectToPage();
+            return RedirectToList();
         }
 
         // ---- POST: Update User Role ----
@@ -272,7 +253,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (user == null)
             {
                 ErrorMessage = "Không tìm thấy người dùng.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             // Look up target role
@@ -292,7 +273,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (role == null)
             {
                 ErrorMessage = "Vai trò được chọn không hợp lệ hoặc không tồn tại.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             // Protect logged-in admin from losing Admin role
@@ -301,7 +282,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (isSelf && !role.RoleName.Contains("Admin"))
             {
                 ErrorMessage = "Bạn không thể đổi vai trò của tài khoản Admin đang đăng nhập sang vai trò khác để tránh mất quyền quản trị.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             var oldRoleName = user.Role?.RoleName ?? "Chưa phân quyền";
@@ -309,7 +290,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Cập nhật vai trò cho tài khoản '{user.Username}' thành công: [{oldRoleName}] ➔ [{role.RoleName}].";
-            return RedirectToPage();
+            return RedirectToList();
         }
 
         // ---- POST: Toggle Active/Locked ----
@@ -322,13 +303,13 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (user == null)
             {
                 ErrorMessage = "Không tìm thấy người dùng.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             if (user.UserId == CurrentUserId || user.Username.Equals(CurrentUsername, StringComparison.OrdinalIgnoreCase))
             {
                 ErrorMessage = "Bạn không thể tự khóa tài khoản Admin đang đăng nhập của chính mình.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             // Owner accounts are now treated the same as other roles (no special blocking)
@@ -337,7 +318,7 @@ namespace BATT_PPMS.Pages.Admin.Users
 
             string newStatusText = user.Status == StatusConstants.Active ? "Đang hoạt động" : "Đã khóa";
             SuccessMessage = $"Đã cập nhật trạng thái tài khoản '{user.Username}' thành: {newStatusText}.";
-            return RedirectToPage();
+            return RedirectToList();
         }
 
         // ---- POST: Reset Password ----
@@ -350,21 +331,28 @@ namespace BATT_PPMS.Pages.Admin.Users
             if (pwError != null)
             {
                 ErrorMessage = pwError;
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             var user = await _context.Users.FindAsync(UserId);
             if (user == null)
             {
                 ErrorMessage = "Không tìm thấy người dùng.";
-                return RedirectToPage();
+                return RedirectToList();
             }
 
             user.Password = NewPassword.Trim();
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã đặt lại mật khẩu cho tài khoản '{user.Username}' thành công.";
-            return RedirectToPage();
+            return RedirectToList();
+        }
+
+        private IActionResult RedirectToList()
+        {
+            var url = Url.Page("/Admin/Users/Index", new { SearchTerm, RoleFilter, StatusFilter })!;
+            return LocalRedirect(Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(
+                url, "pageNumber", PageNumber.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         }
 
         // ---- Load Data ----
@@ -374,36 +362,12 @@ namespace BATT_PPMS.Pages.Admin.Users
 
             var query = _context.Users.Include(u => u.Role).AsQueryable();
 
-            // Search filter
-            if (!string.IsNullOrWhiteSpace(SearchTerm))
-            {
-                var kw = SearchTerm.Trim().ToLower();
-                query = query.Where(u =>
-                    u.Username.ToLower().Contains(kw) ||
-                    u.FullName.ToLower().Contains(kw) ||
-                    (u.Email != null && u.Email.ToLower().Contains(kw)) ||
-                    (u.Phone != null && u.Phone.Contains(kw)));
-            }
+            SearchTerm = InputValidator.Clean(SearchTerm);
+            query = UserSearch.Apply(query, SearchTerm, "all", RoleFilter, StatusFilter);
 
-            // Role filter
-            if (!string.IsNullOrWhiteSpace(RoleFilter))
-            {
-                if (RoleFilter == "Admin" || RoleFilter == "Admin System")
-                    query = query.Where(u => u.Role != null && (u.Role.RoleName == "Admin" || u.Role.RoleName == "Admin System"));
-                else
-                    query = query.Where(u => u.Role != null && u.Role.RoleName == RoleFilter);
-            }
-
-            // Status filter
-            if (!string.IsNullOrWhiteSpace(StatusFilter))
-            {
-                if (StatusFilter == "active")
-                    query = query.Where(u => u.Status == StatusConstants.Active);
-                else if (StatusFilter == "inactive")
-                    query = query.Where(u => u.Status != StatusConstants.Active);
-            }
-
-            var rawUsers = await query.OrderBy(u => u.RoleId).ThenBy(u => u.FullName).ToListAsync();
+            Pagination = new PageWindow(await query.CountAsync(), PageNumber);
+            var rawUsers = await query.OrderByDescending(u => u.CreatedAt).ThenByDescending(u => u.UserId)
+                .Skip(Pagination.Offset).Take(PageWindow.Size).ToListAsync();
 
             Users = rawUsers.Select(u => new UserViewModel
             {
@@ -415,7 +379,7 @@ namespace BATT_PPMS.Pages.Admin.Users
                 RoleId      = u.RoleId,
                 RoleName    = u.Role?.RoleName ?? "Unknown",
                 IsActive    = u.Status == StatusConstants.Active,
-                CreatedAt   = DateTime.Today.AddDays(-u.UserId % 365)
+                CreatedAt   = u.CreatedAt
             }).ToList();
         }
     }

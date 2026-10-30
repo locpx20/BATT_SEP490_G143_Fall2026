@@ -38,7 +38,7 @@
     <div class="card-header">
         <form method="get" class="filter-bar" style="margin-bottom:0;flex:1;">
             <div style="position:relative;">
-                <i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;"></i>
+                <i class="bi bi-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#96a298;"></i>
                 <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control" style="padding-left:36px;"
                        placeholder="Tìm theo mã đơn hoặc khách hàng..." id="searchOrder" />
             </div>
@@ -106,7 +106,7 @@
                             @if (Model.CanManage && OrderWorkflow.CanModify(order.Status))
                             {
                                 <a href="/Orders/Edit?id=@order.OrderId" class="btn btn-sm btn-outline" title="Chỉnh sửa"><i class="bi bi-pencil"></i></a>
-                                <a href="/Orders/Delete?id=@order.OrderId" class="btn btn-sm btn-outline" title="Xóa" style="color:#b91c1c;"><i class="bi bi-trash"></i></a>
+                                <a href="/Orders/Delete?id=@order.OrderId" class="btn btn-sm btn-outline" title="Xóa" style="color:#94473e;"><i class="bi bi-trash"></i></a>
                             }
                         </td>
                     </tr>

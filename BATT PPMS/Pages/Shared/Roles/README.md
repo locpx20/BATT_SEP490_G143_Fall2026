@@ -22,7 +22,7 @@ Trong mỗi thư mục:
 Riêng Admin có `_AccountMenu.cshtml` cho avatar và menu tài khoản ở cuối sidebar. `_Topbar.cshtml` để trống phần nội dung, không hiển thị chuông thông báo.
 
 Muốn thay đổi giao diện của một role, sửa trực tiếp ba file trong thư mục tương ứng.
-Owner và Manager có file riêng dù hiện tại hiển thị giống nhau.
+Owner và Manager có file riêng và dùng chung một khung giao diện (sidebar xanh, tài khoản ở cuối sidebar, không có thanh trên, CSS `owner-workspace.css`). Khác biệt: Manager chỉ xem Nhà cung cấp / Khách hàng, không có nút thêm/sửa.
 
 `Helpers/RoleViews.cs` ánh xạ tên role sang thư mục bằng danh sách cố định.
 `Pages/Shared/_Layout.cshtml` giữ khung trang, logo, tải CSS/JS và gọi menu/thanh trên của role đang đăng nhập.

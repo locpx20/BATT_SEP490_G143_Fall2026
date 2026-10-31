@@ -11,17 +11,18 @@
     <link rel="stylesheet" href="~/css/admin-pagination.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
     <link rel="stylesheet" href="~/css/theme-colors.css" asp-append-version="true" />
-    @if (Context.Session.GetString("RoleName") == "Owner")
+    @if (Context.Session.GetString("RoleName") is "Owner" or "Manager")
     {
         <link rel="stylesheet" href="~/css/owner-workspace.css" asp-append-version="true" />
     }
 </head>
-<body class="@(Context.Session.GetString("RoleName") == "Owner" ? "owner-workspace" : "") @ViewData["PageClass"]">
+<body class="@(Context.Session.GetString("RoleName") is "Owner" or "Manager" ? "owner-workspace" : "") @ViewData["PageClass"]">
 
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";
     var fullName        = Context.Session.GetString("FullName") ?? "User";
     bool isAdmin        = roleName == "Admin System" || roleName == "Admin";
+    bool isWorkspace    = roleName == "Owner" || roleName == "Manager"; // Owner & Manager dùng chung khung giao diện workspace
     string ap           = ViewData["ActivePage"]?.ToString() ?? "";
 
     // Initials for avatar
@@ -84,6 +85,11 @@
             <partial name="~/Pages/Shared/Roles/Owner/_AccountMenu.cshtml"
                      model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
         }
+        else if (roleName == "Manager")
+        {
+            <partial name="~/Pages/Shared/Roles/Manager/_AccountMenu.cshtml"
+                     model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
+        }
         else
         {
         <div class="sidebar-factory-card">
@@ -98,7 +104,7 @@
 <div class="main-wrapper" id="mainWrapper">
 
     <!-- Topbar -->
-    @if (!isAdmin && roleName != "Owner")
+    @if (!isAdmin && !isWorkspace)
     {
     <header class="topbar">
         <div class="topbar-left">
@@ -127,7 +133,7 @@
 
     <!-- Page Content -->
     <main class="page-content">
-        @if (isAdmin || roleName == "Owner")
+        @if (isAdmin || isWorkspace)
         {
             <button type="button" class="admin-mobile-menu" onclick="openSidebar()" aria-label="Mở menu điều hướng">
                 <i class="bi bi-list" aria-hidden="true"></i>

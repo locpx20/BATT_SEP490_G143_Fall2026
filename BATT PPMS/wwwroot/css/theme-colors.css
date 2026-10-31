@@ -41,12 +41,4 @@
 .sidebar-account .account-menu-trigger:hover, .sidebar-account .account-menu-trigger[aria-expanded="true"] { background: #365f50; }
 .sidebar-account .user-avatar-circle { background: #e5d6a9; color: #193f35; border-color: #dfc983; }
 .sidebar-account .user-chevron { color: #dbe5db; }
-.sidebar-account .account-panel { background: #254c40; border-color: #527263; }
-.sidebar-account .account-panel a,
-.sidebar-account .account-panel a i { color: #dbe5db; }
-.sidebar-account .account-panel a:hover,
-.sidebar-account .account-panel a:focus-visible { background: #365f50; color: #fffefa; }
-.sidebar-account .account-panel a:hover i,
-.sidebar-account .account-panel a:focus-visible i { color: #fffefa; }
-.sidebar-account .account-panel .account-signout { border-color: #527263; }
 ::selection { background: #dce7dc; color: #193f35; }

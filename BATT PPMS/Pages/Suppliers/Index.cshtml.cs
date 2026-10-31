@@ -80,6 +80,7 @@ namespace BATT_PPMS.Pages.Suppliers
         public List<CustomerViewModel> Customers { get; set; } = new();
 
         public bool CanManage => IsOwner;
+        public bool UseWorkspaceView => IsOwnerOrManager;
         public bool CanViewCustomers => !IsPurchasingStaff;
 
         [TempData]
@@ -95,15 +96,17 @@ namespace BATT_PPMS.Pages.Suppliers
 
             if (string.IsNullOrWhiteSpace(Tab))
                 Tab = "suppliers";
-            Tab = Tab.Trim().Equals("customers", StringComparison.OrdinalIgnoreCase) ? "customers" : "suppliers";
+            Tab = Tab.ToLowerInvariant();
 
             if (!CanViewCustomers)
                 Tab = "suppliers";
 
             await LoadDataAsync();
-            PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
-            PartnerPagination = new PageWindow(Tab == "customers" ? Customers.Count : Suppliers.Count, PageNumber);
-            PageNumber = PartnerPagination.CurrentPage;
+            if (UseWorkspaceView)
+            {
+                PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
+                PartnerPagination = new PageWindow(Tab == "customers" ? Customers.Count : Suppliers.Count, PageNumber);
+            }
             return Page();
         }
 
@@ -349,14 +352,14 @@ namespace BATT_PPMS.Pages.Suppliers
             {
                 var kw = SearchTerm.Trim().ToLower();
                 supQuery = supQuery.Where(s =>
-                    s.SupplierName.Trim().ToLower() == kw ||
+                    s.SupplierName.ToLower().Contains(kw) ||
                     (s.ContactPerson != null && s.ContactPerson.ToLower().Contains(kw)) ||
                     (s.Phone != null && s.Phone.Contains(kw)) ||
                     (s.Email != null && s.Email.ToLower().Contains(kw)) ||
                     (s.Address != null && s.Address.ToLower().Contains(kw)));
             }
 
-            if (IsOwner && StatusFilter is "Active" or "Inactive")
+            if (UseWorkspaceView && StatusFilter is "Active" or "Inactive")
                 supQuery = supQuery.Where(s => s.Status == StatusFilter);
             var rawSuppliers = await supQuery.OrderBy(s => s.SupplierId).ToListAsync();
             Suppliers = rawSuppliers.Select(s => {
@@ -406,7 +409,7 @@ namespace BATT_PPMS.Pages.Suppliers
                     (c.Address != null && c.Address.ToLower().Contains(kw)));
             }
 
-            if (IsOwner && StatusFilter is "Active" or "Inactive")
+            if (UseWorkspaceView && StatusFilter is "Active" or "Inactive")
                 cusQuery = cusQuery.Where(c => c.Status == StatusFilter);
             var rawCustomers = await cusQuery.OrderBy(c => c.CustomerId).ToListAsync();
             Customers = rawCustomers.Select(c => {

@@ -13,6 +13,11 @@ public partial class RawMaterial
 
     public decimal CurrentQuantity { get; set; }
 
+    // Giá thu mua hiện hành (đ/đơn vị). null = chưa thiết lập -> chưa thể tạo đơn mua.
+    public decimal? PurchasePrice { get; set; }
+
+    public virtual ICollection<RawMaterialPriceHistory> PriceHistories { get; set; } = new List<RawMaterialPriceHistory>();
+
     public virtual ICollection<PurchaseInvoiceDetail> PurchaseInvoiceDetails { get; set; } = new List<PurchaseInvoiceDetail>();
 
     public virtual ICollection<RawMaterialExport> RawMaterialExports { get; set; } = new List<RawMaterialExport>();

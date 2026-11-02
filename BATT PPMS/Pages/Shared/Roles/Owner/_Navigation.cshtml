@@ -7,6 +7,7 @@
 <div class="owner-nav-section">
     <div class="owner-nav-label">Vận hành</div>
     <a class="nav-item @(ap == "PurchaseInvoice" ? "active" : "")" href="/PurchaseInvoices/Index"><i class="bi bi-inbox"></i><span>Thu mua NVL thô</span></a>
+    <a class="nav-item @(ap == "PurchasePrice" ? "active" : "")" href="/PurchasePrices/Index"><i class="bi bi-tag"></i><span>Giá thu mua NVL</span></a>
     <details class="owner-nav-details" open="@(ap is "Personnel" or "QC")">
         <summary class="nav-item"><i class="bi bi-layers"></i><span>Sản xuất &amp; QC</span><i class="bi bi-chevron-down"></i></summary>
         <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index">Kế hoạch sản xuất</a>

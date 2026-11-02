@@ -112,7 +112,7 @@ namespace BATT_PPMS.Pages.Auth
                 return Page();
             }
 
-            user.Password = NewPassword;
+            user.Password = PasswordHasher.Hash(NewPassword);
             await _context.SaveChangesAsync();
 
             await _emailService.SendPasswordChangedAsync(user.Email, user.Username);

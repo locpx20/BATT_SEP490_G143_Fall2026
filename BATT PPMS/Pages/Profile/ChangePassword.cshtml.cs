@@ -59,14 +59,13 @@ namespace BATT_PPMS.Pages.Profile
             var user = await _context.Users.FindAsync(CurrentUserId);
             if (user == null) return NotFound();
 
-            // TODO: Thay bằng hash check khi triển khai thực tế
-            if (user.Password != CurrentPassword)
+            if (!PasswordHasher.Verify(CurrentPassword, user.Password))
             {
                 ErrorMessage = "Mật khẩu hiện tại không đúng.";
                 return Page();
             }
 
-            user.Password = NewPassword; // TODO: hash password
+            user.Password = PasswordHasher.Hash(NewPassword);
             await _context.SaveChangesAsync();
 
             if (!string.IsNullOrWhiteSpace(user.Email))

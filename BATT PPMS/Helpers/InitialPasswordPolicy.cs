@@ -6,7 +6,7 @@ public static class InitialPasswordPolicy
 
     public static bool RequiresChange(string? role, string? password) =>
         role is not RoleConstants.Admin and not RoleConstants.AdminShort &&
-        password == DefaultPassword;
+        PasswordHasher.Verify(DefaultPassword, password);
 
     public static string? ValidateNewPassword(string? password, string? confirmation)
     {

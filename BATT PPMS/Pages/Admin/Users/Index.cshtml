@@ -85,7 +85,7 @@
                     <input type="text" name="SearchTerm" value="@Model.SearchTerm"
                            class="form-control"
                            style="height: 42px; padding-left: 38px; padding-right: @(!string.IsNullOrEmpty(Model.SearchTerm) ? "36px" : "14px"); border-radius: 10px; border: 1px solid #b1bdb0; font-size: 13px; background: #f4f2ea; transition: all 0.2s ease;"
-                           aria-label="Nội dung tìm kiếm" placeholder="Tìm theo họ tên, tên đăng nhập, số điện thoại..." />
+                           aria-label="Nội dung tìm kiếm" placeholder="Tìm theo họ tên, tên tài khoản, số điện thoại..." />
                     @if (!string.IsNullOrEmpty(Model.SearchTerm))
                     {
                         <a asp-page="/Admin/Users/Index" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter"
@@ -168,7 +168,7 @@
                     <tr>
                         <th>#</th>
                         <th>Người dùng</th>
-                        <th>Tên đăng nhập</th>
+                        <th>Tên tài khoản</th>
                         <th>Vai trò</th>
                         <th>Trạng thái</th>
                         <th>Ngày tạo</th>
@@ -332,7 +332,7 @@
                 <!-- Header Banner -->
                 <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
                     <div>
-                        <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Tên đăng nhập</span>
+                        <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Tên tài khoản</span>
                         <div style="font-size: 15px; font-weight: 700; color: #243d35; margin-top: 2px;">
                             <code style="color: #193f35; font-size: 14px;" id="editDisplayUsername"></code>
                         </div>
@@ -376,9 +376,9 @@
                 </div>
 
                 <div class="form-group">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="text" name="Phone" id="editPhone" class="form-control"
-                               placeholder="09xx.xxx.xxx" />
+                        <label class="form-label">Số điện thoại (dùng để đăng nhập) <span class="required-star">*</span></label>
+                        <input type="tel" name="Phone" id="editPhone" class="form-control"
+                               placeholder="0901234567" required />
                     </div>
 
                 <div class="form-group" style="background: #f5f4ed; border: 1px solid #e8ecdf; border-radius: 10px; padding: 12px 14px;">
@@ -418,7 +418,7 @@
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
                 <div class="form-grid-2">
                     <div class="form-group">
-                        <label class="form-label">Tên đăng nhập <span class="required-star">*</span></label>
+                        <label class="form-label">Tên tài khoản <span class="required-star">*</span></label>
                         <input type="text" name="Username" class="form-control"
                                placeholder="nguyenvana" required style="font-family: monospace; font-weight: 700;" />
                     </div>
@@ -452,12 +452,12 @@
                            placeholder="Ví dụ: Nguyễn Văn An" required />
                 </div>
                 <div class="form-group">
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="text" name="Phone" class="form-control"
-                               placeholder="09xx.xxx.xxx" />
+                        <label class="form-label">Số điện thoại (dùng để đăng nhập) <span class="required-star">*</span></label>
+                        <input type="tel" name="Phone" class="form-control"
+                               placeholder="0901234567" required />
                     </div>
                 <div class="info-box">
-                    Mật khẩu khởi tạo là <code>123456</code>. Các tài khoản ngoài Admin bắt buộc đổi mật khẩu ngay sau lần đăng nhập bằng mật khẩu khởi tạo.
+                    Nhân viên đăng nhập bằng số điện thoại. Mật khẩu khởi tạo là <code>123456</code>. Các tài khoản ngoài Admin bắt buộc đổi mật khẩu ngay sau lần đăng nhập bằng mật khẩu khởi tạo.
                 </div>
             </div>
             <div class="modal-footer">

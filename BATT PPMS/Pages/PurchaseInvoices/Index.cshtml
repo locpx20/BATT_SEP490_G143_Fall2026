@@ -1,5 +1,6 @@
 ﻿@page
 @model BATT_PPMS.Pages.PurchaseInvoices.IndexModel
+@using BATT_PPMS.Helpers
 @{
     ViewData["Title"] = "Thu mua Nguyên vật liệu & Báo cáo";
     ViewData["ActivePage"] = "PurchaseInvoice";
@@ -33,6 +34,44 @@
             <p class="page-subtitle" style="font-size: 12px; color: #7a887f;">
                 Kiểm soát đơn mua hàng, phiếu cân xe điện tử, phê duyệt nhập kho và phân tích báo cáo chi tiêu nhà cung cấp
             </p>
+        </div>
+    </div>
+
+    <!-- Giá thu mua hiện hành & tạo đơn -->
+    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+        <div>
+            <div style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; margin-bottom: 6px;">Giá thu mua đang áp dụng cho đơn mới</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                @if (!Model.Materials.Any())
+                {
+                    <span style="font-size: 12px; color: #96a298;">Chưa có nguyên liệu nào.</span>
+                }
+                @foreach (var pm in Model.Materials)
+                {
+                    <span class="badge" style="background: #efefe7; color: #45594f; border: 1px solid #e1e5da; font-weight: 600; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
+                        @pm.Name:
+                        @if (pm.Price.HasValue)
+                        {
+                            <strong style="color: #123329;">@pm.Price.Value.ToString("N0") đ/@pm.Unit</strong>
+                        }
+                        else
+                        {
+                            <strong style="color: #a55449;">Chưa thiết lập giá</strong>
+                        }
+                    </span>
+                }
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="/PurchasePrices/Index" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-size: 12px; font-weight: 600;">
+                <i class="bi bi-tag"></i> Giá thu mua &amp; lịch sử
+            </a>
+            @if (Model.CanCreateOrder)
+            {
+                <button type="button" class="btn btn-success btn-sm" onclick="openCreateOrderModal()" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
+                    <i class="bi bi-plus-circle"></i> Tạo đơn mua
+                </button>
+            }
         </div>
     </div>
 
@@ -502,6 +541,80 @@
     </div>
 </div>
 
+@if (Model.CanCreateOrder)
+{
+    var firstPriced = Model.Materials.FirstOrDefault(x => x.Price.HasValue)?.MaterialId;
+    <!-- MODAL: TẠO ĐƠN MUA HÀNG (đơn giá lấy từ Giá thu mua hiện hành) -->
+    <div class="modal fade" id="createOrderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="CreateOrder">
+                    <input type="hidden" name="shownPrice" id="createOrderShownPrice" />
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;"><i class="bi bi-plus-circle"></i> Tạo đơn mua nguyên liệu</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        @if (firstPriced == null)
+                        {
+                            <div class="alert alert-warning" style="font-size: 12px; border-radius: 10px;">
+                                Chưa có nguyên liệu nào được thiết lập giá thu mua nên chưa thể tạo đơn. Vui lòng nhờ Giám đốc / Quản lý thiết lập giá.
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Nhà cung cấp <span style="color: #a55449;">*</span></label>
+                            <select name="supplierId" class="form-select" required style="font-size: 12px; border-radius: 10px;">
+                                <option value="">-- Chọn nhà cung cấp --</option>
+                                @foreach (var sp in Model.ActiveSuppliers)
+                                {
+                                    <option value="@sp.SupplierId">@sp.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Nguyên liệu <span style="color: #a55449;">*</span></label>
+                            <select name="materialId" id="createOrderMaterial" class="form-select" required onchange="updateCreateOrderTotals()" style="font-size: 12px; border-radius: 10px;">
+                                @foreach (var pm in Model.Materials)
+                                {
+                                    <option value="@pm.MaterialId" data-price="@PurchasePricing.FormatInvariant(pm.Price)" data-unit="@pm.Unit"
+                                            selected="@(pm.MaterialId == firstPriced)" disabled="@(!pm.Price.HasValue)">
+                                        @(pm.Name + (pm.Price.HasValue ? "" : " (chưa thiết lập giá)"))
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Đơn giá thu mua (tự động)</label>
+                                <input type="text" id="createOrderPrice" class="form-control" readonly style="font-size: 12px; border-radius: 10px; background: #f4f2ea; font-weight: 700;" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Số lượng <span style="color: #a55449;">*</span></label>
+                                <input type="number" name="quantity" id="createOrderQty" class="form-control" min="1" max="@PurchasePricing.MaxOrderQuantity" step="1" required
+                                       oninput="updateCreateOrderTotals()" placeholder="kg" style="font-size: 12px; border-radius: 10px;" />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Thành tiền dự kiến</label>
+                            <input type="text" id="createOrderTotal" class="form-control" readonly style="font-size: 13px; border-radius: 10px; background: #f4f2ea; font-weight: 800; color: #123329;" />
+                        </div>
+                        <div class="mb-1">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ghi chú</label>
+                            <textarea name="note" class="form-control" rows="2" maxlength="500" style="font-size: 12px; border-radius: 10px;"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-success" disabled="@(firstPriced == null)" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
+                            <i class="bi bi-check2"></i> Tạo đơn mua
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <script>
         function openOrderDetailModal(id, code, supName, supPhone, supAddr, matType, planQty, weighQty, unitPrice, totalAmount, creator, approver, pDate, status, note, rejReason, canApprove) {
@@ -563,6 +676,27 @@
 
             var modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
             modal.show();
+        }
+
+        function openCreateOrderModal() {
+            updateCreateOrderTotals();
+            new bootstrap.Modal(document.getElementById('createOrderModal')).show();
+        }
+
+        function updateCreateOrderTotals() {
+            var sel = document.getElementById('createOrderMaterial');
+            if (!sel) return;
+            var opt = sel.options[sel.selectedIndex];
+            var rawPrice = opt ? opt.getAttribute('data-price') : '';
+            var unit = opt ? (opt.getAttribute('data-unit') || 'kg') : 'kg';
+            var price = parseFloat(rawPrice);
+            var qty = parseInt(document.getElementById('createOrderQty').value, 10);
+
+            // Chuỗi giá gửi kèm để server phát hiện giá vừa bị đổi (server vẫn tự lấy giá từ DB)
+            document.getElementById('createOrderShownPrice').value = isNaN(price) ? '' : rawPrice;
+            document.getElementById('createOrderPrice').value = isNaN(price) ? '—' : price.toLocaleString('vi-VN') + ' đ/' + unit;
+            document.getElementById('createOrderTotal').value = (!isNaN(price) && qty > 0)
+                ? (price * qty).toLocaleString('vi-VN') + ' đ' : '—';
         }
 
         function closeDetailAndOpenRejectOrder(id, code) {

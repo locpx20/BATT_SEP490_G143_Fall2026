@@ -82,21 +82,21 @@ namespace BATT_PPMS.Pages.Admin.Users
 
         // ---- POST: Create User ----
         public async Task<IActionResult> OnPostCreateUserAsync(
-            string Username, string FullName, string? Phone, string? RoleName, int? RoleId = null)
+            string Username, string FullName, string Phone, string? RoleName, int? RoleId = null)
         {
             var check = RequireRole(RoleConstants.Admin);
             if (check != null) return check;
 
-            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(FullName) || (!RoleId.HasValue && string.IsNullOrWhiteSpace(RoleName)))
+            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(FullName) || string.IsNullOrWhiteSpace(Phone) || (!RoleId.HasValue && string.IsNullOrWhiteSpace(RoleName)))
             {
-                ErrorMessage = "Vui lòng điền đầy đủ tên đăng nhập, họ tên và chọn vai trò.";
+                ErrorMessage = "Vui lòng điền đầy đủ tên tài khoản, số điện thoại, họ tên và chọn vai trò.";
                 return RedirectToList();
             }
 
             var inputError = InputValidator.First(
                 InputValidator.Username(Username),
                 InputValidator.Text(FullName, "Họ tên", 100, required: true),
-                InputValidator.Phone(Phone));
+                PhoneHelper.Validate(Phone));
             if (inputError != null)
             {
                 ErrorMessage = inputError;
@@ -106,7 +106,15 @@ namespace BATT_PPMS.Pages.Admin.Users
             var cleanUsername = Username.Trim().ToLower();
             if (await _context.Users.AnyAsync(u => u.Username.ToLower() == cleanUsername))
             {
-                ErrorMessage = $"Tên đăng nhập '{cleanUsername}' đã tồn tại trong hệ thống.";
+                ErrorMessage = $"Tên tài khoản '{cleanUsername}' đã tồn tại trong hệ thống.";
+                return RedirectToList();
+            }
+
+            // Số điện thoại là định danh đăng nhập nên phải duy nhất
+            var cleanPhone = PhoneHelper.Normalize(Phone);
+            if (await _context.Users.AnyAsync(u => u.Phone == cleanPhone))
+            {
+                ErrorMessage = $"Số điện thoại '{cleanPhone}' đã được dùng cho một tài khoản khác.";
                 return RedirectToList();
             }
 
@@ -135,8 +143,8 @@ namespace BATT_PPMS.Pages.Admin.Users
                 CreatedAt = DateTime.UtcNow,
                 Username = cleanUsername,
                 FullName = FullName.Trim(),
-                Password = "123456",           // Default password as per policy
-                Phone = InputValidator.Clean(Phone),
+                Password = PasswordHasher.Hash(InitialPasswordPolicy.DefaultPassword), // Mật khẩu mặc định (lưu MD5)
+                Phone = cleanPhone,
                 RoleId = role.RoleId,
                 Status = StatusConstants.Active
             };
@@ -144,7 +152,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Tạo tài khoản '{newUser.Username}' thành công cho nhân viên {newUser.FullName}. Mật khẩu mặc định: 123456";
+            SuccessMessage = $"Tạo tài khoản '{newUser.Username}' thành công cho nhân viên {newUser.FullName}. Đăng nhập bằng số điện thoại {newUser.Phone}, mật khẩu mặc định: {InitialPasswordPolicy.DefaultPassword}";
             return RedirectToList();
         }
 
@@ -154,7 +162,7 @@ namespace BATT_PPMS.Pages.Admin.Users
             string FullName,
             int? RoleId,
             string? RoleName,
-            string? Phone,
+            string Phone,
             string? NewPassword)
         {
             var check = RequireRole(RoleConstants.Admin);
@@ -168,10 +176,17 @@ namespace BATT_PPMS.Pages.Admin.Users
 
             var inputError = InputValidator.First(
                 InputValidator.Text(FullName, "Họ tên", 100, required: true),
-                InputValidator.Phone(Phone));
+                PhoneHelper.Validate(Phone));
             if (inputError != null)
             {
                 ErrorMessage = inputError;
+                return RedirectToList();
+            }
+
+            var cleanPhone = PhoneHelper.Normalize(Phone);
+            if (await _context.Users.AnyAsync(u => u.Phone == cleanPhone && u.UserId != UserId))
+            {
+                ErrorMessage = $"Số điện thoại '{cleanPhone}' đã được dùng cho một tài khoản khác.";
                 return RedirectToList();
             }
 
@@ -226,12 +241,12 @@ namespace BATT_PPMS.Pages.Admin.Users
             }
 
             user.FullName = FullName.Trim();
-            user.Phone = InputValidator.Clean(Phone);
+            user.Phone = cleanPhone;
 
             bool passwordChanged = false;
             if (!string.IsNullOrWhiteSpace(NewPassword))
             {
-                user.Password = NewPassword.Trim();
+                user.Password = PasswordHasher.Hash(NewPassword.Trim());
                 passwordChanged = true;
             }
 
@@ -341,7 +356,7 @@ namespace BATT_PPMS.Pages.Admin.Users
                 return RedirectToList();
             }
 
-            user.Password = NewPassword.Trim();
+            user.Password = PasswordHasher.Hash(NewPassword.Trim());
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã đặt lại mật khẩu cho tài khoản '{user.Username}' thành công.";

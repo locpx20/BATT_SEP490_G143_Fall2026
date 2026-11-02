@@ -43,6 +43,8 @@ public partial class ProductionManagementDbContext : DbContext
 
     public virtual DbSet<RawMaterial> RawMaterials { get; set; }
 
+    public virtual DbSet<RawMaterialPriceHistory> RawMaterialPriceHistories { get; set; }
+
     public virtual DbSet<RawMaterialExport> RawMaterialExports { get; set; }
 
     public virtual DbSet<RawMaterialImport> RawMaterialImports { get; set; }
@@ -582,6 +584,44 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue("kg")
                 .HasColumnName("unit");
+            entity.Property(e => e.PurchasePrice)
+                .HasColumnType("decimal(12, 2)")
+                .HasColumnName("purchase_price");
+        });
+
+        modelBuilder.Entity<RawMaterialPriceHistory>(entity =>
+        {
+            entity.HasKey(e => e.HistoryId).HasName("PK_RawMaterialPriceHistory");
+
+            entity.ToTable("RawMaterialPriceHistory");
+
+            entity.HasIndex(e => new { e.MaterialId, e.ChangedAt }, "IX_RMPH_material_changed");
+
+            entity.Property(e => e.HistoryId).HasColumnName("history_id");
+            entity.Property(e => e.MaterialId).HasColumnName("material_id");
+            entity.Property(e => e.OldPrice)
+                .HasColumnType("decimal(12, 2)")
+                .HasColumnName("old_price");
+            entity.Property(e => e.NewPrice)
+                .HasColumnType("decimal(12, 2)")
+                .HasColumnName("new_price");
+            entity.Property(e => e.ChangedBy).HasColumnName("changed_by");
+            entity.Property(e => e.ChangedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("changed_at");
+            entity.Property(e => e.Reason)
+                .HasMaxLength(500)
+                .HasColumnName("reason");
+
+            entity.HasOne(d => d.Material).WithMany(p => p.PriceHistories)
+                .HasForeignKey(d => d.MaterialId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RMPH_Material");
+
+            entity.HasOne(d => d.ChangedByNavigation).WithMany()
+                .HasForeignKey(d => d.ChangedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RMPH_User");
         });
 
         modelBuilder.Entity<RawMaterialExport>(entity =>
@@ -707,6 +747,9 @@ public partial class ProductionManagementDbContext : DbContext
             entity.ToTable("User");
 
             entity.HasIndex(e => e.Username, "UQ__User__F3DBC572FE197A53").IsUnique();
+
+            // Số điện thoại là định danh đăng nhập -> duy nhất (cho phép nhiều dòng NULL với tài khoản cũ).
+            entity.HasIndex(e => e.Phone, "UX_User_phone").IsUnique().HasFilter("[phone] IS NOT NULL");
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.CreatedAt)

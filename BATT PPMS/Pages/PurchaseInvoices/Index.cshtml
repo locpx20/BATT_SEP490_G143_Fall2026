@@ -1,539 +1,485 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.PurchaseInvoices.IndexModel
 @using BATT_PPMS.Helpers
+@using System.Globalization
 @{
-    ViewData["Title"] = "Thu mua Nguyên vật liệu & Báo cáo";
+    ViewData["Title"] = "Thu mua nguyên vật liệu thô";
     ViewData["ActivePage"] = "PurchaseInvoice";
-    var isOrdersTab = Model.Tab == "orders";
+    var viCulture = new CultureInfo("vi-VN");
 }
 
-<div class="space-y-6">
+<div class="space-y-5" style="max-width: 1400px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+
+    <!-- Breadcrumb -->
+    <div style="font-size: 13px; color: #718096; margin-bottom: 8px;">
+        <span style="color: #a0aec0;">BATT PPMS</span>
+        <span style="margin: 0 6px; color: #cbd5e1;">/</span>
+        <span style="color: #2d3748; font-weight: 500;">Thu mua NVL thô</span>
+    </div>
 
     <!-- Alerts / Messages -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
-        <div class="alert alert-success" style="border-radius: 12px; margin-bottom: 20px;">
-            <i class="bi bi-check-circle-fill" style="font-size: 16px; margin-right: 8px;"></i>
-            <span>@Model.SuccessMessage</span>
+        <div class="alert alert-success d-flex align-items-center" role="alert" style="border-radius: 10px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            <i class="bi bi-check-circle-fill" style="font-size: 16px; margin-right: 10px;"></i>
+            <div>@Model.SuccessMessage</div>
         </div>
     }
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
-        <div class="alert alert-danger" style="border-radius: 12px; margin-bottom: 20px;">
-            <i class="bi bi-exclamation-triangle-fill" style="font-size: 16px; margin-right: 8px;"></i>
-            <span>@Model.ErrorMessage</span>
+        <div class="alert alert-danger d-flex align-items-center" role="alert" style="border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; padding: 12px 16px; margin-bottom: 16px; font-size: 13px;">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size: 16px; margin-right: 10px;"></i>
+            <div>@Model.ErrorMessage</div>
         </div>
     }
 
     <!-- Header Section -->
-    <div class="page-header" style="margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
         <div>
-            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #243d35; margin-bottom: 4px;">
-                Thu mua Nguyên vật liệu &amp; Báo cáo (Giám đốc Quản lý)
+            <h1 style="font-size: 24px; font-weight: 700; color: #1a202c; margin-bottom: 4px; letter-spacing: -0.02em;">
+                Thu mua nguyên vật liệu thô
             </h1>
-            <p class="page-subtitle" style="font-size: 12px; color: #7a887f;">
-                Kiểm soát đơn mua hàng, phiếu cân xe điện tử, phê duyệt nhập kho và phân tích báo cáo chi tiêu nhà cung cấp
+            <p style="font-size: 13px; color: #718096; margin-bottom: 0;">
+                Phiếu thu mua và xác nhận nhập kho.
             </p>
         </div>
-    </div>
-
-    <!-- Giá thu mua hiện hành & tạo đơn -->
-    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
-        <div>
-            <div style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; margin-bottom: 6px;">Giá thu mua đang áp dụng cho đơn mới</div>
-            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                @if (!Model.Materials.Any())
-                {
-                    <span style="font-size: 12px; color: #96a298;">Chưa có nguyên liệu nào.</span>
-                }
-                @foreach (var pm in Model.Materials)
-                {
-                    <span class="badge" style="background: #efefe7; color: #45594f; border: 1px solid #e1e5da; font-weight: 600; border-radius: 6px; padding: 6px 10px; font-size: 12px;">
-                        @pm.Name:
-                        @if (pm.Price.HasValue)
-                        {
-                            <strong style="color: #123329;">@pm.Price.Value.ToString("N0") đ/@pm.Unit</strong>
-                        }
-                        else
-                        {
-                            <strong style="color: #a55449;">Chưa thiết lập giá</strong>
-                        }
-                    </span>
-                }
-            </div>
-        </div>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <a href="/PurchasePrices/Index" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-size: 12px; font-weight: 600;">
-                <i class="bi bi-tag"></i> Giá thu mua &amp; lịch sử
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <a href="/PurchasePrices/Index" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-size: 13px; padding: 8px 14px; font-weight: 500; border-color: #cbd5e1; color: #475569;">
+                <i class="bi bi-tag me-1"></i> Giá Thu mua Nguyên liệu
             </a>
             @if (Model.CanCreateOrder)
             {
-                <button type="button" class="btn btn-success btn-sm" onclick="openCreateOrderModal()" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
-                    <i class="bi bi-plus-circle"></i> Tạo đơn mua
+                <button type="button" class="btn" onclick="openCreatePlanModal()" style="background: #193f35; color: #ffffff; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: none;">
+                    <i class="bi bi-plus-lg" style="font-size: 13px;"></i>
+                    <span>Tạo phiếu tổng</span>
                 </button>
             }
         </div>
     </div>
 
-    <!-- KPI Metric Cards (BATT_PPMSss Style) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
-        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Tổng ngân sách thu mua</span>
-                <div style="width: 32px; height: 32px; border-radius: 8px; background: #dce7dc; color: #193f35; display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                    <i class="bi bi-cash-stack"></i>
-                </div>
-            </div>
-            <div style="margin-top: 12px;">
-                <div style="font-size: 22px; font-weight: 800; color: #123329;">@Model.TotalSpendVnd.ToString("N0") <span style="font-size: 13px; font-weight: 600; color: #7a887f;">VNĐ</span></div>
-                <div style="font-size: 11px; color: #2c5548; margin-top: 4px; font-weight: 600;">
-                    Toàn bộ hóa đơn thu mua
-                </div>
-            </div>
-        </div>
-
-        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Khối lượng cân thực tế</span>
-                <div style="width: 32px; height: 32px; border-radius: 8px; background: #e2eee4; color: #356e51; display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                    <i class="bi bi-speedometer2"></i>
-                </div>
-            </div>
-            <div style="margin-top: 12px;">
-                <div style="font-size: 22px; font-weight: 800; color: #243d35;">@Model.TotalWeighedKg.ToString("N0") <span style="font-size: 13px; font-weight: 600; color: #7a887f;">kg</span></div>
-                <div style="font-size: 11px; color: #4d8264; margin-top: 4px; font-weight: 600;">
-                    Trạm cân điện tử xác nhận
-                </div>
-            </div>
-        </div>
-
-        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Đơn hàng chờ duyệt</span>
-                <div style="width: 32px; height: 32px; border-radius: 8px; background: #faf5e5; color: #a17b35; display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                    <i class="bi bi-clock-history"></i>
-                </div>
-            </div>
-            <div style="margin-top: 12px;">
-                <div style="font-size: 22px; font-weight: 800; color: #a17b35;">@Model.PendingOrdersCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">đơn</span></div>
-                <div style="font-size: 11px; color: #8e6a2c; margin-top: 4px; font-weight: 600;">
-                    @(Model.PendingOrdersCount > 0 ? "Chờ Giám đốc phê duyệt" : "Đã duyệt toàn bộ")
-                </div>
-            </div>
-        </div>
-
-        <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Đơn giá bình quân</span>
-                <div style="width: 32px; height: 32px; border-radius: 8px; background: #eef2e9; color: #2f6153; display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                    <i class="bi bi-tag-fill"></i>
-                </div>
-            </div>
-            <div style="margin-top: 12px;">
-                <div style="font-size: 22px; font-weight: 800; color: #2f6153;">@Model.AverageUnitPriceVnd.ToString("N0") <span style="font-size: 13px; font-weight: 600; color: #7a887f;">đ/kg</span></div>
-                <div style="font-size: 11px; color: #7a887f; margin-top: 4px;">
-                    Giá trung bình các nhà cung cấp
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Navigation Tabs -->
-    <div style="display: flex; gap: 8px; border-bottom: 2px solid #e1e5da; margin-bottom: 20px;">
-        <a href="?tab=orders"
-           style="padding: 10px 18px; font-size: 13px; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid @(isOrdersTab ? "#193f35" : "transparent"); color: @(isOrdersTab ? "#193f35" : "#7a887f"); margin-bottom: -2px;">
-            <i class="bi bi-file-earmark-spreadsheet"></i>
-            1. Đơn Mua Hàng &amp; Hóa đơn (@Model.Orders.Count)
-        </a>
-        <a href="?tab=reports"
-           style="padding: 10px 18px; font-size: 13px; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid @(!isOrdersTab ? "#193f35" : "transparent"); color: @(!isOrdersTab ? "#193f35" : "#7a887f"); margin-bottom: -2px;">
-            <i class="bi bi-pie-chart-fill"></i>
-            2. Báo cáo Thu mua &amp; Thống kê Nhà cung cấp (@Model.Reports.Count)
-        </a>
-    </div>
-
-    <!-- TAB 1: PURCHASE ORDER LIST -->
-    @if (isOrdersTab)
-    {
-        <!-- Filter Toolbar -->
-        <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
-            <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
-                <input type="hidden" name="tab" value="orders" />
-                <div class="search-wrapper" style="flex: 1; min-width: 260px; margin: 0; position: relative;">
-                    <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #96a298;"></i>
+    <!-- Main Card Container -->
+    <div class="card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
+        
+        <!-- Filter Bar -->
+        <form id="filterForm" method="get" style="padding: 16px 20px; border-bottom: 1px solid #f1f5f9; background: #ffffff;">
+            <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;">
+                
+                <!-- Search Box -->
+                <div style="position: relative; flex: 1; min-width: 260px; max-width: 360px;">
+                    <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;"></i>
                     <input type="text"
                            name="SearchTerm"
                            value="@Model.SearchTerm"
-                           placeholder="Tìm theo mã đơn, nhà cung cấp, mặt hàng, nhân viên..."
+                           placeholder="Tìm kiếm trong danh sách..."
                            class="form-control"
-                           style="padding-left: 36px; border-radius: 10px; font-size: 12px;" />
+                           style="padding-left: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; height: 40px;" />
                     @if (!string.IsNullOrEmpty(Model.SearchTerm))
                     {
-                        <a href="?tab=orders" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #96a298;">
+                        <a href="/PurchaseInvoices/Index" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; text-decoration: none;">
                             <i class="bi bi-x-circle-fill"></i>
                         </a>
                     }
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 12px; color: #7a887f; font-weight: 600;">Trạng thái:</span>
-                        <select name="StatusFilter" onchange="this.form.submit()" class="form-select" style="font-size: 12px; border-radius: 8px; padding: 6px 12px;">
-                            <option value="ALL" selected="@(Model.StatusFilter == "ALL" || string.IsNullOrEmpty(Model.StatusFilter))">Tất cả trạng thái</option>
-                            <option value="Pending" selected="@(Model.StatusFilter == "Pending")">Chờ duyệt (Submitted)</option>
-                            <option value="Approved" selected="@(Model.StatusFilter == "Approved")">Đã duyệt (Chờ nhập kho)</option>
-                            <option value="Received" selected="@(Model.StatusFilter == "Received")">Đã nhập kho</option>
-                            <option value="Rejected" selected="@(Model.StatusFilter == "Rejected")">Đã từ chối</option>
+                <!-- Dropdown Filters Group -->
+                <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px;">
+                    
+                    <!-- Trạng thái -->
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 600; color: #64748b;">Trạng thái</label>
+                        <select name="StatusFilter" onchange="this.form.submit()" class="form-select" style="min-width: 140px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; height: 40px; color: #1e293b; background-color: #ffffff;">
+                            <option value="all" selected="@(string.IsNullOrEmpty(Model.StatusFilter) || Model.StatusFilter == "all")">Tất cả</option>
+                            <option value="procuring" selected="@(Model.StatusFilter == "procuring")">Đang thu mua</option>
+                            <option value="wait_approval" selected="@(Model.StatusFilter == "wait_approval")">Chờ Owner duyệt giá trần</option>
+                            <option value="received" selected="@(Model.StatusFilter == "received")">Đã nhập kho</option>
+                        </select>
+                    </div>
+
+                    <!-- Nhân viên thu mua -->
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 600; color: #64748b;">Nhân viên thu mua</label>
+                        <select name="StaffFilter" onchange="this.form.submit()" class="form-select" style="min-width: 150px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; height: 40px; color: #1e293b; background-color: #ffffff;">
+                            <option value="" selected="@(!Model.StaffFilter.HasValue)">Tất cả</option>
+                            @foreach (var staff in Model.PurchasingStaffs)
+                            {
+                                <option value="@staff.UserId" selected="@(Model.StaffFilter == staff.UserId)">@staff.FullName</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Ngày -->
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <label style="font-size: 11px; font-weight: 600; color: #64748b;">Ngày</label>
+                        <select name="DateFilter" onchange="this.form.submit()" class="form-select" style="min-width: 120px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; height: 40px; color: #1e293b; background-color: #ffffff;">
+                            <option value="all" selected="@(string.IsNullOrEmpty(Model.DateFilter) || Model.DateFilter == "all")">Tất cả</option>
+                            <option value="today" selected="@(Model.DateFilter == "today")">Hôm nay</option>
+                            <option value="week" selected="@(Model.DateFilter == "week")">Tuần này</option>
+                            <option value="month" selected="@(Model.DateFilter == "month")">Tháng này</option>
                         </select>
                     </div>
                 </div>
-            </form>
-        </div>
+            </div>
 
-        <!-- Orders Table -->
-        <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-            <div class="table-responsive">
-                <table class="table" style="margin-bottom: 0; vertical-align: middle; font-size: 12px;">
-                    <thead style="background: #f4f2ea; border-bottom: 1px solid #e1e5da; text-transform: uppercase; font-size: 11px; color: #52675d; font-weight: 700;">
+            <input type="hidden" name="PageSize" value="@Model.PageSize" />
+            <input type="hidden" name="CurrentPage" value="1" />
+        </form>
+
+        <!-- Table View -->
+        <div class="table-responsive" style="margin: 0;">
+            <table class="table" style="margin-bottom: 0; vertical-align: middle; width: 100%; border-collapse: collapse;">
+                <thead style="background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+                    <tr style="color: #64748b; font-size: 12px; font-weight: 600;">
+                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Mã phiếu</th>
+                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Khối lượng cần</th>
+                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Giá trần</th>
+                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Nhân viên được giao</th>
+                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Đã cân</th>
+                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Trạng thái</th>
+                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Chi tiết</th>
+                    </tr>
+                </thead>
+                <tbody style="border-top: 1px solid #f1f5f9;">
+                    @if (!Model.Orders.Any())
+                    {
                         <tr>
-                            <th style="padding: 14px 16px;">Mã đơn / HĐ</th>
-                            <th style="padding: 14px 16px;">Nhà cung cấp</th>
-                            <th style="padding: 14px 16px;">Mặt hàng thu mua</th>
-                            <th style="padding: 14px 16px; text-align: right;">Dự kiến</th>
-                            <th style="padding: 14px 16px; text-align: right;">Cân thực tế</th>
-                            <th style="padding: 14px 16px; text-align: right;">Đơn giá</th>
-                            <th style="padding: 14px 16px; text-align: right;">Tổng thành tiền</th>
-                            <th style="padding: 14px 16px;">Nhân viên thu mua</th>
-                            <th style="padding: 14px 16px; text-align: center;">Trạng thái</th>
-                            <th style="padding: 14px 16px; text-align: center;">Thao tác</th>
+                            <td colspan="7" style="text-align: center; padding: 50px 20px; color: #94a3b8;">
+                                <i class="bi bi-inbox" style="font-size: 36px; display: block; margin-bottom: 8px;"></i>
+                                <span style="font-size: 13px; font-weight: 500;">Không có phiếu thu mua nào trong danh sách</span>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody style="divide-y: 1px solid #efefe7;">
-                        @if (!Model.Orders.Any())
+                    }
+                    else
+                    {
+                        @foreach (var o in Model.Orders)
                         {
-                            <tr>
-                                <td colspan="10" style="text-align: center; padding: 48px 16px; color: #96a298;">
-                                    <i class="bi bi-bag-check" style="font-size: 36px; display: block; margin-bottom: 8px;"></i>
-                                    <span style="font-weight: 600; font-size: 13px;">Không tìm thấy đơn mua hàng nào</span>
+                            <tr style="border-bottom: 1px solid #f8fafc; font-size: 13px; color: #1e293b;">
+                                <!-- Mã phiếu badge -->
+                                <td style="padding: 14px 20px; border: none;">
+                                    <div style="display: inline-flex; align-items: center; background: #faf4e8; border: 1px solid #ecdcc0; border-left: 4px solid #c88a2e; border-radius: 4px; padding: 3px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; font-weight: 700; color: #6d4d12; letter-spacing: 0.02em;">
+                                        @o.InvoiceCode
+                                    </div>
+                                </td>
+
+                                <!-- Khối lượng cần -->
+                                <td style="padding: 14px 20px; border: none; font-weight: 500;">
+                                    @o.PlannedQuantity.ToString("N0", viCulture) kg
+                                </td>
+
+                                <!-- Giá trần -->
+                                <td style="padding: 14px 20px; border: none; font-weight: 500;">
+                                    @o.UnitPrice.ToString("N0", viCulture) VNĐ
+                                </td>
+
+                                <!-- Nhân viên được giao -->
+                                <td style="padding: 14px 20px; border: none; font-weight: 500;">
+                                    @o.CreatedByName
+                                </td>
+
+                                <!-- Đã cân -->
+                                <td style="padding: 14px 20px; border: none; font-weight: 500;">
+                                    @o.WeighedQuantity.ToString("N0", viCulture) kg
+                                </td>
+
+                                <!-- Trạng thái badge -->
+                                <td style="padding: 14px 20px; border: none;">
+                                    @if (o.StatusBadgeType == "procuring")
+                                    {
+                                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #ebf5ff; color: #1e40af; border: 1px solid #dbeafe;">
+                                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #3b82f6;"></span>
+                                            Đang thu mua
+                                        </span>
+                                    }
+                                    else if (o.StatusBadgeType == "wait_approval")
+                                    {
+                                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #fffbeb; color: #b45309; border: 1px solid #fef3c7;">
+                                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
+                                            Chờ Owner duyệt giá trần
+                                        </span>
+                                    }
+                                    else if (o.StatusBadgeType == "received")
+                                    {
+                                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;">
+                                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
+                                            Đã nhập kho
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2;">
+                                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444;"></span>
+                                            Đã từ chối
+                                        </span>
+                                    }
+                                </td>
+
+                                <!-- Chi tiết -->
+                                <td style="padding: 14px 20px; border: none;">
+                                    <a href="javascript:void(0)"
+                                       onclick="openDetailModal(@o.InvoiceId, '@o.InvoiceCode', @o.PlannedQuantity, @o.UnitPrice, @o.WeighedQuantity, @o.TotalAmount, '@Html.Raw(Html.Encode(o.CreatedByName))', '@Html.Raw(Html.Encode(o.ApprovedByName ?? ""))', '@o.PurchaseDate.ToString("dd/MM/yyyy")', '@o.StatusBadgeType', '@Html.Raw(Html.Encode(o.StatusDisplayName))', '@Html.Raw(Html.Encode(o.RawMaterialType))', '@Html.Raw(Html.Encode(o.SupplierName))', '@Html.Raw(Html.Encode(o.Note ?? ""))', '@Html.Raw(Html.Encode(o.RejectionReason ?? ""))', @(Model.CanApprove ? "true" : "false"))"
+                                       style="color: #2d3748; font-size: 12px; font-weight: 500; text-decoration: none;"
+                                       onmouseover="this.style.textDecoration='underline'"
+                                       onmouseout="this.style.textDecoration='none'">
+                                        Xem chi tiết phiếu
+                                    </a>
                                 </td>
                             </tr>
                         }
-                        else
-                        {
-                            @foreach (var o in Model.Orders)
-                            {
-                                var isPending = string.Equals(o.Status, "Pending", StringComparison.OrdinalIgnoreCase) || string.Equals(o.Status, "Submitted", StringComparison.OrdinalIgnoreCase);
-                                var isApproved = string.Equals(o.Status, "Approved", StringComparison.OrdinalIgnoreCase);
-                                var isReceived = string.Equals(o.Status, "Received", StringComparison.OrdinalIgnoreCase);
-                                var isRejected = string.Equals(o.Status, "Rejected", StringComparison.OrdinalIgnoreCase);
-
-                                <tr style="border-bottom: 1px solid #efefe7;">
-                                    <td style="padding: 14px 16px; font-weight: 700; font-family: monospace; color: #243d35;">
-                                        @o.InvoiceCode
-                                    </td>
-                                    <td style="padding: 14px 16px;">
-                                        <div style="font-weight: 700; color: #30483f;">@o.SupplierName</div>
-                                        <div style="font-size: 11px; color: #7a887f;">@o.SupplierPhone</div>
-                                    </td>
-                                    <td style="padding: 14px 16px;">
-                                        <span class="badge" style="background: #efefe7; color: #45594f; border: 1px solid #e1e5da; font-weight: 600; border-radius: 6px; padding: 4px 8px;">
-                                            @o.RawMaterialType
-                                        </span>
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: right; color: #7a887f;">
-                                        @(o.PlannedQuantity > 0 ? o.PlannedQuantity.ToString("N0") + " kg" : "—")
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: right; font-weight: 800; color: #243d35;">
-                                        @o.WeighedQuantity.ToString("N0") kg
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: right; font-weight: 600; color: #45594f;">
-                                        @o.UnitPrice.ToString("N0") đ
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: right; font-weight: 800; color: #123329;">
-                                        @o.TotalAmount.ToString("N0") đ
-                                    </td>
-                                    <td style="padding: 14px 16px;">
-                                        <div style="font-weight: 600; color: #243d35;">@o.CreatedByName</div>
-                                        <div style="font-size: 11px; color: #96a298;">@o.PurchaseDate.ToString("dd/MM/yyyy")</div>
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: center;">
-                                        @if (isApproved)
-                                        {
-                                            <span class="badge" style="background: #e1ebe2; color: #254e43; border: 1px solid #c7d8cc; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
-                                                <i class="bi bi-check-circle"></i> Đã duyệt
-                                            </span>
-                                        }
-                                        else if (isReceived)
-                                        {
-                                            <span class="badge" style="background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
-                                                <i class="bi bi-box-arrow-in-down"></i> Đã nhập kho
-                                            </span>
-                                        }
-                                        else if (isRejected)
-                                        {
-                                            <span class="badge" style="background: #f1e2da; color: #94473e; border: 1px solid #e4c8bf; font-weight: 700; padding: 5px 10px; border-radius: 8px;" title="@o.RejectionReason">
-                                                <i class="bi bi-x-circle"></i> Đã từ chối
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge" style="background: #f2e9cb; color: #8e6a2c; border: 1px solid #e5d6a9; font-weight: 700; padding: 5px 10px; border-radius: 8px;">
-                                                <i class="bi bi-clock"></i> Chờ duyệt
-                                            </span>
-                                        }
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: center;">
-                                        <div style="display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;">
-                                            <!-- Nút Xem chi tiết -->
-                                            <button type="button"
-                                                    class="btn btn-sm btn-outline-secondary"
-                                                    onclick="openOrderDetailModal(@o.InvoiceId, '@o.InvoiceCode', '@Html.Raw(Html.Encode(o.SupplierName))', '@Html.Raw(Html.Encode(o.SupplierPhone ?? ""))', '@Html.Raw(Html.Encode(o.SupplierAddress ?? ""))', '@Html.Raw(Html.Encode(o.RawMaterialType))', @o.PlannedQuantity, @o.WeighedQuantity, @o.UnitPrice, @o.TotalAmount, '@Html.Raw(Html.Encode(o.CreatedByName))', '@Html.Raw(Html.Encode(o.ApprovedByName ?? ""))', '@o.PurchaseDate.ToString("dd/MM/yyyy")', '@o.Status', '@Html.Raw(Html.Encode(o.Note ?? ""))', '@Html.Raw(Html.Encode(o.RejectionReason ?? ""))', @(Model.CanApprove ? "true" : "false"))"
-                                                    style="border-radius: 6px; font-size: 11px; padding: 4px 8px;">
-                                                <i class="bi bi-eye"></i> Chi tiết
-                                            </button>
-
-                                            @if (isPending && Model.CanApprove)
-                                            {
-                                                <!-- Duyệt đơn hàng trực tiếp -->
-                                                <form method="post" asp-page-handler="ApproveOrder" asp-route-invoiceId="@o.InvoiceId" style="display: inline;" onsubmit="return confirm('Xác nhận phê duyệt đơn mua hàng @o.InvoiceCode?');">
-                                                    <input type="hidden" name="tab" value="orders" />
-                                                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
-                                                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
-                                                    <button type="submit" class="btn btn-sm btn-success" style="border-radius: 6px; font-size: 11px; padding: 4px 8px; font-weight: 700;">
-                                                        <i class="bi bi-check-lg"></i> Duyệt
-                                                    </button>
-                                                </form>
-
-                                                <!-- Từ chối đơn hàng -->
-                                                <button type="button"
-                                                        class="btn btn-sm btn-outline-danger"
-                                                        onclick="openRejectOrderModal(@o.InvoiceId, '@o.InvoiceCode')"
-                                                        style="border-radius: 6px; font-size: 11px; padding: 4px 8px; font-weight: 600;">
-                                                    <i class="bi bi-x-lg"></i> Từ chối
-                                                </button>
-                                            }
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
+                    }
+                </tbody>
+            </table>
         </div>
-    }
-    else
-    {
-        <!-- TAB 2: PURCHASE REPORTS -->
-        <div class="card" style="padding: 16px 20px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
-            <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
-                <input type="hidden" name="tab" value="reports" />
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 12px; color: #7a887f; font-weight: 600;">Từ ngày:</span>
-                        <input type="date" name="FromDate" value="@Model.FromDate" class="form-control" style="font-size: 12px; border-radius: 8px; padding: 6px 10px;" />
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 12px; color: #7a887f; font-weight: 600;">Đến ngày:</span>
-                        <input type="date" name="ToDate" value="@Model.ToDate" class="form-control" style="font-size: 12px; border-radius: 8px; padding: 6px 10px;" />
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-primary" style="border-radius: 8px; font-size: 12px; font-weight: 600; padding: 6px 14px;">
-                        <i class="bi bi-funnel"></i> Lọc báo cáo
-                    </button>
-                    @if (!string.IsNullOrEmpty(Model.FromDate) || !string.IsNullOrEmpty(Model.ToDate))
+
+        <!-- Footer: Pagination & Page size -->
+        <div style="padding: 14px 20px; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: #ffffff;">
+            <!-- Count info -->
+            <div style="font-size: 12px; color: #64748b;">
+                Hiển thị @Model.DisplayFrom–@Model.DisplayTo trong @Model.TotalItems kết quả
+            </div>
+
+            <!-- Page Size & Navigation Controls -->
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 12px; color: #64748b;">Số dòng</span>
+                    <select class="form-select form-select-sm" style="width: 70px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12px; height: 32px;" onchange="changePageSize(this.value)">
+                        <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                        <option value="25" selected="@(Model.PageSize == 25)">25</option>
+                        <option value="50" selected="@(Model.PageSize == 50)">50</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #64748b;">
+                    @if (Model.CurrentPage > 1)
                     {
-                        <a href="?tab=reports" class="btn btn-sm btn-outline-secondary" style="border-radius: 8px; font-size: 12px;">
-                            Xóa lọc
-                        </a>
+                        <a href="javascript:goToPage(@(Model.CurrentPage - 1))" style="color: #64748b; text-decoration: none; padding: 4px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">&lt;</a>
+                    }
+                    else
+                    {
+                        <span style="color: #cbd5e1; padding: 4px 8px; border-radius: 4px; border: 1px solid #f1f5f9;">&lt;</span>
+                    }
+
+                    <span>Trang @Model.CurrentPage / @Model.TotalPages</span>
+
+                    @if (Model.CurrentPage < Model.TotalPages)
+                    {
+                        <a href="javascript:goToPage(@(Model.CurrentPage + 1))" style="color: #64748b; text-decoration: none; padding: 4px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">&gt;</a>
+                    }
+                    else
+                    {
+                        <span style="color: #cbd5e1; padding: 4px 8px; border-radius: 4px; border: 1px solid #f1f5f9;">&gt;</span>
                     }
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                <div style="font-size: 12px; color: #7a887f;">
-                    Tổng số nhà cung cấp tham gia: <strong style="color: #243d35;">@Model.Reports.Count</strong> đơn vị
+<!-- ========================================== -->
+<!-- MODAL: TẠO PHIẾU THU MUA TỔNG (Popup chuẩn ảnh) -->
+<!-- ========================================== -->
+<div class="modal fade" id="createPlanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 560px;">
+        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);">
+            <form method="post" asp-page-handler="CreatePurchasePlan">
+                <input type="hidden" name="materialId" value="@Model.DefaultMaterialId" />
+
+                <!-- Modal Header -->
+                <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
+                    <h5 class="modal-title" style="font-size: 16px; font-weight: 700; color: #1e293b; margin: 0;">
+                        Tạo phiếu thu mua tổng
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="font-size: 12px;"></button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body" style="padding: 24px;">
+                    
+                    <!-- Hàng 1: Khối lượng cần mua & Giá trần -->
+                    <div class="row g-3" style="margin-bottom: 20px;">
+                        <!-- Khối lượng cần mua -->
+                        <div class="col-6">
+                            <label class="form-label" style="font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">
+                                Khối lượng cần mua <span style="color: #e53e3e;">*</span>
+                            </label>
+                            <input type="number"
+                                   name="plannedWeight"
+                                   id="plannedWeightInput"
+                                   min="1"
+                                   step="any"
+                                   placeholder="40000"
+                                   required
+                                   class="form-control"
+                                   style="border-radius: 8px; border: 1px solid #cbd5e1; height: 42px; font-size: 14px;" />
+                            <span style="font-size: 12px; color: #64748b; margin-top: 4px; display: block;">kg</span>
+                        </div>
+
+                        <!-- Giá trần (Tự động lấy từ Giá Thu mua Nguyên liệu) -->
+                        <div class="col-6">
+                            <label class="form-label" style="font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 6px;">
+                                Giá trần <span style="color: #e53e3e;">*</span>
+                            </label>
+                            <input type="number"
+                                   name="ceilingPrice"
+                                   id="ceilingPriceInput"
+                                   value="@Model.CurrentCeilingPrice.ToString("0.##")"
+                                   min="1"
+                                   step="any"
+                                   required
+                                   class="form-control"
+                                   style="border-radius: 8px; border: 1px solid #cbd5e1; height: 42px; font-size: 14px; font-weight: 600; color: #0f172a;" />
+                            <span style="font-size: 12px; color: #64748b; margin-top: 4px; display: block;">VNĐ / kg</span>
+                        </div>
+                    </div>
+
+                    <!-- Gợi ý giá thu mua hiện hành -->
+                    <div style="margin-top: -10px; margin-bottom: 18px; font-size: 11px; color: #166534; background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 6px; padding: 6px 10px;">
+                        <i class="bi bi-info-circle-fill me-1"></i> Giá trần đã tự động lấy từ <strong>Giá Thu mua Nguyên liệu</strong> hiện hành (@Model.CurrentCeilingPrice.ToString("N0") VNĐ/kg cho <em>@Model.DefaultMaterialName</em>).
+                    </div>
+
+                    <!-- Hàng 2: Nhân viên thu mua được phân công -->
+                    <div style="margin-bottom: 8px;">
+                        <label class="form-label" style="font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 8px;">
+                            Nhân viên thu mua được phân công <span style="color: #e53e3e;">*</span>
+                        </label>
+                        
+                        <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; max-height: 180px; overflow-y: auto; background: #ffffff;">
+                            @for (int i = 0; i < Model.PurchasingStaffs.Count; i++)
+                            {
+                                var staff = Model.PurchasingStaffs[i];
+                                <div class="form-check" style="display: flex; align-items: center; gap: 10px; margin-bottom: @(i == Model.PurchasingStaffs.Count - 1 ? "0" : "10px"); cursor: pointer;">
+                                    <input class="form-check-input"
+                                           type="radio"
+                                           name="assignedStaffId"
+                                           id="staffRadio_@staff.UserId"
+                                           value="@staff.UserId"
+                                           @(i == 0 ? "checked" : "")
+                                           style="cursor: pointer; width: 17px; height: 17px; margin-top: 0;" />
+                                    <label class="form-check-label" for="staffRadio_@staff.UserId" style="font-size: 13px; color: #1e293b; cursor: pointer; font-weight: 500;">
+                                        @staff.FullName
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn" data-bs-dismiss="modal" style="background: #ffffff; border: 1px solid #cbd5e1; color: #475569; border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 500;">
+                        Hủy
+                    </button>
+                    <button type="submit" class="btn" style="background: #193f35; color: #ffffff; border-radius: 8px; padding: 8px 24px; font-size: 13px; font-weight: 600; border: none;">
+                        Gửi phiếu
+                    </button>
                 </div>
             </form>
         </div>
-
-        <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-            <div class="table-responsive">
-                <table class="table" style="margin-bottom: 0; vertical-align: middle; font-size: 12px;">
-                    <thead style="background: #f4f2ea; border-bottom: 1px solid #e1e5da; text-transform: uppercase; font-size: 11px; color: #52675d; font-weight: 700;">
-                        <tr>
-                            <th style="padding: 14px 16px;">Mã &amp; Tên Nhà cung cấp</th>
-                            <th style="padding: 14px 16px; text-align: center;">Số chuyến giao</th>
-                            <th style="padding: 14px 16px; text-align: right;">Tổng khối lượng cung ứng</th>
-                            <th style="padding: 14px 16px; width: 220px;">Tỷ trọng cung ứng (%)</th>
-                            <th style="padding: 14px 16px; text-align: right;">Đơn giá bình quân</th>
-                            <th style="padding: 14px 16px; text-align: right;">Tổng giá trị thanh toán</th>
-                            <th style="padding: 14px 16px; text-align: center;">Trạng thái</th>
-                        </tr>
-                    </thead>
-                    <tbody style="divide-y: 1px solid #efefe7;">
-                        @if (!Model.Reports.Any())
-                        {
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 48px 16px; color: #96a298;">
-                                    <i class="bi bi-pie-chart" style="font-size: 36px; display: block; margin-bottom: 8px;"></i>
-                                    <span style="font-weight: 600; font-size: 13px;">Chưa có dữ liệu báo cáo thu mua trong khoảng thời gian này</span>
-                                </td>
-                            </tr>
-                        }
-                        else
-                        {
-                            @foreach (var rep in Model.Reports)
-                            {
-                                <tr style="border-bottom: 1px solid #efefe7;">
-                                    <td style="padding: 14px 16px;">
-                                        <div style="font-weight: 700; color: #30483f; font-size: 13px;">@rep.SupplierName</div>
-                                        <div style="font-size: 11px; font-family: monospace; color: #193f35;">@rep.SupplierCode</div>
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: center; font-weight: 700; color: #45594f;">
-                                        @rep.TripCount chuyến
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: right; font-weight: 800; color: #243d35;">
-                                        @rep.TotalWeightKg.ToString("N0") kg
-                                    </td>
-                                    <td style="padding: 14px 16px;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                                            <span style="font-weight: 700; color: #123329;">@rep.PercentageOfTotal.ToString("0.0")%</span>
-                                        </div>
-                                        <div style="width: 100%; height: 6px; background: #e1e5da; border-radius: 999px; overflow: hidden;">
-                                            <div style="width: @rep.PercentageOfTotal%; height: 100%; background: linear-gradient(90deg, #193f35, #2c5548); border-radius: 999px;"></div>
-                                        </div>
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: right; font-weight: 600; color: #45594f;">
-                                        @rep.AverageUnitPrice.ToString("N0") đ/kg
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: right; font-weight: 800; color: #356e51;">
-                                        @rep.TotalAmountVnd.ToString("N0") đ
-                                    </td>
-                                    <td style="padding: 14px 16px; text-align: center;">
-                                        <span class="badge" style="background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; font-weight: 600; padding: 4px 8px; border-radius: 6px;">
-                                            Đang cung cấp
-                                        </span>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
+    </div>
 </div>
 
-<!-- MODAL: XEM CHI TIẾT ĐƠN MUA HÀNG (Purchase Order Detail) -->
+<!-- ========================================== -->
+<!-- MODAL: XEM CHI TIẾT PHIẾU THU MUA -->
+<!-- ========================================== -->
 <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-            <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 18px 24px;">
+        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+            <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 18px 24px;">
                 <div>
-                    <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #243d35;">
-                        Chi tiết Đơn Mua Hàng &amp; Hóa đơn <span id="modalOrderCode" style="font-family: monospace; color: #193f35;"></span>
+                    <h5 class="modal-title" style="font-size: 16px; font-weight: 700; color: #1e293b;">
+                        Chi tiết phiếu thu mua <span id="modalOrderCode" style="font-family: monospace; color: #193f35;"></span>
                     </h5>
-                    <p style="font-size: 12px; color: #7a887f; margin-bottom: 0;">Kiểm tra khối lượng cân trạm, đơn giá thỏa thuận và xác nhận nghiệm thu nguyên vật liệu</p>
+                    <p style="font-size: 12px; color: #64748b; margin-bottom: 0;">Kiểm tra khối lượng cân trạm, giá trần và phê duyệt</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" style="padding: 24px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; background: #f4f2ea; padding: 16px; border-radius: 12px; border: 1px solid #e1e5da;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #e2e8f0;">
                     <div>
-                        <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Nhà cung cấp:</span>
-                        <strong id="modalSupplierName" style="font-size: 13px; color: #243d35;"></strong>
+                        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">Mặt hàng:</span>
+                        <strong id="modalMaterialType" style="font-size: 13px; color: #0f172a;"></strong>
                     </div>
                     <div>
-                        <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Số điện thoại:</span>
-                        <strong id="modalSupplierPhone" style="font-size: 13px; color: #45594f;"></strong>
+                        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">Nhà cung cấp:</span>
+                        <strong id="modalSupplierName" style="font-size: 13px; color: #0f172a;"></strong>
                     </div>
                     <div>
-                        <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Mặt hàng:</span>
-                        <strong id="modalMaterialType" style="font-size: 13px; color: #193f35;"></strong>
+                        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">Nhân viên được giao:</span>
+                        <strong id="modalCreatorName" style="font-size: 13px; color: #193f35;"></strong>
                     </div>
                     <div>
-                        <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Trạng thái:</span>
+                        <span style="font-size: 11px; color: #64748b; display: block; font-weight: 600;">Trạng thái:</span>
                         <span id="modalOrderStatusBadge"></span>
                     </div>
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px;">
-                    <div style="background: #fffefa; border: 1px solid #e1e5da; border-radius: 10px; padding: 14px; text-align: center;">
-                        <span style="font-size: 11px; color: #7a887f; font-weight: 700; text-transform: uppercase;">Khối lượng dự kiến</span>
-                        <div id="modalPlannedQty" style="font-size: 16px; font-weight: 700; color: #7a887f; margin-top: 4px;"></div>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center;">
+                        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Khối lượng cần</span>
+                        <div id="modalPlannedQty" style="font-size: 17px; font-weight: 700; color: #1e293b; margin-top: 4px;"></div>
                     </div>
-                    <div style="background: #fffefa; border: 1px solid #e1e5da; border-radius: 10px; padding: 14px; text-align: center;">
-                        <span style="font-size: 11px; color: #7a887f; font-weight: 700; text-transform: uppercase;">Cân thực tế (Trạm cân)</span>
-                        <div id="modalWeighedQty" style="font-size: 18px; font-weight: 800; color: #243d35; margin-top: 4px;"></div>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center;">
+                        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Giá trần</span>
+                        <div id="modalUnitPrice" style="font-size: 17px; font-weight: 700; color: #0f172a; margin-top: 4px;"></div>
                     </div>
-                    <div style="background: #fffefa; border: 1px solid #e1e5da; border-radius: 10px; padding: 14px; text-align: center;">
-                        <span style="font-size: 11px; color: #7a887f; font-weight: 700; text-transform: uppercase;">Tổng thành tiền</span>
-                        <div id="modalTotalAmount" style="font-size: 18px; font-weight: 800; color: #123329; margin-top: 4px;"></div>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 20px;">
-                    <div style="background: #fffefa; border: 1px solid #e1e5da; border-radius: 10px; padding: 14px;">
-                        <span style="font-size: 11px; color: #7a887f; font-weight: 700; text-transform: uppercase;">Nhân viên thu mua</span>
-                        <div id="modalCreatorName" style="font-size: 13px; font-weight: 700; color: #243d35; margin-top: 4px;"></div>
-                        <div id="modalPurchaseDate" style="font-size: 11px; color: #7a887f;"></div>
-                    </div>
-                    <div style="background: #fffefa; border: 1px solid #e1e5da; border-radius: 10px; padding: 14px;">
-                        <span style="font-size: 11px; color: #7a887f; font-weight: 700; text-transform: uppercase;">Người phê duyệt</span>
-                        <div id="modalApproverName" style="font-size: 13px; font-weight: 700; color: #356e51; margin-top: 4px;"></div>
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; text-align: center;">
+                        <span style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Đã cân</span>
+                        <div id="modalWeighedQty" style="font-size: 17px; font-weight: 700; color: #193f35; margin-top: 4px;"></div>
                     </div>
                 </div>
 
                 <!-- Box Ghi chú -->
-                <div style="margin-bottom: 16px; padding: 14px; border-radius: 10px; background: #f4f2ea; border: 1px solid #e1e5da;">
-                    <div style="font-size: 12px; font-weight: 700; color: #52675d; margin-bottom: 4px;">
-                        <i class="bi bi-chat-left-text"></i> Ghi chú đơn thu mua:
+                <div style="margin-bottom: 16px; padding: 12px 14px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 4px;">
+                        <i class="bi bi-chat-left-text me-1"></i> Ghi chú phiếu thu mua:
                     </div>
-                    <p id="modalOrderNote" style="font-size: 12px; color: #45594f; margin-bottom: 0; font-style: italic;"></p>
+                    <p id="modalOrderNote" style="font-size: 12px; color: #334155; margin-bottom: 0;"></p>
                 </div>
 
                 <!-- Box Lý do từ chối nếu có -->
-                <div id="modalOrderRejectBox" style="display: none; padding: 14px; border-radius: 10px; background: #faf0e9; border: 1px solid #f1e2da;">
-                    <div style="font-size: 12px; font-weight: 700; color: #a55449; margin-bottom: 4px;">
-                        <i class="bi bi-x-octagon-fill"></i> Lý do từ chối của Lãnh đạo:
+                <div id="modalOrderRejectBox" style="display: none; padding: 12px 14px; border-radius: 8px; background: #fef2f2; border: 1px solid #fee2e2;">
+                    <div style="font-size: 11px; font-weight: 600; color: #b91c1c; margin-bottom: 4px;">
+                        <i class="bi bi-x-octagon-fill me-1"></i> Lý do từ chối:
                     </div>
-                    <p id="modalOrderRejectionReason" style="font-size: 12px; color: #88473f; margin-bottom: 0;"></p>
+                    <p id="modalOrderRejectionReason" style="font-size: 12px; color: #991b1b; margin-bottom: 0;"></p>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 14px 24px; display: flex; justify-content: space-between;">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Đóng</button>
-                <div id="modalOrderActionButtons" style="display: flex; gap: 8px;">
-                    <!-- Sẽ được fill bằng JavaScript nếu canApprove và isPending -->
-                </div>
+            <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 14px 24px; display: flex; justify-content: space-between;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Đóng</button>
+                <div id="modalOrderActionButtons" style="display: flex; gap: 8px;"></div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL: TỪ CHỐI ĐƠN MUA HÀNG -->
+<!-- ========================================== -->
+<!-- MODAL: TỪ CHỐI PHIẾU THU MUA (Owner) -->
+<!-- ========================================== -->
 <div class="modal fade" id="rejectOrderModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div class="modal-content" style="border-radius: 16px; border: 1px solid #e2e8f0;">
             <form method="post" asp-page-handler="RejectOrder">
-                <input type="hidden" name="tab" value="orders" />
                 <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
                 <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                <input type="hidden" name="StaffFilter" value="@Model.StaffFilter" />
+                <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
                 <input type="hidden" id="rejectOrderModalId" name="invoiceId" value="" />
 
-                <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
-                    <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #94473e;">
-                        <i class="bi bi-x-circle-fill"></i> Từ chối Đơn Mua Hàng <span id="rejectOrderModalCode" style="font-family: monospace;"></span>
+                <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 16px 20px;">
+                    <h5 class="modal-title" style="font-size: 15px; font-weight: 700; color: #b91c1c;">
+                        <i class="bi bi-x-circle-fill me-1"></i> Từ chối duyệt phiếu thu mua <span id="rejectOrderModalCode" style="font-family: monospace;"></span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" style="padding: 20px;">
                     <div class="mb-3">
-                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Lý do từ chối phê duyệt <span style="color: #a55449;">*</span></label>
-                        <textarea name="rejectionReason" class="form-control" rows="4" required placeholder="Nhập lý do chi tiết..." style="font-size: 12px; border-radius: 10px;"></textarea>
+                        <label class="form-label" style="font-size: 12px; font-weight: 600; color: #1e293b;">Lý do từ chối <span style="color: #e53e3e;">*</span></label>
+                        <textarea name="rejectionReason" class="form-control" rows="3" required placeholder="Nhập lý do chi tiết..." style="font-size: 13px; border-radius: 8px;"></textarea>
                     </div>
                 </div>
-                <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
-                    <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-size: 12px; font-weight: 600;">
-                        <i class="bi bi-check2"></i> Xác nhận Từ chối
+                <div class="modal-footer" style="border-top: 1px solid #f1f5f9; padding: 12px 20px;">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" style="border-radius: 8px;">Hủy bỏ</button>
+                    <button type="submit" class="btn btn-danger btn-sm" style="border-radius: 8px; font-weight: 600;">
+                        Xác nhận từ chối
                     </button>
                 </div>
             </form>
@@ -541,115 +487,49 @@
     </div>
 </div>
 
-@if (Model.CanCreateOrder)
-{
-    var firstPriced = Model.Materials.FirstOrDefault(x => x.Price.HasValue)?.MaterialId;
-    <!-- MODAL: TẠO ĐƠN MUA HÀNG (đơn giá lấy từ Giá thu mua hiện hành) -->
-    <div class="modal fade" id="createOrderModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
-                <form method="post" asp-page-handler="CreateOrder">
-                    <input type="hidden" name="shownPrice" id="createOrderShownPrice" />
-                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
-                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;"><i class="bi bi-plus-circle"></i> Tạo đơn mua nguyên liệu</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body" style="padding: 20px;">
-                        @if (firstPriced == null)
-                        {
-                            <div class="alert alert-warning" style="font-size: 12px; border-radius: 10px;">
-                                Chưa có nguyên liệu nào được thiết lập giá thu mua nên chưa thể tạo đơn. Vui lòng nhờ Giám đốc / Quản lý thiết lập giá.
-                            </div>
-                        }
-                        <div class="mb-3">
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Nhà cung cấp <span style="color: #a55449;">*</span></label>
-                            <select name="supplierId" class="form-select" required style="font-size: 12px; border-radius: 10px;">
-                                <option value="">-- Chọn nhà cung cấp --</option>
-                                @foreach (var sp in Model.ActiveSuppliers)
-                                {
-                                    <option value="@sp.SupplierId">@sp.Name</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Nguyên liệu <span style="color: #a55449;">*</span></label>
-                            <select name="materialId" id="createOrderMaterial" class="form-select" required onchange="updateCreateOrderTotals()" style="font-size: 12px; border-radius: 10px;">
-                                @foreach (var pm in Model.Materials)
-                                {
-                                    <option value="@pm.MaterialId" data-price="@PurchasePricing.FormatInvariant(pm.Price)" data-unit="@pm.Unit"
-                                            selected="@(pm.MaterialId == firstPriced)" disabled="@(!pm.Price.HasValue)">
-                                        @(pm.Name + (pm.Price.HasValue ? "" : " (chưa thiết lập giá)"))
-                                    </option>
-                                }
-                            </select>
-                        </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-6">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Đơn giá thu mua (tự động)</label>
-                                <input type="text" id="createOrderPrice" class="form-control" readonly style="font-size: 12px; border-radius: 10px; background: #f4f2ea; font-weight: 700;" />
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Số lượng <span style="color: #a55449;">*</span></label>
-                                <input type="number" name="quantity" id="createOrderQty" class="form-control" min="1" max="@PurchasePricing.MaxOrderQuantity" step="1" required
-                                       oninput="updateCreateOrderTotals()" placeholder="kg" style="font-size: 12px; border-radius: 10px;" />
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Thành tiền dự kiến</label>
-                            <input type="text" id="createOrderTotal" class="form-control" readonly style="font-size: 13px; border-radius: 10px; background: #f4f2ea; font-weight: 800; color: #123329;" />
-                        </div>
-                        <div class="mb-1">
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ghi chú</label>
-                            <textarea name="note" class="form-control" rows="2" maxlength="500" style="font-size: 12px; border-radius: 10px;"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
-                        <button type="submit" class="btn btn-success" disabled="@(firstPriced == null)" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
-                            <i class="bi bi-check2"></i> Tạo đơn mua
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-}
-
 @section Scripts {
     <script>
-        function openOrderDetailModal(id, code, supName, supPhone, supAddr, matType, planQty, weighQty, unitPrice, totalAmount, creator, approver, pDate, status, note, rejReason, canApprove) {
+        function openCreatePlanModal() {
+            var modal = new bootstrap.Modal(document.getElementById('createPlanModal'));
+            modal.show();
+        }
+
+        function changePageSize(size) {
+            var form = document.getElementById('filterForm');
+            var input = form.querySelector('input[name="PageSize"]');
+            if (input) input.value = size;
+            form.submit();
+        }
+
+        function goToPage(page) {
+            var form = document.getElementById('filterForm');
+            var input = form.querySelector('input[name="CurrentPage"]');
+            if (input) input.value = page;
+            form.submit();
+        }
+
+        function openDetailModal(id, code, planQty, unitPrice, weighQty, totalAmount, creator, approver, pDate, badgeType, statusDisp, matType, supplier, note, rejReason, canApprove) {
             document.getElementById('modalOrderCode').innerText = code;
-            document.getElementById('modalSupplierName').innerText = supName;
-            document.getElementById('modalSupplierPhone').innerText = supPhone || 'Chưa cập nhật';
-            document.getElementById('modalMaterialType').innerText = matType;
-            document.getElementById('modalPlannedQty').innerText = planQty > 0 ? Number(planQty).toLocaleString('vi-VN') + ' kg' : '—';
+            document.getElementById('modalMaterialType').innerText = matType || 'Mùn cưa cao su & Keo';
+            document.getElementById('modalSupplierName').innerText = supplier || 'Nhà cung cấp tổng hợp';
+            document.getElementById('modalCreatorName').innerText = creator || 'Chưa rõ';
+            document.getElementById('modalPlannedQty').innerText = Number(planQty).toLocaleString('vi-VN') + ' kg';
+            document.getElementById('modalUnitPrice').innerText = Number(unitPrice).toLocaleString('vi-VN') + ' VNĐ';
             document.getElementById('modalWeighedQty').innerText = Number(weighQty).toLocaleString('vi-VN') + ' kg';
-            document.getElementById('modalTotalAmount').innerText = Number(totalAmount).toLocaleString('vi-VN') + ' đ';
-            document.getElementById('modalCreatorName').innerText = creator;
-            document.getElementById('modalPurchaseDate').innerText = 'Ngày thu mua: ' + pDate;
-            document.getElementById('modalApproverName').innerText = approver && approver.trim() !== '' ? approver : 'Chưa có người duyệt';
 
-            // Status badge
             var statBadge = document.getElementById('modalOrderStatusBadge');
-            var isPending = (status.toLowerCase() === 'pending' || status.toLowerCase() === 'submitted');
-            var isApproved = (status.toLowerCase() === 'approved');
-            var isReceived = (status.toLowerCase() === 'received');
-            var isRejected = (status.toLowerCase() === 'rejected');
-
-            if (isApproved) {
-                statBadge.innerHTML = '<span class="badge" style="background: #e1ebe2; color: #254e43; border: 1px solid #c7d8cc; font-size: 11px;">Đã duyệt</span>';
-            } else if (isReceived) {
-                statBadge.innerHTML = '<span class="badge" style="background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; font-size: 11px;">Đã nhập kho</span>';
-            } else if (isRejected) {
-                statBadge.innerHTML = '<span class="badge" style="background: #f1e2da; color: #94473e; border: 1px solid #e4c8bf; font-size: 11px;">Đã từ chối</span>';
+            if (badgeType === 'procuring') {
+                statBadge.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #ebf5ff; color: #1e40af; border: 1px solid #dbeafe;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #3b82f6;"></span>Đang thu mua</span>';
+            } else if (badgeType === 'wait_approval') {
+                statBadge.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #fffbeb; color: #b45309; border: 1px solid #fef3c7;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>Chờ Owner duyệt giá trần</span>';
+            } else if (badgeType === 'received') {
+                statBadge.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>Đã nhập kho</span>';
             } else {
-                statBadge.innerHTML = '<span class="badge" style="background: #f2e9cb; color: #8e6a2c; border: 1px solid #e5d6a9; font-size: 11px;">Chờ duyệt</span>';
+                statBadge.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444;"></span>Đã từ chối</span>';
             }
 
-            // Note
             document.getElementById('modalOrderNote').innerText = note || 'Không có ghi chú thêm.';
 
-            // Rejection reason
             var rejBox = document.getElementById('modalOrderRejectBox');
             if (rejReason && rejReason.trim() !== '') {
                 rejBox.style.display = 'block';
@@ -658,17 +538,16 @@
                 rejBox.style.display = 'none';
             }
 
-            // Action buttons
             var actionBtnContainer = document.getElementById('modalOrderActionButtons');
             actionBtnContainer.innerHTML = '';
-            if (isPending && canApprove) {
+            if (badgeType === 'wait_approval' && canApprove) {
                 actionBtnContainer.innerHTML = `
-                    <button type="button" class="btn btn-outline-danger" onclick="closeDetailAndOpenRejectOrder(${id}, '${code}')" style="border-radius: 8px; font-size: 12px; font-weight: 600;">
-                        <i class="bi bi-x-circle"></i> Từ chối
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="closeDetailAndOpenRejectOrder(${id}, '${code}')" style="border-radius: 8px; font-size: 12px; font-weight: 600;">
+                        <i class="bi bi-x-circle me-1"></i> Từ chối
                     </button>
-                    <form method="post" action="/PurchaseInvoices/Index?handler=ApproveOrder&invoiceId=${id}&tab=orders" style="display:inline;" onsubmit="return confirm('Xác nhận phê duyệt đơn mua hàng ${code}?');">
-                        <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
-                            <i class="bi bi-check-circle"></i> Phê duyệt Đơn hàng
+                    <form method="post" action="/PurchaseInvoices/Index?handler=ApproveOrder&invoiceId=${id}" style="display:inline;" onsubmit="return confirm('Xác nhận phê duyệt giá trần cho phiếu thu mua ${code}?');">
+                        <button type="submit" class="btn btn-success btn-sm" style="border-radius: 8px; font-size: 12px; font-weight: 600; background: #193f35; border: none;">
+                            <i class="bi bi-check-circle me-1"></i> Phê duyệt giá trần
                         </button>
                     </form>
                 `;
@@ -676,27 +555,6 @@
 
             var modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
             modal.show();
-        }
-
-        function openCreateOrderModal() {
-            updateCreateOrderTotals();
-            new bootstrap.Modal(document.getElementById('createOrderModal')).show();
-        }
-
-        function updateCreateOrderTotals() {
-            var sel = document.getElementById('createOrderMaterial');
-            if (!sel) return;
-            var opt = sel.options[sel.selectedIndex];
-            var rawPrice = opt ? opt.getAttribute('data-price') : '';
-            var unit = opt ? (opt.getAttribute('data-unit') || 'kg') : 'kg';
-            var price = parseFloat(rawPrice);
-            var qty = parseInt(document.getElementById('createOrderQty').value, 10);
-
-            // Chuỗi giá gửi kèm để server phát hiện giá vừa bị đổi (server vẫn tự lấy giá từ DB)
-            document.getElementById('createOrderShownPrice').value = isNaN(price) ? '' : rawPrice;
-            document.getElementById('createOrderPrice').value = isNaN(price) ? '—' : price.toLocaleString('vi-VN') + ' đ/' + unit;
-            document.getElementById('createOrderTotal').value = (!isNaN(price) && qty > 0)
-                ? (price * qty).toLocaleString('vi-VN') + ' đ' : '—';
         }
 
         function closeDetailAndOpenRejectOrder(id, code) {

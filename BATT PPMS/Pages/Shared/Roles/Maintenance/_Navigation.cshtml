@@ -1,4 +1,4 @@
-@model string
+﻿@model string
 @{ var ap = Model; }
 <div class="nav-group" id="grp-ms">
                 <button class="nav-group-header active" onclick="toggleGroup('ms')">
@@ -8,6 +8,9 @@
                 <div class="nav-group-items" id="items-ms">
                     <a class="nav-item @(ap=="Maintenance"?"active":"")" href="/Maintenance/Index">
                         <i class="bi bi-tools"></i><span>Yêu cầu Bảo trì</span>
+                    </a>
+                    <a class="nav-item @(ap=="Machines"?"active":"")" href="/Machines/Index">
+                        <i class="bi bi-cpu"></i><span>Danh mục Máy móc</span>
                     </a>
                     <a class="nav-item @(ap=="MaterialPurchase"?"active":"")" href="/MaterialPurchases/Index">
                         <i class="bi bi-cart3"></i><span>Mua vật tư</span>

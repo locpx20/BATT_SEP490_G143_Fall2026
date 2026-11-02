@@ -1,4 +1,4 @@
-@model string
+﻿@model string
 @{ var ap = Model; }
 <!-- CORE group (Staff) -->
             <div class="nav-group" id="grp-s-core">
@@ -31,13 +31,16 @@
 
             <!-- EQUIPMENT group (Staff) -->
             <div class="nav-group" id="grp-s-equip">
-                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" ? "active" : "")" onclick="toggleGroup('s-equip')">
+                <button class="nav-group-header @(ap is "BrokenReport" or "Maintenance" or "Machines" ? "active" : "")" onclick="toggleGroup('s-equip')">
                     <span>Máy móc &amp; Cơ điện</span>
                     <i class="bi bi-chevron-down nav-chevron @(ap is "BrokenReport" or "Maintenance" ? "rotated" : "")" id="chevron-s-equip"></i>
                 </button>
-                <div class="nav-group-items @(ap is "BrokenReport" or "Maintenance" ? "open" : "")" id="items-s-equip">
+                <div class="nav-group-items @(ap is "BrokenReport" or "Maintenance" or "Machines" ? "open" : "")" id="items-s-equip">
                     <a class="nav-item @(ap is "BrokenReport" or "Maintenance" ? "active" : "")" href="/Maintenance/Index">
                         <i class="bi bi-wrench-adjustable"></i><span>Sự cố &amp; Bảo trì Cơ điện</span>
+                    </a>
+                    <a class="nav-item @(ap == "Machines" ? "active" : "")" href="/Machines/Index">
+                        <i class="bi bi-cpu"></i><span>Danh mục Máy móc</span>
                     </a>
                 </div>
             </div>

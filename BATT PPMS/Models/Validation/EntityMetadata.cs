@@ -180,6 +180,10 @@ public class RawMaterialMetadata
     [Range(typeof(decimal), "0", "9999999999.99", ErrorMessage = "{0} không được âm.")]
     public object? CurrentQuantity { get; set; }
 
+    [Display(Name = "Giá thu mua")]
+    [Range(typeof(decimal), "0.01", "9999999999.99", ErrorMessage = "{0} phải lớn hơn 0.")]
+    public object? PurchasePrice { get; set; }
+
 }
 
 [MetadataType(typeof(RawMaterialImportMetadata))]

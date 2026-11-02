@@ -42,6 +42,20 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public string Status { get; set; } = "Active";
     }
 
+    public class PurchaseMaterialOption
+    {
+        public int MaterialId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Unit { get; set; } = string.Empty;
+        public decimal? Price { get; set; }
+    }
+
+    public class PurchaseSupplierOption
+    {
+        public int SupplierId { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
     public class IndexModel : BasePageModel
     {
         private readonly AppDbContext _context;
@@ -76,6 +90,12 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public decimal AverageUnitPriceVnd { get; set; }
 
         public bool CanApprove => IsOwner;
+
+        // Tạo đơn mua: nhân viên thu mua / quản lý. Giá lấy từ "Giá thu mua" hiện hành.
+        public bool CanCreateOrder => IsPurchasingStaff || IsManager;
+
+        public List<PurchaseMaterialOption> Materials { get; set; } = new();
+        public List<PurchaseSupplierOption> ActiveSuppliers { get; set; } = new();
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -121,6 +141,25 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
         private async Task LoadDataAsync()
         {
+            Materials = await _context.RawMaterials
+                .AsNoTracking()
+                .OrderBy(m => m.MaterialName)
+                .Select(m => new PurchaseMaterialOption
+                {
+                    MaterialId = m.MaterialId,
+                    Name = m.MaterialName,
+                    Unit = m.Unit,
+                    Price = m.PurchasePrice
+                })
+                .ToListAsync();
+
+            ActiveSuppliers = await _context.Suppliers
+                .AsNoTracking()
+                .Where(s => s.Status == StatusConstants.Active)
+                .OrderBy(s => s.SupplierName)
+                .Select(s => new PurchaseSupplierOption { SupplierId = s.SupplierId, Name = s.SupplierName })
+                .ToListAsync();
+
             var query = _context.PurchaseInvoices
                 .Include(p => p.Supplier)
                 .Include(p => p.CreatedByNavigation)
@@ -228,6 +267,106 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 })
                 .OrderByDescending(r => r.TotalWeightKg)
                 .ToList();
+        }
+
+        public async Task<IActionResult> OnPostCreateOrderAsync(int supplierId, int materialId, int quantity, string? shownPrice, string? note)
+        {
+            var check = RequireRole(RoleConstants.PurchasingStaff, RoleConstants.Manager);
+            if (check != null) return check;
+
+            IActionResult Back() => RedirectToPage(new { Tab = "orders" });
+
+            if (quantity < 1 || quantity > PurchasePricing.MaxOrderQuantity)
+            {
+                ErrorMessage = $"Số lượng phải là số nguyên từ 1 đến {PurchasePricing.MaxOrderQuantity:N0}.";
+                return Back();
+            }
+
+            var noteError = InputValidator.Text(note, "Ghi chú", 500);
+            if (noteError != null)
+            {
+                ErrorMessage = noteError;
+                return Back();
+            }
+
+            var supplier = await _context.Suppliers.AsNoTracking().FirstOrDefaultAsync(s => s.SupplierId == supplierId);
+            if (supplier == null || supplier.Status != StatusConstants.Active)
+            {
+                ErrorMessage = "Nhà cung cấp không tồn tại hoặc đã ngừng hoạt động.";
+                return Back();
+            }
+
+            var material = await _context.RawMaterials.AsNoTracking().FirstOrDefaultAsync(m => m.MaterialId == materialId);
+            if (material == null)
+            {
+                ErrorMessage = "Không tìm thấy nguyên liệu cần mua.";
+                return Back();
+            }
+
+            // Đơn giá luôn lấy từ giá thu mua hiện hành ở server, không nhận giá từ client
+            if (material.PurchasePrice is not decimal price || price <= 0)
+            {
+                ErrorMessage = $"Nguyên liệu '{material.MaterialName}' chưa được thiết lập giá thu mua. Vui lòng nhờ Giám đốc / Quản lý thiết lập tại mục Giá thu mua.";
+                return Back();
+            }
+
+            // Giá đổi giữa lúc mở form và lúc gửi -> yêu cầu xem lại thay vì âm thầm áp giá khác
+            if (!PurchasePricing.MatchesCurrent(shownPrice, price))
+            {
+                ErrorMessage = $"Giá thu mua '{material.MaterialName}' vừa được cập nhật thành {price:N0} đ/{material.Unit}. Vui lòng kiểm tra lại rồi tạo đơn.";
+                return Back();
+            }
+
+            var total = Math.Round(quantity * price, 2);
+            if (total > PurchasePricing.MaxAmount)
+            {
+                ErrorMessage = "Tổng tiền đơn mua vượt quá giới hạn cho phép.";
+                return Back();
+            }
+
+            // Mã đơn dạng INV-{năm}-{số thứ tự 3 chữ số}, nối tiếp mã lớn nhất của năm
+            var prefix = $"INV-{DateTime.Now.Year}-";
+            var existingCodes = await _context.PurchaseInvoices
+                .Where(p => p.InvoiceCode.StartsWith(prefix))
+                .Select(p => p.InvoiceCode)
+                .ToListAsync();
+            var nextSeq = existingCodes
+                .Select(c => int.TryParse(c.Substring(prefix.Length), out var n) ? n : 0)
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+            var code = $"{prefix}{nextSeq:D3}";
+
+            var invoice = new PurchaseInvoice
+            {
+                InvoiceCode = code,
+                SupplierId = supplier.SupplierId,
+                PurchaseDate = DateTime.Now,
+                TotalAmount = total,
+                Status = StatusConstants.Pending,
+                CreatedBy = CurrentUserId,
+                Note = InputValidator.Clean(note)
+            };
+            // Chốt giá tại thời điểm tạo: đổi giá sau này không ảnh hưởng đơn đã tạo
+            invoice.PurchaseInvoiceDetails.Add(new PurchaseInvoiceDetail
+            {
+                MaterialId = material.MaterialId,
+                Quantity = quantity,
+                UnitPrice = price
+            });
+            _context.PurchaseInvoices.Add(invoice);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                ErrorMessage = "Không thể tạo đơn mua (có thể trùng mã đơn do thao tác đồng thời). Vui lòng thử lại.";
+                return Back();
+            }
+
+            SuccessMessage = $"Đã tạo đơn mua {code}: {quantity:N0} {material.Unit} {material.MaterialName} × {price:N0} đ = {total:N0} đ. Đơn đang chờ Giám đốc phê duyệt.";
+            return Back();
         }
 
         public async Task<IActionResult> OnPostApproveOrderAsync(int invoiceId)

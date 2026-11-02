@@ -1,0 +1,243 @@
+﻿@page
+@model BATT_PPMS.Pages.PurchasePrices.IndexModel
+@using BATT_PPMS.Helpers
+@{
+    ViewData["Title"] = "Giá thu mua nguyên liệu";
+    ViewData["ActivePage"] = "PurchasePrice";
+}
+
+<div class="space-y-6">
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success" style="border-radius: 12px; margin-bottom: 20px;">
+            <i class="bi bi-check-circle-fill" style="font-size: 16px; margin-right: 8px;"></i>
+            <span>@Model.SuccessMessage</span>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger" style="border-radius: 12px; margin-bottom: 20px;">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size: 16px; margin-right: 8px;"></i>
+            <span>@Model.ErrorMessage</span>
+        </div>
+    }
+
+    <div class="page-header" style="margin-bottom: 20px;">
+        <div>
+            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #243d35; margin-bottom: 4px;">Giá thu mua nguyên liệu</h1>
+            <p class="page-subtitle" style="font-size: 12px; color: #7a887f;">
+                Giá đang áp dụng được dùng tự động cho mọi đơn mua mới cho đến khi được thay đổi. Đơn đã tạo giữ nguyên giá tại thời điểm tạo.
+                @if (!Model.CanManage)
+                {
+                    <span> Bạn chỉ có quyền xem; việc thiết lập giá do Giám đốc / Quản lý thực hiện.</span>
+                }
+            </p>
+        </div>
+        <a href="/PurchaseInvoices/Index" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-size: 12px;">
+            <i class="bi bi-bag-check"></i> Về Thu mua nguyên liệu
+        </a>
+    </div>
+
+    <!-- Giá hiện hành -->
+    <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa; margin-bottom: 24px;">
+        <div style="padding: 14px 18px; border-bottom: 1px solid #efefe7; font-size: 13px; font-weight: 800; color: #243d35;">
+            <i class="bi bi-tag-fill"></i> Giá thu mua hiện hành
+        </div>
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0; vertical-align: middle; font-size: 12px;">
+                <thead style="background: #f4f2ea; text-transform: uppercase; font-size: 11px; color: #52675d; font-weight: 700;">
+                    <tr>
+                        <th style="padding: 12px 16px;">Nguyên liệu</th>
+                        <th style="padding: 12px 16px;">Đơn vị</th>
+                        <th style="padding: 12px 16px; text-align: right;">Giá thu mua</th>
+                        <th style="padding: 12px 16px;">Cập nhật lần cuối</th>
+                        @if (Model.CanManage)
+                        {
+                            <th style="padding: 12px 16px; text-align: center;">Thao tác</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Materials.Any())
+                    {
+                        <tr><td colspan="5" style="text-align: center; padding: 32px; color: #96a298;">Chưa có nguyên liệu nào trong hệ thống.</td></tr>
+                    }
+                    @foreach (var m in Model.Materials)
+                    {
+                        <tr style="border-bottom: 1px solid #efefe7;">
+                            <td style="padding: 14px 16px; font-weight: 700; color: #30483f;">@m.Name</td>
+                            <td style="padding: 14px 16px;">@m.Unit</td>
+                            <td style="padding: 14px 16px; text-align: right;">
+                                @if (m.Price.HasValue)
+                                {
+                                    <span style="font-size: 15px; font-weight: 800; color: #123329;">@m.Price.Value.ToString("N0") đ/@m.Unit</span>
+                                }
+                                else
+                                {
+                                    <span class="badge" style="background: #f1e2da; color: #94473e; border: 1px solid #e4c8bf;">Chưa thiết lập</span>
+                                }
+                            </td>
+                            <td style="padding: 14px 16px; color: #52675d;">
+                                @if (m.LastChangedAt.HasValue)
+                                {
+                                    <div>@m.LastChangedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                    <div style="font-size: 11px; color: #7a887f;">bởi @m.LastChangedBy</div>
+                                }
+                                else
+                                {
+                                    <span style="color: #96a298;">—</span>
+                                }
+                            </td>
+                            @if (Model.CanManage)
+                            {
+                                <td style="padding: 14px 16px; text-align: center;">
+                                    <button type="button" class="btn btn-sm btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 600;"
+                                            data-id="@m.MaterialId" data-name="@m.Name" data-unit="@m.Unit"
+                                            data-price="@PurchasePricing.FormatInvariant(m.Price)"
+                                            onclick="openPriceModal(this)">
+                                        <i class="bi bi-pencil-square"></i> @(m.Price.HasValue ? "Đổi giá" : "Thiết lập giá")
+                                    </button>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Lịch sử thay đổi giá -->
+    <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa;">
+        <div style="padding: 14px 18px; border-bottom: 1px solid #efefe7; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;">
+            <span style="font-size: 13px; font-weight: 800; color: #243d35;"><i class="bi bi-clock-history"></i> Lịch sử thay đổi giá</span>
+            <form method="get" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                <span style="font-size: 12px; color: #7a887f; font-weight: 600;">Nguyên liệu:</span>
+                <select name="material" onchange="this.form.submit()" class="form-select" style="font-size: 12px; border-radius: 8px; padding: 6px 12px;">
+                    <option value="" selected="@(!Model.FilterMaterialId.HasValue)">Tất cả</option>
+                    @foreach (var m in Model.Materials)
+                    {
+                        <option value="@m.MaterialId" selected="@(Model.FilterMaterialId == m.MaterialId)">@m.Name</option>
+                    }
+                </select>
+            </form>
+        </div>
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0; vertical-align: middle; font-size: 12px;">
+                <thead style="background: #f4f2ea; text-transform: uppercase; font-size: 11px; color: #52675d; font-weight: 700;">
+                    <tr>
+                        <th style="padding: 12px 16px;">Thời gian</th>
+                        <th style="padding: 12px 16px;">Nguyên liệu</th>
+                        <th style="padding: 12px 16px; text-align: right;">Giá cũ</th>
+                        <th style="padding: 12px 16px; text-align: right;">Giá mới</th>
+                        <th style="padding: 12px 16px; text-align: right;">Chênh lệch</th>
+                        <th style="padding: 12px 16px;">Người thay đổi</th>
+                        <th style="padding: 12px 16px;">Lý do</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.History.Any())
+                    {
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px 16px; color: #96a298;">
+                                <i class="bi bi-clock-history" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>
+                                Chưa có lần thay đổi giá nào.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var h in Model.History)
+                    {
+                        <tr style="border-bottom: 1px solid #efefe7;">
+                            <td style="padding: 12px 16px; white-space: nowrap;">@h.ChangedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td style="padding: 12px 16px; font-weight: 700; color: #30483f;">@h.MaterialName</td>
+                            <td style="padding: 12px 16px; text-align: right; color: #7a887f;">
+                                @(h.OldPrice.HasValue ? h.OldPrice.Value.ToString("N0") + " đ" : "—")
+                            </td>
+                            <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #123329;">@h.NewPrice.ToString("N0") đ/@h.Unit</td>
+                            <td style="padding: 12px 16px; text-align: right;">
+                                @if (!h.OldPrice.HasValue)
+                                {
+                                    <span class="badge" style="background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9;">Thiết lập lần đầu</span>
+                                }
+                                else
+                                {
+                                    var diff = h.NewPrice - h.OldPrice.Value;
+                                    var pct = h.OldPrice.Value > 0 ? diff / h.OldPrice.Value * 100m : 0m;
+                                    var up = diff > 0;
+                                    <span style="font-weight: 700; color: @(up ? "#a55449" : "#356e51");">
+                                        @((up ? "▲ +" : "▼ ") + diff.ToString("N0")) đ
+                                        <span style="font-weight: 600; font-size: 11px;">(@(up ? "+" : "")@pct.ToString("0.#")%)</span>
+                                    </span>
+                                }
+                            </td>
+                            <td style="padding: 12px 16px;">@h.ChangedByName</td>
+                            <td style="padding: 12px 16px; color: #52675d; max-width: 260px;">@(string.IsNullOrWhiteSpace(h.Reason) ? "—" : h.Reason)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml"
+                 model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/PurchasePrices/Index", new() { ["material"] = Model.FilterMaterialId?.ToString() })' />
+    </div>
+</div>
+
+@if (Model.CanManage)
+{
+    <!-- MODAL: THIẾT LẬP / ĐỔI GIÁ -->
+    <div class="modal fade" id="priceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="UpdatePrice">
+                    <input type="hidden" name="priceMaterialId" id="priceMaterialId" />
+                    <input type="hidden" name="expectedOldPrice" id="priceExpectedOld" />
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;">
+                            <i class="bi bi-tag-fill"></i> Giá thu mua: <span id="priceMaterialName"></span>
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; font-size: 12px;">
+                            Giá hiện hành: <strong id="priceCurrent"></strong>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Giá thu mua mới (đ/<span id="priceUnit">kg</span>) <span style="color: #a55449;">*</span></label>
+                            <input type="number" name="newPrice" id="priceNew" class="form-control" min="1" max="@PurchasePricing.MaxUnitPrice" step="1" required
+                                   placeholder="Ví dụ: 25000" style="border-radius: 10px;" />
+                            <div style="font-size: 11px; color: #7a887f; margin-top: 4px;">Nhập số nguyên (đồng), không dùng dấu phân cách.</div>
+                        </div>
+                        <div class="mb-1">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Lý do thay đổi</label>
+                            <textarea name="reason" class="form-control" rows="3" maxlength="500" placeholder="Ví dụ: Giá thị trường tăng, theo thỏa thuận mới với nhà cung cấp..." style="font-size: 12px; border-radius: 10px;"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
+                            <i class="bi bi-check2"></i> Lưu giá thu mua
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function openPriceModal(btn) {
+            var price = btn.getAttribute('data-price');
+            var unit = btn.getAttribute('data-unit') || 'kg';
+            document.getElementById('priceMaterialId').value = btn.getAttribute('data-id');
+            document.getElementById('priceExpectedOld').value = price || '';
+            document.getElementById('priceMaterialName').innerText = btn.getAttribute('data-name');
+            document.getElementById('priceUnit').innerText = unit;
+            document.getElementById('priceCurrent').innerText = price
+                ? Number(price).toLocaleString('vi-VN') + ' đ/' + unit
+                : 'Chưa thiết lập';
+            document.getElementById('priceNew').value = '';
+            new bootstrap.Modal(document.getElementById('priceModal')).show();
+        }
+    </script>
+}

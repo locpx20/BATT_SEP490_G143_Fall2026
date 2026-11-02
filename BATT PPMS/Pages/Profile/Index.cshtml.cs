@@ -59,7 +59,7 @@ namespace BATT_PPMS.Pages.Profile
 
             var error = InputValidator.First(
                 InputValidator.Text(FullName, "Họ và tên", 100, required: true),
-                InputValidator.Phone(Phone));
+                PhoneHelper.Validate(Phone));
 
             if (error != null)
             {
@@ -67,8 +67,16 @@ namespace BATT_PPMS.Pages.Profile
                 return RedirectToPage("/Profile/Index");
             }
 
+            // Số điện thoại là định danh đăng nhập nên phải duy nhất
+            var cleanPhone = PhoneHelper.Normalize(Phone);
+            if (await _context.Users.AnyAsync(u => u.Phone == cleanPhone && u.UserId != user.UserId))
+            {
+                ErrorMessage = $"Số điện thoại '{cleanPhone}' đã được dùng cho một tài khoản khác.";
+                return RedirectToPage("/Profile/Index");
+            }
+
             user.FullName = FullName.Trim();
-            user.Phone = InputValidator.Clean(Phone);
+            user.Phone = cleanPhone;
             await _context.SaveChangesAsync();
 
             // Cập nhật lại session

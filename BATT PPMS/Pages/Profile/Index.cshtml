@@ -42,7 +42,7 @@
             <form method="post">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label" for="inp-username">Tên đăng nhập</label>
+                        <label class="form-label" for="inp-username">Tên tài khoản</label>
                         <input class="form-control" id="inp-username" type="text" value="@Model.User.Username" readonly />
                     </div>
                     <div class="form-group">
@@ -51,9 +51,9 @@
                                value="@Model.User.FullName" required maxlength="100" autocomplete="name" id="inp-fullname" />
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="inp-phone">Số điện thoại</label>
+                        <label class="form-label" for="inp-phone">Số điện thoại (dùng để đăng nhập)</label>
                         <input class="form-control" type="tel" name="Phone"
-                               value="@Model.User.Phone" maxlength="20" autocomplete="tel" id="inp-phone" />
+                               value="@Model.User.Phone" maxlength="20" autocomplete="tel" id="inp-phone" required />
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="inp-role">Vai trò</label>

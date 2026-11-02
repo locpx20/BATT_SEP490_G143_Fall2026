@@ -27,7 +27,7 @@ namespace BATT_PPMS.Pages.Auth
         }
 
         [BindProperty]
-        [Required(ErrorMessage = "Vui lòng nhập tên đăng nhập hoặc địa chỉ email")]
+        [Required(ErrorMessage = "Vui lòng nhập số điện thoại hoặc địa chỉ email")]
         public string AccountIdentifier { get; set; } = string.Empty;
 
         public string? ErrorMessage { get; set; }
@@ -47,9 +47,10 @@ namespace BATT_PPMS.Pages.Auth
 
             var identifier = AccountIdentifier.Trim();
 
-            // Tìm user theo username hoặc email
+            // Tìm user theo số điện thoại (định danh đăng nhập) hoặc email
+            var phone = identifier.Contains('@') ? string.Empty : Helpers.PhoneHelper.Normalize(identifier);
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Username == identifier
+                .FirstOrDefaultAsync(u => (phone != "" && u.Phone == phone)
                     || (u.Email != null && u.Email.ToLower() == identifier.ToLower()));
 
             if (user == null)

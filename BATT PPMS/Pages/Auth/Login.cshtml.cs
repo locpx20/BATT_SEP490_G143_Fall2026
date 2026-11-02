@@ -16,7 +16,7 @@ namespace BATT_PPMS.Pages.Auth
         }
 
         [BindProperty]
-        public string Username { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
 
         [BindProperty]
         public string Password { get; set; } = string.Empty;
@@ -44,19 +44,21 @@ namespace BATT_PPMS.Pages.Auth
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+            if (string.IsNullOrWhiteSpace(Phone) || string.IsNullOrWhiteSpace(Password))
             {
-                ErrorMessage = "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
+                ErrorMessage = "Vui lòng nhập đầy đủ số điện thoại và mật khẩu.";
                 return Page();
             }
 
+            // Đăng nhập bằng số điện thoại (đã chuẩn hoá về dạng 0xxxxxxxxx) + mật khẩu MD5
+            var phone = PhoneHelper.Normalize(Phone);
             var user = await _context.Users
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Username == Username.Trim());
+                .FirstOrDefaultAsync(u => u.Phone == phone);
 
-            if (user == null || user.Password != Password)
+            if (phone.Length == 0 || user == null || !PasswordHasher.Verify(Password, user.Password))
             {
-                ErrorMessage = "Tên đăng nhập hoặc mật khẩu không chính xác.";
+                ErrorMessage = "Số điện thoại hoặc mật khẩu không chính xác.";
                 return Page();
             }
 

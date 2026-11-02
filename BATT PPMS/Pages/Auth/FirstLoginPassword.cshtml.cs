@@ -46,7 +46,7 @@ public class FirstLoginPasswordModel(ProductionManagementDbContext database) : P
         ErrorMessage = InitialPasswordPolicy.ValidateNewPassword(NewPassword, ConfirmPassword);
         if (ErrorMessage != null) return Page();
 
-        user!.Password = NewPassword;
+        user!.Password = PasswordHasher.Hash(NewPassword);
         await database.SaveChangesAsync();
         return RedirectToPage("/Dashboard/Index");
     }

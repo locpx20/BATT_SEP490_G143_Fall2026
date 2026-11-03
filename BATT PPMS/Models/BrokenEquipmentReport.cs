@@ -11,7 +11,7 @@ public partial class BrokenEquipmentReport
 
     public string? Description { get; set; }
 
-    public int ReportedBy { get; set; }
+    public int? ReportedBy { get; set; }
 
     public DateTime ReportDate { get; set; }
 
@@ -23,5 +23,5 @@ public partial class BrokenEquipmentReport
 
     public virtual ICollection<MaintenanceRequest> MaintenanceRequests { get; set; } = new List<MaintenanceRequest>();
 
-    public virtual User ReportedByNavigation { get; set; } = null!;
+    public virtual User? ReportedByNavigation { get; set; }
 }

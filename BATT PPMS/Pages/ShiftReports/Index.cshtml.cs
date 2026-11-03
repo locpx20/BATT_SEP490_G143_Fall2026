@@ -10,7 +10,7 @@ namespace BATT_PPMS.Pages.ShiftReports
     {
         public int ReportId { get; set; }
         public string Code => $"RP-{ReportId:D4}";
-        public int StaffId { get; set; }
+        public int? StaffId { get; set; }
         public string StaffName { get; set; } = string.Empty;
         public DateOnly ShiftDate { get; set; }
         public string Shift { get; set; } = "Ca 1 (06:00 - 14:00)";
@@ -55,6 +55,7 @@ namespace BATT_PPMS.Pages.ShiftReports
         public int PendingApprovalCount { get; set; }
 
         public bool CanApprove => IsOwner;
+        public bool IsStaffView => IsStaff;
         public bool CanSubmitReport => IsStaff || IsOwnerOrManager;
 
         [TempData]
@@ -118,17 +119,18 @@ namespace BATT_PPMS.Pages.ShiftReports
                 return (int)Math.Round(dayTotal * share);
             }
 
-            var items = allReports.Select(r =>
+            var visibleReports = IsStaff ? allReports.Where(r => r.StaffId == CurrentUserId) : allReports;
+            var items = visibleReports.Select(r =>
             {
                 var dayIncidents = incidents
-                    .Where(b => b.ReportedBy == r.StaffId && DateOnly.FromDateTime(b.ReportDate) == r.ShiftDate)
+                    .Where(b => r.StaffId.HasValue && b.ReportedBy == r.StaffId && DateOnly.FromDateTime(b.ReportDate) == r.ShiftDate)
                     .ToList();
 
                 return new ShiftReportItemViewModel
                 {
                     ReportId = r.ReportId,
                     StaffId = r.StaffId,
-                    StaffName = r.Staff?.FullName ?? "Chưa xác định",
+                    StaffName = r.Staff?.FullName ?? "Tài khoản đã xóa",
                     ShiftDate = r.ShiftDate,
                     Shift = !string.IsNullOrWhiteSpace(r.Assignment?.Shift) ? r.Assignment!.Shift! : "Ca 1 (06:00 - 14:00)",
                     ProductionQuantity = r.ProductionQuantity,

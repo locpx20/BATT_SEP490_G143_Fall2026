@@ -9,7 +9,7 @@ public partial class MaintenanceRequest
 
     public int BrokenReportId { get; set; }
 
-    public int RequestedBy { get; set; }
+    public int? RequestedBy { get; set; }
 
     public int? AssignedTo { get; set; }
 
@@ -27,5 +27,5 @@ public partial class MaintenanceRequest
 
     public virtual ICollection<MaterialPurchaseRequest> MaterialPurchaseRequests { get; set; } = new List<MaterialPurchaseRequest>();
 
-    public virtual User RequestedByNavigation { get; set; } = null!;
+    public virtual User? RequestedByNavigation { get; set; }
 }

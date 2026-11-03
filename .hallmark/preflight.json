@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-04",
+  "scope": "app",
+  "depth": "full",
+  "routes": ["/Personnel/Index", "/ShiftReports/Index", "/Maintenance/Index"],
+  "evidence": [
+    {"source": "BATT PPMS/wwwroot/css/theme-colors.css:3", "keep": "forest green primary #193f35"},
+    {"source": "BATT PPMS/wwwroot/css/site.css:44", "keep": "Segoe UI font family"},
+    {"source": "BATT PPMS/Pages/Shared/_Layout.cshtml:77", "keep": "existing BATT logo"},
+    {"source": "BATT PPMS/Pages/Shared/Roles/Production/_Navigation.cshtml:1", "keep": "three Staff destinations"}
+  ],
+  "introduced": ["flat metric strip", "assignment ledger rows", "mobile labelled table rows", "accessible large controls", "explicit date selection"],
+  "material": "Existing app and real SQL data; no photographs, no new business figures",
+  "dirtyTreeAuthorization": "User explicitly allowed continuing on existing changes, preserving them all",
+  "before": {"floorFailures": 46, "reflexFindings": 12, "warnings": 6, "screenshots": 15}
+}

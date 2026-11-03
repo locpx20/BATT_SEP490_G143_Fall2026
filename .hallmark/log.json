@@ -1,0 +1,26 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "brand",
+  "axes": "light/grotesk-sans/cool",
+  "nav": "existing sidebar",
+  "footer": "existing account menu",
+  "imagery": "actual app data",
+  "signature": "shift assignment ledger",
+  "sections": [
+   "screen heading",
+   "flat metrics",
+   "filters",
+   "labelled records or table"
+  ],
+  "waived": [
+   "39b"
+  ],
+  "prompt": "Redesign Staff as a practical factory operations board keeping BATT green and logo",
+  "verification": "11 integration and 100 browser checks; finish review resolved; kept tool flags rotating anti-forgery token values",
+  "date": "2026-11-03"
+ }
+]

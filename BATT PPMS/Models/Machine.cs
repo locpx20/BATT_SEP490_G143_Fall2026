@@ -15,9 +15,9 @@ public partial class Machine
 
     public string? Brand { get; set; }
 
-    public int CreatedBy { get; set; }
+    public int? CreatedBy { get; set; }
 
     public virtual ICollection<BrokenEquipmentReport> BrokenEquipmentReports { get; set; } = new List<BrokenEquipmentReport>();
 
-    public virtual User CreatedByNavigation { get; set; } = null!;
+    public virtual User? CreatedByNavigation { get; set; }
 }

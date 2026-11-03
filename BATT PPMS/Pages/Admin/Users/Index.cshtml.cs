@@ -3,6 +3,7 @@ using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace BATT_PPMS.Pages.Admin.Users
 {
@@ -333,6 +334,61 @@ namespace BATT_PPMS.Pages.Admin.Users
 
             string newStatusText = user.Status == StatusConstants.Active ? "Đang hoạt động" : "Đã khóa";
             SuccessMessage = $"Đã cập nhật trạng thái tài khoản '{user.Username}' thành: {newStatusText}.";
+            return RedirectToList();
+        }
+
+        // ---- POST: Delete User ----
+        public async Task<IActionResult> OnPostDeleteUserAsync(int userId)
+        {
+            var check = RequireRole(RoleConstants.Admin);
+            if (check != null) return check;
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user == null)
+            {
+                ErrorMessage = "Không tìm thấy tài khoản cần xóa.";
+                return RedirectToList();
+            }
+
+            if (user.Role.RoleName.Equals(RoleConstants.Admin, StringComparison.OrdinalIgnoreCase) ||
+                user.Role.RoleName.Equals(RoleConstants.AdminShort, StringComparison.OrdinalIgnoreCase) ||
+                user.UserId == CurrentUserId)
+            {
+                ErrorMessage = "Không được xóa tài khoản có vai trò Admin.";
+                return RedirectToList();
+            }
+
+            try
+            {
+                // Clear only references to the deleted user, never business records.
+                // Read actual FK metadata so all tables (including price history) are covered.
+                await _context.Database.ExecuteSqlRawAsync(@"
+                    DECLARE @unlinkSql nvarchar(max) = N'';
+                    SELECT @unlinkSql += N'UPDATE ' + QUOTENAME(s.name) + N'.' + QUOTENAME(t.name)
+                        + N' SET ' + QUOTENAME(c.name) + N' = NULL WHERE ' + QUOTENAME(c.name) + N' = @deletedUserId;'
+                    FROM sys.foreign_key_columns fk
+                    JOIN sys.tables t ON t.object_id = fk.parent_object_id
+                    JOIN sys.schemas s ON s.schema_id = t.schema_id
+                    JOIN sys.columns c ON c.object_id = fk.parent_object_id AND c.column_id = fk.parent_column_id
+                    WHERE fk.referenced_object_id = OBJECT_ID(N'dbo.User');
+                    EXEC sys.sp_executesql @unlinkSql, N'@deletedUserId int', @deletedUserId = {0};", userId);
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch (SqlException ex) when (ex.Number == 515)
+            {
+                ErrorMessage = "Database chưa cập nhật chức năng xóa tài khoản. Vui lòng chạy Allow_User_Deletion_Keep_BusinessData.sql.";
+                return RedirectToList();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                ErrorMessage = "Tài khoản đã được thay đổi hoặc xóa bởi người khác. Vui lòng tải lại danh sách.";
+                return RedirectToList();
+            }
+
+            SuccessMessage = $"Đã xóa tài khoản '{user.Username}'. Dữ liệu nghiệp vụ được giữ nguyên.";
             return RedirectToList();
         }
 

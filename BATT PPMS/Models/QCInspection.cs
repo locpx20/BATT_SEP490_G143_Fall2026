@@ -19,7 +19,7 @@ public partial class Qcinspection
 
     public string? Status { get; set; }
 
-    public int RequestedBy { get; set; }
+    public int? RequestedBy { get; set; }
 
     public int? InspectedBy { get; set; }
 
@@ -29,5 +29,5 @@ public partial class Qcinspection
 
     public virtual User? InspectedByNavigation { get; set; }
 
-    public virtual User RequestedByNavigation { get; set; } = null!;
+    public virtual User? RequestedByNavigation { get; set; }
 }

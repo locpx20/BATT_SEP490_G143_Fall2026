@@ -15,7 +15,7 @@ public partial class RawMaterialPriceHistory
 
     public decimal NewPrice { get; set; }
 
-    public int ChangedBy { get; set; }
+    public int? ChangedBy { get; set; }
 
     public DateTime ChangedAt { get; set; }
 
@@ -23,5 +23,5 @@ public partial class RawMaterialPriceHistory
 
     public virtual RawMaterial Material { get; set; } = null!;
 
-    public virtual User ChangedByNavigation { get; set; } = null!;
+    public virtual User? ChangedByNavigation { get; set; }
 }

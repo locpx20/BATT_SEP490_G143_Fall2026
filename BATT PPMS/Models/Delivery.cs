@@ -17,9 +17,9 @@ public partial class Delivery
 
     public string? DeliveryStatus { get; set; }
 
-    public int ConfirmedBy { get; set; }
+    public int? ConfirmedBy { get; set; }
 
-    public virtual User ConfirmedByNavigation { get; set; } = null!;
+    public virtual User? ConfirmedByNavigation { get; set; }
 
     public virtual Order Order { get; set; } = null!;
 }

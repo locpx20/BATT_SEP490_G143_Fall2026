@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model BATT_PPMS.Pages.Personnel.IndexModel
 @{
     ViewData["Title"] = Model.IsStaffView ? "Kế hoạch sản xuất ngày hôm nay" : "Kế hoạch Sản xuất";
@@ -6,7 +6,7 @@
     if (Model.IsStaffView && Model.AllDates)
         ViewData["Title"] = "Kế hoạch sản xuất";
     else if (Model.IsStaffView && Model.DisplayDate is DateOnly displayDate && displayDate != Model.Today)
-        ViewData["Title"] = $"Kế hoạch sản xuất ngày {displayDate:dd/MM/yyyy}";
+        ViewData["Title"] = $"Kế hoạch sản xuất";
 }
 
 <div class="space-y-6 staff-screen">
@@ -50,10 +50,6 @@
     }
 
     <!-- Filter Bar -->
-    @if (Model.IsStaffView && Model.ShowingLatestPlanDate)
-    {
-        <p class="staff-plan-date-notice" role="status">Ngày @Model.Today.ToString("dd/MM/yyyy") chưa có kế hoạch. Đang hiển thị kế hoạch gần nhất ngày @Model.DisplayDate?.ToString("dd/MM/yyyy").</p>
-    }
     <div class="card staff-filter" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
         <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
             @if (Model.IsStaffView)
@@ -144,6 +140,27 @@
             <div class="card staff-plan" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
 
                 <!-- Card Header -->
+                @if (Model.IsStaffView)
+                {
+                    <div class="staff-plan-heading staff-plan-heading--ordered">
+                        <dl class="staff-plan-facts">
+                            <div>
+                                <dt><i class="bi bi-calendar3" aria-hidden="true"></i> Ngày sản xuất</dt>
+                                <dd><time datetime="@plan.AssignmentDate.ToString("yyyy-MM-dd")">@plan.AssignmentDate.ToString("dd/MM/yyyy")</time></dd>
+                            </div>
+                            <div>
+                                <dt><i class="bi bi-clock" aria-hidden="true"></i> Ca làm việc</dt>
+                                <dd><span>@plan.Shift</span>@if (!string.IsNullOrEmpty(shiftTime)) { <small>@shiftTime</small> }</dd>
+                            </div>
+                            <div>
+                                <dt><i class="bi bi-person-gear" aria-hidden="true"></i> Người tạo</dt>
+                                <dd>@(plan.Assigner?.FullName ?? "—")</dd>
+                            </div>
+                        </dl>
+                    </div>
+                }
+                else
+                {
                 <div class="staff-plan-heading" style="padding: 16px 20px; border-bottom: 1px solid #efefe7; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                         <!-- Plan Code -->
@@ -184,6 +201,7 @@
                         </span>
                     </div>
                 </div>
+                }
 
                 <!-- Assignments / 4 Core Stations -->
                 <div class="staff-plan-body" style="padding: 16px 20px;">

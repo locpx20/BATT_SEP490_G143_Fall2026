@@ -17,7 +17,7 @@ public partial class PurchaseInvoice
 
     public string? Status { get; set; }
 
-    public int CreatedBy { get; set; }
+    public int? CreatedBy { get; set; }
 
     public int? ApprovedBy { get; set; }
 
@@ -25,7 +25,7 @@ public partial class PurchaseInvoice
 
     public virtual User? ApprovedByNavigation { get; set; }
 
-    public virtual User CreatedByNavigation { get; set; } = null!;
+    public virtual User? CreatedByNavigation { get; set; }
 
     public virtual ICollection<PurchaseInvoiceDetail> PurchaseInvoiceDetails { get; set; } = new List<PurchaseInvoiceDetail>();
 

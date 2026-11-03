@@ -48,6 +48,7 @@ namespace BATT_PPMS.Pages.Dashboard
             PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
             var check = RequireLogin();
             if (check != null) return check;
+            if (IsStaff) return RedirectToPage("/Personnel/Index");
 
             var roleName = HttpContext.Session.GetString("RoleName") ?? "";
             IsAdminRole = roleName == RoleConstants.Admin || roleName == "Admin";

@@ -19,9 +19,9 @@ public partial class Supplier
 
     public string? Status { get; set; }
 
-    public int CreatedBy { get; set; }
+    public int? CreatedBy { get; set; }
 
-    public virtual User CreatedByNavigation { get; set; } = null!;
+    public virtual User? CreatedByNavigation { get; set; }
 
     public virtual ICollection<PurchaseInvoice> PurchaseInvoices { get; set; } = new List<PurchaseInvoice>();
 

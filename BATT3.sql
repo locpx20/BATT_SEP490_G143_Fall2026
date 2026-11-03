@@ -74,7 +74,7 @@ CREATE TABLE Customer (
     email VARCHAR(100),
     address NVARCHAR(MAX),
     status NVARCHAR(20) DEFAULT 'Active',
-    created_by INT NOT NULL,
+    created_by INT NULL,
     FOREIGN KEY (created_by) REFERENCES [User](user_id)
 );
 GO
@@ -88,7 +88,7 @@ CREATE TABLE Supplier (
     email VARCHAR(100),
     address NVARCHAR(MAX),
     status NVARCHAR(20) DEFAULT 'Active',
-    created_by INT NOT NULL,
+    created_by INT NULL,
     FOREIGN KEY (created_by) REFERENCES [User](user_id)
 );
 GO
@@ -122,7 +122,7 @@ CREATE TABLE RawMaterialImport (
     quantity DECIMAL(12, 2) NOT NULL,         
     unit_price DECIMAL(12, 2) NOT NULL,       
     import_date DATETIME NOT NULL DEFAULT GETDATE(),
-    imported_by INT NOT NULL,                 
+    imported_by INT NULL,
     note NVARCHAR(MAX),
     FOREIGN KEY (material_id) REFERENCES RawMaterial(material_id),
     FOREIGN KEY (supplier_id) REFERENCES Supplier(supplier_id),
@@ -136,7 +136,7 @@ CREATE TABLE RawMaterialExport (
     material_id INT NOT NULL,
     quantity DECIMAL(12, 2) NOT NULL,         
     export_date DATETIME NOT NULL DEFAULT GETDATE(),
-    exported_by INT NOT NULL,                 
+    exported_by INT NULL,
     note NVARCHAR(MAX),                        
     FOREIGN KEY (material_id) REFERENCES RawMaterial(material_id),
     FOREIGN KEY (exported_by) REFERENCES [User](user_id)
@@ -150,7 +150,7 @@ CREATE TABLE FinishedGoodBatch (
     production_date DATE NOT NULL,         
     quantity DECIMAL(12, 2) NOT NULL,      
     status NVARCHAR(50) DEFAULT 'In Stock',   
-    created_by INT NOT NULL,
+    created_by INT NULL,
     FOREIGN KEY (created_by) REFERENCES [User](user_id)
 );
 GO
@@ -164,7 +164,7 @@ CREATE TABLE QCInspection (
     result NVARCHAR(20),                    
     note NVARCHAR(MAX),
     status NVARCHAR(50) DEFAULT 'Pending',
-    requested_by INT NOT NULL,             
+    requested_by INT NULL,
     inspected_by INT,                      
     inspect_date DATETIME,
     FOREIGN KEY (batch_id) REFERENCES FinishedGoodBatch(batch_id),
@@ -176,8 +176,8 @@ GO
 -- 14. Bảng PersonnelAssignment (Phân công nhân sự - Liên kết User)
 CREATE TABLE PersonnelAssignment (
     assignment_id INT IDENTITY(1,1) PRIMARY KEY,
-    staff_id INT NOT NULL,
-    assigned_by INT NOT NULL,
+    staff_id INT NULL,
+    assigned_by INT NULL,
     assignment_date DATE NOT NULL,
     shift NVARCHAR(50),
     task_description NVARCHAR(MAX),
@@ -191,7 +191,7 @@ GO
 CREATE TABLE EndOfShiftReport (
     report_id INT IDENTITY(1,1) PRIMARY KEY,
     assignment_id INT NOT NULL,          
-    staff_id INT NOT NULL,
+    staff_id INT NULL,
     shift_date DATE NOT NULL,
     production_quantity INT NOT NULL,
     note NVARCHAR(MAX),
@@ -210,7 +210,7 @@ CREATE TABLE Machine (
     machine_name NVARCHAR(100) NOT NULL,
     process_name NVARCHAR(100) NOT NULL, -- Công đoạn (lưu dạng text)
     brand NVARCHAR(100),                 -- Hãng máy
-    created_by INT NOT NULL,             -- Nhân sự (Manager/Admin) thêm máy vào hệ thống
+    created_by INT NULL,             -- Nhân sự (Manager/Admin) thêm máy vào hệ thống
     FOREIGN KEY (created_by) REFERENCES [User](user_id)
 );
 GO
@@ -220,7 +220,7 @@ CREATE TABLE BrokenEquipmentReport (
     report_id INT IDENTITY(1,1) PRIMARY KEY,
     machine_id INT NOT NULL,             -- Liên kết tới máy móc bị hỏng
     description NVARCHAR(MAX),           -- Mô tả chi tiết lỗi hỏng
-    reported_by INT NOT NULL,            -- Nhân viên báo cáo
+    reported_by INT NULL,            -- Nhân viên báo cáo
     report_date DATETIME NOT NULL,
     status NVARCHAR(50) DEFAULT 'Reported',
     severity NVARCHAR(20),               -- Mức độ nghiêm trọng
@@ -233,7 +233,7 @@ GO
 CREATE TABLE MaintenanceRequest (
     request_id INT IDENTITY(1,1) PRIMARY KEY,
     broken_report_id INT NOT NULL,
-    requested_by INT NOT NULL,
+    requested_by INT NULL,
     assigned_to INT,
     request_date DATETIME NOT NULL,
     status NVARCHAR(50) DEFAULT 'Pending',
@@ -251,7 +251,7 @@ CREATE TABLE MaterialPurchaseRequest (
     maintenance_request_id INT NOT NULL,
     item_name NVARCHAR(100) NOT NULL,
     quantity INT NOT NULL,
-    requested_by INT NOT NULL,
+    requested_by INT NULL,
     status NVARCHAR(50) DEFAULT 'Pending',
     request_date DATETIME NOT NULL,
     approved_by INT,
@@ -273,7 +273,7 @@ CREATE TABLE [Order] (
     status NVARCHAR(50) DEFAULT 'Pending', 
     rejection_reason NVARCHAR(MAX),
     approved_by INT,
-    created_by INT NOT NULL,              
+    created_by INT NULL,
     order_date DATETIME NOT NULL,
     FOREIGN KEY (customer_id) REFERENCES Customer(customer_id),
     FOREIGN KEY (inventory_id) REFERENCES InventoryItem(inventory_id),
@@ -301,7 +301,7 @@ CREATE TABLE Delivery (
     driver_name NVARCHAR(100) NOT NULL,
     pickup_date DATETIME NOT NULL,
     delivery_status NVARCHAR(50) DEFAULT 'Prepared',
-    confirmed_by INT NOT NULL, 
+    confirmed_by INT NULL,
     FOREIGN KEY (order_id) REFERENCES [Order](order_id),
     FOREIGN KEY (confirmed_by) REFERENCES [User](user_id)
 );
@@ -315,7 +315,7 @@ CREATE TABLE PurchaseInvoice (
     purchase_date DATETIME NOT NULL,
     total_amount DECIMAL(12, 2) NOT NULL,
     status NVARCHAR(50) DEFAULT 'Pending',
-    created_by INT NOT NULL,
+    created_by INT NULL,
     approved_by INT,
     note NVARCHAR(MAX),
     FOREIGN KEY (supplier_id) REFERENCES Supplier(supplier_id),

@@ -14,7 +14,7 @@ namespace BATT_PPMS.Pages.Maintenance
         public string EquipmentName { get; set; } = string.Empty;
         public string Symptoms { get; set; } = string.Empty;
         public string Priority { get; set; } = "High";
-        public int RequestedByStaffId { get; set; }
+        public int? RequestedByStaffId { get; set; }
         public string RequestedByName { get; set; } = string.Empty;
         public int? AssignedToStaffId { get; set; }
         public string? AssignedStaffName { get; set; }
@@ -74,6 +74,7 @@ namespace BATT_PPMS.Pages.Maintenance
         [BindProperty] public string? FailureDescription { get; set; }
 
         public List<Machine> AvailableMachines { get; set; } = new();
+        public bool IsStaffView => IsStaff;
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -110,6 +111,9 @@ namespace BATT_PPMS.Pages.Maintenance
                 .Include(m => m.MaterialPurchaseRequests)
                 .AsNoTracking()
                 .AsQueryable();
+
+            if (IsStaff)
+                query = query.Where(r => r.RequestedBy == CurrentUserId || r.BrokenReport.ReportedBy == CurrentUserId);
 
             var all = await query.ToListAsync();
 
@@ -158,7 +162,7 @@ namespace BATT_PPMS.Pages.Maintenance
                     Symptoms = !string.IsNullOrWhiteSpace(NoteTags.Plain(r.Description)) ? NoteTags.Plain(r.Description)! : (r.BrokenReport?.Description ?? "Chưa có mô tả hiện tượng"),
                     Priority = !string.IsNullOrWhiteSpace(r.Priority) ? r.Priority : (r.BrokenReport?.Severity ?? "High"),
                     RequestedByStaffId = r.RequestedBy,
-                    RequestedByName = r.RequestedByNavigation?.FullName ?? "Công nhân vận hành",
+                    RequestedByName = r.RequestedByNavigation?.FullName ?? "Tài khoản đã xóa",
                     AssignedToStaffId = r.AssignedTo,
                     AssignedStaffName = r.AssignedToNavigation?.FullName,
                     RequestDate = r.RequestDate,

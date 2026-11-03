@@ -1,11 +1,11 @@
 @page
 @model BATT_PPMS.Pages.ShiftReports.IndexModel
 @{
-    ViewData["Title"] = "Báo cáo Ca Sản xuất";
+    ViewData["Title"] = Model.IsStaffView ? "Báo cáo cuối ca làm việc" : "Báo cáo Ca Sản xuất";
     ViewData["ActivePage"] = "ShiftReport";
 }
 
-<div class="space-y-6">
+<div class="space-y-6 staff-screen">
 
     <!-- Alerts / Messages -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
@@ -27,24 +27,28 @@
     <div class="page-header" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
         <div>
             <h1 class="page-title" style="font-size: 22px; font-weight: 800; color: #243d35; margin-bottom: 4px; letter-spacing: -0.3px;">
-                Báo cáo Ca Sản xuất
+                @if (Model.IsStaffView) { <i class="bi bi-clipboard-check" aria-hidden="true"></i> }
+                @ViewData["Title"]
             </h1>
+            @if (!Model.IsStaffView)
+            {
             <p class="page-subtitle" style="font-size: 13px; color: #7a887f; margin: 0;">
                 Ghi nhận NVL thực dùng, sản lượng thực tế và phát hành mã LOT cho phòng KCS
             </p>
+            }
         </div>
         @if (Model.CanSubmitReport)
         {
             <div class="page-actions">
                 <button type="button" class="btn btn-primary" onclick="openSubmitReportModal()" style="display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-weight: 600; padding: 10px 18px; font-size: 13px;">
-                    <i class="bi bi-plus-lg"></i> Gửi báo cáo ca
+                    <i class="bi bi-plus-lg"></i> @(Model.IsStaffView ? "Gửi báo cáo cuối ca" : "Gửi báo cáo ca")
                 </button>
             </div>
         }
     </div>
 
     <!-- KPI Metric Cards (BATT_PPMSss Style) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div class="staff-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
         <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; justify-content: space-between;">
                 <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Tổng sản lượng hoàn thành</span>
@@ -107,7 +111,7 @@
     </div>
 
     <!-- Filter & Search Toolbar -->
-    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
+    <div class="card staff-filter" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
         <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
             <div class="search-wrapper" style="flex: 1; min-width: 260px; margin: 0; position: relative;">
                 <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #96a298;"></i>
@@ -150,7 +154,7 @@
     </div>
 
     <!-- Reports Table -->
-    <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <div class="card staff-ledger" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
         <div class="table-wrapper">
             <table class="data-table" style="width: 100%;">
                 <thead>
@@ -186,20 +190,20 @@
                             var isRejected = string.Equals(r.Status, "Rejected", StringComparison.OrdinalIgnoreCase);
 
                             <tr>
-                                <td style="font-weight: 700; font-family: monospace; color: #243d35; white-space: nowrap;">
+                                <td data-label="Mã báo cáo" style="font-weight: 700; font-family: monospace; color: #243d35; white-space: nowrap;">
                                     @r.Code
                                 </td>
-                                <td>
+                                <td data-label="Ngày / Ca">
                                     <div style="font-weight: 600; color: #30483f; white-space: nowrap;">@r.ShiftDate.ToString("dd/MM/yyyy")</div>
                                     <div style="font-size: 11px; color: #7a887f; margin-top: 2px; white-space: nowrap;">@r.Shift</div>
                                 </td>
-                                <td style="text-align: right; font-weight: 600; color: #45594f;">
+                                <td data-label="NVL thực dùng" style="text-align: right; font-weight: 600; color: #45594f;">
                                     @(r.RawMaterialUsed > 0 ? r.RawMaterialUsed.ToString("N0") + " kg" : "—")
                                 </td>
-                                <td style="text-align: right; font-weight: 800; color: #243d35;">
+                                <td data-label="Sản lượng (kg)" style="text-align: right; font-weight: 800; color: #243d35;">
                                     @r.ProductionQuantity.ToString("N0") kg
                                 </td>
-                                <td style="text-align: center;">
+                                <td data-label="Tỷ lệ thu hồi" style="text-align: center;">
                                     @if (r.RecoveryRate > 0)
                                     {
                                         <span style="font-weight: 700; color: @(r.RecoveryRate >= 90 ? "#356e51" : r.RecoveryRate >= 85 ? "#8e6a2c" : "#94473e");">
@@ -211,11 +215,11 @@
                                         <span style="color: #96a298;">—</span>
                                     }
                                 </td>
-                                <td>
+                                <td data-label="Người báo cáo">
                                     <div style="font-weight: 600; color: #243d35;">@r.StaffName</div>
                                     <div style="font-size: 11px; color: #96a298; white-space: nowrap;">Nộp lúc: @r.CreatedAt.ToString("HH:mm dd/MM")</div>
                                 </td>
-                                <td>
+                                <td data-label="Mã LOT tạo ra">
                                     @if (!string.IsNullOrEmpty(r.LotCodeGenerated))
                                     {
                                         <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background: #e2eee4; color: #28543f; border: 1px solid #c6dbc9; font-family: monospace; font-weight: 700; font-size: 11px;">
@@ -227,7 +231,7 @@
                                         <span style="color: #96a298; font-style: italic; font-size: 11px;">Chưa phát hành</span>
                                     }
                                 </td>
-                                <td style="text-align: center;">
+                                <td data-label="Sự cố" style="text-align: center;">
                                     @if (r.HasIncident)
                                     {
                                         <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: #faf0e9; color: #94473e; border: 1px solid #e4c8bf; white-space: nowrap;" title="@r.IncidentDescription">
@@ -241,7 +245,7 @@
                                         </span>
                                     }
                                 </td>
-                                <td style="text-align: center;">
+                                <td data-label="Trạng thái" style="text-align: center;">
                                     @if (isApproved)
                                     {
                                         <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; white-space: nowrap;">
@@ -261,7 +265,7 @@
                                         </span>
                                     }
                                 </td>
-                                <td style="padding: 14px 16px; text-align: center;">
+                                <td data-label="Thao tác" style="padding: 14px 16px; text-align: center;">
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;">
                                         <!-- Xem chi tiết -->
                                         <button type="button"

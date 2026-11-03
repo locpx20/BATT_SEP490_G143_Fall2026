@@ -411,10 +411,9 @@ public partial class BrokenEquipmentReport { }
 
 public class BrokenEquipmentReportMetadata
 {
-    [Display(Name = "Tên thiết bị")]
-    [Required(AllowEmptyStrings = false, ErrorMessage = "{0} là bắt buộc.")]
-    [StringLength(100, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-    public object? EquipmentName { get; set; }
+    [Display(Name = "Thiết bị")]
+    [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn thiết bị.")]
+    public object? MachineId { get; set; }
 
     [Display(Name = "Mô tả")]
     public object? Description { get; set; }

@@ -13,7 +13,7 @@ public partial class MaterialPurchaseRequest
 
     public int Quantity { get; set; }
 
-    public int RequestedBy { get; set; }
+    public int? RequestedBy { get; set; }
 
     public string? Status { get; set; }
 
@@ -25,5 +25,5 @@ public partial class MaterialPurchaseRequest
 
     public virtual MaintenanceRequest MaintenanceRequest { get; set; } = null!;
 
-    public virtual User RequestedByNavigation { get; set; } = null!;
+    public virtual User? RequestedByNavigation { get; set; }
 }

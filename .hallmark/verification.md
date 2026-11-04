@@ -26,6 +26,6 @@ The `--kept` comparison reports one false positive: six hidden ASP.NET anti-forg
 - BATT logo, green palette and original font family retained.
 - Uppercase plan labels are sentence case for Staff only; their meaning is unchanged.
 - Personnel heading shows the real selected date instead of calling an older plan today's plan, as required by the reported data issue.
-- The existing 25,000kg plan target is still supplied by legacy hardcoded application logic; this redesign does not invent or modify it. Per-stage targets remain unspecified by the existing data model.
+- At the user's subsequent request, production targets and per-machine kg inputs were removed from plan creation and display, including the legacy hardcoded 25,000kg value. Planning retains the date, shift and worker assignments.
 - Existing server-rendered full/empty/error/validation states retained. No asynchronous loading state was added because these pages load through normal server navigation.
 - No image placeholders or additional brand assets are needed for this Staff work interface.

@@ -11,6 +11,8 @@ namespace BATT_PPMS.Pages.Maintenance
         public int RequestId { get; set; }
         public string Code => $"REQ-{RequestId:D4}";
         public int BrokenReportId { get; set; }
+        public int MachineId { get; set; }
+        public bool CanModify { get; set; }
         public string EquipmentName { get; set; } = string.Empty;
         public string Symptoms { get; set; } = string.Empty;
         public string Priority { get; set; } = "High";
@@ -59,8 +61,8 @@ namespace BATT_PPMS.Pages.Maintenance
         public int InProgressCount { get; set; }
         public int CompletedCount { get; set; }
 
-        public bool CanManage => IsOwner;
-        public bool CanReportFailure => IsStaff || IsOwnerOrManager;
+        public bool CanManage => IsManager;
+        public bool CanReportFailure => IsStaff || IsManager;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -72,6 +74,7 @@ namespace BATT_PPMS.Pages.Maintenance
         [BindProperty] public string FailureSymptoms { get; set; } = string.Empty;
         [BindProperty] public string FailureSeverity { get; set; } = "High";
         [BindProperty] public string? FailureDescription { get; set; }
+        [BindProperty] public int FailureRequestId { get; set; }
 
         public List<Machine> AvailableMachines { get; set; } = new();
         public bool IsStaffView => IsStaff;
@@ -90,7 +93,7 @@ namespace BATT_PPMS.Pages.Maintenance
             // Load technicians for assignment dropdown
             AvailableTechnicians = await _context.Users
                 .Include(u => u.Role)
-                .Where(u => u.Role != null && (u.Role.RoleName == "Technician" || u.Role.RoleName == "Staff" || u.Role.RoleName == "Manager"))
+                .Where(u => u.Role.RoleName == RoleConstants.MaintenanceStaff && u.Status == StatusConstants.Active)
                 .Select(u => new StaffOptionViewModel
                 {
                     UserId = u.UserId,
@@ -116,6 +119,11 @@ namespace BATT_PPMS.Pages.Maintenance
                 query = query.Where(r => r.RequestedBy == CurrentUserId || r.BrokenReport.ReportedBy == CurrentUserId);
 
             var all = await query.ToListAsync();
+            var reportIds = all.Select(r => r.BrokenReportId).ToList();
+            var sharedReports = (await _context.MaintenanceRequests
+                .Where(r => reportIds.Contains(r.BrokenReportId))
+                .GroupBy(r => r.BrokenReportId).Where(g => g.Count() > 1)
+                .Select(g => g.Key).ToListAsync()).ToHashSet();
 
             // KPIs
             TotalRequests = all.Count;
@@ -156,6 +164,8 @@ namespace BATT_PPMS.Pages.Maintenance
                 {
                     RequestId = r.RequestId,
                     BrokenReportId = r.BrokenReportId,
+                    MachineId = r.BrokenReport.MachineId,
+                    CanModify = IsStaff && CanModifyFailure(r) && !sharedReports.Contains(r.BrokenReportId),
                     EquipmentName = r.BrokenReport?.Machine != null
                         ? $"{r.BrokenReport.Machine.MachineCode} - {r.BrokenReport.Machine.MachineName}"
                         : "Thiết bị nhà máy",
@@ -177,14 +187,8 @@ namespace BATT_PPMS.Pages.Maintenance
 
         public async Task<IActionResult> OnPostAssignStaffAsync(int requestId, int assignedStaffId, string? priority)
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
-
-            if (!IsOwner)
-            {
-                ErrorMessage = "Chỉ Giám đốc (Owner) mới có quyền phân công kỹ thuật viên sửa chữa.";
-                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
-            }
 
             var request = await _context.MaintenanceRequests.FindAsync(requestId);
             if (request == null)
@@ -207,10 +211,11 @@ namespace BATT_PPMS.Pages.Maintenance
                 return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
             }
 
-            var staff = await _context.Users.FindAsync(assignedStaffId);
-            if (staff == null || staff.Status != StatusConstants.Active)
+            var staff = await _context.Users.SingleOrDefaultAsync(u => u.UserId == assignedStaffId
+                && u.Status == StatusConstants.Active && u.Role.RoleName == RoleConstants.MaintenanceStaff);
+            if (staff == null)
             {
-                ErrorMessage = "Không tìm thấy nhân viên được phân công hoặc tài khoản đã bị khóa.";
+                ErrorMessage = "Vui lòng chọn nhân viên bảo trì có tài khoản đang hoạt động.";
                 return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
             }
 
@@ -229,14 +234,8 @@ namespace BATT_PPMS.Pages.Maintenance
 
         public async Task<IActionResult> OnPostCompleteRequestAsync(int requestId, string completionNote)
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
-
-            if (!IsOwner)
-            {
-                ErrorMessage = "Chỉ Giám đốc (Owner) mới có quyền nghiệm thu hoàn thành sửa chữa máy móc.";
-                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
-            }
 
             var request = await _context.MaintenanceRequests.FindAsync(requestId);
             if (request == null)
@@ -270,14 +269,8 @@ namespace BATT_PPMS.Pages.Maintenance
 
         public async Task<IActionResult> OnPostRejectRequestAsync(int requestId, string rejectionReason)
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
-
-            if (!IsOwner)
-            {
-                ErrorMessage = "Chỉ Giám đốc (Owner) mới có quyền từ chối yêu cầu sửa chữa.";
-                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
-            }
 
             var request = await _context.MaintenanceRequests.FindAsync(requestId);
             if (request == null)
@@ -313,9 +306,82 @@ namespace BATT_PPMS.Pages.Maintenance
             return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
         }
 
+        private bool CanModifyFailure(MaintenanceRequest request) =>
+            request.RequestedBy == CurrentUserId && request.BrokenReport.ReportedBy == CurrentUserId
+            && request.AssignedTo == null && request.MaterialPurchaseRequests.Count == 0
+            && string.Equals(request.BrokenReport.Status, "Reported", StringComparison.OrdinalIgnoreCase)
+            && (string.Equals(request.Status, "Pending", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(request.Status, "Reported", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(request.Status, "Rejected", StringComparison.OrdinalIgnoreCase));
+
+        public async Task<IActionResult> OnPostUpdateFailureAsync()
+        {
+            var check = RequireRole(RoleConstants.Staff);
+            if (check != null) return check;
+            var description = NoteTags.Plain(InputValidator.Clean(FailureSymptoms));
+            var extra = NoteTags.Plain(InputValidator.Clean(FailureDescription));
+            if (extra != null) description += $" | Ghi chú: {extra}";
+            var error = InputValidator.First(
+                InputValidator.Text(description, "Mô tả sự cố", 10000, required: true),
+                InputValidator.Status(FailureSeverity, StatusSets.PriorityLevels, "Mức độ"));
+            if (!ModelState.IsValid || FailureRequestId <= 0 || FailureMachineId <= 0
+                || string.IsNullOrWhiteSpace(FailureSymptoms) || string.IsNullOrWhiteSpace(FailureSeverity) || error != null)
+            {
+                ErrorMessage = error ?? "Vui lòng chọn máy móc, mức độ và nhập hiện tượng sự cố hợp lệ.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var request = await _context.MaintenanceRequests.Include(r => r.BrokenReport)
+                .Include(r => r.MaterialPurchaseRequests)
+                .SingleOrDefaultAsync(r => r.RequestId == FailureRequestId && r.RequestedBy == CurrentUserId);
+            if (request == null || !CanModifyFailure(request)
+                || await _context.MaintenanceRequests.CountAsync(r => r.BrokenReportId == request.BrokenReportId) != 1)
+            {
+                ErrorMessage = "Chỉ được sửa báo cáo của mình còn chờ tiếp nhận hoặc bị từ chối, chưa được phân công hay liên kết xử lý.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+            if (!await _context.Machines.AnyAsync(m => m.MachineId == FailureMachineId))
+            {
+                ErrorMessage = "Không tìm thấy máy móc đã chọn.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+            request.BrokenReport.MachineId = FailureMachineId;
+            request.BrokenReport.Description = description;
+            request.BrokenReport.Severity = FailureSeverity.Trim();
+            request.Description = description;
+            request.Priority = FailureSeverity.Trim();
+            request.Status = "Pending";
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            SuccessMessage = $"Đã cập nhật báo cáo REQ-{FailureRequestId:D4} và gửi lại để tiếp nhận.";
+            return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+        }
+
+        public async Task<IActionResult> OnPostDeleteFailureAsync(int requestId)
+        {
+            var check = RequireRole(RoleConstants.Staff);
+            if (check != null) return check;
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var request = await _context.MaintenanceRequests.Include(r => r.BrokenReport)
+                .Include(r => r.MaterialPurchaseRequests)
+                .SingleOrDefaultAsync(r => r.RequestId == requestId && r.RequestedBy == CurrentUserId);
+            if (request == null || !CanModifyFailure(request)
+                || await _context.MaintenanceRequests.CountAsync(r => r.BrokenReportId == request.BrokenReportId) != 1)
+            {
+                ErrorMessage = "Chỉ được xóa báo cáo của mình còn chờ tiếp nhận hoặc bị từ chối, chưa được phân công hay liên kết xử lý.";
+                return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+            }
+            _context.MaintenanceRequests.Remove(request);
+            _context.BrokenEquipmentReports.Remove(request.BrokenReport);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            SuccessMessage = $"Đã xóa báo cáo sự cố REQ-{requestId:D4}.";
+            return RedirectToPage(new { SearchTerm, PriorityFilter, StatusFilter });
+        }
+
         public async Task<IActionResult> OnPostReportFailureAsync()
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.Staff, RoleConstants.MaintenanceStaff);
+            var check = RequireRole(RoleConstants.Manager, RoleConstants.Staff, RoleConstants.MaintenanceStaff);
             if (check != null) return check;
 
             if (FailureMachineId <= 0 || string.IsNullOrWhiteSpace(FailureSymptoms))

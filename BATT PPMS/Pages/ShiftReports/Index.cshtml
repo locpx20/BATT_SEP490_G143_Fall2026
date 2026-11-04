@@ -104,7 +104,7 @@
             <div style="margin-top: 12px;">
                 <div style="font-size: 22px; font-weight: 800; color: #a17b35;">@Model.PendingApprovalCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">ca</span></div>
                 <div style="font-size: 11px; color: #8e6a2c; margin-top: 4px; font-weight: 600;">
-                    @(Model.PendingApprovalCount > 0 ? "Cần Giám đốc kiểm duyệt" : "Tất cả ca đã xử lý")
+                    @(Model.PendingApprovalCount > 0 ? "Chờ Quản lý phê duyệt" : "Tất cả ca đã xử lý")
                 </div>
             </div>
         </div>
@@ -267,13 +267,25 @@
                                 </td>
                                 <td data-label="Thao tác" style="padding: 14px 16px; text-align: center;">
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;">
-                                        <!-- Xem chi tiết -->
+                                        @if (Model.IsStaffView && r.CanModify)
+                                        {
+                                            <button type="button" class="btn staff-report-icon-action" onclick="openEditShiftReport(@r.ReportId)" title="Chỉnh sửa báo cáo @r.Code" aria-label="Chỉnh sửa báo cáo @r.Code">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                            </button>
+                                            <button type="button" class="btn staff-report-icon-action is-delete" onclick="openDeleteShiftReport(@r.ReportId)" title="Xóa báo cáo @r.Code" aria-label="Xóa báo cáo @r.Code">
+                                                <i class="bi bi-trash3" aria-hidden="true"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
                                         <button type="button"
                                                 class="btn btn-sm btn-outline-secondary"
-                                                onclick="openReportDetailModal(@r.ReportId, '@r.Code', '@r.ShiftDate.ToString("dd/MM/yyyy")', '@r.Shift', '@r.StaffName', @r.RawMaterialUsed, @r.ProductionQuantity, @r.RecoveryRate, @(r.HasIncident ? "true" : "false"), '@Html.Raw(Html.Encode(r.IncidentDescription ?? ""))', '@Html.Raw(Html.Encode(r.Note ?? ""))', '@r.Status', '@Html.Raw(Html.Encode(r.RejectionReason ?? ""))', @(Model.CanApprove ? "true" : "false"))"
+                                                title="Xem báo cáo @r.Code" aria-label="Xem báo cáo @r.Code"
+                                                onclick="openShiftReportDetail(@r.ReportId)"
                                                 style="border-radius: 6px; font-size: 11px; padding: 4px 8px;">
-                                            <i class="bi bi-eye"></i> Chi tiết
+                                            <i class="bi bi-eye" aria-hidden="true"></i>@if (!Model.IsStaffView) { <text> Chi tiết</text> }
                                         </button>
+                                        }
 
                                         @if (isSubmitted && Model.CanApprove)
                                         {
@@ -450,13 +462,23 @@
                 <!-- Box Lý do từ chối nếu có -->
                 <div id="modalRejectionBox" style="display: none; padding: 14px; border-radius: 10px; background: #faf0e9; border: 1px solid #f1e2da;">
                     <div style="font-size: 12px; font-weight: 700; color: #a55449; margin-bottom: 4px;">
-                        <i class="bi bi-x-octagon-fill"></i> Lý do từ chối của Lãnh đạo:
+                        <i class="bi bi-x-octagon-fill"></i> Lý do từ chối của Quản lý:
                     </div>
                     <p id="modalRejectionReason" style="font-size: 12px; color: #88473f; margin-bottom: 0;"></p>
                 </div>
             </div>
             <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 14px 24px; display: flex; justify-content: space-between;">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Đóng</button>
+                @if (!Model.IsStaffView)
+                {
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Đóng</button>
+                }
+                @if (Model.IsStaffView)
+                {
+                    <div id="staffReportActions" class="staff-report-actions" hidden>
+                        <button type="button" class="btn staff-report-icon-action is-delete" onclick="openDeleteShiftReport()" title="Xóa báo cáo" aria-label="Xóa báo cáo"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+                        <button type="button" class="btn btn-primary" onclick="openEditShiftReport()"><i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa</button>
+                    </div>
+                }
                 <div id="modalActionButtons" style="display: flex; gap: 8px;">
                     <!-- Sẽ được fill bằng JavaScript nếu canApprove và isSubmitted -->
                 </div>
@@ -466,6 +488,17 @@
 </div>
 
 <!-- MODAL: NHẬP LÝ DO TỪ CHỐI BÁO CÁO CA -->
+@if (Model.CanApprove)
+{
+<template id="approveShiftReportTemplate">
+    <form method="post" asp-page-handler="ApproveReport" onsubmit="return confirm('Xác nhận phê duyệt báo cáo ca này?');">
+        <input type="hidden" name="reportId" />
+        <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+        <input type="hidden" name="ShiftFilter" value="@Model.ShiftFilter" />
+        <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle" aria-hidden="true"></i> Phê duyệt báo cáo</button>
+    </form>
+</template>
 <div class="modal fade" id="rejectReportModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
@@ -501,8 +534,144 @@
     </div>
 </div>
 
+}
+@if (Model.IsStaffView)
+{
+    <div class="modal fade" id="editShiftReportModal" tabindex="-1" aria-labelledby="editShiftReportTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="UpdateReport" id="editShiftReportForm">
+                    <input type="hidden" name="reportId" id="editShiftReportId" />
+                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+                    <input type="hidden" name="ShiftFilter" value="@Model.ShiftFilter" />
+                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="editShiftReportTitle"><i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa báo cáo <span id="editShiftReportCode"></span></h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-3">
+                            <div>
+                                <label class="form-label" for="editShiftDate">Ngày làm việc (bắt buộc)</label>
+                                <input class="form-control" type="date" id="editShiftDate" name="shiftDate" min="2000-01-01" max="2100-12-31" required />
+                            </div>
+                            <div>
+                                <label class="form-label" for="editShift">Ca làm việc (bắt buộc)</label>
+                                <select class="form-select" id="editShift" name="shift" required>
+                                    <option value="">Chọn ca làm việc</option>
+                                    <option value="Ca 1 (06:00 - 14:00)">Ca 1 (06:00 - 14:00)</option>
+                                    <option value="Ca 2 (14:00 - 22:00)">Ca 2 (14:00 - 22:00)</option>
+                                    <option value="Ca 3 (22:00 - 06:00)">Ca 3 (22:00 - 06:00)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="editProductionQuantity">Sản lượng hoàn thành (kg, bắt buộc)</label>
+                            <input class="form-control" type="number" id="editProductionQuantity" name="productionQuantity" min="1" max="2147483647" step="1" inputmode="numeric" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="editShiftNote">Ghi chú ca làm việc</label>
+                            <textarea class="form-control" id="editShiftNote" name="note" maxlength="5000" rows="4"></textarea>
+                        </div>
+                        <p class="staff-report-help">Chọn ngày và ca đã được phân công. Nguyên liệu và sự cố được lấy từ dữ liệu nghiệp vụ. Sau khi lưu, báo cáo được gửi lại để phê duyệt.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2" aria-hidden="true"></i> Lưu thay đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="deleteShiftReportModal" tabindex="-1" aria-labelledby="deleteShiftReportTitle" aria-describedby="deleteShiftReportMessage" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="DeleteReport" id="deleteShiftReportForm">
+                    <input type="hidden" name="reportId" id="deleteShiftReportId" />
+                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+                    <input type="hidden" name="ShiftFilter" value="@Model.ShiftFilter" />
+                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="deleteShiftReportTitle"><i class="bi bi-trash3" aria-hidden="true"></i> Xóa báo cáo <span id="deleteShiftReportCode"></span>?</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="deleteShiftReportMessage">Báo cáo sẽ bị xóa và không thể khôi phục. Phân công công việc, phiếu xuất nguyên liệu và báo cáo sự cố được giữ nguyên.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-delete-cancel>Hủy bỏ</button>
+                        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash3" aria-hidden="true"></i> Xác nhận xóa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
+    <script type="application/json" id="shiftReportData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Reports))</script>
     <script>
+        const shiftReportsById = new Map(JSON.parse(document.getElementById('shiftReportData').textContent).map(report => [report.ReportId, report]));
+        let selectedShiftReport = null;
+        let switchingShiftReportModal = false;
+        const shiftReportDetail = document.getElementById('reportDetailModal');
+        shiftReportDetail.addEventListener('show.bs.modal', () => { shiftReportDetail.dataset.opening = 'true'; });
+        shiftReportDetail.addEventListener('shown.bs.modal', () => { delete shiftReportDetail.dataset.opening; });
+
+        function openShiftReportDetail(id) {
+            const report = shiftReportsById.get(id);
+            if (!report) return;
+            selectedShiftReport = report;
+            const dateParts = report.ShiftDate.split('-');
+            const displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            const staffActions = document.getElementById('staffReportActions');
+            if (staffActions) staffActions.hidden = !report.CanModify;
+            openReportDetailModal(report.ReportId, report.Code, displayDate, report.Shift, report.StaffName,
+                report.RawMaterialUsed, report.ProductionQuantity, report.RecoveryRate, report.HasIncident,
+                report.IncidentDescription, report.Note, report.Status, report.RejectionReason, @Json.Serialize(Model.CanApprove));
+        }
+
+        function switchShiftReportModal(targetId) {
+            if (switchingShiftReportModal) return;
+            switchingShiftReportModal = true;
+            const detail = document.getElementById('reportDetailModal');
+            const showTarget = () => {
+                switchingShiftReportModal = false;
+                bootstrap.Modal.getOrCreateInstance(document.getElementById(targetId)).show();
+            };
+            if (detail.classList.contains('show')) {
+                detail.addEventListener('hidden.bs.modal', showTarget, { once: true });
+                const hideDetail = () => bootstrap.Modal.getOrCreateInstance(detail).hide();
+                if (detail.dataset.opening) detail.addEventListener('shown.bs.modal', hideDetail, { once: true });
+                else hideDetail();
+            } else showTarget();
+        }
+
+        function openEditShiftReport(id) {
+            if (id !== undefined) selectedShiftReport = shiftReportsById.get(id);
+            if (!selectedShiftReport?.CanModify) return;
+            document.getElementById('editShiftReportId').value = selectedShiftReport.ReportId;
+            document.getElementById('editShiftReportCode').textContent = selectedShiftReport.Code;
+            document.getElementById('editShiftDate').value = selectedShiftReport.ShiftDate;
+            const shiftSelect = document.getElementById('editShift');
+            const shift = selectedShiftReport.Shift.match(/^Ca ([123])(?:$|\s*\()/);
+            shiftSelect.value = shift ? [...shiftSelect.options].find(option => option.value.startsWith(`Ca ${shift[1]} (`)).value : '';
+            shiftSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            document.getElementById('editProductionQuantity').value = selectedShiftReport.ProductionQuantity;
+            document.getElementById('editShiftNote').value = selectedShiftReport.Note || '';
+            switchShiftReportModal('editShiftReportModal');
+        }
+
+        function openDeleteShiftReport(id) {
+            if (id !== undefined) selectedShiftReport = shiftReportsById.get(id);
+            if (!selectedShiftReport?.CanModify) return;
+            document.getElementById('deleteShiftReportId').value = selectedShiftReport.ReportId;
+            document.getElementById('deleteShiftReportCode').textContent = selectedShiftReport.Code;
+            switchShiftReportModal('deleteShiftReportModal');
+        }
+
+        document.getElementById('deleteShiftReportModal')?.addEventListener('shown.bs.modal', event => event.target.querySelector('[data-delete-cancel]').focus());
+
         function openSubmitReportModal() {
             var modal = new bootstrap.Modal(document.getElementById('submitShiftReportModal'));
             modal.show();
@@ -561,29 +730,24 @@
                     <button type="button" class="btn btn-outline-danger" onclick="closeDetailAndOpenReject(${id}, '${code}')" style="border-radius: 8px; font-size: 12px; font-weight: 600;">
                         <i class="bi bi-x-circle"></i> Từ chối
                     </button>
-                    <form method="post" action="/ShiftReports/Index?handler=ApproveReport&reportId=${id}" style="display:inline;" onsubmit="return confirm('Xác nhận phê duyệt báo cáo ca ${code}?');">
-                        <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
-                            <i class="bi bi-check-circle"></i> Phê duyệt Báo cáo
-                        </button>
-                    </form>
                 `;
+                const approval = document.getElementById('approveShiftReportTemplate').content.cloneNode(true);
+                approval.querySelector('[name="reportId"]').value = id;
+                actionBtnContainer.appendChild(approval);
             }
 
-            var modal = new bootstrap.Modal(document.getElementById('reportDetailModal'));
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('reportDetailModal'));
             modal.show();
         }
 
         function closeDetailAndOpenReject(id, code) {
-            var detailModal = bootstrap.Modal.getInstance(document.getElementById('reportDetailModal'));
-            if (detailModal) detailModal.hide();
             openRejectModal(id, code);
         }
 
         function openRejectModal(id, code) {
             document.getElementById('rejectModalReportId').value = id;
             document.getElementById('rejectModalReportCode').innerText = code;
-            var modal = new bootstrap.Modal(document.getElementById('rejectReportModal'));
-            modal.show();
+            switchShiftReportModal('rejectReportModal');
         }
     </script>
 }

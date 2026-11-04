@@ -3,6 +3,18 @@
 @{
     ViewData["Title"] = "Quản trị Tài khoản & Phân quyền";
     ViewData["ActivePage"] = "Users";
+    string RoleLabel(string roleName) => roleName switch
+    {
+        "Admin" or "Admin System" => "Quản trị viên hệ thống",
+        "Owner" => "Chủ doanh nghiệp",
+        "Manager" => "Quản lý sản xuất và kinh doanh",
+        "Warehouse Staff" => "Thủ kho",
+        "QC Staff" => "Nhân viên kiểm tra chất lượng",
+        "Maintenance Staff" => "Nhân viên bảo trì",
+        "Staff" => "Nhân viên sản xuất",
+        "Purchasing Staff" => "Nhân viên thu mua",
+        _ => "Vai trò khác"
+    };
 }
 
 @section Styles {
@@ -112,14 +124,14 @@
                         </label>
                         <select name="RoleFilter" id="account-role-filter" onchange="this.form.submit()" class="form-select">
                             <option value="">Tất cả vai trò</option>
-                            <option value="Admin" selected="@(Model.RoleFilter=="Admin")">Admin System</option>
-                            <option value="Owner" selected="@(Model.RoleFilter=="Owner")">Owner (Chủ nhà máy)</option>
-                            <option value="Manager" selected="@(Model.RoleFilter=="Manager")">Manager (Quản lý)</option>
-                            <option value="Purchasing Staff" selected="@(Model.RoleFilter=="Purchasing Staff")">Purchasing Staff (Thu mua)</option>
-                            <option value="Warehouse Staff" selected="@(Model.RoleFilter=="Warehouse Staff")">Warehouse Staff (Thủ kho)</option>
-                            <option value="Staff" selected="@(Model.RoleFilter=="Staff")">Production Staff (Sản xuất)</option>
-                            <option value="QC Staff" selected="@(Model.RoleFilter=="QC Staff")">QC Staff (KCS)</option>
-                            <option value="Maintenance Staff" selected="@(Model.RoleFilter=="Maintenance Staff")">Maintenance Staff (Bảo trì)</option>
+                            <option value="Admin" selected="@(Model.RoleFilter=="Admin")">Quản trị viên hệ thống</option>
+                            <option value="Owner" selected="@(Model.RoleFilter=="Owner")">Chủ doanh nghiệp</option>
+                            <option value="Manager" selected="@(Model.RoleFilter=="Manager")">Quản lý sản xuất và kinh doanh</option>
+                            <option value="Purchasing Staff" selected="@(Model.RoleFilter=="Purchasing Staff")">Nhân viên thu mua</option>
+                            <option value="Warehouse Staff" selected="@(Model.RoleFilter=="Warehouse Staff")">Thủ kho</option>
+                            <option value="Staff" selected="@(Model.RoleFilter=="Staff")">Nhân viên sản xuất</option>
+                            <option value="QC Staff" selected="@(Model.RoleFilter=="QC Staff")">Nhân viên kiểm tra chất lượng</option>
+                            <option value="Maintenance Staff" selected="@(Model.RoleFilter=="Maintenance Staff")">Nhân viên bảo trì</option>
                         </select>
                     </div>
 
@@ -365,19 +377,19 @@
                             {
                                 @foreach (var r in Model.AllRoles)
                                 {
-                                    <option value="@r.RoleId">@r.RoleName @(!string.IsNullOrEmpty(r.Description) ? $"({r.Description})" : "")</option>
+                                    <option value="@r.RoleId">@RoleLabel(r.RoleName)</option>
                                 }
                             }
                             else
                             {
-                                <option value="1">Admin System (Quản trị hệ thống)</option>
-                                <option value="2">Owner (Chủ doanh nghiệp)</option>
-                                <option value="3">Manager (Quản lý)</option>
-                                <option value="4">Warehouse Staff (Thủ kho)</option>
-                                <option value="5">QC Staff (KCS)</option>
-                                <option value="6">Maintenance Staff (Bảo trì)</option>
-                                <option value="7">Staff (Sản xuất)</option>
-                                <option value="8">Purchasing Staff (Thu mua)</option>
+                                <option value="1">Quản trị viên hệ thống</option>
+                                <option value="2">Chủ doanh nghiệp</option>
+                                <option value="3">Quản lý sản xuất và kinh doanh</option>
+                                <option value="4">Thủ kho</option>
+                                <option value="5">Nhân viên kiểm tra chất lượng</option>
+                                <option value="6">Nhân viên bảo trì</option>
+                                <option value="7">Nhân viên sản xuất</option>
+                                <option value="8">Nhân viên thu mua</option>
                             }
                         </select>
                     </div>
@@ -448,19 +460,19 @@
                             {
                                 @foreach (var r in Model.AllRoles)
                                 {
-                                    <option value="@r.RoleId" selected="@(r.RoleName == "Manager")">@r.RoleName @(!string.IsNullOrEmpty(r.Description) ? $"({r.Description})" : "")</option>
+                                    <option value="@r.RoleId" selected="@(r.RoleName == "Manager")">@RoleLabel(r.RoleName)</option>
                                 }
                             }
                             else
                             {
-                                <option value="3" selected>Manager (Quản lý Vận hành)</option>
-                                <option value="8">Purchasing Staff (Thu mua)</option>
-                                <option value="4">Warehouse Staff (Thủ kho)</option>
-                                <option value="7">Staff (Sản xuất)</option>
-                                <option value="5">QC Staff (Kiểm tra KCS)</option>
-                                <option value="6">Maintenance Staff (Bảo trì)</option>
-                                <option value="1">Admin System (Quản trị hệ thống)</option>
-                                <option value="2">Owner (Chủ doanh nghiệp)</option>
+                                <option value="3" selected>Quản lý sản xuất và kinh doanh</option>
+                                <option value="8">Nhân viên thu mua</option>
+                                <option value="4">Thủ kho</option>
+                                <option value="7">Nhân viên sản xuất</option>
+                                <option value="5">Nhân viên kiểm tra chất lượng</option>
+                                <option value="6">Nhân viên bảo trì</option>
+                                <option value="1">Quản trị viên hệ thống</option>
+                                <option value="2">Chủ doanh nghiệp</option>
                             }
                         </select>
                     </div>

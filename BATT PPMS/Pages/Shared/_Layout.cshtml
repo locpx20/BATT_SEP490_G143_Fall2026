@@ -23,12 +23,16 @@
     {
         <link rel="stylesheet" href="~/css/owner-workspace.css" asp-append-version="true" />
     }
+    @if (Context.Session.GetString("RoleName") == "Manager")
+    {
+        <link rel="stylesheet" href="~/css/manager-workspace.css" asp-append-version="true" />
+    }
     @if (Context.Session.GetString("RoleName") == "Staff")
     {
         <link rel="stylesheet" href="~/css/staff-workspace.css" asp-append-version="true" />
     }
 </head>
-<body class="@(Context.Session.GetString("RoleName") is "Owner" or "Manager" ? "owner-workspace" : Context.Session.GetString("RoleName") == "Staff" ? "staff-workspace" : "") @ViewData["PageClass"]">
+<body class="@(Context.Session.GetString("RoleName") is "Owner" or "Manager" ? "owner-workspace" : Context.Session.GetString("RoleName") == "Staff" ? "staff-workspace" : "") @(Context.Session.GetString("RoleName") == "Manager" ? "manager-workspace" : "") @ViewData["PageClass"]">
 
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";

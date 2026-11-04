@@ -27,6 +27,33 @@ namespace BATT_PPMS.Pages.Personnel
 
         public bool CanCreatePlan { get; set; }
         public bool IsStaffView => IsStaff;
+        public bool IsCurrentWorker(int? staffId) => staffId == CurrentUserId && IsStaff;
+        public static string NormalizeAssignmentStatus(string? status) => status switch
+        {
+            "Done" or "Completed" => "Completed",
+            "In Progress" or "InProgress" => "InProgress",
+            "Cancelled" => "Cancelled",
+            "Assigned" or null or "" => "Assigned",
+            _ => status
+        };
+        public static string AssignmentStatusLabel(string? status) => NormalizeAssignmentStatus(status) switch
+        {
+            "Completed" => "Hoàn thành",
+            "InProgress" => "Đang thực hiện",
+            "Cancelled" => "Đã hủy",
+            "Assigned" => "Chờ thực hiện",
+            _ => "Chưa xác định"
+        };
+        public static string AggregateStatus(IEnumerable<PersonnelAssignment> assignments)
+        {
+            var statuses = assignments.Select(a => NormalizeAssignmentStatus(a.Status)).ToList();
+            if (statuses.Count == 0) return "Assigned";
+            if (statuses.All(s => s == "Cancelled")) return "Cancelled";
+            var active = statuses.Where(s => s != "Cancelled").ToList();
+            if (active.All(s => s == "Completed")) return "Completed";
+            if (active.Any(s => s is "InProgress" or "Completed")) return "InProgress";
+            return "Assigned";
+        }
         public DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
         public DateOnly? DisplayDate { get; private set; }
         public bool ShowingLatestPlanDate { get; private set; }
@@ -47,7 +74,6 @@ namespace BATT_PPMS.Pages.Personnel
             public string? Shift { get; set; }
             public User? Assigner { get; set; }
             public string Status { get; set; } = "Assigned";
-            public int ProductionTarget { get; set; }
             public string? TaskDescription { get; set; }
             public List<PersonnelAssignment> Stages { get; set; } = new();
         }
@@ -96,9 +122,6 @@ namespace BATT_PPMS.Pages.Personnel
                 query = query.Where(a => a.AssignmentDate == DisplayDate.Value);
             }
 
-            if (!string.IsNullOrEmpty(StatusFilter) && StatusFilter != "ALL")
-                query = query.Where(a => a.Status == StatusFilter);
-
             if (!string.IsNullOrEmpty(ShiftFilter) && ShiftFilter != "ALL")
                 query = query.Where(a => a.Shift == ShiftFilter);
 
@@ -115,21 +138,20 @@ namespace BATT_PPMS.Pages.Personnel
                     var first = g.First();
                     return new PlanGroup
                     {
-                        PlanId = first.AssignmentId,
+                        PlanId = g.Min(a => a.AssignmentId),
                         AssignmentDate = g.Key.AssignmentDate,
                         Shift = g.Key.Shift,
                         Assigner = first.AssignedByNavigation,
-                        Status = g.Any(x => x.Status == "Completed")
-                                    ? "Completed"
-                                  : g.Any(x => x.Status == "InProgress")
-                                    ? "InProgress"
-                                    : first.Status,
-                        ProductionTarget = 25000,
+                        Status = AggregateStatus(g),
                         TaskDescription = first.TaskDescription,
                         Stages = g.OrderBy(x => x.AssignmentId).ToList()
                     };
                 })
                 .ToList();
+
+            // Filter whole plans so a status filter never removes their coworkers/stages.
+            if (!string.IsNullOrWhiteSpace(StatusFilter) && StatusFilter != "ALL")
+                grouped = grouped.Where(p => p.Status == NormalizeAssignmentStatus(StatusFilter)).ToList();
 
             if (!string.IsNullOrEmpty(SearchTerm))
             {
@@ -137,6 +159,7 @@ namespace BATT_PPMS.Pages.Personnel
                 grouped = grouped.Where(p =>
                     p.Code.ToLower().Contains(kw) ||
                     p.AssignmentDate.ToString("yyyy-MM-dd").Contains(kw) ||
+                    p.AssignmentDate.ToString("dd/MM/yyyy").Contains(kw) ||
                     (p.Assigner?.FullName ?? "").ToLower().Contains(kw) ||
                     (p.Shift ?? "").ToLower().Contains(kw) ||
                     p.Stages.Any(s => (s.Staff?.FullName ?? "").ToLower().Contains(kw) ||
@@ -151,49 +174,55 @@ namespace BATT_PPMS.Pages.Personnel
         // ── OnPostCreatePlan ─────────────────────────────────────────────────
         [BindProperty] public DateOnly NewPlanDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
         [BindProperty] public string NewPlanShift { get; set; } = "Ca 1";
-        [BindProperty] public int NewPlanTargetKg { get; set; } = 25000;
         [BindProperty] public string? NewPlanNotes { get; set; }
 
-        [BindProperty] public int Stage1StaffId { get; set; }
-        [BindProperty] public int Stage1TargetKg { get; set; } = 28000;
+        [BindProperty] public List<int> Stage1StaffIds { get; set; } = new();
 
-        [BindProperty] public int Stage2StaffId { get; set; }
-        [BindProperty] public int Stage2TargetKg { get; set; } = 26000;
+        [BindProperty] public List<int> Stage2StaffIds { get; set; } = new();
 
-        [BindProperty] public int Stage3StaffId { get; set; }
-        [BindProperty] public int Stage3TargetKg { get; set; } = 25000;
+        [BindProperty] public List<int> Stage3StaffIds { get; set; } = new();
 
-        [BindProperty] public int Stage4StaffId { get; set; }
-        [BindProperty] public int Stage4TargetKg { get; set; } = 25000;
+        [BindProperty] public List<int> Stage4StaffIds { get; set; } = new();
+
+        [BindProperty] public List<int> Stage5StaffIds { get; set; } = new();
+
+        public record ProductionStage(int Number, string Name, string Machine, List<int> StaffIds)
+        {
+            public string FieldName => $"Stage{Number}StaffIds";
+            public string TaskDescription => $"{Name} ({Machine})";
+        }
+
+        public List<ProductionStage> ProductionStages => new()
+        {
+            new(1, "Băm nguyên liệu", "Máy băm", Stage1StaffIds),
+            new(2, "Nghiền nguyên liệu", "Máy nghiền", Stage2StaffIds),
+            new(3, "Sấy nguyên liệu", "Máy sấy", Stage3StaffIds),
+            new(4, "Nén viên", "Máy nén", Stage4StaffIds),
+            new(5, "Đóng gói thành phẩm", "Khâu đóng gói", Stage5StaffIds)
+        };
 
         public async Task<IActionResult> OnPostCreatePlanAsync()
         {
             var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
-            if (!ModelState.IsValid || NewPlanTargetKg <= 0)
+            if (!ModelState.IsValid || NewPlanDate.Year < 2000 || NewPlanDate.Year > 2100)
             {
-                ErrorMessage = "Sản lượng mục tiêu phải lớn hơn 0 kg";
+                ErrorMessage = "Vui lòng kiểm tra ngày, ca sản xuất và danh sách công nhân.";
                 return RedirectToPage();
             }
 
             var currentUserId = CurrentUserId;
 
-            var stages = new List<(int staffId, string desc, int target)>
-            {
-                (Stage1StaffId, "Sàng lọc tạp chất & băm dăm bào (Máy băm nghiền M-01)", Stage1TargetKg),
-                (Stage2StaffId, "Sấy mùn cưa hạ ẩm (Máy sấy thùng quay M-02)", Stage2TargetKg),
-                (Stage3StaffId, "Ép viên nén sinh khối (Cụm máy ép viên M-03A)", Stage3TargetKg),
-                (Stage4StaffId, "Đóng bao Jumbo 650kg & lưu kho (Cân đóng bao M-04)", Stage4TargetKg)
-            };
+            var stages = ProductionStages;
 
-            if (stages.Any(s => s.staffId <= 0 || s.target <= 0))
+            if (stages.Any(s => s.StaffIds == null || s.StaffIds.Count == 0 || s.StaffIds.Any(id => id <= 0)))
             {
-                ErrorMessage = "Vui lòng chọn nhân viên và nhập chỉ tiêu lớn hơn 0 cho từng công đoạn.";
+                ErrorMessage = "Vui lòng chọn ít nhất một công nhân cho mỗi máy/công đoạn.";
                 return RedirectToPage();
             }
 
-            var staffIds = stages.Select(s => s.staffId).Distinct().ToList();
+            var staffIds = stages.SelectMany(s => s.StaffIds).Distinct().ToList();
             var validStaffCount = await _context.Users.CountAsync(u => staffIds.Contains(u.UserId)
                 && u.Role.RoleName == RoleConstants.Staff && u.Status == StatusConstants.Active);
             if (validStaffCount != staffIds.Count)
@@ -208,18 +237,21 @@ namespace BATT_PPMS.Pages.Personnel
                 return RedirectToPage();
             }
 
-            foreach (var (staffId, desc, target) in stages)
+            foreach (var stage in stages)
             {
-                var assignment = new PersonnelAssignment
+                foreach (var staffId in stage.StaffIds.Distinct())
                 {
-                    StaffId = staffId,
-                    AssignedBy = currentUserId,
-                    AssignmentDate = NewPlanDate,
-                    Shift = NewPlanShift,
-                    TaskDescription = desc,
-                    Status = "Assigned"
-                };
-                _context.PersonnelAssignments.Add(assignment);
+                    var assignment = new PersonnelAssignment
+                    {
+                        StaffId = staffId,
+                        AssignedBy = currentUserId,
+                        AssignmentDate = NewPlanDate,
+                        Shift = NewPlanShift,
+                        TaskDescription = stage.TaskDescription,
+                        Status = "Assigned"
+                    };
+                    _context.PersonnelAssignments.Add(assignment);
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -232,5 +264,32 @@ namespace BATT_PPMS.Pages.Personnel
             var plan = Plans.FirstOrDefault(p => p.PlanId == planId);
             return plan?.Stages ?? new List<PersonnelAssignment>();
         }
+
+        public class StageGroup
+        {
+            public string TaskDescription { get; set; } = string.Empty;
+            public string StaffMachineName
+            {
+                get
+                {
+                    var description = TaskDescription.ToLowerInvariant();
+                    if (description.Contains("đóng gói") || description.Contains("đóng bao")) return "Đóng gói";
+                    if (description.Contains("sấy")) return "Máy sấy";
+                    if (description.Contains("nén") || description.Contains("ép viên")) return "Máy nén";
+                    if (description.Contains("băm")) return "Máy băm";
+                    if (description.Contains("nghiền")) return "Máy nghiền";
+                    return TaskDescription;
+                }
+            }
+            public List<PersonnelAssignment> Assignments { get; set; } = new();
+        }
+
+        public List<StageGroup> GetStageGroupsForPlan(int planId) => GetStagesForPlan(planId)
+            .GroupBy(a => a.TaskDescription ?? "Công đoạn sản xuất")
+            .Select(group => new StageGroup
+            {
+                TaskDescription = group.Key,
+                Assignments = group.GroupBy(a => a.StaffId).Select(workers => workers.First()).ToList()
+            }).ToList();
     }
 }

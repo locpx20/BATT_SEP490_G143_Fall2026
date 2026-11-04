@@ -25,6 +25,7 @@ namespace BATT_PPMS.Pages.ShiftReports
         public string Status { get; set; } = "Submitted";
         public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool CanModify { get; set; }
         public string? LotCodeGenerated => Status == "Approved" ? $"LOT-{ShiftDate:yyyyMMdd}-{ReportId:D2}" : null;
     }
 
@@ -54,9 +55,9 @@ namespace BATT_PPMS.Pages.ShiftReports
         public decimal AverageRecoveryRate { get; set; }
         public int PendingApprovalCount { get; set; }
 
-        public bool CanApprove => IsOwner;
+        public bool CanApprove => IsManager;
         public bool IsStaffView => IsStaff;
-        public bool CanSubmitReport => IsStaff || IsOwnerOrManager;
+        public bool CanSubmitReport => IsStaff || IsManager;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -147,7 +148,8 @@ namespace BATT_PPMS.Pages.ShiftReports
                     Note = NoteTags.Plain(r.Note),
                     Status = r.Status ?? "Submitted",
                     RejectionReason = NoteTags.Get(r.Note, NoteTags.Rejected),
-                    CreatedAt = r.CreatedAt ?? r.ShiftDate.ToDateTime(TimeOnly.MinValue)
+                    CreatedAt = r.CreatedAt ?? r.ShiftDate.ToDateTime(TimeOnly.MinValue),
+                    CanModify = IsStaff && r.StaffId == CurrentUserId && IsEditableStatus(r.Status)
                 };
             }).ToList();
 
@@ -191,7 +193,7 @@ namespace BATT_PPMS.Pages.ShiftReports
 
         public async Task<IActionResult> OnPostSubmitReportAsync()
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.Staff);
+            var check = RequireRole(RoleConstants.Manager, RoleConstants.Staff);
             if (check != null) return check;
 
             if (NewProductionQuantity <= 0 || NewRawMaterialUsed <= 0)
@@ -270,20 +272,106 @@ namespace BATT_PPMS.Pages.ShiftReports
             _context.EndOfShiftReports.Add(report);
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Nộp báo cáo ca thành công (Mã: RP-{report.ReportId:D4}). Hồ sơ đã được chuyển cho Giám đốc phê duyệt để phát hành mã LOT.";
+            SuccessMessage = $"Nộp báo cáo ca thành công (Mã: RP-{report.ReportId:D4}). Hồ sơ đã được chuyển cho Quản lý phê duyệt để phát hành mã LOT.";
             return RedirectToPage();
+        }
+
+        private static bool IsEditableStatus(string? status) =>
+            string.Equals(status, "Submitted", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase);
+
+        private static string? ShiftNumber(string? shift) => shift?.Trim() switch
+        {
+            "Ca 1" or "Ca 1 (06:00 - 14:00)" => "Ca 1",
+            "Ca 2" or "Ca 2 (14:00 - 22:00)" => "Ca 2",
+            "Ca 3" or "Ca 3 (22:00 - 06:00)" => "Ca 3",
+            _ => null
+        };
+
+        public async Task<IActionResult> OnPostUpdateReportAsync(
+            int reportId, DateOnly shiftDate, string? shift, int productionQuantity, string? note)
+        {
+            var check = RequireRole(RoleConstants.Staff);
+            if (check != null) return check;
+
+            var shiftNumber = ShiftNumber(shift);
+            var error = InputValidator.Text(note, "Ghi chú ca làm việc", 5000);
+            if (!ModelState.IsValid || reportId <= 0 || productionQuantity <= 0 || shiftNumber == null
+                || shiftDate.Year < 2000 || shiftDate.Year > 2100 || error != null)
+            {
+                ErrorMessage = error ?? "Vui lòng nhập ngày, ca hợp lệ và sản lượng lớn hơn 0 kg.";
+                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var report = await _context.EndOfShiftReports.Include(r => r.Assignment)
+                .SingleOrDefaultAsync(r => r.ReportId == reportId && r.StaffId == CurrentUserId);
+            if (report == null)
+            {
+                ErrorMessage = "Không tìm thấy báo cáo của bạn cần chỉnh sửa.";
+                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
+            }
+            if (!IsEditableStatus(report.Status))
+            {
+                ErrorMessage = "Chỉ được chỉnh sửa báo cáo đang chờ duyệt hoặc bị từ chối. Báo cáo đã duyệt được giữ nguyên.";
+                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
+            }
+
+            if (report.ShiftDate != shiftDate || ShiftNumber(report.Assignment.Shift) != shiftNumber)
+            {
+                // Re-link the report; never change the Manager's assignment or another report's shift.
+                var assignment = await _context.PersonnelAssignments
+                    .Where(p => p.StaffId == CurrentUserId && p.AssignmentDate == shiftDate
+                        && (p.Shift == shiftNumber || p.Shift == shift))
+                    .OrderBy(p => p.AssignmentId).FirstOrDefaultAsync();
+                if (assignment == null)
+                {
+                    ErrorMessage = "Bạn chưa được phân công vào ngày và ca đã chọn. Vui lòng chọn ca đã có phân công.";
+                    return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
+                }
+                report.Assignment = assignment;
+            }
+            report.ShiftDate = shiftDate;
+            report.ProductionQuantity = productionQuantity;
+            report.Note = NoteTags.Plain(InputValidator.Clean(note));
+            report.Status = "Submitted";
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            SuccessMessage = $"Đã cập nhật báo cáo RP-{reportId:D4} và gửi lại để phê duyệt.";
+            return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
+        }
+
+        public async Task<IActionResult> OnPostDeleteReportAsync(int reportId)
+        {
+            var check = RequireRole(RoleConstants.Staff);
+            if (check != null) return check;
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var report = await _context.EndOfShiftReports
+                .SingleOrDefaultAsync(r => r.ReportId == reportId && r.StaffId == CurrentUserId);
+            if (report == null)
+            {
+                ErrorMessage = "Không tìm thấy báo cáo của bạn cần xóa.";
+                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
+            }
+            if (!IsEditableStatus(report.Status))
+            {
+                ErrorMessage = "Chỉ được xóa báo cáo đang chờ duyệt hoặc bị từ chối. Báo cáo đã duyệt được giữ nguyên.";
+                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
+            }
+            // A report does not own the assignment, stock exports or machine incidents.
+            _context.EndOfShiftReports.Remove(report);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            SuccessMessage = $"Đã xóa báo cáo RP-{reportId:D4}.";
+            return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
         }
 
         public async Task<IActionResult> OnPostApproveReportAsync(int reportId)
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
-
-            if (!IsOwner)
-            {
-                ErrorMessage = "Chỉ Giám đốc (Owner) mới có quyền phê duyệt báo cáo ca sản xuất.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
 
             var report = await _context.EndOfShiftReports.FindAsync(reportId);
             if (report == null)
@@ -308,14 +396,8 @@ namespace BATT_PPMS.Pages.ShiftReports
 
         public async Task<IActionResult> OnPostRejectReportAsync(int reportId, string rejectionReason)
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
-
-            if (!IsOwner)
-            {
-                ErrorMessage = "Chỉ Giám đốc (Owner) mới có quyền từ chối báo cáo ca sản xuất.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
 
             var report = await _context.EndOfShiftReports.FindAsync(reportId);
             if (report == null)

@@ -1,4 +1,4 @@
-/* Consistent dimensions and typography for both partner creation forms. */
+/* Shared dimensions and typography for partner creation and editing forms. */
 .partner-create-modal .modal-box {
     max-width: 820px;
     max-height: calc(100vh - 32px);

@@ -521,8 +521,8 @@ else
 <!-- =====================================================
      MODAL: CHỈNH SỬA ĐỐI TÁC (EDIT MODAL - Matches BATT_PPMSss)
      ===================================================== -->
-<div class="modal-overlay" id="modalEditPartner">
-    <div class="modal-box" style="max-width: 520px;">
+<div class="modal-overlay partner-create-modal" id="modalEditPartner">
+    <div class="modal-box">
         <div class="modal-header">
             <h3 class="modal-title" id="editModalTitle">Chỉnh sửa đối tác</h3>
             <button type="button" class="modal-close" onclick="closeModal('modalEditPartner')">
@@ -532,7 +532,7 @@ else
         <form method="post" id="editPartnerForm">
             <input type="hidden" name="SupplierId" id="editSupplierId" />
             <input type="hidden" name="CustomerId" id="editCustomerId" />
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="modal-body">
                 <!-- Name -->
                 <div class="form-group">
                     <label class="form-label">TÊN ĐỐI TÁC *</label>

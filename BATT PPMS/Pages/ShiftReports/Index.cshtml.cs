@@ -1,6 +1,7 @@
 using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
+using BATT_PPMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,7 +16,9 @@ namespace BATT_PPMS.Pages.ShiftReports
         public DateOnly ShiftDate { get; set; }
         public string Shift { get; set; } = "Ca 1 (06:00 - 14:00)";
         public int ProductionQuantity { get; set; }
-        public int RawMaterialUsed { get; set; }
+        public decimal RawMaterialUsed { get; set; }
+        public List<MaterialUsageInput> MaterialUsage { get; set; } = new();
+        public string MaterialUsageSummary { get; set; } = "";
         public decimal RecoveryRate => RawMaterialUsed > 0 
             ? Math.Round((decimal)ProductionQuantity / RawMaterialUsed * 100m, 1) 
             : 0m;
@@ -26,7 +29,12 @@ namespace BATT_PPMS.Pages.ShiftReports
         public string? RejectionReason { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool CanModify { get; set; }
-        public string? LotCodeGenerated => Status == "Approved" ? $"LOT-{ShiftDate:yyyyMMdd}-{ReportId:D2}" : null;
+        public int? QualityRequestId { get; set; }
+        public string? QcResult { get; set; }
+        public string? BatchCode { get; set; }
+        public string? ReceiptStatus { get; set; }
+        public bool CanRequestReceipt { get; set; }
+        public string? LotCodeGenerated => BatchCode ?? (Status == "Approved" ? $"LOT-{ShiftDate:yyyyMMdd}-{ReportId:D2}" : null);
     }
 
     public class IndexModel : BasePageModel
@@ -50,14 +58,17 @@ namespace BATT_PPMS.Pages.ShiftReports
         public List<ShiftReportItemViewModel> Reports { get; set; } = new();
 
         // KPI Summary
-        public int TotalProductionKg { get; set; }
-        public int TotalMaterialUsedKg { get; set; }
+        public long TotalProductionKg { get; set; }
+        public decimal TotalMaterialUsedKg { get; set; }
         public decimal AverageRecoveryRate { get; set; }
         public int PendingApprovalCount { get; set; }
 
         public bool CanApprove => IsManager;
         public bool IsStaffView => IsStaff;
-        public bool CanSubmitReport => IsStaff || IsManager;
+        public bool CanSubmitReport => IsStaff;
+        public List<ProductionQualityRequest> AvailableQcResults { get; set; } = new();
+        [BindProperty(SupportsGet = true)] public int? QualityRequestId { get; set; }
+        [BindProperty] public int NewQualityRequestId { get; set; }
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -65,14 +76,9 @@ namespace BATT_PPMS.Pages.ShiftReports
         [TempData]
         public string? ErrorMessage { get; set; }
 
-        // Form properties for submitting a shift report
-        [BindProperty] public DateOnly NewShiftDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
-        [BindProperty] public string NewShift { get; set; } = "Ca 1 (06:00 - 14:00)";
-        [BindProperty] public int NewRawMaterialUsed { get; set; } = 22000;
-        [BindProperty] public int NewProductionQuantity { get; set; } = 20000;
-        [BindProperty] public bool NewHasIncident { get; set; }
-        [BindProperty] public string? NewIncidentDescription { get; set; }
         [BindProperty] public string? NewNote { get; set; }
+        [BindProperty] public List<MaterialUsageInput> MaterialUsage { get; set; } = new();
+        public List<RawMaterial> Materials { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -80,6 +86,13 @@ namespace BATT_PPMS.Pages.ShiftReports
             if (check != null) return check;
 
             await LoadReportsAsync();
+            if (IsStaff) {
+                Materials = await _context.RawMaterials.AsNoTracking().OrderBy(x => x.MaterialName).ToListAsync();
+                AvailableQcResults = await new ProductionFlow(_context).QualityQuery.AsNoTracking()
+                    .Where(q => q.Inspection.RequestedBy == CurrentUserId && q.Inspection.Status == "Completed")
+                    .OrderByDescending(q => q.RequestId).ToListAsync();
+                NewQualityRequestId = AvailableQcResults.FirstOrDefault(q => q.RequestId == QualityRequestId && q.ReportId == null)?.RequestId ?? 0;
+            }
             return Page();
         }
 
@@ -94,14 +107,20 @@ namespace BATT_PPMS.Pages.ShiftReports
             // Schema mới không còn RawMaterialUsed / HasIncident / IncidentDescription trong EndOfShiftReport:
             //  - NVL tiêu hao: lấy từ RawMaterialExport theo ngày ca, chia cho các báo cáo trong ngày theo tỷ lệ sản lượng
             //  - Sự cố: lấy từ BrokenEquipmentReport do chính nhân viên đó báo trong ngày ca
+            var usageRows = await _context.ShiftMaterialUsages.Include(x => x.Material).AsNoTracking().ToListAsync();
             var exports = await _context.RawMaterialExports.AsNoTracking().ToListAsync();
+            var materialRequests = await _context.ProductionMaterialRequests.Include(x => x.Assignment)
+                .AsNoTracking().Where(x => x.Status == "Issued").ToListAsync();
+            var workflowExportIds = materialRequests.Where(x => x.ExportId.HasValue).Select(x => x.ExportId!.Value).ToHashSet();
+            workflowExportIds.UnionWith(usageRows.Where(x => x.ExportId.HasValue).Select(x => x.ExportId!.Value));
             var exportByDate = exports
+                .Where(x => !workflowExportIds.Contains(x.ExportId))
                 .GroupBy(e => DateOnly.FromDateTime(e.ExportDate))
                 .ToDictionary(g => g.Key, g => g.Sum(e => e.Quantity));
 
             var productionByDate = allReports
                 .GroupBy(r => r.ShiftDate)
-                .ToDictionary(g => g.Key, g => g.Sum(r => r.ProductionQuantity));
+                .ToDictionary(g => g.Key, g => g.Sum(r => (long)r.ProductionQuantity));
             var countByDate = allReports
                 .GroupBy(r => r.ShiftDate)
                 .ToDictionary(g => g.Key, g => g.Count());
@@ -110,14 +129,25 @@ namespace BATT_PPMS.Pages.ShiftReports
                 .Include(b => b.Machine)
                 .AsNoTracking().ToListAsync();
 
-            int MaterialUsedOf(EndOfShiftReport r)
+            var qualityByReport = await new ProductionFlow(_context).QualityQuery.AsNoTracking()
+                .Where(q => q.ReportId != null).ToDictionaryAsync(q => q.ReportId!.Value);
+            decimal MaterialUsedOf(EndOfShiftReport r)
             {
+                var recorded = usageRows.Where(x => x.ReportId == r.ReportId).ToList();
+                if (recorded.Count > 0) return recorded.Where(x => x.Material.Unit.Trim().Equals("kg", StringComparison.OrdinalIgnoreCase)).Sum(x => x.Quantity);
+                if (qualityByReport.ContainsKey(r.ReportId)) {
+                    var issued = materialRequests.Where(x => x.RequestedBy == r.StaffId && x.Assignment.AssignmentDate == r.ShiftDate
+                        && x.Assignment.Shift == r.Assignment.Shift).Sum(x => x.Quantity);
+                    var caProduction = allReports.Where(x => qualityByReport.ContainsKey(x.ReportId) && x.StaffId == r.StaffId && x.ShiftDate == r.ShiftDate
+                        && x.Assignment.Shift == r.Assignment.Shift).Sum(x => (long)x.ProductionQuantity);
+                    return caProduction > 0 ? Math.Round(issued * r.ProductionQuantity / caProduction, 2) : 0;
+                }
                 if (!exportByDate.TryGetValue(r.ShiftDate, out var dayTotal)) return 0;
                 var dayProduction = productionByDate[r.ShiftDate];
                 var share = dayProduction > 0
                     ? (decimal)r.ProductionQuantity / dayProduction
                     : 1m / countByDate[r.ShiftDate];
-                return (int)Math.Round(dayTotal * share);
+                return Math.Round(dayTotal * share, 2);
             }
 
             var visibleReports = IsStaff ? allReports.Where(r => r.StaffId == CurrentUserId) : allReports;
@@ -127,15 +157,24 @@ namespace BATT_PPMS.Pages.ShiftReports
                     .Where(b => r.StaffId.HasValue && b.ReportedBy == r.StaffId && DateOnly.FromDateTime(b.ReportDate) == r.ShiftDate)
                     .ToList();
 
+                qualityByReport.TryGetValue(r.ReportId, out var quality);
                 return new ShiftReportItemViewModel
                 {
                     ReportId = r.ReportId,
+                    QualityRequestId = quality?.RequestId,
+                    QcResult = quality?.Inspection.Result,
+                    BatchCode = quality?.Inspection.Batch.BagNumber,
+                    ReceiptStatus = quality?.Receipt?.Status,
+                    CanRequestReceipt = IsStaff && r.StaffId == CurrentUserId && r.Status == "Approved" && quality?.Inspection.Result == "Pass"
+                        && (quality.Receipt == null || quality.Receipt.Status == "Rejected"),
                     StaffId = r.StaffId,
                     StaffName = r.Staff?.FullName ?? "Tài khoản đã xóa",
                     ShiftDate = r.ShiftDate,
                     Shift = !string.IsNullOrWhiteSpace(r.Assignment?.Shift) ? r.Assignment!.Shift! : "Ca 1 (06:00 - 14:00)",
                     ProductionQuantity = r.ProductionQuantity,
                     RawMaterialUsed = MaterialUsedOf(r),
+                    MaterialUsage = usageRows.Where(x => x.ReportId == r.ReportId).Select(x => new MaterialUsageInput { MaterialId = x.MaterialId, Quantity = x.Quantity }).ToList(),
+                    MaterialUsageSummary = string.Join("; ", usageRows.Where(x => x.ReportId == r.ReportId).Select(x => $"{x.Material.MaterialName}: {x.Quantity:N2} {x.Material.Unit}")),
                     HasIncident = dayIncidents.Count > 0,
                     IncidentDescription = dayIncidents.Count > 0
                         ? string.Join("; ", dayIncidents.Select(i =>
@@ -154,7 +193,7 @@ namespace BATT_PPMS.Pages.ShiftReports
             }).ToList();
 
             // Calculate overall metrics
-            TotalProductionKg = items.Sum(r => r.ProductionQuantity);
+            TotalProductionKg = items.Sum(r => (long)r.ProductionQuantity);
             TotalMaterialUsedKg = items.Sum(r => r.RawMaterialUsed);
             AverageRecoveryRate = TotalMaterialUsedKg > 0
                 ? Math.Round((decimal)TotalProductionKg / TotalMaterialUsedKg * 100m, 1)
@@ -193,86 +232,12 @@ namespace BATT_PPMS.Pages.ShiftReports
 
         public async Task<IActionResult> OnPostSubmitReportAsync()
         {
-            var check = RequireRole(RoleConstants.Manager, RoleConstants.Staff);
-            if (check != null) return check;
-
-            if (NewProductionQuantity <= 0 || NewRawMaterialUsed <= 0)
-            {
-                ErrorMessage = "Sản lượng thực tế và lượng NVL thực dùng phải lớn hơn 0 kg.";
-                return RedirectToPage();
-            }
-
-            var currentUserId = CurrentUserId > 0 ? CurrentUserId : 4;
-
-            // Tìm phân công ca tương ứng hoặc tạo mới phân công ca
-            var assignment = await _context.PersonnelAssignments
-                .FirstOrDefaultAsync(p => p.StaffId == currentUserId && p.AssignmentDate == NewShiftDate);
-
-            if (assignment == null)
-            {
-                assignment = new PersonnelAssignment
-                {
-                    StaffId = currentUserId,
-                    AssignedBy = currentUserId,
-                    AssignmentDate = NewShiftDate,
-                    Shift = NewShift,
-                    TaskDescription = "Vận hành ca sản xuất viên nén",
-                    Status = "Completed"
-                };
-                _context.PersonnelAssignments.Add(assignment);
-                await _context.SaveChangesAsync();
-            }
-
-            // Ghi nhận lượng NVL thực xuất vào RawMaterialExport
-            var firstMaterial = await _context.RawMaterials.FirstOrDefaultAsync();
-            if (firstMaterial != null && NewRawMaterialUsed > 0)
-            {
-                var export = new RawMaterialExport
-                {
-                    MaterialId = firstMaterial.MaterialId,
-                    Quantity = NewRawMaterialUsed,
-                    ExportDate = NewShiftDate.ToDateTime(TimeOnly.MinValue),
-                    ExportedBy = currentUserId,
-                    Note = $"Xuất NVL cho {NewShift}"
-                };
-                _context.RawMaterialExports.Add(export);
-            }
-
-            // Ghi nhận sự cố phát sinh vào BrokenEquipmentReport
-            if (NewHasIncident && !string.IsNullOrWhiteSpace(NewIncidentDescription))
-            {
-                // Dùng máy M-01 (ID=1) làm default khi báo cáo sự cố từ ca trực
-                var defaultMachine = await _context.Machines.FirstOrDefaultAsync();
-                if (defaultMachine != null)
-                {
-                    var incident = new BrokenEquipmentReport
-                    {
-                        MachineId = defaultMachine.MachineId,
-                        Description = NewIncidentDescription.Trim(),
-                        ReportDate = NewShiftDate.ToDateTime(TimeOnly.MinValue),
-                        ReportedBy = currentUserId,
-                        Severity = "Medium",
-                        Status = "Reported"
-                    };
-                    _context.BrokenEquipmentReports.Add(incident);
-                }
-            }
-
-            var report = new EndOfShiftReport
-            {
-                AssignmentId = assignment.AssignmentId,
-                StaffId = currentUserId,
-                ShiftDate = NewShiftDate,
-                ProductionQuantity = NewProductionQuantity,
-                Note = NewNote,
-                Status = "Submitted",
-                CreatedAt = DateTime.Now
-            };
-
-            _context.EndOfShiftReports.Add(report);
-            await _context.SaveChangesAsync();
-
-            SuccessMessage = $"Nộp báo cáo ca thành công (Mã: RP-{report.ReportId:D4}). Hồ sơ đã được chuyển cho Quản lý phê duyệt để phát hành mã LOT.";
+            var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
+            if (!ModelState.IsValid) { ErrorMessage = "Vui lòng chọn kết quả QC hợp lệ."; return RedirectToPage(); }
+            try {
+                var id = await new ProductionFlow(_context).SubmitReport(CurrentUserId, NewQualityRequestId, NewNote, MaterialUsage);
+                SuccessMessage = $"Đã gửi báo cáo RP-{id:D4} kèm kết quả QC cho Manager phê duyệt.";
+            } catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
         }
 
@@ -281,64 +246,14 @@ namespace BATT_PPMS.Pages.ShiftReports
             || string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase)
             || string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase);
 
-        private static string? ShiftNumber(string? shift) => shift?.Trim() switch
+        public async Task<IActionResult> OnPostUpdateReportAsync(int reportId, int qualityRequestId, string? note)
         {
-            "Ca 1" or "Ca 1 (06:00 - 14:00)" => "Ca 1",
-            "Ca 2" or "Ca 2 (14:00 - 22:00)" => "Ca 2",
-            "Ca 3" or "Ca 3 (22:00 - 06:00)" => "Ca 3",
-            _ => null
-        };
-
-        public async Task<IActionResult> OnPostUpdateReportAsync(
-            int reportId, DateOnly shiftDate, string? shift, int productionQuantity, string? note)
-        {
-            var check = RequireRole(RoleConstants.Staff);
-            if (check != null) return check;
-
-            var shiftNumber = ShiftNumber(shift);
-            var error = InputValidator.Text(note, "Ghi chú ca làm việc", 5000);
-            if (!ModelState.IsValid || reportId <= 0 || productionQuantity <= 0 || shiftNumber == null
-                || shiftDate.Year < 2000 || shiftDate.Year > 2100 || error != null)
-            {
-                ErrorMessage = error ?? "Vui lòng nhập ngày, ca hợp lệ và sản lượng lớn hơn 0 kg.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-
-            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-            var report = await _context.EndOfShiftReports.Include(r => r.Assignment)
-                .SingleOrDefaultAsync(r => r.ReportId == reportId && r.StaffId == CurrentUserId);
-            if (report == null)
-            {
-                ErrorMessage = "Không tìm thấy báo cáo của bạn cần chỉnh sửa.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-            if (!IsEditableStatus(report.Status))
-            {
-                ErrorMessage = "Chỉ được chỉnh sửa báo cáo đang chờ duyệt hoặc bị từ chối. Báo cáo đã duyệt được giữ nguyên.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-
-            if (report.ShiftDate != shiftDate || ShiftNumber(report.Assignment.Shift) != shiftNumber)
-            {
-                // Re-link the report; never change the Manager's assignment or another report's shift.
-                var assignment = await _context.PersonnelAssignments
-                    .Where(p => p.StaffId == CurrentUserId && p.AssignmentDate == shiftDate
-                        && (p.Shift == shiftNumber || p.Shift == shift))
-                    .OrderBy(p => p.AssignmentId).FirstOrDefaultAsync();
-                if (assignment == null)
-                {
-                    ErrorMessage = "Bạn chưa được phân công vào ngày và ca đã chọn. Vui lòng chọn ca đã có phân công.";
-                    return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-                }
-                report.Assignment = assignment;
-            }
-            report.ShiftDate = shiftDate;
-            report.ProductionQuantity = productionQuantity;
-            report.Note = NoteTags.Plain(InputValidator.Clean(note));
-            report.Status = "Submitted";
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-            SuccessMessage = $"Đã cập nhật báo cáo RP-{reportId:D4} và gửi lại để phê duyệt.";
+            var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
+            if (!ModelState.IsValid) { ErrorMessage = "Thông tin báo cáo không hợp lệ."; return RedirectToPage(); }
+            try {
+                await new ProductionFlow(_context).UpdateReport(CurrentUserId, reportId, qualityRequestId, note, MaterialUsage);
+                SuccessMessage = $"Đã cập nhật báo cáo RP-{reportId:D4} và gửi lại Manager.";
+            } catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
         }
 
@@ -360,7 +275,15 @@ namespace BATT_PPMS.Pages.ShiftReports
                 ErrorMessage = "Chỉ được xóa báo cáo đang chờ duyệt hoặc bị từ chối. Báo cáo đã duyệt được giữ nguyên.";
                 return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
             }
-            // A report does not own the assignment, stock exports or machine incidents.
+            var quality = await _context.ProductionQualityRequests.SingleOrDefaultAsync(q => q.ReportId == reportId);
+            if (quality != null) {
+                quality.ReportId = null;
+                await _context.SaveChangesAsync();
+            }
+            var usages = await _context.ShiftMaterialUsages.Where(x => x.ReportId == reportId).ToListAsync();
+            if (usages.Any(x => x.ExportId.HasValue)) { ErrorMessage = "Báo cáo đã trừ tồn không được xóa."; return RedirectToPage(); }
+            _context.ShiftMaterialUsages.RemoveRange(usages);
+            // Keep QC results, assignments, stock exports and incidents when deleting reports.
             _context.EndOfShiftReports.Remove(report);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -370,66 +293,21 @@ namespace BATT_PPMS.Pages.ShiftReports
 
         public async Task<IActionResult> OnPostApproveReportAsync(int reportId)
         {
-            var check = RequireRole(RoleConstants.Manager);
-            if (check != null) return check;
-
-            var report = await _context.EndOfShiftReports.FindAsync(reportId);
-            if (report == null)
-            {
-                ErrorMessage = "Không tìm thấy báo cáo ca cần duyệt.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-
-            if (report.Status == "Approved")
-            {
-                ErrorMessage = $"Báo cáo ca RP-{reportId:D4} đã được phê duyệt trước đó.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-
-            report.Status = "Approved";
-            report.Note = NoteTags.Remove(report.Note, NoteTags.Rejected);
-            await _context.SaveChangesAsync();
-
-            SuccessMessage = $"Đã phê duyệt thành công báo cáo ca RP-{reportId:D4}. Mã LOT: LOT-{report.ShiftDate:yyyyMMdd}-{reportId:D2} đã được phát hành cho phòng KCS.";
+            var check = RequireRole(RoleConstants.Manager); if (check != null) return check;
+            try {
+                await new ProductionFlow(_context).ApproveReport(CurrentUserId, reportId);
+                SuccessMessage = $"Đã duyệt báo cáo RP-{reportId:D4}. Staff có thể yêu cầu nhập kho nếu lô QC đạt.";
+            } catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
         }
 
         public async Task<IActionResult> OnPostRejectReportAsync(int reportId, string rejectionReason)
         {
-            var check = RequireRole(RoleConstants.Manager);
-            if (check != null) return check;
-
-            var report = await _context.EndOfShiftReports.FindAsync(reportId);
-            if (report == null)
-            {
-                ErrorMessage = "Không tìm thấy báo cáo ca.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-
-            if (string.IsNullOrWhiteSpace(rejectionReason))
-            {
-                ErrorMessage = "Vui lòng nhập lý do từ chối báo cáo ca.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-
-            var reasonError = InputValidator.Text(rejectionReason, "Lý do từ chối", 500);
-            if (reasonError != null)
-            {
-                ErrorMessage = reasonError;
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-
-            if (report.Status == "Approved")
-            {
-                ErrorMessage = "Không thể từ chối báo cáo ca đã được phê duyệt.";
-                return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
-            }
-
-            report.Status = "Rejected";
-            report.Note = NoteTags.Set(report.Note, NoteTags.Rejected, rejectionReason.Trim());
-            await _context.SaveChangesAsync();
-
-            SuccessMessage = $"Đã từ chối báo cáo ca RP-{reportId:D4}. Lý do: {rejectionReason.Trim()}";
+            var check = RequireRole(RoleConstants.Manager); if (check != null) return check;
+            try {
+                await new ProductionFlow(_context).RejectReport(CurrentUserId, reportId, rejectionReason);
+                SuccessMessage = $"Đã trả lại báo cáo RP-{reportId:D4} kèm lý do cho Staff.";
+            } catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage(new { SearchTerm, ShiftFilter, StatusFilter });
         }
     }

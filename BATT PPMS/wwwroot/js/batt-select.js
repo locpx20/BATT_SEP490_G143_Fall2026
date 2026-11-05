@@ -63,7 +63,10 @@
             trigger.title = caption.textContent;
             trigger.disabled = select.disabled;
             trigger.removeAttribute('aria-invalid');
-            options.forEach((option, i) => option.setAttribute('aria-selected', String(i === select.selectedIndex)));
+            options.forEach((option, i) => {
+                option.setAttribute('aria-selected', String(i === select.selectedIndex));
+                option.disabled = select.options[i].disabled;
+            });
         }
         function position() {
             if (menu.hidden) return;

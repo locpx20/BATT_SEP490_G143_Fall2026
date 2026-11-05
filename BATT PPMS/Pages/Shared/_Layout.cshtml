@@ -13,13 +13,13 @@
     {
         <link rel="stylesheet" href="~/css/admin-dialogs.css" asp-append-version="true" />
     }
-    @if (Context.Session.GetString("RoleName") is "Admin" or "Admin System" or "Staff")
+    @if (Context.Session.GetString("RoleName") is "Admin" or "Admin System" or "Staff" or "QC Staff" or "Warehouse Staff")
     {
         <link rel="stylesheet" href="~/css/batt-select.css" asp-append-version="true" />
     }
     @await RenderSectionAsync("Styles", required: false)
     <link rel="stylesheet" href="~/css/theme-colors.css" asp-append-version="true" />
-    @if (Context.Session.GetString("RoleName") is "Owner" or "Manager")
+    @if (Context.Session.GetString("RoleName") is "Owner" or "Manager" or "QC Staff" or "Warehouse Staff")
     {
         <link rel="stylesheet" href="~/css/owner-workspace.css" asp-append-version="true" />
     }
@@ -31,15 +31,19 @@
     {
         <link rel="stylesheet" href="~/css/staff-workspace.css" asp-append-version="true" />
     }
+    @if (Context.Session.GetString("RoleName") is "QC Staff" or "Warehouse Staff")
+    {
+        <link rel="stylesheet" href="~/css/operations-workspace.css" asp-append-version="true" />
+    }
 </head>
-<body class="@(Context.Session.GetString("RoleName") is "Owner" or "Manager" ? "owner-workspace" : Context.Session.GetString("RoleName") == "Staff" ? "staff-workspace" : "") @(Context.Session.GetString("RoleName") == "Manager" ? "manager-workspace" : "") @ViewData["PageClass"]">
+<body class="@(Context.Session.GetString("RoleName") is "Owner" or "Manager" or "QC Staff" or "Warehouse Staff" ? "owner-workspace" : Context.Session.GetString("RoleName") == "Staff" ? "staff-workspace" : "") @(Context.Session.GetString("RoleName") == "Manager" ? "manager-workspace" : "") @(Context.Session.GetString("RoleName") is "QC Staff" or "Warehouse Staff" ? "operations-workspace" : "") @ViewData["PageClass"]">
 
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";
     var fullName        = Context.Session.GetString("FullName") ?? "User";
     bool isAdmin        = roleName == "Admin System" || roleName == "Admin";
     bool isStaff        = roleName == "Staff";
-    bool isWorkspace    = roleName == "Owner" || roleName == "Manager"; // Owner & Manager dùng chung khung giao diện workspace
+    bool isWorkspace    = roleName is "Owner" or "Manager" or "QC Staff" or "Warehouse Staff";
     string ap           = ViewData["ActivePage"]?.ToString() ?? "";
 
     // Initials for avatar
@@ -108,6 +112,11 @@
                      model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
         }
         else if (isStaff)
+        {
+            <partial name="~/Pages/Shared/Roles/Production/_AccountMenu.cshtml"
+                     model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
+        }
+        else if (roleName is "QC Staff" or "Warehouse Staff")
         {
             <partial name="~/Pages/Shared/Roles/Production/_AccountMenu.cshtml"
                      model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
@@ -230,7 +239,7 @@
     <partial name="~/Pages/Shared/_AdminConfirmation.cshtml" />
     <script src="~/js/admin-dialogs.js" asp-append-version="true"></script>
 }
-@if (isAdmin || isStaff)
+@if (isAdmin || isStaff || roleName is "QC Staff" or "Warehouse Staff")
 {
     <script src="~/js/batt-select.js" asp-append-version="true"></script>
 }

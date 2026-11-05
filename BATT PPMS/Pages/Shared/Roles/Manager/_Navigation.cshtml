@@ -10,6 +10,7 @@
     <a class="nav-item @(ap == "PurchasePrice" ? "active" : "")" href="/PurchasePrices/Index"><i class="bi bi-tag"></i><span>Giá thu mua NVL</span></a>
     <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Kế hoạch sản xuất</span></a>
     <a class="nav-item @(ap == "QC" ? "active" : "")" href="/QC/Index"><i class="bi bi-patch-check" aria-hidden="true"></i><span>Kiểm tra chất lượng</span></a>
+    <a class="nav-item @(ap == "Warehouse" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Theo dõi nhập thành phẩm</span></a>
     <details class="owner-nav-details" open="@(ap is "Maintenance" or "MaterialPurchase" or "BrokenReport" or "Machines")">
         <summary class="nav-item"><i class="bi bi-wrench"></i><span>Sự cố &amp; bảo trì</span><i class="bi bi-chevron-down"></i></summary>
         <a class="nav-item @(ap is "Maintenance" or "BrokenReport" ? "active" : "")" href="/Maintenance/Index">Sự cố &amp; máy móc</a>

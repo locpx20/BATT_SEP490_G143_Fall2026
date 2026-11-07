@@ -11,18 +11,18 @@
     <link rel="stylesheet" href="~/css/admin-pagination.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
     <link rel="stylesheet" href="~/css/theme-colors.css" asp-append-version="true" />
-    @if (Context.Session.GetString("RoleName") is "Owner" or "Manager")
+    @if (BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")))
     {
         <link rel="stylesheet" href="~/css/owner-workspace.css" asp-append-version="true" />
     }
 </head>
-<body class="@(Context.Session.GetString("RoleName") is "Owner" or "Manager" ? "owner-workspace" : "") @ViewData["PageClass"]">
+<body class="@(BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")) ? "owner-workspace" : "") @ViewData["PageClass"]">
 
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";
     var fullName        = Context.Session.GetString("FullName") ?? "User";
     bool isAdmin        = roleName == "Admin System" || roleName == "Admin";
-    bool isWorkspace    = roleName == "Owner" || roleName == "Manager"; // Owner & Manager dùng chung khung giao diện workspace
+    bool isWorkspace    = BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(roleName); // Owner, Manager và các role Staff dùng chung khung giao diện workspace
     string ap           = ViewData["ActivePage"]?.ToString() ?? "";
 
     // Initials for avatar
@@ -85,8 +85,9 @@
             <partial name="~/Pages/Shared/Roles/Owner/_AccountMenu.cshtml"
                      model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
         }
-        else if (roleName == "Manager")
+        else if (isWorkspace)
         {
+            @* Manager và tất cả role Staff dùng chung menu tài khoản ở cuối sidebar *@
             <partial name="~/Pages/Shared/Roles/Manager/_AccountMenu.cshtml"
                      model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
         }

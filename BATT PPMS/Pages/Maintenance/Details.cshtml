@@ -1,0 +1,624 @@
+﻿@page
+@model BATT_PPMS.Pages.Maintenance.DetailsModel
+@using BATT_PPMS.Helpers
+@{
+    var it = Model.Item;
+    ViewData["Title"] = $"Yêu cầu sửa chữa REQ-{it.RequestId:D4}";
+    ViewData["ActivePage"] = "Maintenance";
+
+    var sb = RepairStatus.Badge(Model.Status);
+    var pb = RepairStatus.PriorityBadge(it.Priority);
+    var machine = it.BrokenReport.Machine;
+    var hasAnyAction = Model.CanReview || Model.CanReassign || Model.CanConfirm || Model.CanComplete || Model.CanEditResubmit || Model.CanCancel;
+    var assignPriority = RepairStatus.PriorityLevels.Contains(it.Priority ?? "") ? it.Priority : "Medium";
+
+    // Thanh tiến trình: 0 Gửi yêu cầu, 1 Quản lý duyệt, 2 Nhận việc, 3 Sửa chữa, 4 Hoàn thành
+    int stepNow;
+    string stepMode = "";          // "", "warn" (chờ vật tư), "fail" (bị từ chối)
+    var stopped = false;           // đã hủy
+    switch (Model.Status)
+    {
+        case RepairStatus.Pending: stepNow = 1; break;
+        case RepairStatus.Rejected: stepNow = 1; stepMode = "fail"; break;
+        case RepairStatus.Assigned: stepNow = 2; break;
+        case RepairStatus.InProgress: stepNow = 3; break;
+        case RepairStatus.WaitingMaterial: stepNow = 3; stepMode = "warn"; break;
+        case RepairStatus.Completed: stepNow = 5; break;
+        case RepairStatus.Cancelled: stepNow = 0; stopped = true; break;
+        default: stepNow = 0; break;
+    }
+    var steps = new[]
+    {
+        (Name: "Gửi yêu cầu", Sub: it.RequestDate.ToString("dd/MM HH:mm")),
+        (Name: stepMode == "fail" ? "Bị từ chối" : "Quản lý duyệt", Sub: it.ReviewedAt.HasValue ? it.ReviewedAt.Value.ToString("dd/MM HH:mm") : ""),
+        (Name: "Nhận việc", Sub: it.ConfirmedAt.HasValue ? it.ConfirmedAt.Value.ToString("dd/MM HH:mm") : ""),
+        (Name: stepMode == "warn" ? "Chờ vật tư" : "Sửa chữa", Sub: ""),
+        (Name: "Hoàn thành", Sub: it.CompletedAt.HasValue ? it.CompletedAt.Value.ToString("dd/MM HH:mm") : "")
+    };
+    string NextHint() => Model.Status switch
+    {
+        RepairStatus.Pending => "Đang chờ Quản lý duyệt và phân công nhân viên bảo trì.",
+        RepairStatus.Rejected => "Yêu cầu đã bị trả về. Người tạo cần chỉnh sửa và gửi lại.",
+        RepairStatus.Assigned => "Đang chờ nhân viên bảo trì xác nhận nhận việc.",
+        RepairStatus.InProgress => "Nhân viên bảo trì đang sửa chữa. Thiếu vật tư thì tạo yêu cầu mua; đủ thì hoàn thành.",
+        RepairStatus.WaitingMaterial => "Đang chờ Quản lý mua vật tư. Mua xong, yêu cầu tự quay lại trạng thái sửa chữa.",
+        RepairStatus.Completed => "Yêu cầu đã hoàn thành.",
+        RepairStatus.Cancelled => "Yêu cầu đã bị hủy.",
+        _ => ""
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/repair-flow.css" asp-append-version="true" />
+}
+
+<div class="space-y-6 rf">
+
+    <partial name="_NotificationBanner" model="Model.Notices" />
+
+    @if (!string.IsNullOrEmpty(Model.WarningMessage))
+    {
+        <div class="rf-callout warn"><i class="bi bi-exclamation-circle-fill"></i><div>@Model.WarningMessage</div></div>
+    }
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="rf-callout ok"><i class="bi bi-check-circle-fill"></i><div>@Model.SuccessMessage</div></div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="rf-callout danger"><i class="bi bi-exclamation-triangle-fill"></i><div>@Model.ErrorMessage</div></div>
+    }
+
+    <div class="rf-head">
+        <div>
+            <h1 class="rf-title">
+                REQ-@it.RequestId.ToString("D4")
+                <span class="rf-badge" style="background: @sb.Bg; color: @sb.Fg; border-color: @sb.Border;">@RepairStatus.Label(Model.Status)</span>
+            </h1>
+            <p class="rf-subtitle">@Model.Title</p>
+            <div class="rf-chips">
+                <span class="rf-chip"><i class="bi bi-cpu"></i> @machine.MachineName</span>
+                <span class="rf-chip"><i class="bi bi-geo-alt"></i> @(string.IsNullOrWhiteSpace(it.Location) ? "Chưa ghi vị trí" : it.Location)</span>
+                <span class="rf-badge" style="background: @pb.Bg; color: @pb.Fg; border-color: @pb.Border;">@RepairStatus.PriorityLabel(it.Priority)</span>
+                @if (it.MachineStopped)
+                {
+                    <span class="rf-badge rf-plain" style="background: #f1d9d4; color: #8e2f24; border-color: #e2b9b1;"><i class="bi bi-stop-circle"></i> Máy đã dừng</span>
+                }
+            </div>
+        </div>
+        <a href="/Maintenance/Index" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-size: 12px;">
+            <i class="bi bi-arrow-left"></i> Danh sách yêu cầu
+        </a>
+    </div>
+
+    <!-- Tiến trình -->
+    <div class="rf-steps-wrap">
+        <ol class="rf-steps @(stopped ? "stopped" : "")" aria-label="Tiến trình yêu cầu">
+            @for (var i = 0; i < steps.Length; i++)
+            {
+                var state = stopped ? "" : (i < stepNow ? "done" : (i == stepNow ? "current " + stepMode : ""));
+                <li class="rf-step @state" @(i == stepNow && !stopped ? "aria-current=step" : "")>
+                    <div class="rf-dot">
+                        @if (state == "done") { <i class="bi bi-check-lg"></i> }
+                        else if (state.Contains("fail")) { <i class="bi bi-x-lg"></i> }
+                        else if (state.Contains("warn")) { <i class="bi bi-hourglass-split"></i> }
+                        else { <text>@(i + 1)</text> }
+                    </div>
+                    <div class="rf-step-name">@steps[i].Name</div>
+                    @if (!string.IsNullOrEmpty(steps[i].Sub) && (state == "done" || state.StartsWith("current")))
+                    {
+                        <div class="rf-step-sub">@steps[i].Sub</div>
+                    }
+                </li>
+            }
+        </ol>
+    </div>
+    @if (stopped)
+    {
+        <div class="rf-callout info"><i class="bi bi-slash-circle"></i><div><b>Yêu cầu đã bị hủy</b>Yêu cầu này không còn được xử lý.</div></div>
+    }
+
+    @* Thông báo ngữ cảnh theo vai trò *@
+    @if (Model.Status == RepairStatus.Rejected && !string.IsNullOrWhiteSpace(Model.RejectionReason))
+    {
+        <div class="rf-callout danger">
+            <i class="bi bi-reply-fill"></i>
+            <div>
+                <b>Yêu cầu bị từ chối và trả về nhân viên</b>
+                Lý do: @Model.RejectionReason
+                @if (it.ReviewedByNavigation != null && it.ReviewedAt.HasValue)
+                {
+                    <div style="font-size: 11px; margin-top: 4px; opacity: .85;">@it.ReviewedByNavigation.FullName – @it.ReviewedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                }
+            </div>
+        </div>
+    }
+    @if (Model.Status == RepairStatus.WaitingMaterial)
+    {
+        <div class="rf-callout purple">
+            <i class="bi bi-hourglass-split"></i>
+            <div>
+                <b>Đang chờ vật tư</b>
+                Yêu cầu mua vật tư đã gửi cho Quản lý. Khi Quản lý mua xong, yêu cầu tự quay lại trạng thái đang sửa chữa và nhân viên bảo trì được thông báo để tiếp tục.
+            </div>
+        </div>
+    }
+    @if (Model.CanConfirm)
+    {
+        <div class="rf-callout info">
+            <i class="bi bi-info-circle-fill"></i>
+            <div>Bạn được phân công xử lý yêu cầu này. Hãy xem kỹ thông tin bên dưới rồi xác nhận nhận việc.</div>
+        </div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+
+            <!-- Thông tin yêu cầu -->
+            <div class="rf-card">
+                <div class="rf-card-head">
+                    <i class="bi bi-clipboard2-pulse"></i> Thông tin yêu cầu
+                </div>
+                <div class="rf-card-body">
+                    <div class="rf-grid">
+                        <div>
+                            <div class="rf-label">Máy</div>
+                            <div class="rf-value"><strong>@machine.MachineCode – @machine.MachineName</strong></div>
+                        </div>
+                        <div>
+                            <div class="rf-label">Vị trí máy</div>
+                            <div><i class="bi bi-geo-alt"></i> @(string.IsNullOrWhiteSpace(it.Location) ? "Chưa ghi vị trí" : it.Location)</div>
+                        </div>
+                        <div>
+                            <div class="rf-label">Công đoạn</div>
+                            <div>@machine.ProcessName</div>
+                        </div>
+                        <div>
+                            <div class="rf-label">Hãng máy</div>
+                            <div>@(string.IsNullOrWhiteSpace(machine.Brand) ? "—" : machine.Brand)</div>
+                        </div>
+                        <div>
+                            <div class="rf-label">Mức độ nghiêm trọng</div>
+                            <span class="badge" style="background: @pb.Bg; color: @pb.Fg; border: 1px solid @pb.Border;">@RepairStatus.PriorityLabel(it.Priority)</span>
+                        </div>
+                        <div>
+                            <div class="rf-label">Tình trạng máy</div>
+                            @if (it.MachineStopped)
+                            {
+                                <span class="badge" style="background: #f1d9d4; color: #8e2f24; border: 1px solid #e2b9b1;">Máy đã dừng hoạt động</span>
+                            }
+                            else
+                            {
+                                <span>Vẫn đang vận hành</span>
+                            }
+                        </div>
+                        <div class="rf-full">
+                            <div class="rf-label">Hiện tượng hỏng</div>
+                            <div style="font-weight: 600;">@Model.Title</div>
+                        </div>
+                        <div class="rf-full">
+                            <div class="rf-label">Mô tả chi tiết</div>
+                            <div style="white-space: pre-line;">@(string.IsNullOrWhiteSpace(Model.PlainDescription) ? "—" : Model.PlainDescription)</div>
+                        </div>
+                        <div>
+                            <div class="rf-label">Người tạo</div>
+                            <div>@it.RequestedByNavigation.FullName</div>
+                        </div>
+                        <div>
+                            <div class="rf-label">Ngày tạo</div>
+                            <div>@it.RequestDate.ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phân công / xử lý -->
+            @if (it.AssignedToNavigation != null && (Model.Status == RepairStatus.Assigned || Model.Status == RepairStatus.InProgress || Model.Status == RepairStatus.WaitingMaterial || Model.Status == RepairStatus.Completed))
+            {
+                <div class="rf-card">
+                    <div class="rf-card-head">
+                        <i class="bi bi-person-gear"></i> Phân công &amp; xử lý
+                    </div>
+                    <div class="rf-card-body">
+                        <div class="rf-grid">
+                            <div>
+                                <div class="rf-label">Nhân viên bảo trì phụ trách</div>
+                                <div style="font-weight: 700; color: #30483f;">@it.AssignedToNavigation.FullName</div>
+                            </div>
+                            <div>
+                                <div class="rf-label">Hạn hoàn thành</div>
+                                <div>@(it.DueDate.HasValue ? it.DueDate.Value.ToString("dd/MM/yyyy") : "Không đặt hạn")</div>
+                            </div>
+                            <div>
+                                <div class="rf-label">Phân công bởi</div>
+                                <div>
+                                    @(it.ReviewedByNavigation?.FullName ?? "—")
+                                    @if (it.AssignedAt.HasValue)
+                                    {
+                                        <span class="text-muted" style="font-size: 11px;">– @it.AssignedAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                    }
+                                </div>
+                            </div>
+                            <div>
+                                <div class="rf-label">Xác nhận nhận việc</div>
+                                <div>@(it.ConfirmedAt.HasValue ? it.ConfirmedAt.Value.ToString("dd/MM/yyyy HH:mm") : "Chưa xác nhận")</div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(it.AssignmentNote))
+                            {
+                                <div class="rf-full">
+                                    <div class="rf-label">Hướng dẫn của Quản lý</div>
+                                    <div style="white-space: pre-line;">@it.AssignmentNote</div>
+                                </div>
+                            }
+                            @if (Model.Status == RepairStatus.Completed)
+                            {
+                                <div>
+                                    <div class="rf-label">Hoàn thành lúc</div>
+                                    <div>@(it.CompletedAt.HasValue ? it.CompletedAt.Value.ToString("dd/MM/yyyy HH:mm") : "—")</div>
+                                </div>
+                                <div class="rf-full">
+                                    <div class="rf-label">Ghi chú hoàn thành</div>
+                                    <div style="white-space: pre-line;">@(string.IsNullOrWhiteSpace(Model.CompletionNote) ? "—" : Model.CompletionNote)</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Vật tư sửa chữa -->
+            @if (Model.CanRequestMaterial || Model.PurchaseRequests.Any())
+            {
+                <div class="rf-card">
+                    <div class="rf-card-head">
+                        <i class="bi bi-cart3"></i> Mua vật tư sửa chữa
+                        @if (Model.PurchaseRequests.Any())
+                        {
+                            <span class="rf-count">@Model.PurchaseRequests.Count yêu cầu</span>
+                        }
+                    </div>
+                    <div class="rf-card-body">
+
+                        @if (Model.CanRequestMaterial)
+                        {
+                            <div class="rf-callout info" style="margin-bottom: 14px;">
+                                <i class="bi bi-lightbulb"></i>
+                                <div>Bạn tự kiểm tra vật tư. <strong>Đủ</strong> thì cứ sửa chữa và hoàn thành bình thường. <strong>Thiếu</strong> thì nhập vật tư cần mua bên dưới và gửi cho Quản lý; yêu cầu sẽ chuyển sang <em>Chờ vật tư</em> cho tới khi mua xong.</div>
+                            </div>
+                            <form method="post" asp-page-handler="RequestPurchase" asp-route-id="@it.RequestId">
+                                <div class="rf-mat-head"><span>Tên vật tư</span><span>Số lượng</span><span>ĐVT</span><span></span></div>
+                                <div id="matRows"></div>
+                                <template id="matRowTpl">
+                                    <div class="rf-mat-row mat-row">
+                                        <input type="text" name="itemNames" maxlength="100" class="form-control" style="font-size: 12px; border-radius: 8px;" placeholder="Tên vật tư (vd: Ổ bi 6205)" />
+                                        <input type="number" name="quantities" min="1" max="9999" class="form-control" style="font-size: 12px; border-radius: 8px;" placeholder="SL" />
+                                        <input type="text" name="units" maxlength="20" class="form-control" style="font-size: 12px; border-radius: 8px;" placeholder="cái, kg..." />
+                                        <button type="button" class="btn btn-outline-secondary btn-sm mat-remove" style="border-radius: 8px;" title="Xóa dòng" aria-label="Xóa dòng"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                </template>
+                                <button type="button" id="matAdd" class="btn btn-outline-secondary btn-sm rf-btn-sm" style="margin-top: 10px;"><i class="bi bi-plus-lg"></i> Thêm vật tư</button>
+                                <textarea name="note" rows="2" maxlength="300" class="form-control" style="font-size: 12px; border-radius: 10px; margin-top: 12px;" placeholder="Ghi chú cho Quản lý (quy cách, nhà cung cấp gợi ý, mức khẩn...)"></textarea>
+                                <button type="submit" class="btn btn-warning btn-sm" style="border-radius: 8px; font-size: 12px; font-weight: 700; margin-top: 12px;"
+                                        onclick="return confirm('Gửi yêu cầu mua vật tư cho Quản lý? Yêu cầu sửa chữa sẽ chuyển sang trạng thái chờ vật tư.');">
+                                    <i class="bi bi-cart-plus"></i> Gửi yêu cầu mua vật tư
+                                </button>
+                            </form>
+                        }
+
+                        @if (Model.PurchaseRequests.Any())
+                        {
+                            <div class="rf-label" style="@(Model.CanRequestMaterial ? "margin-top: 22px;" : "") margin-bottom: 8px;">Các yêu cầu mua đã gửi</div>
+                            @foreach (var pr in Model.PurchaseRequests)
+                            {
+                                var pb2 = PurchaseRequestStatus.Badge(pr.Status);
+                                <div class="rf-pr" style="border-left-color: @pb2.Fg;">
+                                    <div class="rf-pr-main">
+                                        <div class="rf-pr-title">@pr.ItemName × @pr.Quantity @pr.Unit</div>
+                                        <div class="rf-pr-meta">
+                                            Gửi bởi @pr.RequestedByNavigation.FullName · @pr.RequestDate.ToString("dd/MM/yyyy HH:mm")
+                                            @if (pr.HandledAt.HasValue && pr.ApprovedByNavigation != null)
+                                            {
+                                                <span> · Xử lý bởi @pr.ApprovedByNavigation.FullName · @pr.HandledAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(pr.Note))
+                                        {
+                                            <div class="rf-pr-meta">Ghi chú: @pr.Note</div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(pr.ResultNote))
+                                        {
+                                            <div class="rf-pr-note"><i class="bi bi-person-badge"></i> Quản lý: @pr.ResultNote</div>
+                                        }
+                                    </div>
+                                    <div><span class="rf-badge" style="background: @pb2.Bg; color: @pb2.Fg; border-color: @pb2.Border;">@PurchaseRequestStatus.Label(pr.Status)</span></div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Lịch sử xử lý -->
+            <div class="rf-card">
+                <div class="rf-card-head">
+                    <i class="bi bi-clock-history"></i> Lịch sử xử lý
+                    @if (Model.Timeline.Any())
+                    {
+                        <span class="rf-count">@Model.Timeline.Count mốc</span>
+                    }
+                </div>
+                <div class="rf-card-body">
+                    @if (!Model.Timeline.Any())
+                    {
+                        <div style="color: #96a298; font-size: 13px;">Chưa có lịch sử xử lý.</div>
+                    }
+                    <div class="rf-timeline">
+                        @foreach (var t in Model.Timeline)
+                        {
+                            <div class="rf-tl-item">
+                                <div class="rf-tl-icon" style="color: @RepairAction.Color(t.Action);"><i class="bi @RepairAction.Icon(t.Action)"></i></div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div class="rf-tl-title">@RepairAction.Label(t.Action)</div>
+                                    <div class="rf-tl-meta">
+                                        @(t.ActorName + (string.IsNullOrEmpty(t.ActorRole) ? "" : " (" + t.ActorRole + ")")) · @t.At.ToString("dd/MM/yyyy HH:mm")
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(t.Note))
+                                    {
+                                        <div class="rf-tl-note">@t.Note</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thao tác -->
+        <div class="col-lg-4">
+            <div class="rf-card rf-side">
+                <div class="rf-card-head">
+                    <i class="bi bi-lightning-charge"></i> Thao tác
+                </div>
+                <div class="rf-card-body">
+                    <div class="rf-state">
+                        <div><span class="rf-badge" style="background: @sb.Bg; color: @sb.Fg; border-color: @sb.Border;">@RepairStatus.Label(Model.Status)</span></div>
+                        <div class="rf-state-text">@NextHint()</div>
+                    </div>
+                    <div class="rf-actions">
+
+                    @if (Model.CanReview)
+                    {
+                        <button type="button" class="btn btn-success" style="border-radius: 10px; font-weight: 700;" data-bs-toggle="modal" data-bs-target="#assignModal">
+                            <i class="bi bi-person-check"></i> Phê duyệt &amp; phân công
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" style="border-radius: 10px; font-weight: 700;" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                            <i class="bi bi-x-circle"></i> Từ chối
+                        </button>
+                    }
+
+                    @if (Model.CanReassign)
+                    {
+                        <div style="font-size: 12px; color: #52675d;">Đang chờ <strong>@it.AssignedToNavigation?.FullName</strong> xác nhận nhận việc.</div>
+                        <button type="button" class="btn btn-outline-primary" style="border-radius: 10px; font-weight: 700;" data-bs-toggle="modal" data-bs-target="#assignModal">
+                            <i class="bi bi-person-lines-fill"></i> Phân công lại
+                        </button>
+                    }
+
+                    @if (Model.CanConfirm)
+                    {
+                        <form method="post" asp-page-handler="Confirm" asp-route-id="@it.RequestId" style="display: grid; gap: 8px;">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35; margin: 0;">Ghi chú (không bắt buộc)</label>
+                            <textarea name="note" rows="2" maxlength="500" class="form-control" style="font-size: 12px; border-radius: 10px;" placeholder="Ví dụ: Sẽ có mặt kiểm tra lúc 14h..."></textarea>
+                            <button type="submit" class="btn btn-success" style="border-radius: 10px; font-weight: 700;">
+                                <i class="bi bi-hand-thumbs-up"></i> Xác nhận nhận việc
+                            </button>
+                        </form>
+                    }
+
+                    @if (Model.CanComplete)
+                    {
+                        <button type="button" class="btn btn-success" style="border-radius: 10px; font-weight: 700;" data-bs-toggle="modal" data-bs-target="#completeModal">
+                            <i class="bi bi-check2-circle"></i> Hoàn thành sửa chữa
+                        </button>
+                    }
+                    @if (Model.CanEditResubmit)
+                    {
+                        <a href="/Maintenance/Create?id=@it.RequestId" class="btn btn-success" style="border-radius: 10px; font-weight: 700;">
+                            <i class="bi bi-pencil-square"></i> Chỉnh sửa &amp; gửi lại
+                        </a>
+                    }
+
+                    @if (Model.CanCancel)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" style="border-radius: 10px; font-weight: 700;" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                            <i class="bi bi-slash-circle"></i> Hủy yêu cầu
+                        </button>
+                    }
+
+                    @if (!hasAnyAction)
+                    {
+                        <div style="font-size: 12px; color: #7a887f;">
+                            @if (Model.Status == RepairStatus.WaitingMaterial)
+                            {
+                                <a href="/MaterialPurchases/Index?StatusFilter=Pending" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-size: 12px; font-weight: 600;"><i class="bi bi-cart3"></i> Xem yêu cầu mua vật tư</a>
+                            }
+                            else
+                            {
+                                <span>Không có thao tác nào khả dụng ở trạng thái này.</span>
+                            }
+                        </div>
+                    }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ---------- MODALS ---------- *@
+@if (Model.CanReview || Model.CanReassign)
+{
+    <!-- Phê duyệt & phân công / Phân công lại -->
+    <div class="modal fade" id="assignModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="@(Model.CanReassign ? "Reassign" : "Approve")" asp-route-id="@it.RequestId">
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;">
+                            <i class="bi bi-person-check"></i> @(Model.CanReassign ? "Phân công lại" : "Phê duyệt & phân công") REQ-@it.RequestId.ToString("D4")
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        @if (!Model.Technicians.Any())
+                        {
+                            <div class="alert alert-warning" style="font-size: 12px; border-radius: 10px;">
+                                Chưa có nhân viên bảo trì (Maintenance Staff) nào đang hoạt động để phân công.
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Giao cho nhân viên bảo trì <span style="color: #a55449;">*</span></label>
+                            <select name="assignedStaffId" class="form-select" required style="font-size: 13px; border-radius: 10px;">
+                                <option value="">-- Chọn nhân viên --</option>
+                                @foreach (var tech in Model.Technicians)
+                                {
+                                    <option value="@tech.UserId" disabled="@(Model.CanReassign && it.AssignedTo == tech.UserId)">
+                                        @(tech.FullName + (string.IsNullOrEmpty(tech.Phone) ? "" : " – " + tech.Phone) + (Model.CanReassign && it.AssignedTo == tech.UserId ? " (đang phụ trách)" : ""))
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Mức độ ưu tiên</label>
+                                <select name="priority" class="form-select" style="font-size: 13px; border-radius: 10px;">
+                                    @foreach (var p in RepairStatus.PriorityLevels)
+                                    {
+                                        <option value="@p" selected="@(assignPriority == p)">@RepairStatus.PriorityLabel(p)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Hạn hoàn thành</label>
+                                <input type="date" name="dueDate" class="form-control" min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                                       value="@(it.DueDate.HasValue && it.DueDate.Value.Date >= DateTime.Today ? it.DueDate.Value.ToString("yyyy-MM-dd") : "")"
+                                       style="font-size: 13px; border-radius: 10px;" />
+                            </div>
+                        </div>
+                        <div class="mb-1">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Hướng dẫn / ghi chú cho nhân viên bảo trì</label>
+                            <textarea name="note" rows="3" maxlength="300" class="form-control" style="font-size: 12px; border-radius: 10px;"
+                                      placeholder="Ví dụ: Ưu tiên kiểm tra ổ bi trục quay trước ca chiều...">@it.AssignmentNote</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-success" disabled="@(!Model.Technicians.Any())" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
+                            <i class="bi bi-check2"></i> @(Model.CanReassign ? "Phân công lại" : "Duyệt & phân công")
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.CanReview)
+{
+    <!-- Từ chối -->
+    <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="Reject" asp-route-id="@it.RequestId">
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #94473e;"><i class="bi bi-x-circle"></i> Từ chối REQ-@it.RequestId.ToString("D4")</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <p style="font-size: 12px; color: #52675d;">Yêu cầu sẽ được trả về cho <strong>@it.RequestedByNavigation.FullName</strong> để chỉnh sửa và gửi lại.</p>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Lý do từ chối <span style="color: #a55449;">*</span></label>
+                        <textarea name="reason" rows="4" maxlength="500" required class="form-control" style="font-size: 12px; border-radius: 10px;"
+                                  placeholder="Nêu rõ cần bổ sung / chỉnh sửa gì..."></textarea>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-size: 12px; font-weight: 700;">Từ chối &amp; trả về</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.CanComplete)
+{
+    <!-- Hoàn thành -->
+    <div class="modal fade" id="completeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="Complete" asp-route-id="@it.RequestId">
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;"><i class="bi bi-check2-circle"></i> Hoàn thành REQ-@it.RequestId.ToString("D4")</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Kết quả sửa chữa <span style="color: #a55449;">*</span></label>
+                        <textarea name="note" rows="4" maxlength="500" required class="form-control" style="font-size: 12px; border-radius: 10px;"
+                                  placeholder="Đã xử lý gì, thay thế vật tư nào, máy đã chạy thử chưa..."></textarea>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 700;">Xác nhận hoàn thành</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.CanCancel)
+{
+    <!-- Hủy yêu cầu -->
+    <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="Cancel" asp-route-id="@it.RequestId">
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;"><i class="bi bi-slash-circle"></i> Hủy REQ-@it.RequestId.ToString("D4")</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <p style="font-size: 12px; color: #52675d;">Yêu cầu bị hủy sẽ không thể mở lại. Bạn cần tạo yêu cầu mới nếu máy vẫn còn hỏng.</p>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Lý do hủy (không bắt buộc)</label>
+                        <textarea name="reason" rows="3" maxlength="500" class="form-control" style="font-size: 12px; border-radius: 10px;"></textarea>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Đóng</button>
+                        <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-size: 12px; font-weight: 700;">Hủy yêu cầu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var rows = document.getElementById('matRows');
+            var tpl = document.getElementById('matRowTpl');
+            var add = document.getElementById('matAdd');
+            if (!rows || !tpl || !add) return;
+            function addRow() { rows.appendChild(tpl.content.cloneNode(true)); }
+            add.addEventListener('click', addRow);
+            rows.addEventListener('click', function (e) {
+                var btn = e.target.closest('.mat-remove');
+                if (!btn) return;
+                btn.closest('.mat-row').remove();
+                if (!rows.querySelector('.mat-row')) addRow();
+            });
+            if (!rows.querySelector('.mat-row')) addRow();
+        })();
+    </script>
+}

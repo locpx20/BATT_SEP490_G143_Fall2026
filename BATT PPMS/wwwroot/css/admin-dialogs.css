@@ -1,0 +1,18 @@
+.admin-confirmation { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); color: var(--text-primary); box-shadow: 0 24px 64px #193f3538; font-family: var(--font); }
+.admin-confirmation::backdrop { background: #142b2366; }
+.admin-confirmation-content { padding: 28px 28px 24px; }
+.admin-confirmation-icon { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; margin-bottom: 16px; border-radius: 12px; background: #e5eee7; color: #193f35; font-size: 23px; }
+.admin-confirmation h2 { margin: 0 0 10px; font-size: 22px; line-height: 1.35; font-weight: 650; }
+.admin-confirmation p { margin: 0; color: var(--text-secondary); font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-line; }
+.admin-confirmation-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 18px 28px; border-top: 1px solid var(--border); background: #f4f2ea; }
+.admin-confirmation-actions .btn { min-height: 44px; padding: 10px 20px; font-size: 14px; }
+.admin-confirmation.is-danger .admin-confirmation-icon { background: #fbefea; color: #a55449; }
+.admin-confirmation.is-danger [data-admin-confirm-accept] { background: #a55449; border-color: #a55449; color: #fffefa; }
+.admin-confirmation.is-danger [data-admin-confirm-accept]:hover { background: #873f36; border-color: #873f36; }
+.admin-confirmation button:focus-visible { outline: 2px solid #b5974f; outline-offset: 3px; }
+.admin-feedback { display: flex; align-items: flex-start; gap: 12px; border-radius: 10px; padding: 15px 18px; font-size: 14px; line-height: 1.6; }
+.admin-feedback > span { flex: 1; overflow-wrap: anywhere; }
+.admin-feedback button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 5px; color: inherit; background: transparent; font-size: 16px; cursor: pointer; }
+.admin-feedback button:hover { background: #193f3510; }
+.admin-feedback button:focus-visible { outline: 2px solid currentColor; }
+@media (max-width: 575px) { .admin-confirmation-content { padding: 24px 20px; } .admin-confirmation-actions { padding: 16px 20px; } .admin-confirmation-actions .btn { flex: 1; } }

@@ -1,7 +1,12 @@
 @model string
-@{ var ap = Model; }
+@{ var tab = Context.Request.Query["tab"].ToString(); }
 <div class="owner-nav-section">
-    <div class="owner-nav-label">Vận hành</div>
-    <a class="nav-item @(ap == "Inventory" ? "active" : "")" href="/Inventory/Index"><i class="bi bi-boxes"></i><span>Kho nguyên liệu</span></a>
-    <a class="nav-item @(ap == "OrderList" ? "active" : "")" href="/Orders/Index"><i class="bi bi-truck"></i><span>Xuất xưởng</span></a>
+    <div class="owner-nav-label">Vận hành kho</div>
+    <a class="nav-item @(Model == "Warehouse" && tab == "plans" ? "active" : "")" href="/Warehouse/Index?tab=plans"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Kế hoạch sản xuất trong ngày</span></a>
+    <a class="nav-item @(Model == "Warehouse" && tab != "plans" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Nhập kho thành phẩm</span></a>
+</div>
+<div class="owner-nav-section">
+    <div class="owner-nav-label">Tồn kho</div>
+    <a class="nav-item @(Model == "Inventory" && tab != "finished" ? "active" : "")" href="/Inventory/Index?tab=raw"><i class="bi bi-box" aria-hidden="true"></i><span>Kho nguyên liệu</span></a>
+    <a class="nav-item @(Model == "Inventory" && tab == "finished" ? "active" : "")" href="/Inventory/Index?tab=finished"><i class="bi bi-stack" aria-hidden="true"></i><span>Kho thành phẩm</span></a>
 </div>

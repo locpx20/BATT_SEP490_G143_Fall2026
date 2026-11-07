@@ -2,7 +2,7 @@
 @model BATT_PPMS.Pages.Maintenance.IndexModel
 @using BATT_PPMS.Helpers
 @{
-    ViewData["Title"] = "Yêu cầu sửa chữa máy móc";
+    ViewData["Title"] = Model.IsStaffView ? "Báo cáo sự cố máy móc" : "Sự cố & Bảo trì Cơ điện";
     ViewData["ActivePage"] = "Maintenance";
 
     var filters = new Dictionary<string, string?>

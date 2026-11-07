@@ -1,28 +1,65 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.QC.IndexModel
-@{
-    ViewData["Title"] = "Kiem tra Chat luong QC";
-    ViewData["ActivePage"] = "QC";
-}
-
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Kiểm tra Chất lượng (QC)</h1>
-        <p class="page-subtitle">Quản lý các phiếu kiểm tra chất lượng sản phẩm</p>
-    </div>
-    <div class="page-actions">
-        <a href="/QC/Create" class="btn btn-primary" id="btn-create-qc">
-            <i class="bi bi-plus-lg"></i> Tạo phiếu kiểm tra
-        </a>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="bi bi-patch-check"></i>
-            <h3>Chưa có phiếu kiểm tra QC</h3>
-            <p>TODO: Hiển thị danh sách phiếu QC, kết quả Pass/Fail, người kiểm tra</p>
-        </div>
-    </div>
+@using BATT_PPMS.Services
+@{ ViewData["Title"] = Model.StaffView ? "Yêu cầu kiểm tra chất lượng" : "Kiểm tra chất lượng"; ViewData["ActivePage"] = "QC"; }
+@section Styles { <link rel="stylesheet" href="~/css/production-flow.css" asp-append-version="true" /> }
+<div class="flow-screen">
+    <header class="page-header"><h1 class="page-title"><i class="bi bi-patch-check" aria-hidden="true"></i> @ViewData["Title"]</h1>
+        @if (Model.StaffView) { <a class="btn btn-secondary" asp-page="/ShiftReports/Index">Báo cáo cuối ca</a> }
+    </header>
+    @if (Model.SuccessMessage != null) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
+    @if (Model.ErrorMessage != null) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
+    @if (Model.StaffView && !Model.Legacy)
+    {
+        <section class="flow-card">
+            <h2><i class="bi bi-send" aria-hidden="true"></i> Gửi yêu cầu QC</h2>
+            <p class="flow-help">Chọn phân công của bạn và sản lượng của lô cần kiểm tra. QC trả kết quả trước khi lập báo cáo cuối ca.</p>
+            @if (Model.Assignments.Count == 0) { <p class="flow-empty">Bạn chưa có phân công sản xuất hợp lệ. Liên hệ Quản lý sản xuất để được phân công.</p> }
+            else {
+                <form method="post" asp-page-handler="Request" class="flow-form">
+                    <div class="flow-field flow-wide"><label for="qcAssignment">Phân công sản xuất</label><select id="qcAssignment" name="assignmentId" class="form-select" required><option value="">Chọn ngày, ca và công việc</option>
+                        @foreach (var a in Model.Assignments) { <option value="@a.AssignmentId">@a.AssignmentDate.ToString("dd/MM/yyyy") · @a.Shift · @a.TaskDescription</option> }
+                    </select></div>
+                    <div class="flow-field"><label for="qcQuantity">Sản lượng cần kiểm tra (kg)</label><input id="qcQuantity" name="quantity" type="number" min="1" max="2147483647" step="1" required class="form-control" /></div>
+                    <div class="flow-field"><label for="qcRequestNote">Ghi chú lô hàng</label><textarea id="qcRequestNote" name="note" maxlength="5000" class="form-control" rows="2"></textarea></div>
+                    <div class="flow-form-actions"><button class="btn btn-primary" type="submit"><i class="bi bi-send" aria-hidden="true"></i> Gửi yêu cầu kiểm tra</button></div>
+                </form>
+            }
+        </section>
+    }
+    <section class="flow-card">
+        <p class="flow-help">@if(Model.Legacy) { <text>Phiếu QC cũ được giữ nguyên để tra cứu; chưa liên kết với luồng báo cáo ca mới. </text><a asp-page="/QC/Index">Yêu cầu trong luồng mới</a> } else { <a asp-page="/QC/Index" asp-route-Legacy="true">Tra cứu phiếu QC cũ</a> }</p>
+        <h2><i class="bi bi-list-check" aria-hidden="true"></i> @(Model.QcView ? "Danh sách kiểm tra" : "Yêu cầu và kết quả QC")</h2>
+        <form method="get" class="flow-filters">
+            <input type="hidden" name="Legacy" value="@Model.Legacy.ToString().ToLowerInvariant()" />
+            <div class="flow-field"><label for="qcSearch">Tìm yêu cầu, lô hàng, người gửi</label><input id="qcSearch" name="SearchTerm" value="@Model.SearchTerm" class="form-control" type="search" /></div>
+            <div class="flow-field"><label for="qcStatus">Trạng thái</label><select name="StatusFilter" id="qcStatus" class="form-select"><option value="">Tất cả</option>
+                @foreach (var s in new[] { "Pending", "In Progress", "Completed" }) { <option value="@s" selected="@(Model.StatusFilter == s)">@ProductionFlow.Label(s)</option> }
+            </select></div><button class="btn btn-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
+        </form>
+        <div class="flow-table-wrap"><table class="flow-table"><thead><tr><th>Yêu cầu / Lô hàng</th><th>Ngày / Ca</th><th>Sản lượng</th><th>Người gửi / QC</th><th>Trạng thái / Kết quả</th><th>Thao tác</th></tr></thead><tbody>
+        @foreach (var q in Model.Requests) {
+            <tr>
+                <td data-label="Yêu cầu / Lô hàng"><strong>@q.Inspection.InspectionCode</strong><small>@q.Inspection.Batch.BagNumber</small><small>Gửi @q.CreatedAt.ToString("HH:mm dd/MM/yyyy")</small></td>
+                <td data-label="Ngày / Ca">@q.Assignment.AssignmentDate.ToString("dd/MM/yyyy")<small>@q.Assignment.Shift</small></td>
+                <td data-label="Sản lượng">@((q.Receipt?.ExpectedQuantity ?? q.Inspection.Batch.Quantity).ToString("N0")) kg</td>
+                <td data-label="Người gửi / QC">@(q.Inspection.RequestedByNavigation?.FullName ?? "Tài khoản đã xóa")<small>QC: @(q.Inspection.InspectedByNavigation?.FullName ?? "Chưa tiếp nhận")</small></td>
+                <td data-label="Trạng thái / Kết quả"><span class="flow-state">@ProductionFlow.Label(q.Inspection.Status)</span>@if (q.Inspection.Result != null) { <strong class="@(q.Inspection.Result == "Pass" ? "flow-pass" : "flow-fail")">@ProductionFlow.Label(q.Inspection.Result)</strong><small>@q.Inspection.InspectDate?.ToString("HH:mm dd/MM/yyyy")</small> }</td>
+                <td data-label="Thao tác"><div class="flow-row-actions">
+                    @if (Model.QcView && !Model.Legacy && q.Inspection.Status == "Pending") { <form method="post" asp-page-handler="Start"><input type="hidden" name="requestId" value="@q.RequestId" /><button class="btn btn-primary" type="submit">Tiếp nhận</button></form> }
+                    @if (Model.CanFinish(q)) {
+                        <details class="flow-action"><summary><i class="bi bi-pencil-square" aria-hidden="true"></i> Nhập kết quả</summary><form method="post" asp-page-handler="Finish" class="flow-form flow-form-compact"><input type="hidden" name="requestId" value="@q.RequestId" />
+                            <div class="flow-field"><label for="qcResult-@q.RequestId">Kết quả</label><select id="qcResult-@q.RequestId" name="result" class="form-select" required><option value="">Chọn kết quả</option><option value="Pass">Đạt</option><option value="Fail">Không đạt</option></select></div>
+                            <div class="flow-field"><label for="qcNote-@q.RequestId">Kết luận kiểm tra</label><textarea id="qcNote-@q.RequestId" name="note" class="form-control" rows="3" required maxlength="5000"></textarea></div><button class="btn btn-primary" type="submit">Trả kết quả cho Staff</button>
+                        </form></details>
+                    }
+                    @if (Model.StaffView && !Model.Legacy && q.Inspection.Status == "Completed" && q.ReportId == null) { <a class="btn btn-primary" asp-page="/ShiftReports/Index" asp-route-QualityRequestId="@q.RequestId">Lập báo cáo ca</a> }
+                    <details class="flow-action"><summary><i class="bi bi-eye" aria-hidden="true"></i> Chi tiết</summary><div class="flow-detail"><p class="flow-note">@(q.Inspection.Note ?? "Không có ghi chú.")</p><p>Báo cáo ca: @(q.ReportId.HasValue ? $"RP-{q.ReportId:D4} · {ProductionFlow.Label(q.Report?.Status)}" : "Chưa lập")</p>@if(q.Receipt != null) { <p>Nhập kho: @ProductionFlow.Label(q.Receipt.Status)</p> }</div></details>
+                </div></td>
+            </tr>
+        }
+        @if (Model.Requests.Count == 0) { <tr><td colspan="6" class="flow-empty">Không có yêu cầu phù hợp.</td></tr> }
+        </tbody></table></div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/QC/Index", new() { ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter, ["Legacy"] = Model.Legacy.ToString().ToLowerInvariant() })' />
+    </section>
 </div>

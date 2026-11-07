@@ -1,28 +1,22 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Inventory.IndexModel
-@{
-    ViewData["Title"] = "Ton Kho";
-    ViewData["ActivePage"] = "Inventory";
-}
-
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Quản lý Tồn kho</h1>
-        <p class="page-subtitle">Theo dõi số lượng sản phẩm trong kho</p>
-    </div>
-    <div class="page-actions">
-        <a href="/Inventory/Create" class="btn btn-primary" id="btn-create-inventory">
-            <i class="bi bi-plus-lg"></i> Thêm mặt hàng
-        </a>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="bi bi-box-seam"></i>
-            <h3>Chưa có dữ liệu tồn kho</h3>
-            <p>TODO: Hiển thị danh sách hàng tồn kho, cảnh báo tồn thấp</p>
-        </div>
-    </div>
+@{ ViewData["Title"] = Model.Tab == "finished" ? "Kho thành phẩm" : "Kho nguyên liệu"; ViewData["ActivePage"] = "Inventory"; }
+@section Styles { <link rel="stylesheet" href="~/css/production-flow.css" asp-append-version="true" /> }
+<div class="flow-screen">
+    <header class="page-header"><h1 class="page-title"><i class="bi bi-boxes" aria-hidden="true"></i> @ViewData["Title"]</h1></header>
+    <section class="flow-card">
+        <form method="get" class="flow-filters"><input type="hidden" name="Tab" value="@Model.Tab" /><div class="flow-field"><label for="inventorySearch">@(Model.Tab == "finished" ? "Tìm mã lô thành phẩm" : "Tìm nguyên liệu")</label><input id="inventorySearch" type="search" name="SearchTerm" value="@Model.SearchTerm" class="form-control" /></div><button class="btn btn-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button></form>
+        @if(Model.Tab == "finished") { <p class="flow-help">Các lô đã được Thủ kho ghi nhận nhập kho. Lô chờ QC và chờ nhập kho không tính vào tồn kho.</p> }
+        <div class="flow-table-wrap"><table class="flow-table">
+        @if(Model.Tab == "finished") {
+            <thead><tr><th>Mã lô</th><th>Ngày sản xuất</th><th>Khối lượng tồn</th><th>Người tạo</th></tr></thead><tbody>
+            @foreach(var b in Model.Batches) { <tr><td data-label="Mã lô">@b.BagNumber</td><td data-label="Ngày sản xuất">@b.ProductionDate.ToString("dd/MM/yyyy")</td><td data-label="Khối lượng tồn">@b.Quantity.ToString("N2") kg</td><td data-label="Người tạo">@(b.CreatedByNavigation?.FullName ?? "Tài khoản đã xóa")</td></tr> }
+            @if(Model.Batches.Count == 0) { <tr><td colspan="4" class="flow-empty">Không có lô thành phẩm phù hợp.</td></tr> }</tbody>
+        } else {
+            <thead><tr><th>Nguyên liệu</th><th>Số lượng tồn</th><th>Đơn vị</th></tr></thead><tbody>
+            @foreach(var m in Model.Materials) { <tr><td data-label="Nguyên liệu">@m.MaterialName</td><td data-label="Số lượng tồn">@m.CurrentQuantity.ToString("N2")</td><td data-label="Đơn vị">@m.Unit</td></tr> }
+            @if(Model.Materials.Count == 0) { <tr><td colspan="3" class="flow-empty">Không có nguyên liệu phù hợp.</td></tr> }</tbody>
+        }</table></div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/Inventory/Index", new() { ["Tab"] = Model.Tab, ["SearchTerm"] = Model.SearchTerm })' />
+    </section>
 </div>

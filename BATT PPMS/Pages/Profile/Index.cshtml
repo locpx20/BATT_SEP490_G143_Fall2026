@@ -13,7 +13,10 @@
 <div class="page-header">
     <div>
         <h1 class="page-title"><i class="bi bi-person-circle heading-icon" aria-hidden="true"></i>Hồ sơ cá nhân</h1>
-        <p class="page-subtitle">Xem và cập nhật thông tin cá nhân</p>
+        @if (HttpContext.Session.GetString("RoleName") is not ("Admin" or "Admin System" or "Staff"))
+        {
+            <p class="page-subtitle">Xem và cập nhật thông tin cá nhân</p>
+        }
     </div>
 </div>
 

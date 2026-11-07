@@ -8,9 +8,5 @@
                         </span>
                         <i class="bi bi-chevron-down user-chevron" aria-hidden="true"></i>
                     </button>
-                    <nav class="topbar-panel account-panel" id="accountPanel" aria-label="Tài khoản cá nhân" hidden>
-                        <a href="/Profile/Index"><i class="bi bi-person-circle" aria-hidden="true"></i>Hồ sơ cá nhân</a>
-                        <a href="/Profile/ChangePassword"><i class="bi bi-shield-lock" aria-hidden="true"></i>Đổi mật khẩu</a>
-                        <a href="/Auth/Logout" class="account-signout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Đăng xuất</a>
-                    </nav>
+                    <partial name="~/Pages/Shared/_SidebarAccountPanel.cshtml" />
                 </div>

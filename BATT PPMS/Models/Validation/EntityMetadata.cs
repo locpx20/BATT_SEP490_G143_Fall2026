@@ -411,6 +411,10 @@ public partial class BrokenEquipmentReport { }
 
 public class BrokenEquipmentReportMetadata
 {
+    [Display(Name = "Thiết bị")]
+    [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn thiết bị.")]
+    public object? MachineId { get; set; }
+
     [Display(Name = "Mô tả")]
     public object? Description { get; set; }
 

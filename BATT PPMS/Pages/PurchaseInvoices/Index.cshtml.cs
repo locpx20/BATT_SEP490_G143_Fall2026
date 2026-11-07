@@ -20,7 +20,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public int WeighedQuantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TotalAmount { get; set; }
-        public int CreatedByStaffId { get; set; }
+        public int? CreatedByStaffId { get; set; }
         public string CreatedByName { get; set; } = string.Empty;
         public int? ApprovedByStaffId { get; set; }
         public string? ApprovedByName { get; set; }
@@ -230,7 +230,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                         UnitPrice = UnitPriceOf(p),
                         TotalAmount = p.TotalAmount,
                         CreatedByStaffId = p.CreatedBy,
-                        CreatedByName = p.CreatedByNavigation?.FullName ?? "Nhân viên thu mua",
+                        CreatedByName = p.CreatedByNavigation?.FullName ?? "Tài khoản đã xóa",
                         ApprovedByStaffId = p.ApprovedBy,
                         ApprovedByName = p.ApprovedByNavigation?.FullName,
                         Status = p.Status ?? "Pending",

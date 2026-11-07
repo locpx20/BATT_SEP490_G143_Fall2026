@@ -9,11 +9,31 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/topbar-menus.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin-pagination.css" asp-append-version="true" />
+    @if (Context.Session.GetString("RoleName") is "Admin" or "Admin System")
+    {
+        <link rel="stylesheet" href="~/css/admin-dialogs.css" asp-append-version="true" />
+    }
+    @if (Context.Session.GetString("RoleName") is "Admin" or "Admin System" or "Staff" or "QC Staff" or "Warehouse Staff")
+    {
+        <link rel="stylesheet" href="~/css/batt-select.css" asp-append-version="true" />
+    }
     @await RenderSectionAsync("Styles", required: false)
     <link rel="stylesheet" href="~/css/theme-colors.css" asp-append-version="true" />
     @if (BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")))
     {
         <link rel="stylesheet" href="~/css/owner-workspace.css" asp-append-version="true" />
+    }
+    @if (Context.Session.GetString("RoleName") == "Manager")
+    {
+        <link rel="stylesheet" href="~/css/manager-workspace.css" asp-append-version="true" />
+    }
+    @if (Context.Session.GetString("RoleName") == "Staff")
+    {
+        <link rel="stylesheet" href="~/css/staff-workspace.css" asp-append-version="true" />
+    }
+    @if (Context.Session.GetString("RoleName") is "QC Staff" or "Warehouse Staff")
+    {
+        <link rel="stylesheet" href="~/css/operations-workspace.css" asp-append-version="true" />
     }
 </head>
 <body class="@(BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")) ? "owner-workspace" : "") @ViewData["PageClass"]">
@@ -91,6 +111,16 @@
             <partial name="~/Pages/Shared/Roles/Manager/_AccountMenu.cshtml"
                      model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
         }
+        else if (isStaff)
+        {
+            <partial name="~/Pages/Shared/Roles/Production/_AccountMenu.cshtml"
+                     model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
+        }
+        else if (roleName is "QC Staff" or "Warehouse Staff")
+        {
+            <partial name="~/Pages/Shared/Roles/Production/_AccountMenu.cshtml"
+                     model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
+        }
         else
         {
         <div class="sidebar-factory-card">
@@ -105,7 +135,7 @@
 <div class="main-wrapper" id="mainWrapper">
 
     <!-- Topbar -->
-    @if (!isAdmin && !isWorkspace)
+    @if (!isAdmin && !isWorkspace && !isStaff)
     {
     <header class="topbar">
         <div class="topbar-left">
@@ -134,7 +164,7 @@
 
     <!-- Page Content -->
     <main class="page-content">
-        @if (isAdmin || isWorkspace)
+        @if (isAdmin || isWorkspace || isStaff)
         {
             <button type="button" class="admin-mobile-menu" onclick="openSidebar()" aria-label="Mở menu điều hướng">
                 <i class="bi bi-list" aria-hidden="true"></i>
@@ -204,6 +234,15 @@
 
     }
 </script>
+@if (isAdmin)
+{
+    <partial name="~/Pages/Shared/_AdminConfirmation.cshtml" />
+    <script src="~/js/admin-dialogs.js" asp-append-version="true"></script>
+}
+@if (isAdmin || isStaff || roleName is "QC Staff" or "Warehouse Staff")
+{
+    <script src="~/js/batt-select.js" asp-append-version="true"></script>
+}
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

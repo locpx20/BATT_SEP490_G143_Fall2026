@@ -3,18 +3,36 @@
 @{
     ViewData["Title"] = "Quản trị Tài khoản & Phân quyền";
     ViewData["ActivePage"] = "Users";
+    string RoleLabel(string roleName) => roleName switch
+    {
+        "Admin" or "Admin System" => "Quản trị viên hệ thống",
+        "Owner" => "Chủ doanh nghiệp",
+        "Manager" => "Quản lý sản xuất và kinh doanh",
+        "Warehouse Staff" => "Thủ kho",
+        "QC Staff" => "Nhân viên kiểm tra chất lượng",
+        "Maintenance Staff" => "Nhân viên bảo trì",
+        "Staff" => "Nhân viên sản xuất",
+        "Purchasing Staff" => "Nhân viên thu mua",
+        _ => "Vai trò khác"
+    };
 }
 
 @section Styles {
+    <link rel="stylesheet" href="~/css/partner-forms.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/admin-accounts.css" asp-append-version="true" />
     <style>
         .account-page-header { align-items: center; }
-        .account-search-form .account-create-button { min-height: 52px; padding: 14px 24px; font-size: 16px; gap: 10px; margin-left: auto; }
-        .account-search-form .account-create-button i { font-size: 19px; }
-        .account-search-form { display: flex; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 12px; margin: 0; }
-        .account-search-input { flex: 0 1 300px; min-width: 200px; position: relative; }
-        @@media (max-width: 575px) {
-            .account-search-input { width: 100%; flex-basis: 100%; }
-        }
+        .account-edit-footer { padding: 16px 20px; border-top: 1px solid #efefe7; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+        .account-delete-button { margin-right: auto; background: #fbefea; color: #a55449; border: 1px solid #e7c5bc; }
+        .account-delete-button:hover:not(:disabled) { background: #f5e0d8; color: #873f36; }
+        .account-delete-button:disabled { opacity: .5; cursor: not-allowed; }
+        .account-create-modal .info-box { padding: 16px 18px; border-radius: 8px; font-size: 14px; line-height: 1.65; }
+        .account-edit-summary { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 16px 20px; border: 1px solid #e1e5da; border-radius: 8px; background: #f4f2ea; }
+        .account-edit-summary-label { display: block; margin-bottom: 6px; color: #7a887f; font-size: 14px; font-weight: 600; }
+        .account-edit-summary-value { color: #243d35; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+        .account-edit-summary-value code { color: #193f35; font: inherit; }
+        .account-password-section { padding: 18px 20px; border: 1px solid #e1e5da; border-radius: 8px; background: #f5f4ed; }
+        .account-password-section .form-hint { display: block; color: #576b49; font-size: 14px; line-height: 1.6; }
         .admin-page-title {
             font-size: 32px !important;
             font-weight: 700 !important;
@@ -64,19 +82,21 @@
     <!-- Alerts -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
     {
-        <div class="alert alert-success">
-            <i class="bi bi-check-circle-fill"></i> @Model.SuccessMessage
+        <div class="alert alert-success admin-feedback" role="status">
+            <i class="bi bi-check-circle-fill" aria-hidden="true"></i><span>@Model.SuccessMessage</span>
+            <button type="button" data-dismiss-admin-feedback aria-label="Đóng thông báo"><i class="bi bi-x" aria-hidden="true"></i></button>
         </div>
     }
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
-        <div class="alert alert-danger">
-            <i class="bi bi-exclamation-triangle-fill"></i> @Model.ErrorMessage
+        <div class="alert alert-danger admin-feedback" role="alert">
+            <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>@Model.ErrorMessage</span>
+            <button type="button" data-dismiss-admin-feedback aria-label="Đóng thông báo"><i class="bi bi-x" aria-hidden="true"></i></button>
         </div>
     }
 
     <!-- Filter + Search -->
-    <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+    <div class="card account-filter-card" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
         <div class="card-body" style="padding: 16px 20px;">
             <form method="get" class="account-search-form" role="search" aria-label="Tìm kiếm tài khoản">
                 <!-- Search Input with Clear Button -->
@@ -84,7 +104,7 @@
                     <i class="bi bi-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #96a298; font-size: 14px; pointer-events: none;"></i>
                     <input type="text" name="SearchTerm" value="@Model.SearchTerm"
                            class="form-control"
-                           style="height: 42px; padding-left: 38px; padding-right: @(!string.IsNullOrEmpty(Model.SearchTerm) ? "36px" : "14px"); border-radius: 10px; border: 1px solid #b1bdb0; font-size: 13px; background: #f4f2ea; transition: all 0.2s ease;"
+                           style="padding-right: @(!string.IsNullOrEmpty(Model.SearchTerm) ? "36px" : "14px");"
                            aria-label="Nội dung tìm kiếm" placeholder="Tìm theo họ tên, tên tài khoản, số điện thoại..." />
                     @if (!string.IsNullOrEmpty(Model.SearchTerm))
                     {
@@ -97,46 +117,44 @@
                 </div>
 
                 <!-- Filters & Action Buttons -->
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <!-- Role Filter -->
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 12.5px; font-weight: 600; color: #52675d; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
-                            <i class="bi bi-person-badge" style="color: #193f35;"></i> Vai trò:
-                        </span>
-                        <select name="RoleFilter" onchange="this.form.submit()" class="form-select"
-                                style="height: 42px; border-radius: 10px; border: 1px solid #b1bdb0; font-size: 13px; padding: 0 36px 0 14px; min-width: 190px; background-color: #fffefa; color: #243d35; font-weight: 500; cursor: pointer;">
+                    <div class="account-filter-field account-role-filter">
+                        <label class="account-filter-label" for="account-role-filter">
+                            <i class="bi bi-person-badge" aria-hidden="true"></i> Vai trò:
+                        </label>
+                        <select name="RoleFilter" id="account-role-filter" onchange="this.form.submit()" class="form-select">
                             <option value="">Tất cả vai trò</option>
-                            <option value="Admin" selected="@(Model.RoleFilter=="Admin")">Admin System</option>
-                            <option value="Owner" selected="@(Model.RoleFilter=="Owner")">Owner (Chủ nhà máy)</option>
-                            <option value="Manager" selected="@(Model.RoleFilter=="Manager")">Manager (Quản lý)</option>
-                            <option value="Purchasing Staff" selected="@(Model.RoleFilter=="Purchasing Staff")">Purchasing Staff (Thu mua)</option>
-                            <option value="Warehouse Staff" selected="@(Model.RoleFilter=="Warehouse Staff")">Warehouse Staff (Thủ kho)</option>
-                            <option value="Staff" selected="@(Model.RoleFilter=="Staff")">Production Staff (Sản xuất)</option>
-                            <option value="QC Staff" selected="@(Model.RoleFilter=="QC Staff")">QC Staff (KCS)</option>
-                            <option value="Maintenance Staff" selected="@(Model.RoleFilter=="Maintenance Staff")">Maintenance Staff (Bảo trì)</option>
+                            <option value="Admin" selected="@(Model.RoleFilter=="Admin")">Quản trị viên hệ thống</option>
+                            <option value="Owner" selected="@(Model.RoleFilter=="Owner")">Chủ doanh nghiệp</option>
+                            <option value="Manager" selected="@(Model.RoleFilter=="Manager")">Quản lý sản xuất và kinh doanh</option>
+                            <option value="Purchasing Staff" selected="@(Model.RoleFilter=="Purchasing Staff")">Nhân viên thu mua</option>
+                            <option value="Warehouse Staff" selected="@(Model.RoleFilter=="Warehouse Staff")">Thủ kho</option>
+                            <option value="Staff" selected="@(Model.RoleFilter=="Staff")">Nhân viên sản xuất</option>
+                            <option value="QC Staff" selected="@(Model.RoleFilter=="QC Staff")">Nhân viên kiểm tra chất lượng</option>
+                            <option value="Maintenance Staff" selected="@(Model.RoleFilter=="Maintenance Staff")">Nhân viên bảo trì</option>
                         </select>
                     </div>
 
                     <!-- Status Filter -->
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 12.5px; font-weight: 600; color: #52675d; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;">
-                            <i class="bi bi-toggle-on" style="color: #193f35;"></i> Trạng thái:
-                        </span>
-                        <select name="StatusFilter" onchange="this.form.submit()" class="form-select"
-                                style="height: 42px; border-radius: 10px; border: 1px solid #b1bdb0; font-size: 13px; padding: 0 36px 0 14px; min-width: 155px; background-color: #fffefa; color: #243d35; font-weight: 500; cursor: pointer;">
+                    <div class="account-filter-field account-status-filter">
+                        <label class="account-filter-label" for="account-status-filter">
+                            <i class="bi bi-toggle-on" aria-hidden="true"></i> Trạng thái:
+                        </label>
+                        <select name="StatusFilter" id="account-status-filter" onchange="this.form.submit()" class="form-select">
                             <option value="">Tất cả trạng thái</option>
                             <option value="active" selected="@(Model.StatusFilter=="active")">Đang hoạt động</option>
                             <option value="inactive" selected="@(Model.StatusFilter=="inactive")">Đã khóa</option>
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="height: 42px; padding: 0 18px; border-radius: 10px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(25, 63, 53, 0.2); background: #193f35; border-color: #193f35; color: #fffefa;">
+                <div class="account-filter-actions">
+                    <button type="submit" class="btn btn-primary">
                         <i class="bi bi-funnel-fill"></i> Lọc
                     </button>
 
                     @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.RoleFilter) || !string.IsNullOrEmpty(Model.StatusFilter))
                     {
-                        <a href="/Admin/Users/Index" class="btn btn-secondary" style="height: 42px; padding: 0 14px; border-radius: 10px; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #b1bdb0; background: #f4f2ea; color: #52675d;" title="Đặt lại bộ lọc">
+                        <a href="/Admin/Users/Index" class="btn btn-secondary" title="Đặt lại bộ lọc">
                             <i class="bi bi-arrow-counterclockwise"></i> Đặt lại
                         </a>
                     }
@@ -278,7 +296,10 @@
                                         </button>
 
                                         <!-- Toggle Lock Button -->
-                                        <form method="post" asp-route-SearchTerm="@Model.SearchTerm" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter" asp-page-handler="ToggleStatus" style="margin: 0;">
+                                        <form method="post" asp-route-SearchTerm="@Model.SearchTerm" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter" asp-page-handler="ToggleStatus" style="margin: 0;"
+                                              data-admin-confirm data-confirm-title="@(user.IsActive ? "Khóa tài khoản" : "Mở khóa tài khoản")"
+                                              data-confirm-message="@(user.IsActive ? $"Khóa tài khoản “{user.FullName}”? Người dùng sẽ không thể đăng nhập bằng tài khoản này." : $"Mở khóa tài khoản “{user.FullName}” để người dùng có thể đăng nhập lại?")"
+                                              data-confirm-label="@(user.IsActive ? "Khóa tài khoản" : "Mở khóa")" data-confirm-danger="@(user.IsActive ? "true" : "false")">
                 <input type="hidden" name="PageNumber" value="@Model.Pagination.CurrentPage" />
                                             <input type="hidden" name="userId" value="@user.UserId" />
                                             @Html.AntiForgeryToken()
@@ -286,7 +307,6 @@
                                             {
                                                 <button type="submit" class="btn btn-xs"
                                                         style="background:#faf0e9;color:#a55449;border:1px solid #e4c8bf;display:inline-flex;align-items:center;gap:4px;padding:5px 10px;font-weight:600;font-size:12px;border-radius:6px;cursor:pointer;"
-                                                        onclick="return confirm('Khóa tài khoản @user.FullName?')"
                                                         title="Khóa tài khoản">
                                                     <i class="bi bi-lock-fill"></i> Khóa
                                                 </button>
@@ -314,8 +334,8 @@
 </div>
 
 <!-- ===== MODAL: CHỈNH SỬA TÀI KHOẢN & PHÂN QUYỀN ===== -->
-<div class="modal-overlay" id="editUserModal">
-    <div class="modal-box" style="max-width: 520px;">
+<div class="modal-overlay partner-create-modal" id="editUserModal">
+    <div class="modal-box">
         <div class="modal-header">
             <h3 class="modal-title">
                 <i class="bi bi-pencil-square heading-icon" aria-hidden="true"></i>Chỉnh sửa Thông tin Tài khoản
@@ -328,18 +348,18 @@
                 <input type="hidden" name="PageNumber" value="@Model.Pagination.CurrentPage" />
             @Html.AntiForgeryToken()
             <input type="hidden" name="UserId" id="editUserId" />
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="modal-body">
                 <!-- Header Banner -->
-                <div style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <div class="account-edit-summary">
                     <div>
-                        <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Tên tài khoản</span>
-                        <div style="font-size: 15px; font-weight: 700; color: #243d35; margin-top: 2px;">
-                            <code style="color: #193f35; font-size: 14px;" id="editDisplayUsername"></code>
+                        <span class="account-edit-summary-label">Tên tài khoản</span>
+                        <div class="account-edit-summary-value">
+                            <code id="editDisplayUsername"></code>
                         </div>
                     </div>
                     <div>
-                        <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Vai trò hiện tại</span>
-                        <div style="font-size: 13px; font-weight: 700; color: #243d35; margin-top: 2px;" id="editDisplayRoleName"></div>
+                        <span class="account-edit-summary-label">Vai trò hiện tại</span>
+                        <div class="account-edit-summary-value" id="editDisplayRoleName"></div>
                     </div>
                 </div>
 
@@ -357,19 +377,19 @@
                             {
                                 @foreach (var r in Model.AllRoles)
                                 {
-                                    <option value="@r.RoleId">@r.RoleName @(!string.IsNullOrEmpty(r.Description) ? $"({r.Description})" : "")</option>
+                                    <option value="@r.RoleId">@RoleLabel(r.RoleName)</option>
                                 }
                             }
                             else
                             {
-                                <option value="1">Admin System (Quản trị hệ thống)</option>
-                                <option value="2">Owner (Chủ doanh nghiệp)</option>
-                                <option value="3">Manager (Quản lý)</option>
-                                <option value="4">Warehouse Staff (Thủ kho)</option>
-                                <option value="5">QC Staff (KCS)</option>
-                                <option value="6">Maintenance Staff (Bảo trì)</option>
-                                <option value="7">Staff (Sản xuất)</option>
-                                <option value="8">Purchasing Staff (Thu mua)</option>
+                                <option value="1">Quản trị viên hệ thống</option>
+                                <option value="2">Chủ doanh nghiệp</option>
+                                <option value="3">Quản lý sản xuất và kinh doanh</option>
+                                <option value="4">Thủ kho</option>
+                                <option value="5">Nhân viên kiểm tra chất lượng</option>
+                                <option value="6">Nhân viên bảo trì</option>
+                                <option value="7">Nhân viên sản xuất</option>
+                                <option value="8">Nhân viên thu mua</option>
                             }
                         </select>
                     </div>
@@ -381,19 +401,22 @@
                                placeholder="0901234567" required />
                     </div>
 
-                <div class="form-group" style="background: #f5f4ed; border: 1px solid #e8ecdf; border-radius: 10px; padding: 12px 14px;">
+                <div class="form-group account-password-section">
                     <label class="form-label" style="font-weight: 700; color: #45573b; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
                         <i class="bi bi-key-fill"></i> Đổi Mật khẩu Mới
                     </label>
                     <input type="password" name="NewPassword" id="editNewPassword" class="form-control"
                            placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)..." minlength="6" autocomplete="new-password"
                            style="background: #fffefa;" />
-                    <span class="form-hint" style="font-size: 11.5px; color: #576b49; margin-top: 4px; display: block;">
+                    <span class="form-hint">
                         <i class="bi bi-info-circle"></i> Để trống trường này nếu không muốn thay đổi mật khẩu hiện tại.
                     </span>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid #efefe7; display: flex; justify-content: flex-end; gap: 10px;">
+            <div class="modal-footer account-edit-footer">
+                <button type="submit" form="deleteUserForm" class="btn account-delete-button" id="deleteUserButton" disabled>
+                    <i class="bi bi-trash3" aria-hidden="true"></i> Xóa tài khoản
+                </button>
                 <button type="button" class="btn btn-secondary" onclick="hideModal('editUserModal')">Hủy</button>
                 <button type="submit" class="btn btn-primary" style="background: #193f35; border-color: #193f35;">
                     <i class="bi bi-check-lg"></i> Lưu thay đổi
@@ -403,8 +426,16 @@
     </div>
 </div>
 
+<!-- Separate form keeps deletion independent of unsaved edit fields. -->
+<form method="post" id="deleteUserForm" asp-page-handler="DeleteUser"
+      asp-route-SearchTerm="@Model.SearchTerm" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter"
+      data-admin-confirm data-confirm-title="Xóa tài khoản" data-confirm-label="Xóa tài khoản" data-confirm-danger="true">
+    <input type="hidden" name="UserId" id="deleteUserId" />
+    <input type="hidden" name="PageNumber" value="@Model.Pagination.CurrentPage" />
+</form>
+
 <!-- ===== MODAL: TẠO TÀI KHOẢN ===== -->
-<div class="modal-overlay" id="createUserModal">
+<div class="modal-overlay partner-create-modal account-create-modal" id="createUserModal">
     <div class="modal-box">
         <div class="modal-header">
             <h3 class="modal-title"><i class="bi bi-person-plus heading-icon" aria-hidden="true"></i>Cấp Tài khoản Người dùng Mới</h3>
@@ -415,12 +446,12 @@
         <form method="post" asp-route-SearchTerm="@Model.SearchTerm" asp-route-RoleFilter="@Model.RoleFilter" asp-route-StatusFilter="@Model.StatusFilter" asp-page-handler="CreateUser">
                 <input type="hidden" name="PageNumber" value="@Model.Pagination.CurrentPage" />
             @Html.AntiForgeryToken()
-            <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="modal-body">
                 <div class="form-grid-2">
                     <div class="form-group">
                         <label class="form-label">Tên tài khoản <span class="required-star">*</span></label>
                         <input type="text" name="Username" class="form-control"
-                               placeholder="nguyenvana" required style="font-family: monospace; font-weight: 700;" />
+                               placeholder="nguyenvana" required />
                     </div>
                     <div class="form-group">
                         <label class="form-label">Vai trò được cấp <span class="required-star">*</span></label>
@@ -429,19 +460,19 @@
                             {
                                 @foreach (var r in Model.AllRoles)
                                 {
-                                    <option value="@r.RoleId" selected="@(r.RoleName == "Manager")">@r.RoleName @(!string.IsNullOrEmpty(r.Description) ? $"({r.Description})" : "")</option>
+                                    <option value="@r.RoleId" selected="@(r.RoleName == "Manager")">@RoleLabel(r.RoleName)</option>
                                 }
                             }
                             else
                             {
-                                <option value="3" selected>Manager (Quản lý Vận hành)</option>
-                                <option value="8">Purchasing Staff (Thu mua)</option>
-                                <option value="4">Warehouse Staff (Thủ kho)</option>
-                                <option value="7">Staff (Sản xuất)</option>
-                                <option value="5">QC Staff (Kiểm tra KCS)</option>
-                                <option value="6">Maintenance Staff (Bảo trì)</option>
-                                <option value="1">Admin System (Quản trị hệ thống)</option>
-                                <option value="2">Owner (Chủ doanh nghiệp)</option>
+                                <option value="3" selected>Quản lý sản xuất và kinh doanh</option>
+                                <option value="8">Nhân viên thu mua</option>
+                                <option value="4">Thủ kho</option>
+                                <option value="7">Nhân viên sản xuất</option>
+                                <option value="5">Nhân viên kiểm tra chất lượng</option>
+                                <option value="6">Nhân viên bảo trì</option>
+                                <option value="1">Quản trị viên hệ thống</option>
+                                <option value="2">Chủ doanh nghiệp</option>
                             }
                         </select>
                     </div>
@@ -480,6 +511,12 @@
     }
     function openEditUserModal(userId, fullName, username, phone, roleId, roleName, isSelf) {
         document.getElementById('editUserId').value = userId;
+        document.getElementById('deleteUserId').value = userId;
+        var deleteButton = document.getElementById('deleteUserButton');
+        var isAdminAccount = isSelf || ['admin', 'admin system'].includes((roleName || '').trim().toLowerCase());
+        deleteButton.disabled = isAdminAccount;
+        deleteButton.title = isAdminAccount ? 'Không được xóa tài khoản có vai trò Admin' : 'Xóa tài khoản này';
+        document.getElementById('deleteUserForm').dataset.confirmMessage = 'Bạn có muốn xóa tài khoản “' + username + '”?\nThao tác này không thể hoàn tác. Báo cáo, đơn hàng và dữ liệu nghiệp vụ được giữ nguyên; chỉ bỏ liên kết đến tài khoản này.';
         document.getElementById('editDisplayUsername').textContent = username;
         document.getElementById('editDisplayRoleName').textContent = roleName;
         document.getElementById('editFullName').value = fullName;
@@ -489,6 +526,7 @@
         var roleSelect = document.getElementById('editRoleId');
         if (roleSelect && roleId) {
             roleSelect.value = roleId;
+            roleSelect.dispatchEvent(new Event('change', { bubbles: true }));
         }
         showModal('editUserModal');
     }

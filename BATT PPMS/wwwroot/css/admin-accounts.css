@@ -1,0 +1,27 @@
+.account-filter-card { container: account-toolbar / inline-size; }
+.account-search-form { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(210px, .8fr) minmax(210px, .7fr) max-content max-content; grid-template-areas: 'search role status actions create'; align-items: center; gap: 12px; min-width: 0; margin: 0; }
+.account-search-input { grid-area: search; position: relative; min-width: 0; }
+.account-search-input .form-control { width: 100%; min-width: 0; height: 52px; padding-left: 38px; border: 1px solid #b1bdb0; border-radius: 10px; background: #f4f2ea; font-size: 13px; }
+.account-filter-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.account-role-filter { grid-area: role; }
+.account-status-filter { grid-area: status; }
+.account-filter-label { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; color: #52675d; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.account-filter-label i { color: #193f35; }
+.account-filter-field .form-select { width: 100%; min-width: 0; height: 52px; padding: 0 32px 0 12px; border: 1px solid #b1bdb0; border-radius: 10px; background-color: #fffefa; color: #243d35; font: inherit; font-size: 13px; font-weight: 500; text-overflow: ellipsis; cursor: pointer; }
+.account-filter-actions { grid-area: actions; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.account-filter-actions .btn { min-height: 52px; padding: 0 16px; justify-content: center; border-radius: 10px; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+.account-search-form .account-create-button { grid-area: create; min-height: 52px; padding: 14px 20px; justify-content: center; gap: 10px; margin: 0; font-size: 16px; white-space: nowrap; flex-shrink: 0; }
+.account-create-button i { font-size: 19px; }
+/* Use available content width, accounting for sidebar, browser zoom and side panels. */
+@container account-toolbar (max-width: 1120px) {
+    .account-search-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) max-content; grid-template-areas: 'search search create' 'role status actions'; }
+}
+@container account-toolbar (max-width: 700px) {
+    .account-search-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'search search' 'role status' 'actions create'; align-items: stretch; }
+    .account-filter-field { flex-direction: column; align-items: stretch; gap: 6px; }
+    .account-search-form .account-create-button { font-size: 15px; padding-inline: 16px; }
+}
+@container account-toolbar (max-width: 440px) {
+    .account-search-form { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'search' 'role' 'status' 'actions' 'create'; }
+    .account-filter-actions .btn { flex: 1; }
+}

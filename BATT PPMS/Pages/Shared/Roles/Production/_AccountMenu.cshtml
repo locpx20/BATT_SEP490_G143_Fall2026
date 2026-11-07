@@ -1,0 +1,12 @@
+@model BATT_PPMS.Helpers.RoleHeaderViewModel
+<div class="topbar-dropdown sidebar-account">
+    <button type="button" class="topbar-user topbar-menu-trigger account-menu-trigger" aria-label="Mở menu tài khoản" aria-expanded="false" aria-controls="accountPanel" data-topbar-panel="accountPanel">
+        <span class="user-avatar-circle">@Model.Initials</span>
+        <span class="account-menu-identity">
+            <span class="user-display-name">@Model.FullName</span>
+            <span class="user-display-role">@Model.RoleDisplay</span>
+        </span>
+        <i class="bi bi-chevron-down user-chevron" aria-hidden="true"></i>
+    </button>
+    <partial name="~/Pages/Shared/_SidebarAccountPanel.cshtml" />
+</div>

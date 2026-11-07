@@ -1,10 +1,13 @@
 @model string
-<a class="nav-item @(Model == "Personnel" ? "active" : "")" href="/Personnel/Index">
-    <i class="bi bi-calendar-week" aria-hidden="true"></i><span>Kế hoạch sản xuất ngày hôm nay</span>
-</a>
-<a class="nav-item @(Model == "ShiftReport" ? "active" : "")" href="/ShiftReports/Index">
-    <i class="bi bi-clipboard-check" aria-hidden="true"></i><span>Báo cáo cuối ca làm việc</span>
-</a>
-<a class="nav-item @(Model is "Maintenance" or "BrokenReport" ? "active" : "")" href="/Maintenance/Index">
-    <i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>Báo cáo sự cố máy móc</span>
-</a>
+@{ var ap = Model; }
+<div class="owner-nav-section">
+    <div class="owner-nav-label">Tổng quan</div>
+    <a class="nav-item @(ap == "Dashboard" ? "active" : "")" href="/Dashboard/Index"><i class="bi bi-grid"></i><span>Tổng quan Điều hành</span></a>
+</div>
+<div class="owner-nav-section">
+    <div class="owner-nav-label">Vận hành</div>
+    <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index"><i class="bi bi-calendar-week"></i><span>Kế hoạch Sản xuất</span></a>
+    <a class="nav-item @(ap == "ShiftReport" ? "active" : "")" href="/ShiftReports/Index"><i class="bi bi-clipboard-data"></i><span>Báo cáo Ca Sản xuất</span></a>
+    <a class="nav-item @(ap is "BrokenReport" or "Maintenance" ? "active" : "")" href="/Maintenance/Index"><i class="bi bi-wrench-adjustable"></i><span>Sự cố &amp; Bảo trì Cơ điện</span></a>
+    <a class="nav-item @(ap == "Machines" ? "active" : "")" href="/Machines/Index"><i class="bi bi-cpu"></i><span>Danh mục Máy móc</span></a>
+</div>

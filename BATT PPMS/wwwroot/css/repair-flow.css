@@ -1,0 +1,143 @@
+/* =====================================================================
+   repair-flow.css – giao diện luồng sửa chữa & mua vật tư
+   Dùng chung cho: Maintenance/Index, Maintenance/Details, MaterialPurchases/Index
+   ===================================================================== */
+.rf {
+    --rf-border: var(--border, #e1e5da);
+    --rf-card: var(--bg-card, #fffefa);
+    --rf-ink: var(--text-primary, #243d35);
+    --rf-soft: #52675d;
+    --rf-muted: #7a887f;
+    --rf-line: #efefe7;
+    --rf-wash: #f4f2ea;
+    --rf-accent: var(--primary, #2f6153);
+}
+
+/* ---------- Thẻ ---------- */
+.rf-card { border: 1px solid var(--rf-border); border-radius: 14px; background: var(--rf-card); margin-bottom: 20px; overflow: hidden; }
+.rf-card-head { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--rf-line); font-size: 13px; font-weight: 800; color: var(--rf-ink); }
+.rf-card-head i { color: var(--rf-accent); }
+.rf-card-head .rf-count { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--rf-muted); background: var(--rf-wash); border-radius: 999px; padding: 2px 9px; }
+.rf-card-body { padding: 18px; }
+
+/* ---------- Nhãn / giá trị ---------- */
+.rf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; font-size: 13px; }
+.rf-grid .rf-full { grid-column: 1 / -1; }
+.rf-label { font-size: 11px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--rf-muted); margin-bottom: 3px; }
+.rf-value { color: #30483f; line-height: 1.5; }
+.rf-value strong { font-weight: 700; }
+@media (max-width: 575.98px) { .rf-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Badge ---------- */
+.rf-badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 700; border: 1px solid transparent; white-space: nowrap; line-height: 1.4; }
+.rf-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .75; }
+.rf-badge.rf-plain::before { display: none; }
+
+/* ---------- Header trang chi tiết ---------- */
+.rf-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.rf-title { font-size: 20px; font-weight: 800; color: var(--rf-ink); margin: 0 0 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.rf-subtitle { font-size: 13px; color: var(--rf-soft); margin: 0; }
+.rf-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.rf-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--rf-soft); background: var(--rf-wash); border-radius: 8px; padding: 4px 10px; }
+
+/* ---------- Thanh tiến trình ---------- */
+.rf-steps-wrap { overflow-x: auto; margin-bottom: 20px; }
+.rf-steps { display: flex; align-items: flex-start; min-width: 520px; padding: 18px 20px; list-style: none; margin: 0; border: 1px solid var(--rf-border); border-radius: 14px; background: var(--rf-card); }
+.rf-step { flex: 1 1 0; position: relative; text-align: center; padding: 0 4px; }
+.rf-step::before { content: ""; position: absolute; top: 15px; left: calc(-50% + 18px); right: calc(50% + 18px); height: 2px; background: var(--rf-border); }
+.rf-step:first-child::before { display: none; }
+.rf-dot { position: relative; z-index: 1; width: 30px; height: 30px; margin: 0 auto 8px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; background: #fff; color: #96a298; border: 2px solid var(--rf-border); }
+.rf-step-name { font-size: 12px; font-weight: 600; color: #96a298; line-height: 1.35; }
+.rf-step-sub { font-size: 11px; color: var(--rf-muted); margin-top: 2px; }
+.rf-step.done::before { background: #4d8264; }
+.rf-step.done .rf-dot { background: #4d8264; border-color: #4d8264; color: #fff; }
+.rf-step.done .rf-step-name { color: #356e51; }
+.rf-step.current::before { background: #4d8264; }
+.rf-step.current .rf-dot { border-color: #3f4a94; color: #3f4a94; box-shadow: 0 0 0 4px #e3e7f6; }
+.rf-step.current .rf-step-name { color: #243d35; font-weight: 800; }
+.rf-step.warn .rf-dot { border-color: #6b3f7a; color: #6b3f7a; background: #efe3f3; box-shadow: 0 0 0 4px #efe3f3; }
+.rf-step.fail .rf-dot { border-color: #94473e; color: #fff; background: #94473e; box-shadow: 0 0 0 4px #f1e2da; }
+.rf-step.fail .rf-step-name { color: #94473e; }
+.rf-steps.stopped .rf-step .rf-dot { background: var(--rf-wash); }
+
+/* ---------- Callout ---------- */
+.rf-callout { display: flex; gap: 12px; align-items: flex-start; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid; font-size: 13px; line-height: 1.5; }
+.rf-callout > i { font-size: 18px; line-height: 1.2; }
+.rf-callout b { display: block; font-weight: 800; margin-bottom: 2px; }
+.rf-callout.info { background: #e8f0f7; border-color: #c9dbea; color: #2f5a85; }
+.rf-callout.warn { background: #f6ecd2; border-color: #e8d7a6; color: #7a5710; }
+.rf-callout.danger { background: #f6e4df; border-color: #e4c8bf; color: #94473e; }
+.rf-callout.purple { background: #efe3f3; border-color: #d9c4e0; color: #4f2b5c; }
+.rf-callout.ok { background: #e2eee4; border-color: #c6dbc9; color: #356e51; }
+
+/* ---------- Danh sách yêu cầu mua ---------- */
+.rf-pr { display: flex; gap: 12px; border: 1px solid var(--rf-line); border-left-width: 4px; border-radius: 10px; padding: 10px 14px; font-size: 12.5px; background: #fff; }
+.rf-pr + .rf-pr { margin-top: 8px; }
+.rf-pr-main { flex: 1; min-width: 0; }
+.rf-pr-title { font-weight: 700; color: #30483f; }
+.rf-pr-meta { font-size: 11px; color: var(--rf-muted); margin-top: 2px; }
+.rf-pr-note { margin-top: 6px; font-size: 12px; color: #45594f; background: var(--rf-wash); border-radius: 8px; padding: 6px 10px; }
+
+/* ---------- Form nhập vật tư ---------- */
+.rf-mat-row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 90px 36px; gap: 8px; align-items: center; }
+.rf-mat-row + .rf-mat-row { margin-top: 8px; }
+.rf-mat-head { display: grid; grid-template-columns: minmax(0, 1fr) 90px 90px 36px; gap: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--rf-muted); margin-bottom: 6px; }
+@media (max-width: 575.98px) {
+    .rf-mat-head { display: none; }
+    .rf-mat-row { grid-template-columns: 1fr 80px 36px; }
+    .rf-mat-row input[name="itemNames"] { grid-column: 1 / -1; }
+    .rf-mat-row input[name="units"] { display: none; }
+}
+
+/* ---------- Timeline ---------- */
+.rf-timeline { position: relative; padding-left: 4px; }
+.rf-tl-item { position: relative; display: flex; gap: 14px; padding-bottom: 18px; }
+.rf-tl-item::before { content: ""; position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: var(--rf-line); }
+.rf-tl-item:last-child { padding-bottom: 0; }
+.rf-tl-item:last-child::before { display: none; }
+.rf-tl-icon { flex: 0 0 32px; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--rf-wash); font-size: 15px; }
+.rf-tl-title { font-size: 13px; font-weight: 700; color: var(--rf-ink); }
+.rf-tl-meta { font-size: 11px; color: var(--rf-muted); }
+.rf-tl-note { font-size: 12px; color: #45594f; margin-top: 6px; background: var(--rf-wash); border-radius: 8px; padding: 8px 10px; white-space: pre-line; }
+
+/* ---------- Thao tác (cột phải) ---------- */
+.rf-side { position: sticky; top: 16px; }
+.rf-state { display: flex; flex-direction: column; gap: 6px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px dashed var(--rf-border); }
+.rf-state-text { font-size: 12px; color: var(--rf-soft); line-height: 1.5; }
+.rf-actions { display: grid; gap: 10px; }
+.rf-actions .btn { border-radius: 10px; font-weight: 700; }
+
+/* ---------- Tab trạng thái ---------- */
+.rf-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; scrollbar-width: thin; }
+.rf-tab { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--rf-border); background: var(--rf-card); color: var(--rf-soft); font-size: 12.5px; font-weight: 600; text-decoration: none; transition: background .15s, border-color .15s; }
+.rf-tab:hover { background: var(--rf-wash); color: var(--rf-ink); }
+.rf-tab .n { min-width: 22px; text-align: center; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; font-weight: 800; background: var(--rf-wash); color: var(--rf-ink); }
+.rf-tab.active { background: var(--rf-ink); border-color: var(--rf-ink); color: #fff; }
+.rf-tab.active .n { background: rgba(255,255,255,.2); color: #fff; }
+.rf-tab.hot .n { background: #efe3f3; color: #6b3f7a; }
+.rf-tab.alert .n { background: #f6ecd2; color: #8a6414; }
+
+/* ---------- Thanh lọc ---------- */
+.rf-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 16px; margin-bottom: 14px; border: 1px solid var(--rf-border); border-radius: 14px; background: var(--rf-card); }
+.rf-toolbar .rf-search { position: relative; flex: 1 1 260px; max-width: 380px; }
+.rf-toolbar .rf-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--rf-muted); font-size: 13px; }
+.rf-toolbar .rf-search input { padding-left: 34px; }
+.rf-toolbar .form-control, .rf-toolbar .form-select { font-size: 12px; border-radius: 8px; }
+.rf-toolbar .form-select { max-width: 190px; }
+
+/* ---------- Bảng ---------- */
+.rf-table { margin: 0; font-size: 12.5px; vertical-align: middle; }
+.rf-table thead th { background: var(--rf-wash); text-transform: uppercase; font-size: 11px; letter-spacing: .02em; color: var(--rf-soft); font-weight: 700; padding: 12px 16px; border-bottom: 1px solid var(--rf-border); white-space: nowrap; }
+.rf-table tbody td { padding: 13px 16px; border-bottom: 1px solid var(--rf-line); }
+.rf-table tbody tr:last-child td { border-bottom: 0; }
+.rf-table tbody tr { transition: background .12s; }
+.rf-table tbody tr:hover { background: #faf9f3; }
+.rf-table tbody tr.rf-row-attn td:first-child { box-shadow: inset 3px 0 0 #8a6414; }
+.rf-table tbody tr.rf-row-purple td:first-child { box-shadow: inset 3px 0 0 #6b3f7a; }
+.rf-code { font-weight: 800; color: #123329; white-space: nowrap; text-decoration: none; }
+.rf-code:hover { text-decoration: underline; color: var(--rf-accent); }
+.rf-sub { font-size: 11px; color: var(--rf-muted); margin-top: 2px; }
+.rf-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rf-empty { text-align: center; padding: 48px 16px; color: #96a298; }
+.rf-empty i { font-size: 34px; display: block; margin-bottom: 8px; }
+.rf-btn-sm { border-radius: 8px; font-size: 12px; font-weight: 600; }

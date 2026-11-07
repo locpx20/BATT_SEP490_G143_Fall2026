@@ -456,6 +456,26 @@ public class MaintenanceRequestMetadata
     [Display(Name = "Mô tả")]
     public object? Description { get; set; }
 
+    [Display(Name = "Tiêu đề")]
+    [StringLength(150, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? Title { get; set; }
+
+    [Display(Name = "Vị trí máy")]
+    [StringLength(200, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? Location { get; set; }
+
+    [Display(Name = "Lý do từ chối")]
+    [StringLength(500, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? RejectionReason { get; set; }
+
+    [Display(Name = "Ghi chú phân công")]
+    [StringLength(500, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? AssignmentNote { get; set; }
+
+    [Display(Name = "Ghi chú hoàn thành")]
+    [StringLength(500, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? CompletionNote { get; set; }
+
 }
 
 [MetadataType(typeof(MaterialPurchaseRequestMetadata))]

@@ -1,0 +1,18 @@
+﻿@model List<BATT_PPMS.Models.AppNotification>
+@if (Model != null && Model.Any())
+{
+    foreach (var n in Model)
+    {
+        <div class="rf-callout info">
+            <i class="bi bi-bell-fill"></i>
+            <div style="flex: 1;">
+                <b>@n.Title <span style="font-weight: 500; font-size: 11px; opacity: .8;">· @n.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></b>
+                <div>@n.Message</div>
+                @if (!string.IsNullOrEmpty(n.Url))
+                {
+                    <a href="@n.Url" style="font-size: 12px; font-weight: 700;">Xem chi tiết →</a>
+                }
+            </div>
+        </div>
+    }
+}

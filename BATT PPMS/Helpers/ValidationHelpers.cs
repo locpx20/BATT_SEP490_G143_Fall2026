@@ -1,16 +1,22 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace BATT_PPMS.Helpers
 {
+    /// <summary>Các regex dùng chung (hằng số để dùng được trong attribute).</summary>
     public static class ValidationPatterns
     {
         public const string Phone = @"^[0-9+()\-\s.]{8,20}$";
         public const string Username = @"^[A-Za-z0-9._-]{3,50}$";
+        // Cột User.password là VARCHAR (không phải NVARCHAR) -> ký tự có dấu sẽ bị hỏng khi lưu.
         public const string AsciiPassword = @"^[\x21-\x7E]([\x20-\x7E]*[\x21-\x7E])?$";
     }
+
+    /// <summary>
+    /// Tập giá trị Status/Priority hợp lệ cho từng bảng. Thêm trạng thái mới ở đây.
+    /// </summary>
     public static class StatusSets
     {
         public static readonly string[] UserStatuses = { "Active", "Inactive", "Locked" };
@@ -20,11 +26,11 @@ namespace BATT_PPMS.Helpers
         public static readonly string[] DeliveryStatuses = { "Prepared", "In Transit", "Delivered", "Cancelled" };
         public static readonly string[] EquipmentStatuses = { "Reported", "Under Maintenance", "Fixed" };
         public static readonly string[] PriorityLevels = { "Low", "Normal", "Medium", "High", "Critical" };
-        public static readonly string[] MaintenanceStatuses = { "Pending", "Reported", "Assigned", "In Progress", "InProgress", "Completed", "Rejected", "Cancelled" };
+        public static readonly string[] MaintenanceStatuses = { "Pending", "Reported", "Assigned", "In Progress", "InProgress", "WaitingMaterial", "Completed", "Rejected", "Cancelled" };
         public static readonly string[] AssignmentStatuses = { "Assigned", "In Progress", "Done", "Cancelled" };
         public static readonly string[] ShiftReportStatuses = { "Submitted", "Pending", "Approved", "Rejected" };
         public static readonly string[] PurchaseStatuses = { "Pending", "Submitted", "Approved", "Rejected", "Received", "Completed", "Cancelled" };
-        public static readonly string[] RequestStatuses = { "Pending", "Approved", "Rejected", "Completed", "Cancelled" };
+        public static readonly string[] RequestStatuses = { "Pending", "Approved", "Purchased", "Rejected", "Completed", "Cancelled" };
         public static readonly string[] QcStatuses = { "Pending", "In Progress", "Completed" };
         public static readonly string[] QcResults = { "Pass", "Fail" };
 
@@ -36,6 +42,7 @@ namespace BATT_PPMS.Helpers
             value == null || set.Contains(value, StringComparer.Ordinal);
     }
 
+    /// <summary>Giá trị phải thuộc một tập trạng thái (null được chấp nhận vì cột cho phép NULL/có DEFAULT).</summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
     public sealed class AllowedStatusAttribute : ValidationAttribute
     {
@@ -53,6 +60,7 @@ namespace BATT_PPMS.Helpers
             value is null || (value is string s && StatusSets.IsValid(StatusSets.Get(_setName), s));
     }
 
+    /// <summary>Ngày hợp lệ cho SQL Server DATETIME (>= 1753) và hợp lý nghiệp vụ (2000–2100).</summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
     public sealed class SqlDateRangeAttribute : ValidationAttribute
     {
@@ -70,6 +78,7 @@ namespace BATT_PPMS.Helpers
         };
     }
 
+    /// <summary>Lỗi dữ liệu không hợp lệ bị chặn ngay trước khi SaveChanges.</summary>
     public class DataValidationException : Exception
     {
         public IReadOnlyList<string> Errors { get; }
@@ -80,7 +89,10 @@ namespace BATT_PPMS.Helpers
 
     public static class ModelValidation
     {
-
+        /// <summary>
+        /// Validator.TryValidateObject không tự đọc [MetadataType] — phải đăng ký provider.
+        /// Gọi một lần lúc khởi động (Program.cs).
+        /// </summary>
         public static void RegisterMetadata()
         {
             foreach (var t in typeof(ModelValidation).Assembly.GetTypes())
@@ -92,6 +104,7 @@ namespace BATT_PPMS.Helpers
             }
         }
 
+        /// <summary>Validate một object, trả về danh sách lỗi (rỗng nếu hợp lệ).</summary>
         public static List<string> Validate(object entity)
         {
             var results = new List<ValidationResult>();
@@ -100,8 +113,13 @@ namespace BATT_PPMS.Helpers
         }
     }
 
+    /// <summary>
+    /// Kiểm tra dữ liệu người dùng nhập ở tầng page-handler (trước khi gán vào entity),
+    /// để trả thông báo thân thiện. Metadata + SaveChanges là lớp chặn cuối cùng.
+    /// </summary>
     public static class InputValidator
     {
+        /// <summary>Trim, chuyển chuỗi rỗng thành null.</summary>
         public static string? Clean(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 
         public static string? Text(string? v, string label, int max, bool required = false)

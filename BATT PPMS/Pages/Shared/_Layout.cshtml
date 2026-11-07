@@ -42,6 +42,7 @@
     var roleName        = Context.Session.GetString("RoleName") ?? "";
     var fullName        = Context.Session.GetString("FullName") ?? "User";
     bool isAdmin        = roleName == "Admin System" || roleName == "Admin";
+    bool isStaff = roleName == "Staff";
     bool isWorkspace    = BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(roleName); // Owner, Manager và các role Staff dùng chung khung giao diện workspace
     string ap           = ViewData["ActivePage"]?.ToString() ?? "";
 

@@ -60,6 +60,9 @@ namespace BATT_PPMS.Pages.Maintenance
         // Chỉ nhân viên (Staff) tạo yêu cầu sửa chữa
         public bool CanCreate => IsStaff;
 
+        // Staff (sản xuất) nhìn trang này như màn hình báo cáo sự cố; các vai trò khác như màn hình quản lý.
+        public bool IsStaffView => IsStaff;
+
         public string ScopeHint =>
             IsStaff ? "Các yêu cầu sửa chữa do bạn tạo."
             : IsMaintenanceStaff ? "Các yêu cầu được phân công cho bạn."

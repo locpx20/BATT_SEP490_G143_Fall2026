@@ -35,6 +35,9 @@ namespace BATT_PPMS.Pages.Machines
         [BindProperty(SupportsGet = true)]
         public string? ProcessFilter { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public string? StatusFilter { get; set; }
+
         public List<MachineCardViewModel> Machines { get; set; } = new();
         public List<string> ProcessNames { get; set; } = new();
 
@@ -45,6 +48,7 @@ namespace BATT_PPMS.Pages.Machines
         public int DownCount { get; set; }
 
         public bool CanManage => IsOwner || IsManager;
+        public bool CanChangeStatus => IsOwner || IsManager || IsMaintenanceStaff;
         public bool CanDelete => IsOwner;
 
         // Bind thêm/sửa
@@ -53,9 +57,30 @@ namespace BATT_PPMS.Pages.Machines
         [BindProperty] public string NewMachineName { get; set; } = string.Empty;
         [BindProperty] public string NewProcessName { get; set; } = string.Empty;
         [BindProperty] public string? NewBrand { get; set; }
+        [BindProperty] public string NewStatus { get; set; } = "Active";
 
         [TempData] public string? SuccessMessage { get; set; }
         [TempData] public string? ErrorMessage { get; set; }
+
+        private static string NormalizeMachineStatus(string? status)
+        {
+            return status?.Trim() switch
+            {
+                "Warning" => "Warning",
+                "Down" => "Down",
+                _ => "Active"
+            };
+        }
+
+        private static string GetStatusDisplayName(string status)
+        {
+            return status switch
+            {
+                "Warning" => "Cần bảo trì",
+                "Down" => "Ngừng hoạt động",
+                _ => "Đang hoạt động"
+            };
+        }
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -84,7 +109,7 @@ namespace BATT_PPMS.Pages.Machines
                 .OrderBy(p => p)
                 .ToList();
 
-            // Mapping sang ViewModel
+            // Mapping sang ViewModel (lấy trực tiếp Status từ bảng Machine để có thể thay đổi linh hoạt)
             var vms = machines.Select(m =>
             {
                 var activeIncidents = m.BrokenEquipmentReports
@@ -94,13 +119,7 @@ namespace BATT_PPMS.Pages.Machines
                     .OrderByDescending(r => r.ReportDate)
                     .FirstOrDefault()?.ReportDate;
 
-                // Tính trạng thái hiển thị từ sự cố
-                string status = activeIncidents == 0 ? "Active"
-                    : m.BrokenEquipmentReports.Any(r =>
-                        r.Status == "Reported" &&
-                        (r.Severity == "Critical" || r.Severity == "High"))
-                        ? "Down"
-                        : "Warning";
+                string status = NormalizeMachineStatus(m.Status);
 
                 return new MachineCardViewModel
                 {
@@ -115,6 +134,12 @@ namespace BATT_PPMS.Pages.Machines
                     LastIncidentDate = lastIncident
                 };
             }).ToList();
+
+            // KPI tổng quan trước hoặc sau lọc
+            TotalMachines = vms.Count;
+            NormalCount = vms.Count(m => m.Status == "Active");
+            WarningCount = vms.Count(m => m.Status == "Warning");
+            DownCount = vms.Count(m => m.Status == "Down");
 
             // Filter
             if (!string.IsNullOrWhiteSpace(SearchTerm))
@@ -133,13 +158,12 @@ namespace BATT_PPMS.Pages.Machines
                 vms = vms.Where(m => m.ProcessName == ProcessFilter).ToList();
             }
 
-            Machines = vms.OrderBy(m => m.MachineCode).ToList();
+            if (!string.IsNullOrWhiteSpace(StatusFilter) && StatusFilter != "ALL")
+            {
+                vms = vms.Where(m => m.Status == StatusFilter).ToList();
+            }
 
-            // KPI
-            TotalMachines = Machines.Count;
-            NormalCount = Machines.Count(m => m.Status == "Active");
-            WarningCount = Machines.Count(m => m.Status == "Warning");
-            DownCount = Machines.Count(m => m.Status == "Down");
+            Machines = vms.OrderBy(m => m.MachineCode).ToList();
         }
 
         // ── Thêm máy mới ──
@@ -153,7 +177,7 @@ namespace BATT_PPMS.Pages.Machines
                 string.IsNullOrWhiteSpace(NewProcessName))
             {
                 ErrorMessage = "Vui lòng nhập đầy đủ Mã máy, Tên máy và Công đoạn.";
-                return RedirectToPage(new { SearchTerm, ProcessFilter });
+                return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 
             var exists = await _context.Machines
@@ -161,7 +185,7 @@ namespace BATT_PPMS.Pages.Machines
             if (exists)
             {
                 ErrorMessage = $"Mã máy '{NewMachineCode.Trim()}' đã tồn tại trong hệ thống.";
-                return RedirectToPage(new { SearchTerm, ProcessFilter });
+                return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 
             var machine = new Machine
@@ -170,6 +194,7 @@ namespace BATT_PPMS.Pages.Machines
                 MachineName = NewMachineName.Trim(),
                 ProcessName = NewProcessName.Trim(),
                 Brand = string.IsNullOrWhiteSpace(NewBrand) ? null : NewBrand.Trim(),
+                Status = NormalizeMachineStatus(NewStatus),
                 CreatedBy = CurrentUserId
             };
 
@@ -177,7 +202,7 @@ namespace BATT_PPMS.Pages.Machines
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã thêm thiết bị '{machine.MachineName}' ({machine.MachineCode}) vào danh mục.";
-            return RedirectToPage(new { SearchTerm, ProcessFilter });
+            return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
         }
 
         // ── Sửa thông tin máy ──
@@ -190,14 +215,14 @@ namespace BATT_PPMS.Pages.Machines
             if (machine == null)
             {
                 ErrorMessage = "Không tìm thấy thiết bị cần cập nhật.";
-                return RedirectToPage(new { SearchTerm, ProcessFilter });
+                return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 
             if (string.IsNullOrWhiteSpace(NewMachineName) ||
                 string.IsNullOrWhiteSpace(NewProcessName))
             {
                 ErrorMessage = "Vui lòng nhập đầy đủ Tên máy và Công đoạn.";
-                return RedirectToPage(new { SearchTerm, ProcessFilter });
+                return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 
             // Kiểm tra trùng mã (nếu đổi mã)
@@ -210,7 +235,7 @@ namespace BATT_PPMS.Pages.Machines
                 if (codeExists)
                 {
                     ErrorMessage = $"Mã máy '{NewMachineCode.Trim()}' đã tồn tại.";
-                    return RedirectToPage(new { SearchTerm, ProcessFilter });
+                    return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
                 }
                 machine.MachineCode = NewMachineCode.Trim().ToUpper();
             }
@@ -218,11 +243,33 @@ namespace BATT_PPMS.Pages.Machines
             machine.MachineName = NewMachineName.Trim();
             machine.ProcessName = NewProcessName.Trim();
             machine.Brand = string.IsNullOrWhiteSpace(NewBrand) ? null : NewBrand.Trim();
+            machine.Status = NormalizeMachineStatus(NewStatus);
 
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã cập nhật thông tin thiết bị '{machine.MachineName}'.";
-            return RedirectToPage(new { SearchTerm, ProcessFilter });
+            return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
+        }
+
+        // ── Đổi nhanh trạng thái máy ──
+        public async Task<IActionResult> OnPostChangeStatusAsync(int machineId, string status)
+        {
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.MaintenanceStaff);
+            if (check != null) return check;
+
+            var machine = await _context.Machines.FindAsync(machineId);
+            if (machine == null)
+            {
+                ErrorMessage = "Không tìm thấy thiết bị cần đổi trạng thái.";
+                return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
+            }
+
+            var normalized = NormalizeMachineStatus(status);
+            machine.Status = normalized;
+            await _context.SaveChangesAsync();
+
+            SuccessMessage = $"Đã chuyển trạng thái máy '{machine.MachineName}' ({machine.MachineCode}) sang '{GetStatusDisplayName(normalized)}'.";
+            return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
         }
 
         // ── Xóa máy ──
@@ -238,21 +285,20 @@ namespace BATT_PPMS.Pages.Machines
             if (machine == null)
             {
                 ErrorMessage = "Không tìm thấy thiết bị.";
-                return RedirectToPage(new { SearchTerm, ProcessFilter });
+                return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 
             if (machine.BrokenEquipmentReports.Any())
             {
                 ErrorMessage = $"Không thể xóa '{machine.MachineName}' vì đã có {machine.BrokenEquipmentReports.Count} báo cáo sự cố liên quan.";
-                return RedirectToPage(new { SearchTerm, ProcessFilter });
+                return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 
             _context.Machines.Remove(machine);
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã xóa thiết bị '{machine.MachineName}' khỏi danh mục.";
-            return RedirectToPage(new { SearchTerm, ProcessFilter });
+            return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
         }
     }
 }
-

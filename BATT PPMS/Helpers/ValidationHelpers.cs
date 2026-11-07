@@ -29,7 +29,7 @@ namespace BATT_PPMS.Helpers
         public static readonly string[] MaintenanceStatuses = { "Pending", "Reported", "Assigned", "In Progress", "InProgress", "Completed", "Rejected" };
         public static readonly string[] AssignmentStatuses = { "Assigned", "In Progress", "Done", "Cancelled" };
         public static readonly string[] ShiftReportStatuses = { "Submitted", "Pending", "Approved", "Rejected" };
-        public static readonly string[] PurchaseStatuses = { "Pending", "Submitted", "Approved", "Rejected", "Received", "Completed", "Cancelled" };
+        public static readonly string[] PurchaseStatuses = { "Pending", "Submitted", "Approved", "Rejected", "Received", "Completed", "Cancelled", "Expired" };
         public static readonly string[] RequestStatuses = { "Pending", "Approved", "Rejected", "Completed", "Cancelled" };
         public static readonly string[] QcStatuses = { "Pending", "In Progress", "Completed" };
         public static readonly string[] QcResults = { "Pass", "Fail" };

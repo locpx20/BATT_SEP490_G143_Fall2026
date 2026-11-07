@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,6 +36,8 @@ public partial class ProductionManagementDbContext : DbContext
     public virtual DbSet<PersonnelAssignment> PersonnelAssignments { get; set; }
 
     public virtual DbSet<PurchaseInvoice> PurchaseInvoices { get; set; }
+
+    public virtual DbSet<PurchaseReceipt> PurchaseReceipts { get; set; }
 
     public virtual DbSet<PurchaseInvoiceDetail> PurchaseInvoiceDetails { get; set; }
 
@@ -461,7 +463,6 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasIndex(e => e.InvoiceCode, "UQ__Purchase__5ED70A3535712598").IsUnique();
 
             entity.Property(e => e.InvoiceId).HasColumnName("invoice_id");
-            entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.InvoiceCode)
                 .HasMaxLength(50)
@@ -479,14 +480,15 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnType("decimal(12, 2)")
                 .HasColumnName("total_amount");
 
-            entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.PurchaseInvoiceApprovedByNavigations)
-                .HasForeignKey(d => d.ApprovedBy)
-                .HasConstraintName("FK__PurchaseI__appro__10216507");
-
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.PurchaseInvoiceCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__PurchaseI__creat__0F2D40CE");
+
+            entity.Property(e => e.AssignedTo).HasColumnName("assigned_to");
+            entity.HasOne(d => d.AssignedToNavigation).WithMany()
+                .HasForeignKey(d => d.AssignedTo)
+                .HasConstraintName("FK_PurchaseInvoice_AssignedTo");
 
             entity.HasOne(d => d.Supplier).WithMany(p => p.PurchaseInvoices)
                 .HasForeignKey(d => d.SupplierId)

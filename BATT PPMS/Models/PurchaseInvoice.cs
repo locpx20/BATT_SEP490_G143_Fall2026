@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace BATT_PPMS.Models;
@@ -19,11 +19,16 @@ public partial class PurchaseInvoice
 
     public int CreatedBy { get; set; }
 
-    public int? ApprovedBy { get; set; }
+    // Nhân viên thu mua được phân công (CreatedBy = người tạo phiếu tổng)
+    public int? AssignedTo { get; set; }
+
+    public virtual User? AssignedToNavigation { get; set; }
+
+    public virtual ICollection<PurchaseReceipt> PurchaseReceipts { get; set; } = new List<PurchaseReceipt>();
 
     public string? Note { get; set; }
 
-    public virtual User? ApprovedByNavigation { get; set; }
+
 
     public virtual User CreatedByNavigation { get; set; } = null!;
 

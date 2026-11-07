@@ -1,28 +1,814 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Inventory.IndexModel
+@using System.Globalization
 @{
-    ViewData["Title"] = "Ton Kho";
+    ViewData["Title"] = "Kho nguyên vật liệu thô";
     ViewData["ActivePage"] = "Inventory";
+    var viCulture = new CultureInfo("vi-VN");
+
+    var labelStyle = "font-size: 12px; color: #64748b; margin-bottom: 2px;";
+    var valueStyle = "font-size: 14px; font-weight: 700; color: #1e293b;";
 }
 
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Quản lý Tồn kho</h1>
-        <p class="page-subtitle">Theo dõi số lượng sản phẩm trong kho</p>
-    </div>
-    <div class="page-actions">
-        <a href="/Inventory/Create" class="btn btn-primary" id="btn-create-inventory">
-            <i class="bi bi-plus-lg"></i> Thêm mặt hàng
-        </a>
-    </div>
-</div>
+@section Styles {
+    <style>
+        .wh-page-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
-<div class="card">
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="bi bi-box-seam"></i>
-            <h3>Chưa có dữ liệu tồn kho</h3>
-            <p>TODO: Hiển thị danh sách hàng tồn kho, cảnh báo tồn thấp</p>
+        .wh-breadcrumb {
+            font-size: 13px;
+            color: #718096;
+            margin-bottom: 8px;
+        }
+
+        .wh-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+
+        .wh-subtitle {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 20px;
+        }
+
+        .wh-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .wh-kpi-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .wh-kpi-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .wh-kpi-val {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1a202c;
+        }
+
+        .wh-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            overflow: hidden;
+            margin-bottom: 22px;
+        }
+
+        .wh-card-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #edf2f7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wh-card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a202c;
+            margin: 0;
+        }
+
+        .wh-filter-bar {
+            padding: 20px 24px;
+            border-bottom: 1px solid #edf2f7;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-end;
+        }
+
+        .wh-search-wrap {
+            position: relative;
+            width: 280px;
+        }
+
+        .wh-search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a0aec0;
+            font-size: 14px;
+        }
+
+        .wh-search-input {
+            width: 100%;
+            padding: 8px 12px 8px 34px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2d3748;
+            outline: none;
+            background: #ffffff;
+        }
+
+        .wh-search-input:focus {
+            border-color: #1a4332;
+        }
+
+        .wh-filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .wh-filter-label {
+            font-size: 12px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .wh-filter-select {
+            padding: 8px 30px 8px 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #2d3748;
+            background-color: #ffffff;
+            min-width: 150px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .wh-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .wh-table th {
+            text-align: left;
+            padding: 14px 18px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 1px solid #edf2f7;
+            background: #ffffff;
+            white-space: nowrap;
+        }
+
+        .wh-table td {
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #2d3748;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: middle;
+        }
+
+        .wh-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .wh-code-pm {
+            display: inline-flex;
+            align-items: center;
+            background: #faf4e8;
+            border: 1px solid #ecdcc0;
+            border-left: 4px solid #c88a2e;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #6d4d12;
+        }
+
+        .wh-code-tm {
+            display: inline-flex;
+            align-items: center;
+            background: #f1f5f1;
+            border: 1px solid #d4dfd4;
+            border-left: 4px solid #8c6d2c;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #2d3748;
+            text-decoration: none;
+        }
+
+        .wh-code-pnk {
+            display: inline-flex;
+            align-items: center;
+            background: #eef6f0;
+            border: 1px solid #cde2d3;
+            border-left: 4px solid #1a4332;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1a4332;
+        }
+
+        .wh-mono-num {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            color: #1a202c;
+        }
+
+        .wh-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .wh-status-pill .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .wh-status-pill.pending {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fef3c7;
+        }
+        .wh-status-pill.pending .dot { background: #d97706; }
+
+        .wh-status-pill.warehouse {
+            background: #ebf5ff;
+            color: #1e40af;
+            border: 1px solid #dbeafe;
+        }
+        .wh-status-pill.warehouse .dot { background: #2563eb; }
+
+        .wh-status-pill.received {
+            background: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #dcfce7;
+        }
+        .wh-status-pill.received .dot { background: #16a34a; }
+
+        .wh-status-pill.rejected {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fee2e2;
+        }
+        .wh-status-pill.rejected .dot { background: #dc2626; }
+
+        .wh-link-detail {
+            color: #2d3748;
+            font-weight: 600;
+            font-size: 13px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .wh-link-detail:hover {
+            color: #1a4332;
+            text-decoration: underline;
+        }
+
+        .wh-btn-approve {
+            background: #15803d;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 5px 11px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .wh-btn-approve:hover {
+            background: #166534;
+        }
+
+        .wh-btn-reject {
+            background: #ffffff;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .wh-btn-reject:hover {
+            background: #fef2f2;
+        }
+
+        .wh-footer {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #718096;
+        }
+
+        .wh-pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .wh-page-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #4a5568;
+            text-decoration: none;
+            font-size: 13px;
+        }
+
+        .wh-page-btn.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+}
+
+<div class="wh-page-container">
+    <div class="wh-breadcrumb">
+        <span style="color: #a0aec0;">BATT PPMS</span>
+        <span style="margin: 0 6px; color: #cbd5e0;">/</span>
+        <span>Kho nguyên vật liệu thô</span>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success" style="border-radius: 10px; font-size: 13px; margin-bottom: 16px;">
+            <i class="bi bi-check-circle-fill me-2"></i>@Model.SuccessMessage
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger" style="border-radius: 10px; font-size: 13px; margin-bottom: 16px;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+        </div>
+    }
+
+    <div>
+        <h1 class="wh-title">Danh sách phiếu mua hàng con &amp; Phiếu nhập kho</h1>
+        <p class="wh-subtitle">Thủ kho xác nhận nhập kho để lập Phiếu nhập kho nguyên liệu (PNK-26xxx) gửi Manager phê duyệt.</p>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="wh-kpi-grid">
+        <div class="wh-kpi-card">
+            <div class="wh-kpi-label">Tồn kho nguyên liệu thô</div>
+            <div class="wh-kpi-val">@Model.TotalRawInventoryKg.ToString("N0", viCulture) <span style="font-size: 13px; font-weight: 600; color: #64748b;">kg</span></div>
+        </div>
+        <div class="wh-kpi-card">
+            <div class="wh-kpi-label">Phiếu con chờ Thủ kho xác nhận</div>
+            <div class="wh-kpi-val" style="color: #b45309;">@Model.PendingWarehouseCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">phiếu</span></div>
+        </div>
+        <div class="wh-kpi-card">
+            <div class="wh-kpi-label">Phiếu nhập kho chờ Manager duyệt</div>
+            <div class="wh-kpi-val" style="color: #1e40af;">@Model.WaitingManagerApprovalCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">phiếu</span></div>
+        </div>
+        <div class="wh-kpi-card">
+            <div class="wh-kpi-label">Phiếu con đã nhập kho</div>
+            <div class="wh-kpi-val" style="color: #15803d;">@Model.ReceivedReceiptsCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">phiếu</span></div>
+        </div>
+    </div>
+
+    <!-- Table 1: Danh sách phiếu mua hàng con -->
+    <div class="wh-card">
+        <form method="get" id="whFilterForm">
+            <input type="hidden" name="PageSize" value="@Model.PageSize" />
+            <div class="wh-filter-bar">
+                <div class="wh-search-wrap">
+                    <i class="bi bi-search wh-search-icon"></i>
+                    <input type="text"
+                           name="SearchTerm"
+                           value="@Model.SearchTerm"
+                           class="wh-search-input"
+                           placeholder="Tìm mã PM-26xxx, PNK-26xxx, NCC..."
+                           onchange="this.form.submit()" />
+                </div>
+
+                <div class="wh-filter-group">
+                    <label class="wh-filter-label">Trạng thái</label>
+                    <select name="StatusFilter" class="wh-filter-select" onchange="this.form.submit()">
+                        <option value="all" selected="@(string.IsNullOrEmpty(Model.StatusFilter) || Model.StatusFilter == "all")">Tất cả</option>
+                        <option value="pending" selected="@(Model.StatusFilter == "pending")">Chờ Thủ kho xác nhận</option>
+                        <option value="wait_manager" selected="@(Model.StatusFilter == "wait_manager")">Chờ Manager duyệt nhập kho</option>
+                        <option value="received" selected="@(Model.StatusFilter == "received")">Đã nhập kho</option>
+                    </select>
+                </div>
+
+                <div class="wh-filter-group">
+                    <label class="wh-filter-label">Nhà cung cấp</label>
+                    <select name="SupplierFilter" class="wh-filter-select" onchange="this.form.submit()">
+                        <option value="" selected="@(!Model.SupplierFilter.HasValue)">Tất cả</option>
+                        @foreach (var s in Model.Suppliers)
+                        {
+                            <option value="@s.SupplierId" selected="@(Model.SupplierFilter == s.SupplierId)">@s.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="wh-filter-group">
+                    <label class="wh-filter-label">Ngày</label>
+                    <select name="DateFilter" class="wh-filter-select" onchange="this.form.submit()">
+                        <option value="all" selected="@(string.IsNullOrEmpty(Model.DateFilter) || Model.DateFilter == "all")">Tất cả</option>
+                        <option value="today" selected="@(Model.DateFilter == "today")">Hôm nay</option>
+                        <option value="week" selected="@(Model.DateFilter == "week")">Tuần này</option>
+                        <option value="month" selected="@(Model.DateFilter == "month")">Tháng này</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="wh-table">
+                <thead>
+                    <tr>
+                        <th>Mã phiếu con</th>
+                        <th>Phiếu tổng</th>
+                        <th>Phiếu nhập kho</th>
+                        <th>Nhà cung cấp</th>
+                        <th>Khối lượng cân</th>
+                        <th>Giá mua thực tế</th>
+                        <th>Thành tiền</th>
+                        <th>Người tạo</th>
+                        <th>Thời điểm tạo</th>
+                        <th>Trạng thái</th>
+                        <th>Chi tiết / Duyệt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Receipts.Any())
+                    {
+                        <tr>
+                            <td colspan="11" style="text-align: center; padding: 48px 20px; color: #a0aec0;">
+                                Chưa có phiếu mua hàng con nào phù hợp với bộ lọc.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var r in Model.Receipts)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="wh-code-pm">@r.ReceiptCode</span>
+                                </td>
+                                <td>
+                                    <span class="wh-code-tm">@r.InvoiceCode</span>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(r.ImportCode))
+                                    {
+                                        <span class="wh-code-pnk">@r.ImportCode</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: #94a3b8; font-size: 12px;">Chưa lập</span>
+                                    }
+                                </td>
+                                <td style="font-weight: 600;">@r.SupplierName</td>
+                                <td>
+                                    <span class="wh-mono-num">@r.WeighedQuantity.ToString("N0", viCulture) kg</span>
+                                </td>
+                                <td>
+                                    <span class="wh-mono-num">@r.ActualPrice.ToString("N0", viCulture) VNĐ</span>
+                                </td>
+                                <td>
+                                    <span class="wh-mono-num" style="font-weight: 700;">@r.TotalAmount.ToString("N0", viCulture) VNĐ</span>
+                                </td>
+                                <td>@r.CreatedByName</td>
+                                <td style="color: #64748b; font-size: 12px;">@r.CreatedAt.ToString("HH:mm dd/MM/yyyy")</td>
+                                <td>
+                                    <span class="wh-status-pill @r.StatusType">
+                                        <span class="dot"></span>
+                                        <span>@r.StatusText</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <a href="javascript:void(0)"
+                                           class="wh-link-detail receipt-detail-trigger"
+                                           data-id="@r.ReceiptId"
+                                           data-code="@r.ReceiptCode"
+                                           data-import-id="@(r.ImportId?.ToString() ?? "")"
+                                           data-import-code="@(r.ImportCode ?? "Chưa lập")"
+                                           data-supplier="@r.SupplierName"
+                                           data-qty="@r.WeighedQuantity.ToString("N0", viCulture)"
+                                           data-price="@r.ActualPrice.ToString("N0", viCulture)"
+                                           data-total="@r.TotalAmount.ToString("N0", viCulture)"
+                                           data-by="@r.CreatedByName"
+                                           data-at="@r.CreatedAt.ToString("HH:mm dd/MM/yyyy")"
+                                           data-status="@r.StatusText"
+                                           data-raw-status="@r.Status"
+                                           data-scale="@r.ScalePhotoPath"
+                                           data-invoice="@r.InvoicePhotoPath">
+                                            Xem chi tiết phiếu mua
+                                        </a>
+
+                                        @if (Model.CanManagerApprove && r.Status == "WaitManagerApproval")
+                                        {
+                                            <form method="post" asp-page-handler="ApproveImport" style="display: inline; margin: 0;">
+                                                <input type="hidden" name="importId" value="@r.ImportId" />
+                                                <input type="hidden" name="receiptId" value="@r.ReceiptId" />
+                                                <button type="submit" class="wh-btn-approve" title="Manager phê duyệt phiếu nhập kho">
+                                                    Duyệt nhập kho
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="wh-footer">
+            <div>
+                Hiển thị @Model.DisplayFrom–@Model.DisplayTo trong @Model.TotalItems kết quả
+            </div>
+
+            <div class="wh-pagination-controls">
+                <span>Số dòng</span>
+                <select class="wh-filter-select" style="min-width: 70px; padding: 6px 24px 6px 10px;" onchange="changeWhPageSize(this.value)">
+                    <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                    <option value="20" selected="@(Model.PageSize == 20)">20</option>
+                    <option value="50" selected="@(Model.PageSize == 50)">50</option>
+                </select>
+
+                <a class="wh-page-btn @(Model.CurrentPage <= 1 ? "disabled" : "")"
+                   href="@Url.Page("/Inventory/Index", new { SearchTerm = Model.SearchTerm, StatusFilter = Model.StatusFilter, SupplierFilter = Model.SupplierFilter, DateFilter = Model.DateFilter, PageSize = Model.PageSize, CurrentPage = Model.CurrentPage - 1 })">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+
+                <span>Trang @Model.CurrentPage / @Model.TotalPages</span>
+
+                <a class="wh-page-btn @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")"
+                   href="@Url.Page("/Inventory/Index", new { SearchTerm = Model.SearchTerm, StatusFilter = Model.StatusFilter, SupplierFilter = Model.SupplierFilter, DateFilter = Model.DateFilter, PageSize = Model.PageSize, CurrentPage = Model.CurrentPage + 1 })">
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table 2: Danh sách Phiếu nhập kho nguyên liệu (PNK-26xxx) -->
+    <div class="wh-card">
+        <div class="wh-card-header">
+            <div>
+                <h2 class="wh-card-title">Phiếu nhập kho nguyên liệu (PNK-26xxx)</h2>
+                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                    Danh sách phiếu nhập kho được tạo sau khi Thủ kho xác nhận nhập kho — gửi Manager phê duyệt để cộng tồn kho.
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="wh-table">
+                <thead>
+                    <tr>
+                        <th>Mã phiếu nhập kho</th>
+                        <th>Từ phiếu con</th>
+                        <th>Nhà cung cấp</th>
+                        <th>Nguyên liệu</th>
+                        <th>Khối lượng nhập</th>
+                        <th>Đơn giá</th>
+                        <th>Thành tiền</th>
+                        <th>Thủ kho lập</th>
+                        <th>Thời gian lập</th>
+                        <th>Trạng thái</th>
+                        <th>Người duyệt</th>
+                        @if (Model.CanManagerApprove)
+                        {
+                            <th>Thao tác Manager</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.ImportTickets.Any())
+                    {
+                        <tr>
+                            <td colspan="@(Model.CanManagerApprove ? 12 : 11)" style="text-align: center; padding: 36px 20px; color: #a0aec0;">
+                                Chưa có phiếu nhập kho nguyên liệu nào.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var imp in Model.ImportTickets)
+                        {
+                            <tr>
+                                <td><span class="wh-code-pnk">@imp.ImportCode</span></td>
+                                <td>
+                                    @if (imp.ReceiptCode != "—")
+                                    {
+                                        <span class="wh-code-pm">@imp.ReceiptCode</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: #94a3b8;">—</span>
+                                    }
+                                </td>
+                                <td style="font-weight: 600;">@imp.SupplierName</td>
+                                <td>@imp.MaterialName</td>
+                                <td><span class="wh-mono-num">@imp.Quantity.ToString("N0", viCulture) kg</span></td>
+                                <td><span class="wh-mono-num">@imp.UnitPrice.ToString("N0", viCulture) VNĐ</span></td>
+                                <td><span class="wh-mono-num" style="font-weight: 700;">@imp.TotalAmount.ToString("N0", viCulture) VNĐ</span></td>
+                                <td>@imp.ImportedByName</td>
+                                <td style="color: #64748b; font-size: 12px;">@imp.ImportDate.ToString("HH:mm dd/MM/yyyy")</td>
+                                <td>
+                                    <span class="wh-status-pill @imp.StatusType">
+                                        <span class="dot"></span>
+                                        <span>@imp.StatusText</span>
+                                    </span>
+                                </td>
+                                <td>@(string.IsNullOrWhiteSpace(imp.ApprovedByName) ? "—" : imp.ApprovedByName)</td>
+                                @if (Model.CanManagerApprove)
+                                {
+                                    <td>
+                                        @if (imp.Status == "Pending")
+                                        {
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <form method="post" asp-page-handler="ApproveImport" style="margin: 0;">
+                                                    <input type="hidden" name="importId" value="@imp.ImportId" />
+                                                    <button type="submit" class="wh-btn-approve">Approve (Duyệt)</button>
+                                                </form>
+                                                <form method="post" asp-page-handler="RejectImport" style="margin: 0;"
+                                                      onsubmit="return confirm('Bạn có chắc chắn muốn từ chối phiếu nhập kho @imp.ImportCode?');">
+                                                    <input type="hidden" name="importId" value="@imp.ImportId" />
+                                                    <button type="submit" class="wh-btn-reject">Từ chối</button>
+                                                </form>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span style="font-size: 12px; color: #64748b;">Đã xử lý</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
+
+<!-- POPUP: CHI TIẾT PHIẾU MUA HÀNG CON -->
+<div class="pm-overlay" id="receiptDetailModal" onclick="if (event.target === this) closePmModal('receiptDetailModal')">
+    <div class="pm-dialog pm-lg" role="dialog" aria-modal="true">
+        <div class="pm-head">
+            <h5 class="pm-title">Phiếu mua hàng con <span id="rdCode" style="font-family: monospace;"></span></h5>
+            <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('receiptDetailModal')">&times;</button>
+        </div>
+        <div class="pm-body">
+            <div class="pm-grid" style="margin-bottom: 16px;">
+                <div><div style="@labelStyle">Nhà cung cấp</div><div id="rdSupplier" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Trạng thái</div><div id="rdStatus" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Khối lượng cân</div><div id="rdQty" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Giá mua thực tế (VNĐ/kg)</div><div id="rdPrice" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Thành tiền (VNĐ)</div><div id="rdTotal" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Người tạo</div><div id="rdBy" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Thời điểm tạo</div><div id="rdAt" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Phiếu nhập kho nguyên liệu</div><div id="rdImportCode" style="@valueStyle; color: #1a4332;"></div></div>
+            </div>
+            <div class="pm-grid">
+                <div>
+                    <div style="@labelStyle">Ảnh xe cân tại xưởng</div>
+                    <a id="rdScaleLink" target="_blank">
+                        <img id="rdScale" alt="Ảnh xe cân" style="width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;" />
+                    </a>
+                </div>
+                <div id="rdInvoiceWrap">
+                    <div style="@labelStyle">Hóa đơn</div>
+                    <a id="rdInvoiceLink" target="_blank">
+                        <img id="rdInvoice" alt="Hóa đơn" style="width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;" />
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="pm-foot" style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="pm-btn-cancel" onclick="closePmModal('receiptDetailModal')">Đóng</button>
+
+            @if (Model.CanWarehouseConfirm)
+            {
+                <form method="post" asp-page-handler="ConfirmReceipt" id="rdWarehouseConfirmForm" style="margin: 0; display: none;">
+                    <input type="hidden" name="receiptId" id="rdReceiptId" />
+                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                    <input type="hidden" name="SupplierFilter" value="@Model.SupplierFilter" />
+                    <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
+                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                    <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+                    <button type="submit" class="pm-btn-primary">Xác nhận nhập kho (Tạo phiếu nhập kho)</button>
+                </form>
+            }
+
+            @if (Model.CanManagerApprove)
+            {
+                <form method="post" asp-page-handler="ApproveImport" id="rdManagerApproveForm" style="margin: 0; display: none;">
+                    <input type="hidden" name="receiptId" id="rdApproveReceiptId" />
+                    <input type="hidden" name="importId" id="rdApproveImportId" />
+                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                    <input type="hidden" name="SupplierFilter" value="@Model.SupplierFilter" />
+                    <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
+                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                    <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+                    <button type="submit" class="pm-btn-primary" style="background: #15803d;">Manager Approve (Duyệt nhập kho)</button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openPmModal(id) { document.getElementById(id).classList.add('open'); }
+        function closePmModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        function changeWhPageSize(size) {
+            var url = new URL(window.location.href);
+            url.searchParams.set('PageSize', size);
+            url.searchParams.set('CurrentPage', '1');
+            window.location.href = url.toString();
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.pm-overlay.open').forEach(function (m) { m.classList.remove('open'); });
+            }
+        });
+
+        document.querySelectorAll('.receipt-detail-trigger').forEach(function (a) {
+            a.addEventListener('click', function () {
+                var d = a.dataset;
+                document.getElementById('rdCode').innerText = d.code;
+                document.getElementById('rdSupplier').innerText = d.supplier;
+                document.getElementById('rdStatus').innerText = d.status;
+                document.getElementById('rdQty').innerText = d.qty + ' kg';
+                document.getElementById('rdPrice').innerText = d.price;
+                document.getElementById('rdTotal').innerText = d.total;
+                document.getElementById('rdBy').innerText = d.by;
+                document.getElementById('rdAt').innerText = d.at;
+                document.getElementById('rdImportCode').innerText = d.importCode || 'Chưa lập';
+                document.getElementById('rdScale').src = d.scale;
+                document.getElementById('rdScaleLink').href = d.scale;
+
+                var wrap = document.getElementById('rdInvoiceWrap');
+                if (d.invoice) {
+                    wrap.style.display = '';
+                    document.getElementById('rdInvoice').src = d.invoice;
+                    document.getElementById('rdInvoiceLink').href = d.invoice;
+                } else {
+                    wrap.style.display = 'none';
+                }
+
+                var ridInput = document.getElementById('rdReceiptId');
+                if (ridInput) ridInput.value = d.id;
+
+                var whForm = document.getElementById('rdWarehouseConfirmForm');
+                if (whForm) {
+                    whForm.style.display = (d.rawStatus === 'Pending' || d.rawStatus === 'WaitWarehouse') ? 'block' : 'none';
+                }
+
+                var mgrForm = document.getElementById('rdManagerApproveForm');
+                if (mgrForm) {
+                    document.getElementById('rdApproveReceiptId').value = d.id;
+                    document.getElementById('rdApproveImportId').value = d.importId || '';
+                    mgrForm.style.display = (d.rawStatus === 'WaitManagerApproval') ? 'block' : 'none';
+                }
+
+                openPmModal('receiptDetailModal');
+            });
+        });
+    </script>
+}

@@ -48,6 +48,7 @@ namespace BATT_PPMS.Pages.Dashboard
             PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
             var check = RequireLogin();
             if (check != null) return check;
+            if (IsWarehouseStaff) return RedirectToPage("/Inventory/Index");
 
             var roleName = HttpContext.Session.GetString("RoleName") ?? "";
             IsAdminRole = roleName == RoleConstants.Admin || roleName == "Admin";
@@ -157,10 +158,10 @@ namespace BATT_PPMS.Pages.Dashboard
 
                     PendingTasks.Add(new OperationalTaskItem
                     {
-                        Title = "1 Phiếu thu mua đã cân chờ duyệt",
-                        Description = "Cần kiểm tra phiếu cân và duyệt đơn giá thu mua",
+                        Title = "Phiếu nhập kho nguyên liệu chờ Manager duyệt",
+                        Description = "Thủ kho đã lập phiếu nhập kho nguyên liệu (PNK-26xxx), chờ Manager phê duyệt",
                         ActionText = "Xem ngay →",
-                        ActionUrl = "/PurchaseInvoices/Index",
+                        ActionUrl = "/Inventory/Index",
                         BadgeColor = "amber"
                     });
 

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace BATT_PPMS.Models;
 
@@ -38,15 +38,6 @@ public partial class MaintenanceRequest : IValidatableObject
     {
         if ((Status == "Completed" || Status == "In Progress" || Status == "InProgress") && AssignedTo == null)
             yield return new ValidationResult("Yêu cầu đang/đã sửa chữa phải được phân công người phụ trách.", new[] { nameof(AssignedTo) });
-    }
-}
-
-public partial class PurchaseInvoice : IValidatableObject
-{
-    public IEnumerable<ValidationResult> Validate(ValidationContext ctx)
-    {
-        if ((Status == "Approved" || Status == "Rejected") && ApprovedBy == null)
-            yield return new ValidationResult("Hóa đơn đã duyệt/từ chối phải ghi nhận người duyệt.", new[] { nameof(ApprovedBy) });
     }
 }
 

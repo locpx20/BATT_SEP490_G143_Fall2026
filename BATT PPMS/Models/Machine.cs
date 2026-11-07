@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace BATT_PPMS.Models;
@@ -14,6 +14,8 @@ public partial class Machine
     public string ProcessName { get; set; } = null!;
 
     public string? Brand { get; set; }
+
+    public string Status { get; set; } = "Active";
 
     public int CreatedBy { get; set; }
 

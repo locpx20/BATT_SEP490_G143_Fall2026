@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace BATT_PPMS.Models;
@@ -52,7 +52,7 @@ public partial class User
 
     public virtual ICollection<PersonnelAssignment> PersonnelAssignmentStaffs { get; set; } = new List<PersonnelAssignment>();
 
-    public virtual ICollection<PurchaseInvoice> PurchaseInvoiceApprovedByNavigations { get; set; } = new List<PurchaseInvoice>();
+
 
     public virtual ICollection<PurchaseInvoice> PurchaseInvoiceCreatedByNavigations { get; set; } = new List<PurchaseInvoice>();
 

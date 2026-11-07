@@ -22,8 +22,6 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public decimal TotalAmount { get; set; }
         public int CreatedByStaffId { get; set; }
         public string CreatedByName { get; set; } = string.Empty;
-        public int? ApprovedByStaffId { get; set; }
-        public string? ApprovedByName { get; set; }
         public string Status { get; set; } = "Pending";
         public string StatusDisplayName { get; set; } = "Đang thu mua";
         public string StatusBadgeType { get; set; } = "procuring"; // "procuring", "wait_approval", "received", "rejected"
@@ -94,8 +92,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public int DefaultMaterialId { get; set; }
         public string DefaultMaterialName { get; set; } = "Mùn cưa cao su & Keo";
 
-        public bool CanApprove => IsOwner;
-        public bool CanCreateOrder => IsPurchasingStaff || IsManager || IsOwner;
+        public bool CanCreateOrder => IsManager || IsOwner;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -173,57 +170,38 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .Include(u => u.Role)
                 .AsNoTracking()
                 .Where(u => u.Status == StatusConstants.Active &&
-                            (u.Role.RoleName == RoleConstants.PurchasingStaff ||
-                             u.Role.RoleName == RoleConstants.Manager))
+                            u.Role.RoleName == RoleConstants.PurchasingStaff)
                 .OrderBy(u => u.FullName)
                 .Select(u => new PurchasingStaffOption
                 {
                     UserId = u.UserId,
                     FullName = u.FullName,
                     Phone = u.Phone ?? string.Empty,
-                    RoleName = (u.Role != null ? (u.Role.Description ?? u.Role.RoleName) : "Nhân viên thu mua")
+                    RoleName = u.Role.RoleName
                 })
                 .ToListAsync();
 
-            // Đảm bảo luôn có nhân viên để chọn (nếu DB chưa có ai thì fallback user hiện tại hoặc mẫu)
-            if (staffQuery.Count == 0)
-            {
-                var currentUser = await _context.Users.FindAsync(CurrentUserId);
-                if (currentUser != null)
-                {
-                    staffQuery.Add(new PurchasingStaffOption
-                    {
-                        UserId = currentUser.UserId,
-                        FullName = currentUser.FullName ?? "Người dùng",
-                        Phone = currentUser.Phone ?? string.Empty,
-                        RoleName = "Nhân viên thu mua"
-                    });
-                }
-                else
-                {
-                    staffQuery.Add(new PurchasingStaffOption
-                    {
-                        UserId = 1,
-                        FullName = "Phạm Thị Mai",
-                        Phone = "0908888999",
-                        RoleName = "Nhân viên thu mua"
-                    });
-                }
-            }
-
             PurchasingStaffs = staffQuery;
 
-            // 4. Lấy toàn bộ phiếu thu mua
+            // 4. Tự động chuyển các phiếu tổng quá hạn (hết ngày lập phiếu) sang trạng thái Expired
+            await ExpirePastDayInvoicesAsync(_context);
+
+            // 5. Lấy toàn bộ phiếu thu mua
             var query = _context.PurchaseInvoices
                 .Include(p => p.Supplier)
                 .Include(p => p.CreatedByNavigation)
-                .Include(p => p.ApprovedByNavigation)
+                .Include(p => p.AssignedToNavigation)
+                .Include(p => p.PurchaseReceipts)
                 .Include(p => p.PurchaseInvoiceDetails)
                     .ThenInclude(d => d.Material)
                 .AsNoTracking()
                 .AsQueryable();
 
             var allInvoices = await query.ToListAsync();
+
+            // Nhân viên thu mua chỉ thấy các phiếu tổng được giao cho mình
+            if (IsPurchasingStaff)
+                allInvoices = allInvoices.Where(p => (p.AssignedTo ?? p.CreatedBy) == CurrentUserId).ToList();
 
             // Lọc theo ngày
             var filtered = allInvoices.AsEnumerable();
@@ -250,7 +228,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             // Lọc theo nhân viên thu mua
             if (StaffFilter.HasValue && StaffFilter.Value > 0)
             {
-                filtered = filtered.Where(p => p.CreatedBy == StaffFilter.Value);
+                filtered = filtered.Where(p => (p.AssignedTo ?? p.CreatedBy) == StaffFilter.Value);
             }
 
             // Lọc theo trạng thái
@@ -259,7 +237,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 var sf = StatusFilter.Trim().ToLowerInvariant();
                 filtered = filtered.Where(p =>
                 {
-                    var (disp, type) = MapStatus(p.Status);
+                    var (disp, type) = MapStatus(p.Status, p.PurchaseDate);
                     return type == sf || (p.Status != null && p.Status.ToLowerInvariant() == sf);
                 });
             }
@@ -284,22 +262,10 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .Select(p =>
                 {
                     var plannedQty = QuantityOf(p);
-                    var (dispStatus, badgeType) = MapStatus(p.Status);
+                    var (dispStatus, badgeType) = MapStatus(p.Status, p.PurchaseDate);
 
-                    // Đã cân: nếu đã duyệt/nhập kho thì là khối lượng cân thực tế hoặc tương đương
-                    decimal weighedQty = 0;
-                    if (badgeType == "received")
-                    {
-                        weighedQty = plannedQty;
-                    }
-                    else if (badgeType == "procuring")
-                    {
-                        weighedQty = plannedQty > 0 ? plannedQty : 0;
-                    }
-                    else
-                    {
-                        weighedQty = 0;
-                    }
+                    // Đã cân: cộng dồn khối lượng cân tại xưởng của các phiếu con
+                    decimal weighedQty = p.PurchaseReceipts.Sum(r => r.WeighedQuantity);
 
                     var badgeCode = FormatInvoiceBadgeCode(p.InvoiceCode, p.InvoiceId);
 
@@ -317,10 +283,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                         WeighedQuantity = weighedQty,
                         UnitPrice = UnitPriceOf(p),
                         TotalAmount = p.TotalAmount,
-                        CreatedByStaffId = p.CreatedBy,
-                        CreatedByName = p.CreatedByNavigation?.FullName ?? "Phạm Thị Mai",
-                        ApprovedByStaffId = p.ApprovedBy,
-                        ApprovedByName = p.ApprovedByNavigation?.FullName,
+                        CreatedByStaffId = p.AssignedTo ?? p.CreatedBy,
+                        CreatedByName = p.AssignedToNavigation?.FullName ?? p.CreatedByNavigation?.FullName ?? "Chưa phân công",
                         Status = p.Status ?? "Pending",
                         StatusDisplayName = dispStatus,
                         StatusBadgeType = badgeType,
@@ -361,17 +325,30 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             return code;
         }
 
-        public static (string DisplayName, string BadgeType) MapStatus(string? status)
+        public static bool IsInvoiceExpiredByDate(DateTime purchaseDate) =>
+            purchaseDate.Date < DateTime.Today;
+
+        public static async Task ExpirePastDayInvoicesAsync(AppDbContext context)
+        {
+            var today = DateTime.Today;
+            var pastActiveInvoices = await context.PurchaseInvoices
+                .Where(p => p.PurchaseDate < today &&
+                            (p.Status == null || p.Status == "Approved" || p.Status == "Pending" || p.Status == "Submitted"))
+                .ToListAsync();
+
+            if (pastActiveInvoices.Count > 0)
+            {
+                foreach (var inv in pastActiveInvoices)
+                {
+                    inv.Status = "Expired";
+                }
+                await context.SaveChangesAsync();
+            }
+        }
+
+        public static (string DisplayName, string BadgeType) MapStatus(string? status, DateTime? purchaseDate = null)
         {
             var s = (status ?? "").Trim().ToLowerInvariant();
-            if (s == "pending" || s == "submitted" || s == "waitownerapproval" || s.Contains("chờ") || s.Contains("owner"))
-            {
-                return ("Chờ Owner duyệt giá trần", "wait_approval");
-            }
-            if (s == "approved" || s == "inprogress" || s.Contains("thu mua") || s == "dang thuc hien")
-            {
-                return ("Đang thu mua", "procuring");
-            }
             if (s == "received" || s == "completed" || s.Contains("nhập kho"))
             {
                 return ("Đã nhập kho", "received");
@@ -379,6 +356,18 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             if (s == "rejected" || s.Contains("từ chối"))
             {
                 return ("Đã từ chối", "rejected");
+            }
+            if (s == "expired" || s.Contains("hết hạn") || (purchaseDate.HasValue && IsInvoiceExpiredByDate(purchaseDate.Value)))
+            {
+                return ("Đã hết hạn", "expired");
+            }
+            if (s == "pending" || s == "submitted" || s == "waitownerapproval" || s.Contains("chờ") || s.Contains("owner"))
+            {
+                return ("Chờ Owner duyệt giá trần", "wait_approval");
+            }
+            if (s == "approved" || s == "inprogress" || s.Contains("thu mua") || s == "dang thuc hien")
+            {
+                return ("Đang thu mua", "procuring");
             }
             return ("Đang thu mua", "procuring");
         }
@@ -408,12 +397,6 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 return Back();
             }
 
-            if (ceilingPrice <= 0 || ceilingPrice > PurchasePricing.MaxUnitPrice)
-            {
-                ErrorMessage = $"Giá trần phải lớn hơn 0 và không vượt quá {PurchasePricing.MaxUnitPrice:N0} VNĐ/kg.";
-                return Back();
-            }
-
             // Chọn nguyên liệu
             var targetMatId = materialId ?? DefaultMaterialId;
             var material = await _context.RawMaterials.FirstOrDefaultAsync(m => m.MaterialId == targetMatId);
@@ -427,11 +410,23 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 }
             }
 
-            // Kiểm tra nhân viên được giao
-            var assignedUser = await _context.Users.FindAsync(assignedStaffId);
-            if (assignedUser == null)
+            // Giá trần chỉ đọc: luôn lấy từ "Giá Thu mua Nguyên liệu" hiện hành ở server, bỏ qua giá client gửi lên
+            if (material.PurchasePrice is not decimal currentPrice || currentPrice <= 0 || currentPrice > PurchasePricing.MaxUnitPrice)
             {
-                assignedStaffId = CurrentUserId;
+                ErrorMessage = $"Nguyên liệu '{material.MaterialName}' chưa được thiết lập giá thu mua. Vui lòng thiết lập tại mục Giá thu mua Nguyên liệu.";
+                return Back();
+            }
+            ceilingPrice = currentPrice;
+
+            // Chỉ được giao cho người dùng đang hoạt động có vai trò Purchasing Staff
+            var assignedUser = await _context.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.UserId == assignedStaffId);
+            if (assignedUser == null || assignedUser.Status != StatusConstants.Active ||
+                assignedUser.Role?.RoleName != RoleConstants.PurchasingStaff)
+            {
+                ErrorMessage = "Nhân viên được phân công phải là nhân viên thu mua (Purchasing Staff) đang hoạt động.";
+                return Back();
             }
 
             // Nhà cung cấp mặc định đang hoạt động
@@ -481,18 +476,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             var invoiceCode = $"{prefix}{nextSeq:D3}";
             var totalAmount = Math.Round(plannedWeight * ceilingPrice, 2);
 
-            // Xác định trạng thái: Nếu giá trần cao hơn giá thu mua niêm yết -> Chờ Owner duyệt giá trần
-            // Nếu bằng hoặc thấp hơn -> Đang thu mua
-            string initialStatus = "Pending";
-            var standardPrice = material.PurchasePrice ?? 0;
-            if (standardPrice > 0 && ceilingPrice <= standardPrice)
-            {
-                initialStatus = "Approved"; // Đang thu mua
-            }
-            else
-            {
-                initialStatus = "Pending"; // Chờ Owner duyệt giá trần
-            }
+            // Giá trần đã được thiết lập sẵn trong "Giá Thu mua Nguyên liệu" -> không cần duyệt, phiếu vào thẳng "Đang thu mua"
+            const string initialStatus = "Approved";
 
             var invoice = new PurchaseInvoice
             {
@@ -501,7 +486,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 PurchaseDate = DateTime.Now,
                 TotalAmount = totalAmount,
                 Status = initialStatus,
-                CreatedBy = assignedStaffId,
+                CreatedBy = CurrentUserId,
+                AssignedTo = assignedStaffId,
                 Note = $"Phiếu thu mua tổng - Khối lượng dự kiến: {plannedWeight:N0} kg, Giá trần: {ceilingPrice:N0} VNĐ/kg"
             };
 
@@ -529,66 +515,5 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             return Back();
         }
 
-        public async Task<IActionResult> OnPostApproveOrderAsync(int invoiceId)
-        {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
-            if (check != null) return check;
-
-            if (!IsOwner)
-            {
-                ErrorMessage = "Chỉ Giám đốc (Owner) mới có quyền duyệt giá trần phiếu thu mua.";
-                return RedirectToPage(new { SearchTerm, StatusFilter, StaffFilter, DateFilter, PageSize, CurrentPage });
-            }
-
-            var invoice = await _context.PurchaseInvoices.FindAsync(invoiceId);
-            if (invoice == null)
-            {
-                ErrorMessage = "Không tìm thấy phiếu thu mua cần duyệt.";
-                return RedirectToPage(new { SearchTerm, StatusFilter, StaffFilter, DateFilter, PageSize, CurrentPage });
-            }
-
-            invoice.Status = "Approved"; // Đang thu mua
-            invoice.ApprovedBy = CurrentUserId;
-            invoice.Note = NoteTags.Remove(invoice.Note, NoteTags.Rejected);
-            await _context.SaveChangesAsync();
-
-            var badgeCode = FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId);
-            SuccessMessage = $"Đã phê duyệt giá trần cho phiếu thu mua {badgeCode}. Phiếu đã chuyển sang trạng thái 'Đang thu mua'.";
-            return RedirectToPage(new { SearchTerm, StatusFilter, StaffFilter, DateFilter, PageSize, CurrentPage });
-        }
-
-        public async Task<IActionResult> OnPostRejectOrderAsync(int invoiceId, string rejectionReason)
-        {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
-            if (check != null) return check;
-
-            if (!IsOwner)
-            {
-                ErrorMessage = "Chỉ Giám đốc (Owner) mới có quyền từ chối phiếu thu mua.";
-                return RedirectToPage(new { SearchTerm, StatusFilter, StaffFilter, DateFilter, PageSize, CurrentPage });
-            }
-
-            var invoice = await _context.PurchaseInvoices.FindAsync(invoiceId);
-            if (invoice == null)
-            {
-                ErrorMessage = "Không tìm thấy phiếu thu mua.";
-                return RedirectToPage(new { SearchTerm, StatusFilter, StaffFilter, DateFilter, PageSize, CurrentPage });
-            }
-
-            if (string.IsNullOrWhiteSpace(rejectionReason))
-            {
-                ErrorMessage = "Vui lòng nhập lý do từ chối phiếu thu mua.";
-                return RedirectToPage(new { SearchTerm, StatusFilter, StaffFilter, DateFilter, PageSize, CurrentPage });
-            }
-
-            invoice.Status = "Rejected";
-            invoice.ApprovedBy = CurrentUserId;
-            invoice.Note = NoteTags.Set(invoice.Note, NoteTags.Rejected, rejectionReason.Trim());
-            await _context.SaveChangesAsync();
-
-            var badgeCode = FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId);
-            SuccessMessage = $"Đã từ chối phiếu thu mua {badgeCode}. Lý do: {rejectionReason.Trim()}";
-            return RedirectToPage(new { SearchTerm, StatusFilter, StaffFilter, DateFilter, PageSize, CurrentPage });
-        }
     }
 }

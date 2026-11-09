@@ -1,11 +1,13 @@
 @page
 @model BATT_PPMS.Pages.ShiftReports.IndexModel
+@using BATT_PPMS.Services
 @{
-    ViewData["Title"] = "Báo cáo Ca Sản xuất";
+    ViewData["Title"] = Model.IsStaffView ? "Báo cáo cuối ca làm việc" : "Báo cáo Ca Sản xuất";
     ViewData["ActivePage"] = "ShiftReport";
 }
 
-<div class="space-y-6">
+@section Styles { <link rel="stylesheet" href="~/css/production-flow.css" asp-append-version="true" /> }
+<div class="space-y-6 staff-screen">
 
     <!-- Alerts / Messages -->
     @if (!string.IsNullOrEmpty(Model.SuccessMessage))
@@ -27,24 +29,29 @@
     <div class="page-header" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
         <div>
             <h1 class="page-title" style="font-size: 22px; font-weight: 800; color: #243d35; margin-bottom: 4px; letter-spacing: -0.3px;">
-                Báo cáo Ca Sản xuất
+                @if (Model.IsStaffView) { <i class="bi bi-clipboard-check" aria-hidden="true"></i> }
+                @ViewData["Title"]
             </h1>
+            @if (!Model.IsStaffView)
+            {
             <p class="page-subtitle" style="font-size: 13px; color: #7a887f; margin: 0;">
-                Ghi nhận NVL thực dùng, sản lượng thực tế và phát hành mã LOT cho phòng KCS
+                Xem báo cáo cuối ca, kết quả QC và tiến độ nhập kho thành phẩm
             </p>
+            }
         </div>
         @if (Model.CanSubmitReport)
         {
             <div class="page-actions">
-                <button type="button" class="btn btn-primary" onclick="openSubmitReportModal()" style="display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-weight: 600; padding: 10px 18px; font-size: 13px;">
-                    <i class="bi bi-plus-lg"></i> Gửi báo cáo ca
+                <a class="btn btn-secondary" asp-page="/QC/Index"><i class="bi bi-patch-check" aria-hidden="true"></i> Yêu cầu và kết quả QC</a>
+                <button type="button" class="btn btn-primary" onclick="openSubmitReportModal()" disabled="@(!Model.AvailableQcResults.Any(q => q.ReportId == null))" style="display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-weight: 600; padding: 10px 18px; font-size: 13px;">
+                    <i class="bi bi-plus-lg"></i> Lập báo cáo cuối ca
                 </button>
             </div>
         }
     </div>
 
     <!-- KPI Metric Cards (BATT_PPMSss Style) -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div class="staff-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
         <div class="card" style="padding: 16px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
             <div style="display: flex; align-items: center; justify-content: space-between;">
                 <span style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase;">Tổng sản lượng hoàn thành</span>
@@ -55,7 +62,7 @@
             <div style="margin-top: 12px;">
                 <div style="font-size: 22px; font-weight: 800; color: #243d35;">@Model.TotalProductionKg.ToString("N0") <span style="font-size: 13px; font-weight: 600; color: #7a887f;">kg</span></div>
                 <div style="font-size: 11px; color: #4d8264; margin-top: 4px; font-weight: 600;">
-                    <i class="bi bi-arrow-up-right"></i> Thành phẩm đóng bao đạt chuẩn
+                    <i class="bi bi-arrow-up-right"></i> Sản lượng đã ghi nhận trong báo cáo
                 </div>
             </div>
         </div>
@@ -100,14 +107,14 @@
             <div style="margin-top: 12px;">
                 <div style="font-size: 22px; font-weight: 800; color: #a17b35;">@Model.PendingApprovalCount <span style="font-size: 13px; font-weight: 600; color: #7a887f;">ca</span></div>
                 <div style="font-size: 11px; color: #8e6a2c; margin-top: 4px; font-weight: 600;">
-                    @(Model.PendingApprovalCount > 0 ? "Cần Giám đốc kiểm duyệt" : "Tất cả ca đã xử lý")
+                    @(Model.PendingApprovalCount > 0 ? "Chờ Quản lý phê duyệt" : "Tất cả ca đã xử lý")
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Filter & Search Toolbar -->
-    <div class="card" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
+    <div class="card staff-filter" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
         <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
             <div class="search-wrapper" style="flex: 1; min-width: 260px; margin: 0; position: relative;">
                 <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #96a298;"></i>
@@ -150,7 +157,7 @@
     </div>
 
     <!-- Reports Table -->
-    <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+    <div class="card staff-ledger" style="border-radius: 14px; border: 1px solid #e1e5da; overflow: hidden; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
         <div class="table-wrapper">
             <table class="data-table" style="width: 100%;">
                 <thead>
@@ -161,7 +168,7 @@
                         <th style="white-space: nowrap; text-align: right;">Sản lượng (kg)</th>
                         <th style="white-space: nowrap; text-align: center;">Tỷ lệ thu hồi</th>
                         <th style="white-space: nowrap;">Người báo cáo</th>
-                        <th style="white-space: nowrap;">Mã LOT tạo ra</th>
+                        <th style="white-space: nowrap;">Lô hàng / QC</th>
                         <th style="white-space: nowrap; text-align: center;">Sự cố</th>
                         <th style="white-space: nowrap; text-align: center;">Trạng thái</th>
                         <th style="white-space: nowrap; text-align: center;">Thao tác</th>
@@ -186,20 +193,21 @@
                             var isRejected = string.Equals(r.Status, "Rejected", StringComparison.OrdinalIgnoreCase);
 
                             <tr>
-                                <td style="font-weight: 700; font-family: monospace; color: #243d35; white-space: nowrap;">
+                                <td data-label="Mã báo cáo" style="font-weight: 700; font-family: monospace; color: #243d35; white-space: nowrap;">
                                     @r.Code
+                                    @if(r.ReceiptStatus != null) { <small>@ProductionFlow.Label(r.ReceiptStatus)</small> }
                                 </td>
-                                <td>
+                                <td data-label="Ngày / Ca">
                                     <div style="font-weight: 600; color: #30483f; white-space: nowrap;">@r.ShiftDate.ToString("dd/MM/yyyy")</div>
                                     <div style="font-size: 11px; color: #7a887f; margin-top: 2px; white-space: nowrap;">@r.Shift</div>
                                 </td>
-                                <td style="text-align: right; font-weight: 600; color: #45594f;">
-                                    @(r.RawMaterialUsed > 0 ? r.RawMaterialUsed.ToString("N0") + " kg" : "—")
+                                <td data-label="NVL thực dùng" style="text-align: right; font-weight: 600; color: #45594f;">
+                                    @(string.IsNullOrWhiteSpace(r.MaterialUsageSummary) ? (r.RawMaterialUsed > 0 ? r.RawMaterialUsed.ToString("N0") + " kg" : "—") : r.MaterialUsageSummary)
                                 </td>
-                                <td style="text-align: right; font-weight: 800; color: #243d35;">
+                                <td data-label="Sản lượng (kg)" style="text-align: right; font-weight: 800; color: #243d35;">
                                     @r.ProductionQuantity.ToString("N0") kg
                                 </td>
-                                <td style="text-align: center;">
+                                <td data-label="Tỷ lệ thu hồi" style="text-align: center;">
                                     @if (r.RecoveryRate > 0)
                                     {
                                         <span style="font-weight: 700; color: @(r.RecoveryRate >= 90 ? "#356e51" : r.RecoveryRate >= 85 ? "#8e6a2c" : "#94473e");">
@@ -211,11 +219,11 @@
                                         <span style="color: #96a298;">—</span>
                                     }
                                 </td>
-                                <td>
+                                <td data-label="Người báo cáo">
                                     <div style="font-weight: 600; color: #243d35;">@r.StaffName</div>
                                     <div style="font-size: 11px; color: #96a298; white-space: nowrap;">Nộp lúc: @r.CreatedAt.ToString("HH:mm dd/MM")</div>
                                 </td>
-                                <td>
+                                <td data-label="Lô hàng / QC">
                                     @if (!string.IsNullOrEmpty(r.LotCodeGenerated))
                                     {
                                         <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background: #e2eee4; color: #28543f; border: 1px solid #c6dbc9; font-family: monospace; font-weight: 700; font-size: 11px;">
@@ -226,8 +234,9 @@
                                     {
                                         <span style="color: #96a298; font-style: italic; font-size: 11px;">Chưa phát hành</span>
                                     }
+                                    @if(r.QcResult != null) { <small class="@(r.QcResult == "Pass" ? "flow-pass" : "flow-fail")">QC: @ProductionFlow.Label(r.QcResult)</small> }
                                 </td>
-                                <td style="text-align: center;">
+                                <td data-label="Sự cố" style="text-align: center;">
                                     @if (r.HasIncident)
                                     {
                                         <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: #faf0e9; color: #94473e; border: 1px solid #e4c8bf; white-space: nowrap;" title="@r.IncidentDescription">
@@ -241,7 +250,7 @@
                                         </span>
                                     }
                                 </td>
-                                <td style="text-align: center;">
+                                <td data-label="Trạng thái" style="text-align: center;">
                                     @if (isApproved)
                                     {
                                         <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; white-space: nowrap;">
@@ -261,15 +270,30 @@
                                         </span>
                                     }
                                 </td>
-                                <td style="padding: 14px 16px; text-align: center;">
+                                <td data-label="Thao tác" style="padding: 14px 16px; text-align: center;">
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;">
-                                        <!-- Xem chi tiết -->
+                                        @if(r.CanRequestReceipt && r.ReceiptStatus == "Rejected") { <a class="btn btn-primary" asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-StatusFilter="Rejected">Sửa yêu cầu nhập kho</a> }
+                                        else if(r.CanRequestReceipt) { <form method="post" asp-page="/Warehouse/Index" asp-page-handler="RequestReceipt"><input type="hidden" name="requestId" value="@r.QualityRequestId" /><button type="submit" class="btn btn-primary">Yêu cầu nhập kho</button></form> }
+
+                                        @if (Model.IsStaffView && r.CanModify)
+                                        {
+                                            <button type="button" class="btn staff-report-icon-action" onclick="openEditShiftReport(@r.ReportId)" title="Chỉnh sửa báo cáo @r.Code" aria-label="Chỉnh sửa báo cáo @r.Code">
+                                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                            </button>
+                                            <button type="button" class="btn staff-report-icon-action is-delete" onclick="openDeleteShiftReport(@r.ReportId)" title="Xóa báo cáo @r.Code" aria-label="Xóa báo cáo @r.Code">
+                                                <i class="bi bi-trash3" aria-hidden="true"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
                                         <button type="button"
                                                 class="btn btn-sm btn-outline-secondary"
-                                                onclick="openReportDetailModal(@r.ReportId, '@r.Code', '@r.ShiftDate.ToString("dd/MM/yyyy")', '@r.Shift', '@r.StaffName', @r.RawMaterialUsed, @r.ProductionQuantity, @r.RecoveryRate, @(r.HasIncident ? "true" : "false"), '@Html.Raw(Html.Encode(r.IncidentDescription ?? ""))', '@Html.Raw(Html.Encode(r.Note ?? ""))', '@r.Status', '@Html.Raw(Html.Encode(r.RejectionReason ?? ""))', @(Model.CanApprove ? "true" : "false"))"
+                                                title="Xem báo cáo @r.Code" aria-label="Xem báo cáo @r.Code"
+                                                onclick="openShiftReportDetail(@r.ReportId)"
                                                 style="border-radius: 6px; font-size: 11px; padding: 4px 8px;">
-                                            <i class="bi bi-eye"></i> Chi tiết
+                                            <i class="bi bi-eye" aria-hidden="true"></i>@if (!Model.IsStaffView) { <text> Chi tiết</text> }
                                         </button>
+                                        }
 
                                         @if (isSubmitted && Model.CanApprove)
                                         {
@@ -302,80 +326,27 @@
     </div>
 </div>
 
-<!-- MODAL: GỬI BÁO CÁO CA SẢN XUẤT (Production Staff) -->
+<!-- MODAL: LẬP BÁO CÁO TỪ KẾT QUẢ QC -->
 @if (Model.CanSubmitReport)
 {
-    <div class="modal fade" id="submitShiftReportModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-                <form method="post" asp-page-handler="SubmitReport">
-                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 18px 24px;">
-                        <div>
-                            <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #243d35;">
-                                <i class="bi bi-clipboard-plus" style="color: #193f35; margin-right: 8px;"></i>Gửi Báo cáo Ca Sản xuất
-                            </h5>
-                            <p style="font-size: 12px; color: #7a887f; margin-bottom: 0;">Ghi nhận NVL thực dùng, sản lượng ca và chuyển phê duyệt phát hành mã LOT</p>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-
-                    <div class="modal-body" style="padding: 24px;">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ngày sản xuất <span style="color: #a55449;">*</span></label>
-                                <input type="date" asp-for="NewShiftDate" class="form-control" required style="border-radius: 8px; font-size: 13px;" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ca làm việc <span style="color: #a55449;">*</span></label>
-                                <select asp-for="NewShift" class="form-select" style="border-radius: 8px; font-size: 13px;">
-                                    <option value="Ca 1 (06:00 - 14:00)">Ca 1 (06:00 - 14:00)</option>
-                                    <option value="Ca 2 (14:00 - 22:00)">Ca 2 (14:00 - 22:00)</option>
-                                    <option value="Ca 3 (22:00 - 06:00)">Ca 3 (22:00 - 06:00)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">NVL thực dùng (kg) <span style="color: #a55449;">*</span></label>
-                                <input type="number" asp-for="NewRawMaterialUsed" class="form-control" min="100" step="50" required placeholder="Lượng mùn cưa xuất vào máy..." style="border-radius: 8px; font-size: 13px; font-weight: 700;" />
-                                <span style="font-size: 11px; color: #7a887f; margin-top: 2px; display: block;">Khối lượng nguyên liệu đưa vào băm, sấy</span>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Sản lượng thực tế hoàn thành (kg) <span style="color: #a55449;">*</span></label>
-                                <input type="number" asp-for="NewProductionQuantity" class="form-control" min="100" step="50" required placeholder="Khối lượng viên nén đóng bao..." style="border-radius: 8px; font-size: 13px; font-weight: 700; color: #356e51;" />
-                                <span style="font-size: 11px; color: #7a887f; margin-top: 2px; display: block;">Khối lượng viên nén gỗ thành phẩm đã cân đóng bao</span>
-                            </div>
-                        </div>
-
-                        <div class="mb-3 p-3" style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 10px;">
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" asp-for="NewHasIncident" id="incidentToggle" onchange="toggleIncidentDescription(this.checked)" />
-                                <label class="form-check-label" for="incidentToggle" style="font-size: 12.5px; font-weight: 700; color: #94473e;">
-                                    Có phát sinh sự cố máy móc hoặc dừng chuyền trong ca
-                                </label>
-                            </div>
-                            <div id="incidentDescWrapper" style="display: none; margin-top: 10px;">
-                                <label class="form-label" style="font-size: 11.5px; font-weight: 600; color: #94473e;">Mô tả chi tiết sự cố:</label>
-                                <textarea asp-for="NewIncidentDescription" class="form-control" rows="2" placeholder="Ví dụ: Nghẹt máy sấy 45 phút, rách băng tải, sự cố biến tần..." style="border-radius: 8px; font-size: 12px;"></textarea>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ghi chú ca làm việc</label>
-                            <textarea asp-for="NewNote" class="form-control" rows="2" placeholder="Tình hình vận hành, độ ẩm NVL, bàn giao ca tiếp theo..." style="border-radius: 8px; font-size: 12px;"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
-                        <button type="submit" class="btn btn-primary" style="border-radius: 8px; font-size: 12px; font-weight: 700; background: #193f35; border-color: #193f35;">
-                            <i class="bi bi-send-check"></i> Xác nhận Gửi báo cáo
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+    <div class="modal fade" id="submitShiftReportModal" tabindex="-1" aria-labelledby="submitShiftTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content">
+            <form method="post" asp-page-handler="SubmitReport">
+                <div class="modal-header"><h2 class="modal-title" id="submitShiftTitle"><i class="bi bi-clipboard-check" aria-hidden="true"></i> Lập báo cáo cuối ca</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button></div>
+                <div class="modal-body">
+                    <div class="flow-field mb-3"><label for="NewQualityRequestId">Lô đã có kết quả QC</label><select asp-for="NewQualityRequestId" class="form-select" required>
+                        <option value="">Chọn lô đã kiểm tra</option>
+                        @foreach(var q in Model.AvailableQcResults.Where(q => q.ReportId == null)) {
+                            <option value="@q.RequestId">@q.Assignment.AssignmentDate.ToString("dd/MM/yyyy") · @q.Assignment.Shift · @q.Inspection.Batch.Quantity.ToString("N0") kg · QC @ProductionFlow.Label(q.Inspection.Result)</option>
+                        }
+                    </select></div>
+                    <p class="flow-help">Ngày, ca và sản lượng lấy từ lô đã kiểm tra. Kết quả không đạt được ghi nhận trong báo cáo và không được yêu cầu nhập kho.</p>
+                    <fieldset class="flow-card"><legend>Nguyên liệu thực tế đã sử dụng trong ca</legend><p>Nhập lượng đã dùng theo từng nguyên liệu. Để trống nguyên liệu không sử dụng.</p>@for(var i = 0; i < Model.Materials.Count; i++) { var m = Model.Materials[i]; <div class="flow-field mb-3"><label for="createUsage-@m.MaterialId">@m.MaterialName (@m.Unit)</label><input type="hidden" name="MaterialUsage[@i].MaterialId" value="@m.MaterialId" /><input id="createUsage-@m.MaterialId" data-material-id="@m.MaterialId" name="MaterialUsage[@i].Quantity" class="form-control" type="number" min="0" max="9999999999.99" step="0.01" /></div> }</fieldset>
+                    <div class="flow-field"><label for="NewNote">Ghi chú ca làm việc</label><textarea asp-for="NewNote" class="form-control" maxlength="5000" rows="4"></textarea></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button><button type="submit" class="btn btn-primary"><i class="bi bi-send-check" aria-hidden="true"></i> Gửi Manager duyệt</button></div>
+            </form>
+        </div></div>
     </div>
 }
 
@@ -393,6 +364,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" style="padding: 24px;">
+                <p id="modalQcSummary" class="flow-help"></p>
+                <p id="modalUsageSummary" class="flow-help"></p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; background: #f4f2ea; padding: 16px; border-radius: 12px; border: 1px solid #e1e5da;">
                     <div>
                         <span style="font-size: 11px; color: #7a887f; display: block; font-weight: 600;">Ngày làm việc:</span>
@@ -446,13 +419,23 @@
                 <!-- Box Lý do từ chối nếu có -->
                 <div id="modalRejectionBox" style="display: none; padding: 14px; border-radius: 10px; background: #faf0e9; border: 1px solid #f1e2da;">
                     <div style="font-size: 12px; font-weight: 700; color: #a55449; margin-bottom: 4px;">
-                        <i class="bi bi-x-octagon-fill"></i> Lý do từ chối của Lãnh đạo:
+                        <i class="bi bi-x-octagon-fill"></i> Lý do từ chối của Quản lý:
                     </div>
                     <p id="modalRejectionReason" style="font-size: 12px; color: #88473f; margin-bottom: 0;"></p>
                 </div>
             </div>
             <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 14px 24px; display: flex; justify-content: space-between;">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Đóng</button>
+                @if (!Model.IsStaffView)
+                {
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Đóng</button>
+                }
+                @if (Model.IsStaffView)
+                {
+                    <div id="staffReportActions" class="staff-report-actions" hidden>
+                        <button type="button" class="btn staff-report-icon-action is-delete" onclick="openDeleteShiftReport()" title="Xóa báo cáo" aria-label="Xóa báo cáo"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+                        <button type="button" class="btn btn-primary" onclick="openEditShiftReport()"><i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa</button>
+                    </div>
+                }
                 <div id="modalActionButtons" style="display: flex; gap: 8px;">
                     <!-- Sẽ được fill bằng JavaScript nếu canApprove và isSubmitted -->
                 </div>
@@ -462,6 +445,17 @@
 </div>
 
 <!-- MODAL: NHẬP LÝ DO TỪ CHỐI BÁO CÁO CA -->
+@if (Model.CanApprove)
+{
+<template id="approveShiftReportTemplate">
+    <form method="post" asp-page-handler="ApproveReport" onsubmit="return confirm('Xác nhận phê duyệt báo cáo ca này?');">
+        <input type="hidden" name="reportId" />
+        <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+        <input type="hidden" name="ShiftFilter" value="@Model.ShiftFilter" />
+        <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle" aria-hidden="true"></i> Phê duyệt báo cáo</button>
+    </form>
+</template>
 <div class="modal fade" id="rejectReportModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
@@ -497,19 +491,142 @@
     </div>
 </div>
 
+}
+@if (Model.IsStaffView)
+{
+    <div class="modal fade" id="editShiftReportModal" tabindex="-1" aria-labelledby="editShiftReportTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="UpdateReport" id="editShiftReportForm">
+                    <input type="hidden" name="reportId" id="editShiftReportId" />
+                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+                    <input type="hidden" name="ShiftFilter" value="@Model.ShiftFilter" />
+                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="editShiftReportTitle"><i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa báo cáo <span id="editShiftReportCode"></span></h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="flow-field mb-3"><label for="editQualityRequest">Kết quả QC của lô báo cáo</label><select id="editQualityRequest" name="qualityRequestId" class="form-select" required>
+                            <option value="">Chọn kết quả QC (bắt buộc với báo cáo cũ chưa có QC)</option>
+                            @foreach(var q in Model.AvailableQcResults) { <option value="@q.RequestId">@q.Assignment.AssignmentDate.ToString("dd/MM/yyyy") · @q.Assignment.Shift · @q.Inspection.Batch.Quantity.ToString("N0") kg · @ProductionFlow.Label(q.Inspection.Result)</option> }
+                        </select></div>
+                        <fieldset class="flow-card"><legend>Nguyên liệu thực tế đã sử dụng trong ca</legend><p>Nhập lượng đã dùng theo từng nguyên liệu. Để trống nguyên liệu không sử dụng.</p>@for(var i = 0; i < Model.Materials.Count; i++) { var m = Model.Materials[i]; <div class="flow-field mb-3"><label for="editUsage-@m.MaterialId">@m.MaterialName (@m.Unit)</label><input type="hidden" name="MaterialUsage[@i].MaterialId" value="@m.MaterialId" /><input id="editUsage-@m.MaterialId" data-material-id="@m.MaterialId" name="MaterialUsage[@i].Quantity" class="form-control" type="number" min="0" max="9999999999.99" step="0.01" /></div> }</fieldset>
+                        <div class="flow-field mb-3"><label for="editShiftNote">Ghi chú ca làm việc</label><textarea class="form-control" id="editShiftNote" name="note" maxlength="5000" rows="4"></textarea></div>
+                        <p class="flow-help">Có thể sửa lượng nguyên liệu thực dùng và ghi chú khi báo cáo chưa được duyệt. Báo cáo cũ chưa có QC cần chọn kết quả kiểm tra của bạn để bổ sung liên kết trước khi gửi lại.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2" aria-hidden="true"></i> Lưu thay đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="deleteShiftReportModal" tabindex="-1" aria-labelledby="deleteShiftReportTitle" aria-describedby="deleteShiftReportMessage" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="post" asp-page-handler="DeleteReport" id="deleteShiftReportForm">
+                    <input type="hidden" name="reportId" id="deleteShiftReportId" />
+                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+                    <input type="hidden" name="ShiftFilter" value="@Model.ShiftFilter" />
+                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                    <div class="modal-header">
+                        <h2 class="modal-title" id="deleteShiftReportTitle"><i class="bi bi-trash3" aria-hidden="true"></i> Xóa báo cáo <span id="deleteShiftReportCode"></span>?</h2>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="deleteShiftReportMessage">Báo cáo sẽ bị xóa và không thể khôi phục. Phân công công việc, phiếu xuất nguyên liệu và báo cáo sự cố được giữ nguyên.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-delete-cancel>Hủy bỏ</button>
+                        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash3" aria-hidden="true"></i> Xác nhận xóa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
+    <script type="application/json" id="shiftReportData">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Reports))</script>
     <script>
+        @if(Model.IsStaffView && Model.NewQualityRequestId > 0) { <text>document.addEventListener('DOMContentLoaded', () => openSubmitReportModal());</text> }
+        const shiftReportsById = new Map(JSON.parse(document.getElementById('shiftReportData').textContent).map(report => [report.ReportId, report]));
+        let selectedShiftReport = null;
+        let switchingShiftReportModal = false;
+        const shiftReportDetail = document.getElementById('reportDetailModal');
+        shiftReportDetail.addEventListener('show.bs.modal', () => { shiftReportDetail.dataset.opening = 'true'; });
+        shiftReportDetail.addEventListener('shown.bs.modal', () => { delete shiftReportDetail.dataset.opening; });
+
+        function openShiftReportDetail(id) {
+            const report = shiftReportsById.get(id);
+            if (!report) return;
+            selectedShiftReport = report;
+            const dateParts = report.ShiftDate.split('-');
+            const displayDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            const staffActions = document.getElementById('staffReportActions');
+            if (staffActions) staffActions.hidden = !report.CanModify;
+            openReportDetailModal(report.ReportId, report.Code, displayDate, report.Shift, report.StaffName,
+                report.RawMaterialUsed, report.ProductionQuantity, report.RecoveryRate, report.HasIncident,
+                report.IncidentDescription, report.Note, report.Status, report.RejectionReason, @Json.Serialize(Model.CanApprove));
+        }
+
+        function switchShiftReportModal(targetId) {
+            if (switchingShiftReportModal) return;
+            switchingShiftReportModal = true;
+            const detail = document.getElementById('reportDetailModal');
+            const showTarget = () => {
+                switchingShiftReportModal = false;
+                bootstrap.Modal.getOrCreateInstance(document.getElementById(targetId)).show();
+            };
+            if (detail.classList.contains('show')) {
+                detail.addEventListener('hidden.bs.modal', showTarget, { once: true });
+                const hideDetail = () => bootstrap.Modal.getOrCreateInstance(detail).hide();
+                if (detail.dataset.opening) detail.addEventListener('shown.bs.modal', hideDetail, { once: true });
+                else hideDetail();
+            } else showTarget();
+        }
+
+        function openEditShiftReport(id) {
+            if (id !== undefined) selectedShiftReport = shiftReportsById.get(id);
+            if (!selectedShiftReport?.CanModify) return;
+            document.getElementById('editShiftReportId').value = selectedShiftReport.ReportId;
+            document.querySelectorAll('#editShiftReportForm [data-material-id]').forEach(input => {
+                input.value = selectedShiftReport.MaterialUsage?.find(x => x.MaterialId === Number(input.dataset.materialId))?.Quantity ?? '';
+            });
+            document.getElementById('editShiftReportCode').textContent = selectedShiftReport.Code;
+            const qcSelect = document.getElementById('editQualityRequest');
+            qcSelect.value = selectedShiftReport.QualityRequestId || '';
+            for (const option of qcSelect.options) {
+                option.disabled = !!selectedShiftReport.QualityRequestId && option.value !== String(selectedShiftReport.QualityRequestId);
+            }
+            qcSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            document.getElementById('editShiftNote').value = selectedShiftReport.Note || '';
+            switchShiftReportModal('editShiftReportModal');
+        }
+
+        function openDeleteShiftReport(id) {
+            if (id !== undefined) selectedShiftReport = shiftReportsById.get(id);
+            if (!selectedShiftReport?.CanModify) return;
+            document.getElementById('deleteShiftReportId').value = selectedShiftReport.ReportId;
+            document.getElementById('deleteShiftReportCode').textContent = selectedShiftReport.Code;
+            switchShiftReportModal('deleteShiftReportModal');
+        }
+
+        document.getElementById('deleteShiftReportModal')?.addEventListener('shown.bs.modal', event => event.target.querySelector('[data-delete-cancel]').focus());
+
         function openSubmitReportModal() {
             var modal = new bootstrap.Modal(document.getElementById('submitShiftReportModal'));
             modal.show();
         }
 
-        function toggleIncidentDescription(isChecked) {
-            document.getElementById('incidentDescWrapper').style.display = isChecked ? 'block' : 'none';
-        }
-
         function openReportDetailModal(id, code, shiftDate, shift, staffName, rawMat, prodQty, rate, hasIncident, incidentDesc, note, status, rejectReason, canApprove) {
+            document.getElementById('modalUsageSummary').textContent = selectedShiftReport?.MaterialUsageSummary ? 'Nguyên liệu thực dùng: ' + selectedShiftReport.MaterialUsageSummary : '';
             document.getElementById('modalReportCode').innerText = code;
+            document.getElementById('modalQcSummary').textContent = selectedShiftReport?.QcResult
+                ? 'QC: ' + (selectedShiftReport.QcResult === 'Pass' ? 'Đạt' : 'Không đạt') + ' · ' + selectedShiftReport.BatchCode
+                : 'Báo cáo cũ chưa có liên kết QC';
             document.getElementById('modalShiftDate').innerText = shiftDate;
             document.getElementById('modalShift').innerText = shift;
             document.getElementById('modalStaffName').innerText = staffName;
@@ -557,29 +674,24 @@
                     <button type="button" class="btn btn-outline-danger" onclick="closeDetailAndOpenReject(${id}, '${code}')" style="border-radius: 8px; font-size: 12px; font-weight: 600;">
                         <i class="bi bi-x-circle"></i> Từ chối
                     </button>
-                    <form method="post" action="/ShiftReports/Index?handler=ApproveReport&reportId=${id}" style="display:inline;" onsubmit="return confirm('Xác nhận phê duyệt báo cáo ca ${code}?');">
-                        <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
-                            <i class="bi bi-check-circle"></i> Phê duyệt Báo cáo
-                        </button>
-                    </form>
                 `;
+                const approval = document.getElementById('approveShiftReportTemplate').content.cloneNode(true);
+                approval.querySelector('[name="reportId"]').value = id;
+                actionBtnContainer.appendChild(approval);
             }
 
-            var modal = new bootstrap.Modal(document.getElementById('reportDetailModal'));
+            var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('reportDetailModal'));
             modal.show();
         }
 
         function closeDetailAndOpenReject(id, code) {
-            var detailModal = bootstrap.Modal.getInstance(document.getElementById('reportDetailModal'));
-            if (detailModal) detailModal.hide();
             openRejectModal(id, code);
         }
 
         function openRejectModal(id, code) {
             document.getElementById('rejectModalReportId').value = id;
             document.getElementById('rejectModalReportCode').innerText = code;
-            var modal = new bootstrap.Modal(document.getElementById('rejectReportModal'));
-            modal.show();
+            switchShiftReportModal('rejectReportModal');
         }
     </script>
 }

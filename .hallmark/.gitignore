@@ -1,0 +1,12 @@
+tools/
+preview/
+shots/
+before/
+before.json
+before.txt
+compare.html
+render-*.json
+*-run.txt
+*-verified.txt
+browser-checks.json
+check-browser.mjs

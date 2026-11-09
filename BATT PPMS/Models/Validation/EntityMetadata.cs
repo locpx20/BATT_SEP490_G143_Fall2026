@@ -411,10 +411,9 @@ public partial class BrokenEquipmentReport { }
 
 public class BrokenEquipmentReportMetadata
 {
-    [Display(Name = "Tên thiết bị")]
-    [Required(AllowEmptyStrings = false, ErrorMessage = "{0} là bắt buộc.")]
-    [StringLength(100, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
-    public object? EquipmentName { get; set; }
+    [Display(Name = "Thiết bị")]
+    [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn thiết bị.")]
+    public object? MachineId { get; set; }
 
     [Display(Name = "Mô tả")]
     public object? Description { get; set; }
@@ -456,6 +455,26 @@ public class MaintenanceRequestMetadata
 
     [Display(Name = "Mô tả")]
     public object? Description { get; set; }
+
+    [Display(Name = "Tiêu đề")]
+    [StringLength(150, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? Title { get; set; }
+
+    [Display(Name = "Vị trí máy")]
+    [StringLength(200, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? Location { get; set; }
+
+    [Display(Name = "Lý do từ chối")]
+    [StringLength(500, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? RejectionReason { get; set; }
+
+    [Display(Name = "Ghi chú phân công")]
+    [StringLength(500, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? AssignmentNote { get; set; }
+
+    [Display(Name = "Ghi chú hoàn thành")]
+    [StringLength(500, ErrorMessage = "{0} không được vượt quá {1} ký tự.")]
+    public object? CompletionNote { get; set; }
 
 }
 

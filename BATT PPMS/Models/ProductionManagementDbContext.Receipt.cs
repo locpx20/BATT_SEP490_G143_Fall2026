@@ -5,7 +5,7 @@ namespace BATT_PPMS.Models;
 // Mapping mở rộng (file partial riêng để scaffold lại context không làm mất).
 public partial class ProductionManagementDbContext
 {
-    partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
+    private void ConfigureReceiptsAndMachine(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Machine>(entity =>
         {

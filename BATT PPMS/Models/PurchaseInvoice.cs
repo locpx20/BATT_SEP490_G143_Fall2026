@@ -17,7 +17,7 @@ public partial class PurchaseInvoice
 
     public string? Status { get; set; }
 
-    public int CreatedBy { get; set; }
+    public int? CreatedBy { get; set; }
 
     // Nhân viên thu mua được phân công (CreatedBy = người tạo phiếu tổng)
     public int? AssignedTo { get; set; }
@@ -30,7 +30,7 @@ public partial class PurchaseInvoice
 
 
 
-    public virtual User CreatedByNavigation { get; set; } = null!;
+    public virtual User? CreatedByNavigation { get; set; }
 
     public virtual ICollection<PurchaseInvoiceDetail> PurchaseInvoiceDetails { get; set; } = new List<PurchaseInvoiceDetail>();
 

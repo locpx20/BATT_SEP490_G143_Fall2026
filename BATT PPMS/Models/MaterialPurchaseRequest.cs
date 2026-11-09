@@ -21,6 +21,18 @@ public partial class MaterialPurchaseRequest
 
     public int? ApprovedBy { get; set; }
 
+    public string? Unit { get; set; }
+
+    // Ghi chú của nhân viên bảo trì khi gửi yêu cầu
+    public string? Note { get; set; }
+
+    // Manager: ghi chú mua hàng hoặc lý do từ chối
+    public string? ResultNote { get; set; }
+
+    public decimal? TotalCost { get; set; }
+
+    public DateTime? HandledAt { get; set; }
+
     public virtual User? ApprovedByNavigation { get; set; }
 
     public virtual MaintenanceRequest MaintenanceRequest { get; set; } = null!;

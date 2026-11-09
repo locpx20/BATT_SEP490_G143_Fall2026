@@ -13,11 +13,11 @@ public partial class RawMaterialExport
 
     public DateTime ExportDate { get; set; }
 
-    public int ExportedBy { get; set; }
+    public int? ExportedBy { get; set; }
 
     public string? Note { get; set; }
 
-    public virtual User ExportedByNavigation { get; set; } = null!;
+    public virtual User? ExportedByNavigation { get; set; }
 
     public virtual RawMaterial Material { get; set; } = null!;
 }

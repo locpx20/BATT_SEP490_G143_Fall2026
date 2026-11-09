@@ -185,27 +185,28 @@ namespace BATT_PPMS.Pages.Admin.AuditLogs
                 }
             }
 
-            // 5. Maintenance
+            // 5. Maintenance (nhật ký từng bước: tạo, duyệt/từ chối, phân công, xác nhận, hoàn thành, hủy)
             if (string.IsNullOrEmpty(EntityFilter) || EntityFilter == "Maintenance")
             {
-                var maintenances = await _context.MaintenanceRequests
-                    .Include(m => m.RequestedByNavigation)
-                    .OrderByDescending(m => m.RequestDate)
+                var repairLogs = await _context.MaintenanceRequestLogs
+                    .Include(l => l.Actor).ThenInclude(a => a.Role)
+                    .OrderByDescending(l => l.CreatedAt)
                     .ToListAsync();
 
-                foreach (var m in maintenances)
+                foreach (var l in repairLogs)
                 {
                     logs.Add(new AuditLogEntry
                     {
-                        CreatedAt      = m.RequestDate,
-                        ActorName      = m.RequestedByNavigation?.FullName ?? "Nhân viên",
-                        ActorRole      = "Staff",
-                        Action         = "Báo cáo Sự cố máy móc",
-                        EntityCode     = $"MNT-{m.RequestId:D4}",
+                        CreatedAt      = l.CreatedAt,
+                        ActorName      = l.Actor?.FullName ?? "Nhân viên",
+                        ActorRole      = l.Actor?.Role?.RoleName ?? "Staff",
+                        Action         = RepairAction.Label(l.Action),
+                        EntityCode     = $"REQ-{l.RequestId:D4}",
                         EntityType     = "Maintenance",
-                        PreviousStatus = null,
-                        NewStatus      = (m.Status ?? "").ToUpper(),
-                        Details        = NoteTags.Plain(m.Description) ?? "Báo cáo sự cố thiết bị"
+                        PreviousStatus = l.FromStatus?.ToUpper(),
+                        NewStatus      = (l.ToStatus ?? "").ToUpper(),
+                        Details        = string.IsNullOrWhiteSpace(l.Note) ? RepairAction.Label(l.Action) : l.Note,
+                        Reason         = l.Action == RepairAction.Rejected ? l.Note : null
                     });
                 }
             }

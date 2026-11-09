@@ -75,7 +75,13 @@ namespace BATT_PPMS.Pages.Inventory
         }
 
         [BindProperty(SupportsGet = true)]
+        public string Tab { get; set; } = "raw";
+
+        [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int PageNumber { get; set; } = 1;
 
         [BindProperty(SupportsGet = true)]
         public string? StatusFilter { get; set; }
@@ -96,6 +102,10 @@ namespace BATT_PPMS.Pages.Inventory
         public int TotalPages => PageSize > 0 ? Math.Max(1, (int)Math.Ceiling((double)TotalItems / PageSize)) : 1;
         public int DisplayFrom => TotalItems == 0 ? 0 : ((CurrentPage - 1) * PageSize + 1);
         public int DisplayTo => Math.Min(CurrentPage * PageSize, TotalItems);
+
+        public List<RawMaterial> Materials { get; set; } = new();
+        public List<FinishedGoodBatch> Batches { get; set; } = new();
+        public PageWindow Pagination { get; set; } = new(0, 1);
 
         public List<WarehouseReceiptRowViewModel> Receipts { get; set; } = new();
         public List<RawMaterialImportRowViewModel> ImportTickets { get; set; } = new();
@@ -129,8 +139,39 @@ namespace BATT_PPMS.Pages.Inventory
                 RoleConstants.PurchasingStaff);
             if (check != null) return check;
 
+            if (Tab != "finished") Tab = "raw";
+            var page = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
+
+            if (Tab == "finished")
+            {
+                var query = _context.FinishedGoodBatches
+                    .AsNoTracking()
+                    .Include(x => x.CreatedByNavigation)
+                    .Where(x => x.Status == "In Stock");
+                if (!string.IsNullOrWhiteSpace(SearchTerm))
+                    query = query.Where(x => x.BagNumber.Contains(SearchTerm.Trim()));
+                Pagination = new(await query.CountAsync(), page);
+                Batches = await query
+                    .OrderByDescending(x => x.ProductionDate)
+                    .ThenByDescending(x => x.BatchId)
+                    .Skip(Pagination.Offset)
+                    .Take(PageWindow.Size)
+                    .ToListAsync();
+                return Page();
+            }
+
             if (PageSize <= 0) PageSize = 10;
             if (CurrentPage <= 0) CurrentPage = 1;
+
+            var matQuery = _context.RawMaterials.AsNoTracking();
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
+                matQuery = matQuery.Where(x => x.MaterialName.Contains(SearchTerm.Trim()));
+            Pagination = new(await matQuery.CountAsync(), page);
+            Materials = await matQuery
+                .OrderBy(x => x.MaterialName)
+                .Skip(Pagination.Offset)
+                .Take(PageWindow.Size)
+                .ToListAsync();
 
             await LoadDataAsync();
             return Page();
@@ -343,6 +384,7 @@ namespace BATT_PPMS.Pages.Inventory
 
             IActionResult Back() => RedirectToPage(new
             {
+                Tab = "raw",
                 SearchTerm,
                 StatusFilter,
                 SupplierFilter,
@@ -431,6 +473,7 @@ namespace BATT_PPMS.Pages.Inventory
 
             IActionResult Back() => RedirectToPage(new
             {
+                Tab = "raw",
                 SearchTerm,
                 StatusFilter,
                 SupplierFilter,
@@ -503,6 +546,7 @@ namespace BATT_PPMS.Pages.Inventory
 
             IActionResult Back() => RedirectToPage(new
             {
+                Tab = "raw",
                 SearchTerm,
                 StatusFilter,
                 SupplierFilter,

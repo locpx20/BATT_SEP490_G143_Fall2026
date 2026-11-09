@@ -25,13 +25,13 @@ public partial class Order
 
     public int? ApprovedBy { get; set; }
 
-    public int CreatedBy { get; set; }
+    public int? CreatedBy { get; set; }
 
     public DateTime OrderDate { get; set; }
 
     public virtual User? ApprovedByNavigation { get; set; }
 
-    public virtual User CreatedByNavigation { get; set; } = null!;
+    public virtual User? CreatedByNavigation { get; set; }
 
     public virtual Customer Customer { get; set; } = null!;
 

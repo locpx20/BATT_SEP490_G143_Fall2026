@@ -20,6 +20,12 @@ public class InitialPasswordFilter(ProductionManagementDbContext database) : IAs
             var account = await database.Users.AsNoTracking().Where(u => u.UserId == id)
                 .Select(u => new { u.Password, Role = u.Role.RoleName })
                 .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+            if (account == null)
+            {
+                context.HttpContext.Session.Clear();
+                context.Result = new RedirectToPageResult("/Auth/Login");
+                return;
+            }
             if (account != null && InitialPasswordPolicy.RequiresChange(account.Role, account.Password))
             {
                 context.Result = new RedirectToPageResult("/Auth/FirstLoginPassword");

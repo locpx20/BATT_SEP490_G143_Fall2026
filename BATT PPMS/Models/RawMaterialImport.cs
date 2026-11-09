@@ -21,7 +21,7 @@ public partial class RawMaterialImport
 
     public DateTime ImportDate { get; set; }
 
-    public int ImportedBy { get; set; }
+    public int? ImportedBy { get; set; }
 
     public string Status { get; set; } = "Pending";
 
@@ -31,7 +31,7 @@ public partial class RawMaterialImport
 
     public string? Note { get; set; }
 
-    public virtual User ImportedByNavigation { get; set; } = null!;
+    public virtual User? ImportedByNavigation { get; set; }
 
     public virtual User? ApprovedByNavigation { get; set; }
 

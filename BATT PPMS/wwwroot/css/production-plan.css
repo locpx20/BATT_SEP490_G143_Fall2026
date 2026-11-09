@@ -1,0 +1,39 @@
+.plan-staff-picker { flex: 1; min-width: 0; width: 100%; font-family: var(--font); }
+.plan-create-body { display: flex; flex-direction: column; gap: 28px; }
+.plan-create-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.plan-create-meta > div { min-width: 0; }
+.plan-stage-section { min-width: 0; }
+.plan-section-title { display: flex; align-items: center; gap: 10px; max-width: none; margin: 0 0 20px; color: var(--text-primary); font-family: var(--font); font-size: 20px; font-weight: 650; line-height: 1.45; letter-spacing: 0; text-transform: none; }
+.plan-section-title > i { flex-shrink: 0; color: var(--primary); }
+.plan-stage-list { display: flex; flex-direction: column; gap: 16px; }
+.plan-assignment-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 24px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-page); }
+.plan-stage-info { min-width: 0; min-height: 54px; display: flex; align-items: center; }
+.plan-stage-name { display: block; color: var(--text-primary); font-size: 16px; font-weight: 600; line-height: 1.5; }
+.plan-stage-controls { min-width: 0; }
+.plan-staff-picker > summary { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--text-primary); font-size: 16px; cursor: pointer; list-style: none; }
+.plan-staff-picker > summary::-webkit-details-marker { display: none; }
+.plan-staff-picker > summary [data-staff-caption] { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-staff-picker > summary > i { flex-shrink: 0; color: var(--primary); font-size: 12px; }
+.plan-staff-picker[open] > summary { border-color: var(--primary); }
+.plan-staff-picker[open] > summary > i { transform: rotate(180deg); }
+.plan-staff-count { flex-shrink: 0; padding: 2px 8px; border-radius: 5px; background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 600; }
+.plan-staff-count[hidden] { display: none; }
+.plan-staff-options { max-height: 240px; margin-top: 8px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); }
+.manager-workspace .modal .plan-staff-option, .plan-staff-option { display: flex !important; align-items: center; gap: 12px; min-height: 48px; padding: 10px 12px; margin: 0 !important; color: var(--text-primary); font-size: 15px; cursor: pointer; }
+.plan-staff-option > input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; accent-color: var(--primary); }
+.plan-staff-option > span { min-width: 0; overflow-wrap: break-word; }
+.plan-staff-option small { display: block; font-size: 13px; color: var(--text-secondary); font-weight: 400; }
+.plan-staff-option:has(input:checked) { background: var(--primary-light); }
+.plan-staff-options > p { padding: 12px; color: var(--text-secondary); }
+.plan-staff-picker summary:hover, .plan-staff-option:hover { background: var(--primary-light); }
+.plan-staff-picker :is(summary, input):focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
+.plan-assigned-workers { display: flex; flex-wrap: wrap; gap: 6px 12px; min-width: 0; }
+.plan-assigned-workers > span { color: var(--text-primary); font-weight: 600; overflow-wrap: break-word; }
+@media (max-width: 600px) {
+    .plan-staff-picker { flex-basis: 100%; }
+    .plan-create-meta, .plan-assignment-stage { grid-template-columns: minmax(0, 1fr); }
+    .plan-create-meta { gap: 20px; }
+    .plan-assignment-stage { gap: 14px; padding: 16px; }
+    .plan-stage-info { padding: 0; }
+    .plan-section-title { align-items: flex-start; font-size: 19px; }
+}

@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -26,11 +26,11 @@ namespace BATT_PPMS.Helpers
         public static readonly string[] DeliveryStatuses = { "Prepared", "In Transit", "Delivered", "Cancelled" };
         public static readonly string[] EquipmentStatuses = { "Reported", "Under Maintenance", "Fixed" };
         public static readonly string[] PriorityLevels = { "Low", "Normal", "Medium", "High", "Critical" };
-        public static readonly string[] MaintenanceStatuses = { "Pending", "Reported", "Assigned", "In Progress", "InProgress", "Completed", "Rejected" };
+        public static readonly string[] MaintenanceStatuses = { "Pending", "Reported", "Assigned", "In Progress", "InProgress", "WaitingMaterial", "Completed", "Rejected", "Cancelled" };
         public static readonly string[] AssignmentStatuses = { "Assigned", "In Progress", "Done", "Cancelled" };
         public static readonly string[] ShiftReportStatuses = { "Submitted", "Pending", "Approved", "Rejected" };
-        public static readonly string[] PurchaseStatuses = { "Pending", "Submitted", "Approved", "Rejected", "Received", "Completed", "Cancelled", "Expired" };
-        public static readonly string[] RequestStatuses = { "Pending", "Approved", "Rejected", "Completed", "Cancelled" };
+        public static readonly string[] PurchaseStatuses = { "Pending", "Open", "Submitted", "Approved", "Rejected", "Received", "Completed", "Cancelled", "Expired" };
+        public static readonly string[] RequestStatuses = { "Pending", "Approved", "Purchased", "Rejected", "Completed", "Cancelled" };
         public static readonly string[] QcStatuses = { "Pending", "In Progress", "Completed" };
         public static readonly string[] QcResults = { "Pass", "Fail" };
 

@@ -20,7 +20,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public decimal WeighedQuantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TotalAmount { get; set; }
-        public int CreatedByStaffId { get; set; }
+        public int? CreatedByStaffId { get; set; }
         public string CreatedByName { get; set; } = string.Empty;
         public string Status { get; set; } = "Pending";
         public string StatusDisplayName { get; set; } = "Đang thu mua";

@@ -68,7 +68,7 @@
             <div class="form-group"><span class="form-label">Số lượng</span><div>@o.Quantity.ToString("N0") @o.Inventory.Unit</div></div>
             <div class="form-group"><span class="form-label">Đơn giá</span><div>@o.UnitPrice.ToString("N0") ₫</div></div>
             <div class="form-group"><span class="form-label">Tổng tiền</span><div style="font-size:18px;font-weight:700;">@o.TotalAmount.ToString("N0") ₫</div></div>
-            <div class="form-group"><span class="form-label">Người tạo</span><div>@o.CreatedByNavigation.FullName</div></div>
+            <div class="form-group"><span class="form-label">Người tạo</span><div>@(o.CreatedByNavigation?.FullName ?? "Tài khoản đã xóa")</div></div>
             <div class="form-group"><span class="form-label">Người duyệt</span><div>@(o.ApprovedByNavigation?.FullName ?? "Chưa có")</div></div>
         </div>
     </div>

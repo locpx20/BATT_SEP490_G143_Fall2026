@@ -15,4 +15,8 @@ public static class RoleViews
         RoleConstants.MaintenanceStaff => "Maintenance",
         _ => null
     };
+
+    /// <summary>Mọi role có thư mục giao diện, trừ Admin, dùng chung khung workspace (sidebar xanh, tài khoản cuối sidebar).</summary>
+    public static bool IsWorkspaceRole(string? roleName) =>
+        Folder(roleName) is string folder && folder != "Admin";
 }

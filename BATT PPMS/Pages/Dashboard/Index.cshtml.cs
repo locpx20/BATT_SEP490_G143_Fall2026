@@ -48,7 +48,9 @@ namespace BATT_PPMS.Pages.Dashboard
             PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
             var check = RequireLogin();
             if (check != null) return check;
-            if (IsWarehouseStaff) return RedirectToPage("/Inventory/Index");
+            if (IsStaff) return RedirectToPage("/Personnel/Index");
+            if (IsQCStaff) return RedirectToPage("/QC/Index");
+            if (IsWarehouseStaff) return RedirectToPage("/Warehouse/Index", new { tab = "plans" });
 
             var roleName = HttpContext.Session.GetString("RoleName") ?? "";
             IsAdminRole = roleName == RoleConstants.Admin || roleName == "Admin";
@@ -89,7 +91,9 @@ namespace BATT_PPMS.Pages.Dashboard
 
                 // Active machine failures count
                 ActiveFailuresCount = await _context.BrokenEquipmentReports
-                    .CountAsync(b => b.Status != "Fixed" && b.Status != "Resolved" && b.Status != "Completed");
+                    .CountAsync(b => b.Status != "Fixed" && b.Status != "Resolved" && b.Status != "Completed"
+                        // Báo cáo mà mọi yêu cầu sửa chữa đều đã bị hủy thì không còn là sự cố đang xử lý
+                        && !(b.MaintenanceRequests.Any() && b.MaintenanceRequests.All(r => r.Status == "Cancelled")));
 
                 PendingQC = await _context.Qcinspections
                     .CountAsync(q => q.Status == StatusConstants.Pending);

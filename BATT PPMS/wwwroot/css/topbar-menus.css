@@ -14,7 +14,7 @@
 .account-menu-trigger[aria-expanded="true"] .user-chevron { transform: rotate(180deg); }
 .topbar-panel { position: absolute; top: calc(100% + 12px); right: 0; z-index: 110; background: #fffefa; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); overflow: hidden; }
 .topbar-panel[hidden] { display: none; }
-.account-panel { width: 225px; padding: 6px; }
+.topbar-panel.account-panel { width: 225px; padding: 6px; background: #254c40; color: #dbe5db; border-color: #527263; }
 .sidebar-account .account-menu-trigger { width: 100%; padding: 12px 8px; }
 .sidebar-account .account-menu-identity { flex: 1; min-width: 0; }
 .sidebar-account .user-display-name { font-size: 14px; }
@@ -22,10 +22,13 @@
 .sidebar-account .user-display-name { line-height: 1.5; overflow-wrap: anywhere; }
 .sidebar-account .user-display-role { line-height: 1.4; }
 .sidebar-account .account-panel { top: auto; bottom: calc(100% + 8px); left: 0; right: 0; width: 100%; }
-.account-panel a { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 6px; font-size: 13px; color: var(--text-primary); }
-.account-panel a:hover { background: var(--primary-light); color: var(--primary); }
-.account-panel a i { font-size: 16px; color: var(--primary); }
-.account-panel .account-signout { border-top: 1px solid var(--border); border-radius: 0 0 6px 6px; margin-top: 4px; }
+.account-panel a { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 6px; font-size: 13px; color: #dbe5db; }
+.account-panel a:hover,
+.account-panel a:focus-visible { background: #365f50; color: #fffefa; outline-color: #dfc983; }
+.account-panel a i { font-size: 16px; color: #dbe5db; }
+.account-panel a:hover i,
+.account-panel a:focus-visible i { color: #fffefa; }
+.account-panel .account-signout { border-top: 1px solid #527263; border-radius: 0 0 6px 6px; margin-top: 4px; }
 .notifications-panel { width: 360px; }
 .topbar-panel-header { padding: 18px 20px; border-bottom: 1px solid var(--border); }
 .topbar-panel-header h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary); }

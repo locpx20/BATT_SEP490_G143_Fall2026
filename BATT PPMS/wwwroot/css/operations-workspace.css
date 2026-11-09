@@ -1,0 +1,7 @@
+/* QC and warehouse share the established BATT operations shell and controls. */
+.operations-workspace .page-title { font-size: 30px; font-weight: 650; line-height: 1.4; }
+.operations-workspace .page-title > i { color: var(--primary); }
+.operations-workspace .sidebar-nav .nav-item { font-size: 14px; line-height: 1.5; }
+.operations-workspace .batt-select { --select-height: 54px; --select-font-size: 16px; }
+.operations-workspace .profile-page :is(.form-control, .form-select) { min-height: 54px; font-size: 16px; }
+@media (max-width: 600px) { .operations-workspace .page-title { font-size: 25px; } }

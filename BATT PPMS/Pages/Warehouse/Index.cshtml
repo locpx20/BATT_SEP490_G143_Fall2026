@@ -1,0 +1,45 @@
+@page
+@model BATT_PPMS.Pages.Warehouse.IndexModel
+@using BATT_PPMS.Services
+@{ ViewData["Title"] = Model.Tab == "plans" ? "Kế hoạch sản xuất trong ngày" : "Nhập kho thành phẩm"; ViewData["ActivePage"] = "Warehouse"; }
+@section Styles { <link rel="stylesheet" href="~/css/production-flow.css" asp-append-version="true" /> }
+<div class="flow-screen warehouse-flow">
+    <header class="page-header"><h1 class="page-title"><i class="bi bi-box-seam" aria-hidden="true"></i> @ViewData["Title"]</h1>@if(Model.StaffView) { <a class="btn btn-secondary" asp-page="/ShiftReports/Index">Báo cáo cuối ca</a> }</header>
+    @if (Model.SuccessMessage != null) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
+    @if (Model.ErrorMessage != null) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
+    <section class="flow-card">
+        <form method="get" class="flow-filters"><input type="hidden" name="Tab" value="@Model.Tab" />
+        @if(Model.Tab == "plans") { <div class="flow-field"><label for="warehousePlanDate">Ngày sản xuất</label><input type="date" id="warehousePlanDate" name="PlanDate" value="@Model.PlanDate.ToString("yyyy-MM-dd")" class="form-control" /></div> }
+        else {
+            <div class="flow-field"><label for="warehouseSearch">Tìm lô hàng, người yêu cầu</label><input id="warehouseSearch" type="search" name="SearchTerm" value="@Model.SearchTerm" class="form-control" /></div>
+            <div class="flow-field"><label for="warehouseStatus">Trạng thái</label><select id="warehouseStatus" name="StatusFilter" class="form-select"><option value="">Tất cả</option>@foreach(var s in new[] { "Pending", "Rejected", "AwaitingStaffConfirmation", "Received" }) { <option value="@s" selected="@(Model.StatusFilter == s)">@ProductionFlow.Label(s)</option> }</select></div>
+        }
+        <button class="btn btn-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button></form>
+        <div class="flow-table-wrap"><table class="flow-table">
+        @if (Model.Tab == "plans") {
+            <thead><tr><th>Ngày / Ca</th><th>Công việc</th><th>Công nhân</th><th>Người phân công</th></tr></thead><tbody>
+            @foreach(var a in Model.Plans) { <tr><td data-label="Ngày / Ca">@a.AssignmentDate.ToString("dd/MM/yyyy")<small>@a.Shift</small></td><td data-label="Công việc">@a.TaskDescription</td><td data-label="Công nhân">@(a.Staff?.FullName ?? "Tài khoản đã xóa")</td><td data-label="Người phân công">@(a.AssignedByNavigation?.FullName ?? "Tài khoản đã xóa")</td></tr> }
+            @if(Model.Plans.Count == 0) { <tr><td colspan="4" class="flow-empty">Chưa có phân công vào ngày này.</td></tr> }</tbody>
+        } else {
+            <thead><tr><th>Phiếu / Lô hàng</th><th>Ngày / Ca</th><th>Người yêu cầu</th><th>Đối chiếu khối lượng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
+            @foreach(var r in Model.Receipts) { <tr>
+                <td data-label="Phiếu / Lô hàng"><strong>NK-@r.ReceiptId.ToString("D4")</strong><small>@r.QualityRequest.Inspection.Batch.BagNumber</small><small>QC: @ProductionFlow.Label(r.QualityRequest.Inspection.Result) · RP-@r.QualityRequest.ReportId?.ToString("D4")</small></td>
+                <td data-label="Ngày / Ca">@r.QualityRequest.Assignment.AssignmentDate.ToString("dd/MM/yyyy")<small>@r.QualityRequest.Assignment.Shift</small></td>
+                <td data-label="Người yêu cầu">@(r.Requester?.FullName ?? "Tài khoản đã xóa")<small>@r.RequestedAt.ToString("HH:mm dd/MM/yyyy")</small>@if(!string.IsNullOrWhiteSpace(r.RequestNote)) { <p class="flow-note">Nội dung yêu cầu: @r.RequestNote</p> }</td>
+                <td data-label="Đối chiếu khối lượng">Yêu cầu: @r.ExpectedQuantity.ToString("N2") kg<small>Thực nhập: @(r.ActualQuantity.HasValue ? r.ActualQuantity.Value.ToString("N2") + " kg" : "Chưa nhập")</small>@if(r.DiscrepancyNote != null) { <p class="flow-note">@r.DiscrepancyNote</p> }</td>
+                <td data-label="Trạng thái"><span class="flow-state">@ProductionFlow.Label(r.Status)</span>@if(r.RejectionReason != null) { <p class="flow-note">Lý do trả lại: @r.RejectionReason</p> }<small>Thủ kho: @(r.Receiver?.FullName ?? "Chưa xử lý")</small>@if(r.ReceivedAt.HasValue) { <small>Nhập lúc @r.ReceivedAt.Value.ToString("HH:mm dd/MM/yyyy")</small> }</td>
+                <td data-label="Thao tác"><div class="flow-row-actions">
+                    @if(Model.CanReceive && r.Status == "Pending") {
+                        <details class="flow-action"><summary>Duyệt và lập phiếu nhập</summary><form method="post" asp-page-handler="Receive" class="flow-form flow-form-compact"><input type="hidden" name="receiptId" value="@r.ReceiptId" /><div class="flow-field"><label for="receivedQty-@r.ReceiptId">Khối lượng thực nhập (kg)</label><input id="receivedQty-@r.ReceiptId" type="number" name="actualQuantity" value="@r.ExpectedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" min="0.01" step="0.01" required class="form-control" /></div><div class="flow-field"><label for="receivedNote-@r.ReceiptId">Ghi chú đối chiếu (bắt buộc nếu chênh lệch)</label><textarea id="receivedNote-@r.ReceiptId" name="note" class="form-control" maxlength="2000"></textarea></div><button type="submit" class="btn btn-primary">Xác nhận nhập kho</button></form></details>
+                        <details class="flow-action"><summary>Từ chối yêu cầu</summary><form method="post" asp-page-handler="Reject" class="flow-form flow-form-compact"><input type="hidden" name="receiptId" value="@r.ReceiptId" /><div class="flow-field"><label for="receiptReason-@r.ReceiptId">Lý do từ chối</label><textarea id="receiptReason-@r.ReceiptId" name="reason" class="form-control" required maxlength="1000"></textarea></div><button type="submit" class="btn btn-secondary">Trả lại cho Staff</button></form></details>
+                    }
+                    @if(Model.StaffView && r.Status == "Rejected") { <details class="flow-action"><summary>Sửa và gửi lại yêu cầu</summary><form method="post" asp-page-handler="RequestReceipt" class="flow-form flow-form-compact"><input type="hidden" name="requestId" value="@r.QualityRequestId" /><div class="flow-field"><label for="receiptRevision-@r.ReceiptId">Nội dung điều chỉnh theo lý do từ chối</label><textarea id="receiptRevision-@r.ReceiptId" name="note" class="form-control" maxlength="2000" required>@r.RequestNote</textarea><small>Lô hàng và sản lượng giữ theo kết quả QC, báo cáo đã duyệt.</small></div><button type="submit" class="btn btn-primary">Gửi lại cho Thủ kho</button></form></details> }
+                    @if(Model.StaffView && r.Status == "AwaitingStaffConfirmation") { <form method="post" asp-page-handler="Confirm"><input type="hidden" name="receiptId" value="@r.ReceiptId" /><button type="submit" class="btn btn-primary">Xác nhận phiếu nhập</button></form> }
+                </div></td>
+            </tr> }
+            @if(Model.Receipts.Count == 0) { <tr><td colspan="6" class="flow-empty">Không có yêu cầu nhập kho phù hợp.</td></tr> }</tbody>
+        }
+        </table></div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/Warehouse/Index", new() { ["Tab"] = Model.Tab, ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter, ["PlanDate"] = Model.PlanDate.ToString("yyyy-MM-dd") })' />
+    </section>
+</div>

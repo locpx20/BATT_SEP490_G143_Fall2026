@@ -137,7 +137,7 @@ namespace BATT_PPMS.Pages.PurchasePrices
                     .Where(h => h.MaterialId == m.MaterialId)
                     .OrderByDescending(h => h.ChangedAt)
                     .ThenByDescending(h => h.HistoryId)
-                    .Select(h => new { h.ChangedAt, Name = h.ChangedByNavigation.FullName })
+                    .Select(h => new { h.ChangedAt, Name = h.ChangedByNavigation == null ? "Tài khoản đã xóa" : h.ChangedByNavigation.FullName })
                     .FirstOrDefaultAsync();
 
                 Materials.Add(new MaterialPriceRow
@@ -169,7 +169,7 @@ namespace BATT_PPMS.Pages.PurchasePrices
                     Unit = h.Material.Unit,
                     OldPrice = h.OldPrice,
                     NewPrice = h.NewPrice,
-                    ChangedByName = h.ChangedByNavigation.FullName,
+                    ChangedByName = h.ChangedByNavigation == null ? "Tài khoản đã xóa" : h.ChangedByNavigation.FullName,
                     Reason = h.Reason
                 })
                 .ToListAsync();

@@ -10,37 +10,31 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/login.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/auth-entry.css" asp-append-version="true" />
 </head>
-<body>
-    <div class="login-wrapper">
+<body class="auth-entry">
+    <main class="login-wrapper">
         <div class="login-card">
             <div class="login-logo">
-                <span class="logo-icon">🏭</span>
-                <h1>BATT PPMS</h1>
-                <p>Hệ Thống Quản Lý Quy Trình Sản Xuất Nội Bộ</p>
-                <div class="internal-portal-badge">
-                    <span class="badge-icon">🔒</span>
-                    <span>Cổng Đăng Nhập Dành Cho Cán Bộ Nhân Viên</span>
-                </div>
+                <span class="login-brand-mark" aria-label="BATT">BATT</span>
+                <p class="auth-brand-name">BATT PPMS</p>
+                <h1>Đăng nhập</h1>
             </div>
 
             @if (!string.IsNullOrEmpty(Model.SuccessMessage))
             {
-                <div class="alert alert-success">
-                    <span class="alert-icon">✓</span>
+                <div class="alert alert-success" role="status">
+                    <i class="bi bi-check-circle alert-icon" aria-hidden="true"></i>
                     <span>@Model.SuccessMessage</span>
                 </div>
             }
 
             @if (!string.IsNullOrEmpty(Model.ErrorMessage))
             {
-                <div class="alert alert-danger">
-                    <span class="alert-icon">⚠</span>
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-circle alert-icon" aria-hidden="true"></i>
                     <span>@Model.ErrorMessage</span>
                 </div>
             }
@@ -49,7 +43,7 @@
                 <div class="form-group">
                     <label for="phone">Số điện thoại</label>
                     <input type="tel" id="phone" name="Phone" class="form-control" inputmode="tel" autocomplete="username"
-                           value="@Model.Phone" placeholder="Nhập số điện thoại được cấp" required autofocus />
+                           value="@Model.Phone" placeholder="Nhập số điện thoại" required autofocus />
                 </div>
                 <div class="form-group">
                     <div class="form-label-row">
@@ -57,23 +51,15 @@
                         <a asp-page="/Auth/ForgotPassword" class="form-link-subtle">Quên mật khẩu?</a>
                     </div>
                     <input type="password" id="password" name="Password" class="form-control"
-                           placeholder="Nhập mật khẩu" required />
+                           placeholder="Nhập mật khẩu" autocomplete="current-password" required />
                 </div>
 
                 <button type="submit" class="btn-login">
-                    <span>Đăng nhập vào hệ thống</span>
-                    <span class="btn-arrow">→</span>
+                    <span>Đăng nhập</span>
                 </button>
             </form>
 
-            <div class="internal-notice-box">
-                <div class="notice-icon">🛡️</div>
-                <div class="notice-content">
-                    <p class="notice-title">Quy định cấp phát tài khoản nội bộ</p>
-                    <p class="notice-desc">Tài khoản và quyền truy cập được khởi tạo, phân quyền trực tiếp bởi <strong>Quản trị viên (Admin)</strong>. Nhân viên chưa có tài khoản vui lòng liên hệ bộ phận IT / Quản trị để được cấp.</p>
-                </div>
-            </div>
         </div>
-    </div>
+    </main>
 </body>
 </html>

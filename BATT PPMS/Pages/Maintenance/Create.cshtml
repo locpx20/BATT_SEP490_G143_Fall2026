@@ -1,0 +1,126 @@
+﻿@page
+@model BATT_PPMS.Pages.Maintenance.CreateModel
+@using BATT_PPMS.Helpers
+@{
+    ViewData["Title"] = Model.IsEdit ? "Chỉnh sửa yêu cầu sửa chữa" : "Tạo yêu cầu sửa chữa";
+    ViewData["ActivePage"] = "Maintenance";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/repair-flow.css" asp-append-version="true" />
+}
+
+<div class="space-y-6 rf rf-create">
+
+    <div class="page-header" style="margin-bottom: 20px;">
+        <div>
+            <h1 class="page-title" style="font-size: 20px; font-weight: 800; color: #243d35; margin-bottom: 4px;">
+                <i class="bi bi-tools" aria-hidden="true"></i> @(Model.IsEdit ? $"Chỉnh sửa và gửi lại REQ-{Model.Id:D4}" : "Tạo yêu cầu sửa chữa máy móc")
+            </h1>
+            <p class="page-subtitle" style="font-size: 12px; color: #7a887f;">
+                Yêu cầu sẽ được gửi tới Quản lý để duyệt và phân công cho nhân viên bảo trì.
+            </p>
+        </div>
+        <a href="@(Model.IsEdit ? $"/Maintenance/Details?id={Model.Id}" : "/Maintenance/Index")" class="btn btn-outline-secondary btn-sm" style="border-radius: 8px; font-size: 12px;">
+            <i class="bi bi-arrow-left"></i> Quay lại
+        </a>
+    </div>
+
+    @if (Model.IsEdit && !string.IsNullOrWhiteSpace(Model.RejectionReason))
+    {
+        <div class="alert alert-danger" style="border-radius: 12px; margin-bottom: 20px;">
+            <div style="font-weight: 800; margin-bottom: 4px;"><i class="bi bi-reply-fill"></i> Quản lý đã từ chối yêu cầu này</div>
+            <div style="font-size: 13px;">Lý do: @Model.RejectionReason</div>
+            <div style="font-size: 12px; margin-top: 4px;">Vui lòng chỉnh sửa theo góp ý rồi gửi lại.</div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(Model.FormError))
+    {
+        <div class="alert alert-danger" style="border-radius: 12px; margin-bottom: 20px;">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size: 16px; margin-right: 8px;"></i>
+            <span>@Model.FormError</span>
+        </div>
+    }
+
+    <form method="post" class="card" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; padding: 22px;">
+        @if (Model.IsEdit)
+        {
+            <input type="hidden" name="Id" value="@Model.Id" />
+        }
+
+        <div class="mb-3">
+            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Máy cần sửa chữa <span style="color: #a55449;">*</span></label>
+            <select name="MachineId" id="machineSelect" class="form-select" required onchange="showMachineInfo()" style="font-size: 13px; border-radius: 10px;">
+                <option value="">-- Chọn máy --</option>
+                @foreach (var m in Model.Machines)
+                {
+                    <option value="@m.MachineId" data-process="@m.ProcessName" data-brand="@m.Brand" selected="@(Model.MachineId == m.MachineId)">
+                        @m.MachineCode – @m.MachineName
+                    </option>
+                }
+            </select>
+            <div id="machineInfo" style="font-size: 11px; color: #7a887f; margin-top: 4px;"></div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Vị trí máy <span style="color: #a55449;">*</span></label>
+            <input type="text" name="Location" value="@Model.Location" maxlength="200" required class="form-control"
+                   placeholder="Ví dụ: Xưởng 1 – khu băm nghiền, cạnh băng tải cấp liệu" style="font-size: 13px; border-radius: 10px;" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Tiêu đề / hiện tượng hỏng <span style="color: #a55449;">*</span></label>
+            <input type="text" name="Title" value="@Model.Title" maxlength="150" required class="form-control"
+                   placeholder="Ví dụ: Trục quay phát tiếng kêu lạ, nhiệt độ tăng cao" style="font-size: 13px; border-radius: 10px;" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Mô tả chi tiết</label>
+            <textarea name="Description" rows="4" maxlength="2000" class="form-control"
+                      placeholder="Hiện tượng xảy ra khi nào, mức độ ảnh hưởng tới sản xuất, đã xử lý tạm thời gì..."
+                      style="font-size: 13px; border-radius: 10px;">@Model.Description</textarea>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Mức độ nghiêm trọng <span style="color: #a55449;">*</span></label>
+                <select name="Severity" class="form-select" style="font-size: 13px; border-radius: 10px;">
+                    @foreach (var p in RepairStatus.PriorityLevels)
+                    {
+                        <option value="@p" selected="@(Model.Severity == p)">@RepairStatus.PriorityLabel(p)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check" style="padding-bottom: 8px;">
+                    <input class="form-check-input" type="checkbox" name="MachineStopped" value="true" id="machineStopped" checked="@Model.MachineStopped" />
+                    <label class="form-check-label" for="machineStopped" style="font-size: 13px; font-weight: 600; color: #243d35;">Máy đã dừng hoạt động</label>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <a href="@(Model.IsEdit ? $"/Maintenance/Details?id={Model.Id}" : "/Maintenance/Index")" class="btn btn-secondary" style="border-radius: 8px; font-size: 13px;">Hủy bỏ</a>
+            <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 13px; font-weight: 700;">
+                <i class="bi bi-send"></i> @(Model.IsEdit ? "Gửi lại yêu cầu" : "Gửi yêu cầu")
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        function showMachineInfo() {
+            var sel = document.getElementById('machineSelect');
+            var opt = sel.options[sel.selectedIndex];
+            var box = document.getElementById('machineInfo');
+            if (!opt || !opt.value) { box.innerText = ''; return; }
+            var parts = [];
+            if (opt.getAttribute('data-process')) parts.push('Công đoạn: ' + opt.getAttribute('data-process'));
+            if (opt.getAttribute('data-brand')) parts.push('Hãng: ' + opt.getAttribute('data-brand'));
+            box.innerText = parts.join('  |  ');
+        }
+        showMachineInfo();
+    </script>
+}

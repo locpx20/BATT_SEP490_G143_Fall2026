@@ -9,7 +9,7 @@ public partial class EndOfShiftReport
 
     public int AssignmentId { get; set; }
 
-    public int StaffId { get; set; }
+    public int? StaffId { get; set; }
 
     public DateOnly ShiftDate { get; set; }
 
@@ -23,5 +23,5 @@ public partial class EndOfShiftReport
 
     public virtual PersonnelAssignment Assignment { get; set; } = null!;
 
-    public virtual User Staff { get; set; } = null!;
+    public virtual User? Staff { get; set; }
 }

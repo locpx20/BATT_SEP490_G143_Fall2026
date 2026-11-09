@@ -1,28 +1,248 @@
 ﻿@page
 @model BATT_PPMS.Pages.MaterialPurchases.IndexModel
+@using BATT_PPMS.Helpers
 @{
-    ViewData["Title"] = "Mua Vat tu Sua chua";
+    ViewData["Title"] = "Mua Vật tư Sửa chữa";
     ViewData["ActivePage"] = "MaterialPurchase";
+
+    var filters = new Dictionary<string, string?>
+    {
+        ["SearchTerm"] = Model.SearchTerm,
+        ["StatusFilter"] = Model.StatusFilter
+    };
+    var currentStatus = string.IsNullOrEmpty(Model.StatusFilter) ? "ALL" : Model.StatusFilter;
+    var tabs = new[]
+    {
+        (Label: "Tất cả", Value: (int?)null, Filter: "ALL", Css: ""),
+        (Label: "Chờ mua", Value: (int?)Model.PendingCount, Filter: PurchaseRequestStatus.Pending, Css: Model.PendingCount > 0 ? "alert" : ""),
+        (Label: "Đã mua", Value: (int?)Model.PurchasedCount, Filter: PurchaseRequestStatus.Purchased, Css: ""),
+        (Label: "Bị từ chối", Value: (int?)Model.RejectedCount, Filter: PurchaseRequestStatus.Rejected, Css: "")
+    };
+    string TabHref(string status)
+    {
+        var q = new List<string> { "StatusFilter=" + Uri.EscapeDataString(status) };
+        if (!string.IsNullOrWhiteSpace(Model.SearchTerm)) q.Add("SearchTerm=" + Uri.EscapeDataString(Model.SearchTerm));
+        return "/MaterialPurchases/Index?" + string.Join("&", q);
+    }
 }
 
-<div class="page-header">
-    <div>
-        <h1 class="page-title">Mua Vật tư Sửa chữa</h1>
-        <p class="page-subtitle">Yêu cầu và ghi nhận mua vật tư phục vụ bảo trì</p>
+@section Styles {
+    <link rel="stylesheet" href="~/css/repair-flow.css" asp-append-version="true" />
+}
+
+<div class="space-y-6 rf">
+
+    <partial name="_NotificationBanner" model="Model.Notices" />
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="rf-callout ok"><i class="bi bi-check-circle-fill"></i><div>@Model.SuccessMessage</div></div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="rf-callout danger"><i class="bi bi-exclamation-triangle-fill"></i><div>@Model.ErrorMessage</div></div>
+    }
+
+    <div class="page-header" style="margin-bottom: 18px;">
+        <div>
+            <h1 class="page-title"><i class="bi bi-cart-check" aria-hidden="true"></i> Mua vật tư sửa chữa</h1>
+            <p class="page-subtitle" style="font-size: 12px; color: #7a887f; margin: 0;">@Model.ScopeHint</p>
+        </div>
     </div>
-    <div class="page-actions">
-        <a href="/MaterialPurchases/Create" class="btn btn-primary" id="btn-create-matpurchase">
-            <i class="bi bi-plus-lg"></i> Yêu cầu mua vật tư
-        </a>
+
+    @if (Model.CanHandle && Model.PendingCount > 0)
+    {
+        <div class="rf-callout warn">
+            <i class="bi bi-cart-plus-fill"></i>
+            <div><b>@Model.PendingCount yêu cầu đang chờ bạn mua</b>Mua xong hãy bấm <strong>Đã mua</strong> để nhân viên bảo trì được thông báo và tiếp tục sửa chữa.</div>
+        </div>
+    }
+
+    <!-- Tab trạng thái -->
+    <nav class="rf-tabs" aria-label="Lọc theo trạng thái">
+        @foreach (var t in tabs)
+        {
+            <a href="@TabHref(t.Filter)" class="rf-tab @(currentStatus == t.Filter ? "active" : "") @t.Css">
+                @t.Label
+                @if (t.Value.HasValue)
+                {
+                    <span class="n">@t.Value.Value</span>
+                }
+            </a>
+        }
+    </nav>
+
+    <!-- Bộ lọc -->
+    <form method="get" class="rf-toolbar">
+        <input type="hidden" name="StatusFilter" value="@currentStatus" />
+        <div class="rf-search">
+            <i class="bi bi-search"></i>
+            <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tìm theo mã MPR-/REQ-, vật tư, máy, người gửi..." />
+        </div>
+        <button type="submit" class="btn btn-outline-secondary btn-sm rf-btn-sm"><i class="bi bi-funnel"></i> Lọc</button>
+        <a href="/MaterialPurchases/Index" class="btn btn-link btn-sm" style="font-size: 12px;">Xóa lọc</a>
+    </form>
+
+    <!-- Danh sách yêu cầu mua -->
+    <div class="rf-card">
+        <div class="table-responsive">
+            <table class="table rf-table">
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Yêu cầu sửa chữa</th>
+                        <th>Vật tư cần mua</th>
+                        <th class="d-none d-lg-table-cell">Người gửi</th>
+                        <th>Trạng thái</th>
+                        @if (Model.CanHandle)
+                        {
+                            <th style="text-align: right;">Thao tác</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr>
+                            <td colspan="@(Model.CanHandle ? 6 : 5)" class="rf-empty">
+                                <i class="bi bi-cart3"></i>
+                                Chưa có yêu cầu mua vật tư nào.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var r in Model.Rows)
+                    {
+                        var sb = PurchaseRequestStatus.Badge(r.Status);
+                        <tr class="@(r.Status == PurchaseRequestStatus.Pending ? "rf-row-attn" : "")">
+                            <td style="white-space: nowrap;"><span class="rf-code">@r.Code</span></td>
+                            <td>
+                                <a class="rf-code" href="/Maintenance/Details?id=@r.MaintenanceRequestId">@r.MaintenanceCode</a>
+                                <div class="rf-sub">@r.MachineName</div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 700; color: #30483f;">@r.ItemName × @r.Quantity @r.Unit</div>
+                                @if (!string.IsNullOrWhiteSpace(r.Note))
+                                {
+                                    <div class="rf-sub rf-clamp">Ghi chú: @r.Note</div>
+                                }
+                            </td>
+                            <td class="d-none d-lg-table-cell">
+                                <div>@r.RequestedByName</div>
+                                <div class="rf-sub">@r.RequestDate.ToString("dd/MM/yyyy HH:mm")</div>
+                            </td>
+                            <td>
+                                <span class="rf-badge" style="background: @sb.Bg; color: @sb.Fg; border-color: @sb.Border;">@PurchaseRequestStatus.Label(r.Status)</span>
+                                @if (r.HandledAt.HasValue)
+                                {
+                                    <div class="rf-sub">@(r.HandledByName ?? "—") · @r.HandledAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                }
+                                @if (r.TotalCost.HasValue)
+                                {
+                                    <div class="rf-sub">Chi phí: @r.TotalCost.Value.ToString("N0") đ</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(r.ResultNote))
+                                {
+                                    <div class="rf-sub rf-clamp">@r.ResultNote</div>
+                                }
+                            </td>
+                            @if (Model.CanHandle)
+                            {
+                                <td style="text-align: right; white-space: nowrap;">
+                                    @if (r.Status == PurchaseRequestStatus.Pending)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-success rf-btn-sm js-purchased"
+                                                data-id="@r.RequestId" data-label="@r.Code – @r.ItemName × @r.Quantity @r.Unit" data-bs-toggle="modal" data-bs-target="#purchasedModal">
+                                            <i class="bi bi-bag-check"></i> Đã mua
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rf-btn-sm js-reject"
+                                                data-id="@r.RequestId" data-label="@r.Code – @r.ItemName × @r.Quantity @r.Unit" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                                            <i class="bi bi-x-circle"></i> Từ chối
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span style="color: #96a298;">—</span>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml"
+                 model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/MaterialPurchases/Index", filters)' />
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="bi bi-cart3"></i>
-            <h3>Chưa có yêu cầu mua vật tư</h3>
-            <p>TODO: Danh sách yêu cầu mua vật tư, trạng thái duyệt, hóa đơn</p>
+@if (Model.CanHandle)
+{
+    <!-- Đã mua -->
+    <div class="modal fade" id="purchasedModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="Purchased">
+                    <input type="hidden" name="id" id="purchasedId" />
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;"><i class="bi bi-bag-check"></i> Xác nhận đã mua vật tư</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <p style="font-size: 12px; color: #52675d;"><strong id="purchasedLabel"></strong><br />Nhân viên bảo trì sẽ được thông báo để tiếp tục sửa chữa.</p>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Tổng chi phí (đ, không bắt buộc)</label>
+                            <input type="number" name="totalCost" min="0" step="1000" class="form-control" style="font-size: 12px; border-radius: 10px;" />
+                        </div>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ghi chú (không bắt buộc)</label>
+                        <textarea name="note" rows="3" maxlength="300" class="form-control" style="font-size: 12px; border-radius: 10px;" placeholder="Nhà cung cấp, thời gian giao, vị trí để vật tư..."></textarea>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 700;">Xác nhận đã mua</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Từ chối -->
+    <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="Reject">
+                    <input type="hidden" name="id" id="rejectId" />
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #94473e;"><i class="bi bi-x-circle"></i> Từ chối mua vật tư</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <p style="font-size: 12px; color: #52675d;"><strong id="rejectLabel"></strong></p>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Lý do từ chối <span style="color: #a55449;">*</span></label>
+                        <textarea name="reason" rows="3" maxlength="300" required class="form-control" style="font-size: 12px; border-radius: 10px;"></textarea>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-size: 12px; font-weight: 700;">Từ chối</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.js-purchased').forEach(function (b) {
+            b.addEventListener('click', function () {
+                document.getElementById('purchasedId').value = b.dataset.id;
+                document.getElementById('purchasedLabel').textContent = b.dataset.label;
+            });
+        });
+        document.querySelectorAll('.js-reject').forEach(function (b) {
+            b.addEventListener('click', function () {
+                document.getElementById('rejectId').value = b.dataset.id;
+                document.getElementById('rejectLabel').textContent = b.dataset.label;
+            });
+        });
+    </script>
+}

@@ -27,7 +27,11 @@ public partial class ProductionManagementDbContext : DbContext
 
     public virtual DbSet<MaintenanceRequest> MaintenanceRequests { get; set; }
 
+    public virtual DbSet<MaintenanceRequestLog> MaintenanceRequestLogs { get; set; }
+
     public virtual DbSet<MaterialPurchaseRequest> MaterialPurchaseRequests { get; set; }
+
+    public virtual DbSet<AppNotification> AppNotifications { get; set; }
 
     public virtual DbSet<Order> Orders { get; set; }
 
@@ -283,6 +287,18 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.AssignedTo).HasColumnName("assigned_to");
             entity.Property(e => e.BrokenReportId).HasColumnName("broken_report_id");
+            entity.Property(e => e.Title).HasMaxLength(150).HasColumnName("title");
+            entity.Property(e => e.Location).HasMaxLength(200).HasColumnName("location");
+            entity.Property(e => e.MachineStopped).HasColumnName("machine_stopped");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.ReviewedAt).HasColumnType("datetime").HasColumnName("reviewed_at");
+            entity.Property(e => e.RejectionReason).HasMaxLength(500).HasColumnName("rejection_reason");
+            entity.Property(e => e.AssignmentNote).HasMaxLength(500).HasColumnName("assignment_note");
+            entity.Property(e => e.AssignedAt).HasColumnType("datetime").HasColumnName("assigned_at");
+            entity.Property(e => e.DueDate).HasColumnType("date").HasColumnName("due_date");
+            entity.Property(e => e.ConfirmedAt).HasColumnType("datetime").HasColumnName("confirmed_at");
+            entity.Property(e => e.CompletedAt).HasColumnType("datetime").HasColumnName("completed_at");
+            entity.Property(e => e.CompletionNote).HasMaxLength(500).HasColumnName("completion_note");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.Priority)
                 .HasMaxLength(20)
@@ -309,6 +325,38 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Maintenan__reque__72910220");
+
+            entity.HasOne(d => d.ReviewedByNavigation).WithMany()
+                .HasForeignKey(d => d.ReviewedBy)
+                .HasConstraintName("FK_MR_reviewed_by");
+        });
+
+        modelBuilder.Entity<MaintenanceRequestLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK_MaintenanceRequestLog");
+
+            entity.ToTable("MaintenanceRequestLog");
+
+            entity.HasIndex(e => new { e.RequestId, e.CreatedAt }, "IX_MRL_request_created");
+
+            entity.Property(e => e.LogId).HasColumnName("log_id");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.Action).HasMaxLength(30).HasColumnName("action");
+            entity.Property(e => e.FromStatus).HasMaxLength(50).HasColumnName("from_status");
+            entity.Property(e => e.ToStatus).HasMaxLength(50).HasColumnName("to_status");
+            entity.Property(e => e.ActorId).HasColumnName("actor_id");
+            entity.Property(e => e.Note).HasMaxLength(500).HasColumnName("note");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime").HasColumnName("created_at");
+
+            entity.HasOne(d => d.Request).WithMany(p => p.Logs)
+                .HasForeignKey(d => d.RequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MRL_Request");
+
+            entity.HasOne(d => d.Actor).WithMany()
+                .HasForeignKey(d => d.ActorId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_MRL_Actor");
         });
 
         modelBuilder.Entity<MaterialPurchaseRequest>(entity =>
@@ -328,6 +376,11 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("request_date");
             entity.Property(e => e.RequestedBy).HasColumnName("requested_by");
+            entity.Property(e => e.Unit).HasMaxLength(20).HasColumnName("unit");
+            entity.Property(e => e.Note).HasMaxLength(500).HasColumnName("note");
+            entity.Property(e => e.ResultNote).HasMaxLength(500).HasColumnName("result_note");
+            entity.Property(e => e.TotalCost).HasColumnType("decimal(14, 2)").HasColumnName("total_cost");
+            entity.Property(e => e.HandledAt).HasColumnType("datetime").HasColumnName("handled_at");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValue("Pending")
@@ -346,6 +399,21 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__MaterialP__reque__7849DB76");
+        });
+
+        modelBuilder.Entity<AppNotification>(entity =>
+        {
+            entity.HasKey(e => e.NotificationId).HasName("PK__AppNotification");
+
+            entity.ToTable("AppNotification");
+
+            entity.Property(e => e.NotificationId).HasColumnName("notification_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Title).HasMaxLength(150).HasColumnName("title");
+            entity.Property(e => e.Message).HasMaxLength(500).HasColumnName("message");
+            entity.Property(e => e.Url).HasMaxLength(200).HasColumnName("url");
+            entity.Property(e => e.IsRead).HasColumnName("is_read");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime").HasColumnName("created_at");
         });
 
         modelBuilder.Entity<Order>(entity =>

@@ -1,5 +1,9 @@
 # BATT_SEP490_G143_Fall2026
 
+## Cập nhật database sau khi pull luồng bảo trì
+
+Với database đang có dữ liệu, chạy `Add_MaintenanceRequest_Workflow.sql` trước, rồi chạy `Add_MaintenanceMaterialFlow.sql` trên database ứng dụng đang sử dụng. Hai script bổ sung các cột bảo trì, nhật ký và thông báo còn thiếu, có thể chạy lại. Không cần chạy lại file tạo database nền. Nếu gặp `Invalid column name` với `due_date`, `location`, `machine_stopped`, `rejection_reason` hoặc `title`, database chưa được cập nhật phần cấu trúc bảo trì.
+
 ## Luồng sản xuất, QC và nhập kho
 
 Với database đã có dữ liệu, chạy `Add_Production_QC_Warehouse_Workflow.sql`, sau đó `Add_ShiftMaterialUsage.sql` trên SQL Server của dự án rồi khởi động lại ứng dụng. Các script chạy lại được và không xóa dữ liệu cũ. Không chạy lại script tạo database nền để cập nhật luồng này. Bảng yêu cầu cấp nguyên liệu cũ chỉ được giữ để bảo toàn lịch sử; chức năng yêu cầu/cấp nguyên liệu đã được bỏ khỏi giao diện và các POST handler.

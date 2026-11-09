@@ -19,7 +19,7 @@
     }
     @await RenderSectionAsync("Styles", required: false)
     <link rel="stylesheet" href="~/css/theme-colors.css" asp-append-version="true" />
-    @if (BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")))
+    @if (BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")) && Context.Session.GetString("RoleName") != "Staff")
     {
         <link rel="stylesheet" href="~/css/owner-workspace.css" asp-append-version="true" />
     }
@@ -36,7 +36,7 @@
         <link rel="stylesheet" href="~/css/operations-workspace.css" asp-append-version="true" />
     }
 </head>
-<body class="@(BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")) ? "owner-workspace" : "") @ViewData["PageClass"]">
+<body class="@(Context.Session.GetString("RoleName") == "Staff" ? "staff-workspace" : BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")) ? "owner-workspace" : "") @(Context.Session.GetString("RoleName") == "Manager" ? "manager-workspace" : "") @(Context.Session.GetString("RoleName") is "QC Staff" or "Warehouse Staff" ? "operations-workspace" : "") @ViewData["PageClass"]">
 
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";
@@ -104,6 +104,11 @@
         else if (roleName == "Owner")
         {
             <partial name="~/Pages/Shared/Roles/Owner/_AccountMenu.cshtml"
+                     model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
+        }
+        else if (isStaff)
+        {
+            <partial name="~/Pages/Shared/Roles/Production/_AccountMenu.cshtml"
                      model="new BATT_PPMS.Helpers.RoleHeaderViewModel(fullName, initials, roleDisplay)" />
         }
         else if (isWorkspace)

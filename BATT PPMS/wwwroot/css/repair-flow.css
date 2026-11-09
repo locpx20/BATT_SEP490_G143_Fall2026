@@ -141,3 +141,52 @@
 .rf-empty { text-align: center; padding: 48px 16px; color: #96a298; }
 .rf-empty i { font-size: 34px; display: block; margin-bottom: 8px; }
 .rf-btn-sm { border-radius: 8px; font-size: 12px; font-weight: 600; }
+
+/* Align the new repair pages with the established BATT workspace. */
+.rf { --rf-accent: #193f35; font-size: 16px; min-width: 0; }
+.rf .page-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px !important; }
+.rf .page-title, .rf .rf-title { display: flex; align-items: center; gap: 12px; max-width: none; font-size: clamp(26px, 2.2vw, 36px) !important; line-height: 1.25; letter-spacing: -.025em; color: #193f35; }
+.rf .page-subtitle, .rf .rf-subtitle { font-size: 15px !important; line-height: 1.6; margin-top: 8px !important; }
+.rf .btn { min-height: 46px; padding: 10px 18px; border-radius: 10px !important; font-size: 15px !important; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: normal; }
+.rf .btn-primary, .rf .btn-success { background: #193f35; border-color: #193f35; color: #fffefa; }
+.rf .btn-primary:hover, .rf .btn-success:hover { background: #2c5548; border-color: #2c5548; }
+.rf .btn-secondary, .rf .btn-outline-secondary { background: #f4f2ea; border: 1px solid #c5cec2; color: #193f35; }
+.rf .btn-secondary:hover, .rf .btn-outline-secondary:hover { background: #e2eee4; color: #193f35; }
+.rf .form-control, .rf .form-select { min-height: 54px; padding: 12px 16px; border: 1px solid #b0bfae; border-radius: 10px !important; background-color: #fffefa; color: #243d35; font-size: 16px !important; line-height: 1.5; width: 100%; min-width: 0; }
+.rf textarea.form-control { min-height: 120px; resize: vertical; }
+.rf .form-control:focus, .rf .form-select:focus { outline: 0; border-color: #193f35; box-shadow: 0 0 0 3px rgb(25 63 53 / 12%); }
+.rf .form-label, .rf .rf-label { display: block; font-size: 14px !important; font-weight: 600; color: #52675d; margin-bottom: 8px; }
+.rf .form-check-label { font-size: 16px !important; }
+.rf .rf-toolbar { gap: 14px; padding: 20px 24px; margin-bottom: 24px; }
+.rf .rf-toolbar .rf-search { flex: 1 1 320px; max-width: 520px; min-width: 0; }
+.rf .rf-toolbar .rf-search input { padding-left: 42px; }
+.rf .rf-toolbar .form-select { flex: 0 1 240px; max-width: 260px; }
+.rf .rf-tabs { flex-wrap: wrap; gap: 10px; overflow: visible; margin-bottom: 20px; }
+.rf .rf-tab { font-size: 14px; padding: 10px 14px; min-height: 44px; }
+.rf .rf-tab.active { background: #193f35; border-color: #193f35; color: #fffefa; }
+.rf .rf-card { border-radius: 14px; }
+.rf .rf-card-head { padding: 20px 24px; font-size: 18px; }
+.rf .rf-card-body { padding: 24px; }
+.rf .rf-table { width: 100%; font-size: 15px; }
+.rf .rf-table thead th { font-size: 13px; padding: 18px; }
+.rf .rf-table tbody td { padding: 20px 18px; line-height: 1.55; }
+.rf .rf-table .rf-sub, .rf .rf-sub, .rf .rf-tl-meta { font-size: 13px; line-height: 1.5; }
+.rf .rf-badge { font-size: 13px !important; padding: 6px 10px; }
+.rf .rf-grid, .rf .rf-value, .rf .rf-callout { font-size: 16px; line-height: 1.6; }
+.rf .rf-chip, .rf .rf-step-name, .rf .rf-tl-note { font-size: 14px; }
+.rf .rf-step.current .rf-dot { border-color: #193f35; color: #193f35; box-shadow: 0 0 0 4px #e2eee4; }
+.rf .rf-callout.info { background: #e2eee4; border-color: #c6dbc9; color: #193f35; }
+.rf .rf-mat-row, .rf .rf-mat-head { grid-template-columns: minmax(180px, 1fr) 130px 120px 46px; gap: 12px; }
+.rf-create { width: 100%; max-width: 980px; margin-inline: auto; }
+.rf-create > form.card { padding: 32px !important; }
+.rf-create .mb-3 { margin-bottom: 24px !important; }
+@media (max-width: 767px) {
+    .rf .page-header { align-items: stretch; gap: 16px; }
+    .rf .rf-toolbar { padding: 16px; }
+    .rf .rf-toolbar .rf-search, .rf .rf-toolbar .form-select { max-width: none; flex-basis: 100%; }
+    .rf .rf-card-body, .rf-create > form.card { padding: 20px !important; }
+    .rf .rf-mat-row, .rf .rf-mat-head { grid-template-columns: minmax(0, 1fr) 100px 46px; }
+    .rf .rf-mat-row input[name="itemNames"] { grid-column: 1 / -1; }
+    .rf .rf-mat-row input[name="units"] { display: block; }
+    .rf .rf-side { position: static; }
+}

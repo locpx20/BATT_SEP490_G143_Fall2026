@@ -158,7 +158,7 @@
 
         .wh-table th {
             text-align: left;
-            padding: 14px 18px;
+            padding: 12px 10px;
             font-size: 12px;
             font-weight: 600;
             color: #4a5568;
@@ -168,8 +168,8 @@
         }
 
         .wh-table td {
-            padding: 14px 18px;
-            font-size: 13px;
+            padding: 12px 10px;
+            font-size: 12.5px;
             color: #2d3748;
             border-bottom: 1px solid #edf2f7;
             vertical-align: middle;
@@ -414,9 +414,21 @@ else
             </div>
         }
 
-        <div>
-            <h1 class="wh-title">Danh sách phiếu mua hàng con &amp; Phiếu nhập kho</h1>
-            <p class="wh-subtitle">Thủ kho xác nhận nhập kho để lập Phiếu nhập kho nguyên liệu (PNK-26xxx) gửi Manager phê duyệt.</p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+            <div>
+                <h1 class="wh-title">Yêu cầu nhập kho (Inbound Request) &amp; Phiếu nhập kho nguyên liệu</h1>
+                <p class="wh-subtitle" style="margin-bottom: 0;">Thủ kho đối chiếu Yêu cầu nhập kho (IR) để lập Phiếu nhập kho nguyên liệu (PNK-26xxx) gửi Manager phê duyệt.</p>
+            </div>
+            @if (Model.CanWarehouseConfirm && Model.PendingInboundRequests.Any())
+            {
+                var firstPending = Model.PendingInboundRequests.First();
+                <button type="button"
+                        onclick="openCreateImportModal(@firstPending.ReceiptId)"
+                        style="background: #1a4332; color: #ffffff; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Lập Phiếu nhập kho (PNK)</span>
+                </button>
+            }
         </div>
 
         <!-- KPI Cards -->
@@ -426,7 +438,7 @@ else
                 <div class="wh-kpi-val">@Model.TotalRawInventoryKg.ToString("N0", viCulture) <span style="font-size: 13px; font-weight: 600; color: #64748b;">kg</span></div>
             </div>
             <div class="wh-kpi-card">
-                <div class="wh-kpi-label">Phiếu con chờ Thủ kho xác nhận</div>
+                <div class="wh-kpi-label">Yêu cầu chờ Thủ kho lập phiếu nhập</div>
                 <div class="wh-kpi-val" style="color: #b45309;">@Model.PendingWarehouseCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">phiếu</span></div>
             </div>
             <div class="wh-kpi-card">
@@ -434,12 +446,12 @@ else
                 <div class="wh-kpi-val" style="color: #1e40af;">@Model.WaitingManagerApprovalCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">phiếu</span></div>
             </div>
             <div class="wh-kpi-card">
-                <div class="wh-kpi-label">Phiếu con đã nhập kho</div>
+                <div class="wh-kpi-label">Phiếu đã nhập kho hoàn tất</div>
                 <div class="wh-kpi-val" style="color: #15803d;">@Model.ReceivedReceiptsCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">phiếu</span></div>
             </div>
         </div>
 
-        <!-- Table 1: Danh sách phiếu mua hàng con -->
+        <!-- Table 1: Danh sách Yêu cầu nhập kho / Phiếu mua hàng con -->
         <div class="wh-card">
             <form method="get" id="whFilterForm">
                 <input type="hidden" name="Tab" value="raw" />
@@ -459,8 +471,8 @@ else
                         <label class="wh-filter-label">Trạng thái</label>
                         <select name="StatusFilter" class="wh-filter-select" onchange="this.form.submit()">
                             <option value="all" selected="@(string.IsNullOrEmpty(Model.StatusFilter) || Model.StatusFilter == "all")">Tất cả</option>
-                            <option value="pending" selected="@(Model.StatusFilter == "pending")">Chờ Thủ kho xác nhận</option>
-                            <option value="wait_manager" selected="@(Model.StatusFilter == "wait_manager")">Chờ Manager duyệt nhập kho</option>
+                            <option value="pending" selected="@(Model.StatusFilter == "pending")">Chờ nhập kho</option>
+                            <option value="wait_manager" selected="@(Model.StatusFilter == "wait_manager")">Chờ duyệt PNK</option>
                             <option value="received" selected="@(Model.StatusFilter == "received")">Đã nhập kho</option>
                         </select>
                     </div>
@@ -492,7 +504,7 @@ else
                 <table class="wh-table">
                     <thead>
                         <tr>
-                            <th>Mã phiếu con</th>
+                            <th>Mã phiếu con (IR)</th>
                             <th>Phiếu tổng</th>
                             <th>Phiếu nhập kho</th>
                             <th>Nhà cung cấp</th>
@@ -502,7 +514,7 @@ else
                             <th>Người tạo</th>
                             <th>Thời điểm tạo</th>
                             <th>Trạng thái</th>
-                            <th>Chi tiết / Duyệt</th>
+                            <th>Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -510,7 +522,7 @@ else
                         {
                             <tr>
                                 <td colspan="11" style="text-align: center; padding: 48px 20px; color: #a0aec0;">
-                                    Chưa có phiếu mua hàng con nào phù hợp với bộ lọc.
+                                    Chưa có yêu cầu nhập kho nào phù hợp với bộ lọc.
                                 </td>
                             </tr>
                         }
@@ -552,9 +564,15 @@ else
                                             <span class="dot"></span>
                                             <span>@r.StatusText</span>
                                         </span>
+                                        @if (!string.IsNullOrWhiteSpace(r.RejectionReason))
+                                        {
+                                            <div style="font-size: 11.5px; color: #b91c1c; margin-top: 4px; max-width: 240px;">
+                                                <strong>Lý do từ chối:</strong> @r.RejectionReason
+                                            </div>
+                                        }
                                     </td>
-                                    <td>
-                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <td style="white-space: nowrap;">
+                                        <div style="display: inline-flex; align-items: center; gap: 6px;">
                                             <a href="javascript:void(0)"
                                                class="wh-link-detail receipt-detail-trigger"
                                                data-id="@r.ReceiptId"
@@ -569,10 +587,21 @@ else
                                                data-at="@r.CreatedAt.ToString("HH:mm dd/MM/yyyy")"
                                                data-status="@r.StatusText"
                                                data-raw-status="@r.Status"
+                                               data-rejection="@(r.RejectionReason ?? "")"
                                                data-scale="@r.ScalePhotoPath"
-                                               data-invoice="@r.InvoicePhotoPath">
-                                                Xem chi tiết phiếu mua
+                                               data-invoice="@r.InvoicePhotoPath"
+                                               title="Đối chiếu & xem chi tiết phiếu @r.ReceiptCode"
+                                               style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; color: #1e293b; font-size: 15px;">
+                                                <i class="bi bi-eye"></i>
                                             </a>
+
+                                            @if (Model.CanWarehouseConfirm && (r.Status == "WaitWarehouse" || r.Status == "Pending" || r.Status == "ImportRejected"))
+                                            {
+                                                <button type="button" class="wh-btn-approve" style="background: #1a4332;"
+                                                        onclick="openCreateImportModal(@r.ReceiptId)">
+                                                    @(r.Status == "ImportRejected" ? "Lập lại PNK" : "Lập PNK")
+                                                </button>
+                                            }
 
                                             @if (Model.CanManagerApprove && r.Status == "WaitManagerApproval")
                                             {
@@ -580,9 +609,13 @@ else
                                                     <input type="hidden" name="importId" value="@r.ImportId" />
                                                     <input type="hidden" name="receiptId" value="@r.ReceiptId" />
                                                     <button type="submit" class="wh-btn-approve" title="Manager phê duyệt phiếu nhập kho">
-                                                        Duyệt nhập kho
+                                                        Duyệt
                                                     </button>
                                                 </form>
+                                                <button type="button" class="wh-btn-reject"
+                                                        onclick="openRejectImportModal('@(r.ImportId?.ToString() ?? "")', '@r.ReceiptId', '@(r.ImportCode ?? r.ReceiptCode)')">
+                                                    Từ chối
+                                                </button>
                                             }
                                         </div>
                                     </td>
@@ -625,9 +658,9 @@ else
         <div class="wh-card">
             <div class="wh-card-header">
                 <div>
-                    <h2 class="wh-card-title">Phiếu nhập kho nguyên liệu (PNK-26xxx)</h2>
+                    <h2 class="wh-card-title">Phiếu nhập kho nguyên liệu (Goods Receipt Raw Material note — PNK-26xxx)</h2>
                     <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
-                        Danh sách phiếu nhập kho được tạo sau khi Thủ kho xác nhận nhập kho — gửi Manager phê duyệt để cộng tồn kho.
+                        Danh sách phiếu nhập kho được Thủ kho lập sau khi đối chiếu IR — gửi Manager phê duyệt để cộng tồn kho và báo kết quả về cho Nhân viên thu mua.
                     </div>
                 </div>
             </div>
@@ -637,7 +670,7 @@ else
                     <thead>
                         <tr>
                             <th>Mã phiếu nhập kho</th>
-                            <th>Từ phiếu con</th>
+                            <th>Từ phiếu con (IR)</th>
                             <th>Nhà cung cấp</th>
                             <th>Nguyên liệu</th>
                             <th>Khối lượng nhập</th>
@@ -645,7 +678,7 @@ else
                             <th>Thành tiền</th>
                             <th>Thủ kho lập</th>
                             <th>Thời gian lập</th>
-                            <th>Trạng thái</th>
+                            <th>Trạng thái / Lý do</th>
                             <th>Người duyệt</th>
                             @if (Model.CanManagerApprove)
                             {
@@ -690,6 +723,12 @@ else
                                             <span class="dot"></span>
                                             <span>@imp.StatusText</span>
                                         </span>
+                                        @if (imp.Status == "Rejected" && !string.IsNullOrWhiteSpace(imp.Note))
+                                        {
+                                            <div style="font-size: 11.5px; color: #b91c1c; margin-top: 4px; max-width: 240px;">
+                                                @imp.Note
+                                            </div>
+                                        }
                                     </td>
                                     <td>@(string.IsNullOrWhiteSpace(imp.ApprovedByName) ? "—" : imp.ApprovedByName)</td>
                                     @if (Model.CanManagerApprove)
@@ -700,13 +739,12 @@ else
                                                 <div style="display: flex; align-items: center; gap: 6px;">
                                                     <form method="post" asp-page-handler="ApproveImport" style="margin: 0;">
                                                         <input type="hidden" name="importId" value="@imp.ImportId" />
-                                                        <button type="submit" class="wh-btn-approve">Approve (Duyệt)</button>
+                                                        <button type="submit" class="wh-btn-approve">Duyệt</button>
                                                     </form>
-                                                    <form method="post" asp-page-handler="RejectImport" style="margin: 0;"
-                                                          onsubmit="return confirm('Bạn có chắc chắn muốn từ chối phiếu nhập kho @imp.ImportCode?');">
-                                                        <input type="hidden" name="importId" value="@imp.ImportId" />
-                                                        <button type="submit" class="wh-btn-reject">Từ chối</button>
-                                                    </form>
+                                                    <button type="button" class="wh-btn-reject"
+                                                            onclick="openRejectImportModal('@imp.ImportId', '@(imp.ReceiptId?.ToString() ?? "")', '@imp.ImportCode')">
+                                                        Từ chối
+                                                    </button>
                                                 </div>
                                             }
                                             else
@@ -724,11 +762,171 @@ else
         </div>
     </div>
 
-    <!-- POPUP: CHI TIẾT PHIẾU MUA HÀNG CON -->
+    <!-- POPUP: THỦ KHO LẬP PHIẾU NHẬP KHO NGUYÊN LIỆU CÓ GỢI Ý TỪ IR (CREATE GOODS RECEIPT NOTE) -->
+    @if (Model.CanWarehouseConfirm)
+    {
+        <div class="pm-overlay" id="createImportModal" onclick="if (event.target === this) closePmModal('createImportModal')">
+            <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" style="max-width: 720px;">
+                <form method="post" asp-page-handler="ConfirmReceipt">
+                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                    <input type="hidden" name="SupplierFilter" value="@Model.SupplierFilter" />
+                    <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
+                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                    <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+
+                    <div class="pm-head">
+                        <h5 class="pm-title" id="ciModalTitle">Lập Phiếu nhập kho nguyên liệu (@Model.NextSuggestedImportCode)</h5>
+                        <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('createImportModal')">&times;</button>
+                    </div>
+
+                    <div class="pm-body">
+                        <!-- Khung gợi ý thông tin gốc từ Yêu cầu nhập kho (IR) -->
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <div style="font-size: 12.5px; color: #166534;">
+                                <i class="bi bi-lightbulb-fill me-1"></i>
+                                <strong>Gợi ý tự động từ phiếu IR <span id="ciSugCode" style="font-family: monospace;"></span>:</strong>
+                                <span id="ciSugSummary"></span>
+                            </div>
+                            <button type="button" onclick="applyCiSuggestedValues()"
+                                    style="background: #ffffff; color: #15803d; border: 1px solid #86efac; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                                Điền lại theo gợi ý IR
+                            </button>
+                        </div>
+
+                        <div id="ciRejectionNotice" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; font-size: 12px; color: #b91c1c;">
+                            <strong>Lý do Manager từ chối lần trước:</strong> <span id="ciRejectionText"></span>
+                        </div>
+
+                        <div class="pm-grid">
+                            <div>
+                                <label class="pm-label">Phiếu Yêu cầu nhập kho (IR) <span style="color: #e53e3e;">*</span></label>
+                                <select name="receiptId" id="ciReceiptSelect" class="pm-input" required onchange="onCiReceiptChange(this)">
+                                    @foreach (var ir in Model.PendingInboundRequests)
+                                    {
+                                        <option value="@ir.ReceiptId"
+                                                data-code="@ir.ReceiptCode"
+                                                data-invoice-code="@ir.InvoiceCode"
+                                                data-supplier-id="@ir.SupplierId"
+                                                data-supplier-name="@ir.SupplierName"
+                                                data-material-id="@ir.MaterialId"
+                                                data-material-name="@ir.MaterialName"
+                                                data-qty="@ir.WeighedQuantity.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-price="@ir.ActualPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-rejection="@(ir.RejectionReason ?? "")"
+                                                data-scale="@ir.ScalePhotoPath">
+                                            @ir.ReceiptCode (Phiếu tổng @ir.InvoiceCode — @ir.WeighedQuantity.ToString("N0", viCulture) kg — @ir.SupplierName)
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="pm-label">Mã Phiếu nhập kho (gợi ý)</label>
+                                <input type="text" class="pm-input" value="@Model.NextSuggestedImportCode" readonly tabindex="-1" style="font-family: monospace; font-weight: 700; color: #1a4332;" />
+                            </div>
+
+                            <div>
+                                <label class="pm-label">Nhà cung cấp <span style="color: #e53e3e;">*</span></label>
+                                <select name="supplierId" id="ciSupplierSelect" class="pm-input" required>
+                                    @foreach (var s in Model.Suppliers)
+                                    {
+                                        <option value="@s.SupplierId">@s.Name</option>
+                                    }
+                                </select>
+                                <span class="pm-hint" id="ciSupplierHint">Gợi ý từ IR</span>
+                            </div>
+
+                            <div>
+                                <label class="pm-label">Nguyên liệu nhập kho <span style="color: #e53e3e;">*</span></label>
+                                <select name="materialId" id="ciMaterialSelect" class="pm-input" required>
+                                    @foreach (var m in Model.Materials)
+                                    {
+                                        <option value="@m.MaterialId">@m.MaterialName (@m.Unit)</option>
+                                    }
+                                </select>
+                                <span class="pm-hint" id="ciMaterialHint">Gợi ý từ phiếu tổng</span>
+                            </div>
+
+                            <div>
+                                <label class="pm-label">Khối lượng thực nhập kho (kg) <span style="color: #e53e3e;">*</span></label>
+                                <input type="number" name="importedQuantity" id="ciQuantityInput" min="1" step="any" required class="pm-input" oninput="updateCiTotalPreview()" />
+                                <span class="pm-hint" id="ciQtyHint">Gợi ý theo phiếu cân IR</span>
+                            </div>
+
+                            <div>
+                                <label class="pm-label">Đơn giá nhập kho (VNĐ/kg) <span style="color: #e53e3e;">*</span></label>
+                                <input type="number" name="unitPrice" id="ciPriceInput" min="1" step="any" required class="pm-input" oninput="updateCiTotalPreview()" />
+                                <span class="pm-hint" id="ciPriceHint">Thành tiền dự kiến: 0 VNĐ</span>
+                            </div>
+
+                            <div class="pm-full">
+                                <label class="pm-label">Ghi chú kiểm nhận của Thủ kho (bấm chọn gợi ý nhanh hoặc nhập thêm)</label>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;">
+                                    <button type="button" onclick="setCiQuickNote('Đã đối chiếu khớp phiếu cân IR, nguyên liệu đạt chuẩn nhập kho')"
+                                            style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;">
+                                        + Đã đối chiếu khớp phiếu cân IR
+                                    </button>
+                                    <button type="button" onclick="setCiQuickNote('Độ ẩm và tạp chất trong ngưỡng cho phép, đủ khối lượng')"
+                                            style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;">
+                                        + Độ ẩm &amp; tạp chất đạt chuẩn
+                                    </button>
+                                    <button type="button" onclick="setCiQuickNote('Đã kiểm cân thực tế tại kho và xác nhận nhập kho')"
+                                            style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;">
+                                        + Đã kiểm cân thực tế tại kho
+                                    </button>
+                                </div>
+                                <textarea name="warehouseNote" id="ciNoteInput" rows="2" class="pm-input" placeholder="Ghi chú kiểm nhận nguyên liệu của Thủ kho..."></textarea>
+                            </div>
+
+                            <div class="pm-full" id="ciScalePreviewWrap" style="display: none;">
+                                <div style="@labelStyle">Ảnh xe cân tại xưởng (từ phiếu IR để đối chiếu)</div>
+                                <a id="ciScaleLink" target="_blank">
+                                    <img id="ciScaleImg" alt="Ảnh xe cân" style="max-height: 160px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover;" />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pm-foot">
+                        <button type="button" class="pm-btn-cancel" onclick="closePmModal('createImportModal')">Hủy</button>
+                        <button type="submit" class="pm-btn-primary" style="background: #1a4332;">Tạo Phiếu nhập kho &amp; Gửi Manager duyệt</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    <!-- POPUP: NHẬP LÝ DO TỪ CHỐI PHIẾU NHẬP KHO (REJECTION REASON - BƯỚC 6B) -->
+    @if (Model.CanManagerApprove)
+    {
+        <div class="pm-overlay" id="rejectImportModal" onclick="if (event.target === this) closePmModal('rejectImportModal')">
+            <div class="pm-dialog" role="dialog" aria-modal="true" style="max-width: 480px;">
+                <form method="post" asp-page-handler="RejectImport">
+                    <input type="hidden" name="importId" id="rejectImportIdInput" />
+                    <input type="hidden" name="receiptId" id="rejectImportReceiptIdInput" />
+                    <div class="pm-head">
+                        <h5 class="pm-title">Từ chối Phiếu nhập kho <span id="rejectImportCodeText" style="font-family: monospace;"></span></h5>
+                        <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('rejectImportModal')">&times;</button>
+                    </div>
+                    <div class="pm-body">
+                        <label class="pm-label">Lý do từ chối (Rejection Reason) <span style="color: #e53e3e;">*</span></label>
+                        <textarea name="rejectionReason" rows="3" required class="pm-input" placeholder="Nhập lý do từ chối để Thủ kho kiểm tra và lập lại Phiếu nhập kho nguyên liệu..."></textarea>
+                    </div>
+                    <div class="pm-foot">
+                        <button type="button" class="pm-btn-cancel" onclick="closePmModal('rejectImportModal')">Hủy</button>
+                        <button type="submit" class="pm-btn-primary" style="background: #b91c1c;">Xác nhận từ chối &amp; Trả về Thủ kho</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    <!-- POPUP: CHI TIẾT & ĐỐI CHIẾU YÊU CẦU NHẬP KHO (CHECK AND COMPARE WITH IR) -->
     <div class="pm-overlay" id="receiptDetailModal" onclick="if (event.target === this) closePmModal('receiptDetailModal')">
         <div class="pm-dialog pm-lg" role="dialog" aria-modal="true">
             <div class="pm-head">
-                <h5 class="pm-title">Phiếu mua hàng con <span id="rdCode" style="font-family: monospace;"></span></h5>
+                <h5 class="pm-title">Đối chiếu Yêu cầu nhập kho (IR) <span id="rdCode" style="font-family: monospace;"></span></h5>
                 <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('receiptDetailModal')">&times;</button>
             </div>
             <div class="pm-body">
@@ -741,6 +939,11 @@ else
                     <div><div style="@labelStyle">Người tạo</div><div id="rdBy" style="@valueStyle"></div></div>
                     <div><div style="@labelStyle">Thời điểm tạo</div><div id="rdAt" style="@valueStyle"></div></div>
                     <div><div style="@labelStyle">Phiếu nhập kho nguyên liệu</div><div id="rdImportCode" style="@valueStyle; color: #1a4332;"></div></div>
+                    <div class="pm-full" id="rdRejectionWrap" style="display: none;">
+                        <div style="padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 12px; color: #b91c1c;">
+                            <strong>Lý do từ chối (Rejection Reason):</strong> <span id="rdRejection"></span>
+                        </div>
+                    </div>
                 </div>
                 <div class="pm-grid">
                     <div>
@@ -762,16 +965,11 @@ else
 
                 @if (Model.CanWarehouseConfirm)
                 {
-                    <form method="post" asp-page-handler="ConfirmReceipt" id="rdWarehouseConfirmForm" style="margin: 0; display: none;">
-                        <input type="hidden" name="receiptId" id="rdReceiptId" />
-                        <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
-                        <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
-                        <input type="hidden" name="SupplierFilter" value="@Model.SupplierFilter" />
-                        <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
-                        <input type="hidden" name="PageSize" value="@Model.PageSize" />
-                        <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
-                        <button type="submit" class="pm-btn-primary">Xác nhận nhập kho (Tạo phiếu nhập kho)</button>
-                    </form>
+                    <input type="hidden" id="rdReceiptId" />
+                    <button type="button" class="pm-btn-primary" id="rdWarehouseConfirmBtn" style="display: none; background: #1a4332;"
+                            onclick="openCreateImportModalFromDetail()">
+                        Lập Phiếu nhập kho từ phiếu này
+                    </button>
                 }
 
                 @if (Model.CanManagerApprove)
@@ -797,6 +995,119 @@ else
     <script>
         function openPmModal(id) { document.getElementById(id).classList.add('open'); }
         function closePmModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        function openCreateImportModal(receiptId) {
+            var sel = document.getElementById('ciReceiptSelect');
+            if (sel && receiptId) {
+                sel.value = receiptId;
+            }
+            if (sel) {
+                onCiReceiptChange(sel);
+            }
+            openPmModal('createImportModal');
+        }
+
+        function openCreateImportModalFromDetail() {
+            var rId = document.getElementById('rdReceiptId').value;
+            closePmModal('receiptDetailModal');
+            openCreateImportModal(rId);
+        }
+
+        function onCiReceiptChange(sel) {
+            if (!sel || sel.options.length === 0) return;
+            var opt = sel.options[sel.selectedIndex] || sel.options[0];
+            if (!opt) return;
+            applyCiOption(opt);
+        }
+
+        function applyCiSuggestedValues() {
+            var sel = document.getElementById('ciReceiptSelect');
+            if (!sel || sel.options.length === 0) return;
+            var opt = sel.options[sel.selectedIndex] || sel.options[0];
+            if (opt) applyCiOption(opt);
+        }
+
+        function applyCiOption(opt) {
+            var code = opt.getAttribute('data-code') || '';
+            var invCode = opt.getAttribute('data-invoice-code') || '';
+            var supId = opt.getAttribute('data-supplier-id') || '';
+            var supName = opt.getAttribute('data-supplier-name') || '';
+            var matId = opt.getAttribute('data-material-id') || '';
+            var matName = opt.getAttribute('data-material-name') || '';
+            var qty = opt.getAttribute('data-qty') || '0';
+            var price = opt.getAttribute('data-price') || '0';
+            var rejection = opt.getAttribute('data-rejection') || '';
+            var scale = opt.getAttribute('data-scale') || '';
+
+            document.getElementById('ciSugCode').innerText = code + ' (' + invCode + ')';
+            document.getElementById('ciSugSummary').innerText =
+                Number(qty).toLocaleString('vi-VN') + ' kg × ' + Number(price).toLocaleString('vi-VN') + ' VNĐ/kg · ' + supName;
+
+            var supSel = document.getElementById('ciSupplierSelect');
+            if (supSel && supId) supSel.value = supId;
+            document.getElementById('ciSupplierHint').innerText = 'Gợi ý từ IR: ' + supName;
+
+            var matSel = document.getElementById('ciMaterialSelect');
+            if (matSel && matId) matSel.value = matId;
+            document.getElementById('ciMaterialHint').innerText = 'Gợi ý từ phiếu tổng: ' + matName;
+
+            var qtyInput = document.getElementById('ciQuantityInput');
+            if (qtyInput) qtyInput.value = qty;
+            document.getElementById('ciQtyHint').innerText = 'Gợi ý theo phiếu cân IR: ' + Number(qty).toLocaleString('vi-VN') + ' kg';
+
+            var priceInput = document.getElementById('ciPriceInput');
+            if (priceInput) priceInput.value = price;
+
+            var noteInput = document.getElementById('ciNoteInput');
+            if (noteInput) {
+                noteInput.value = 'Đã đối chiếu khớp với phiếu yêu cầu nhập kho ' + code + ' (' + Number(qty).toLocaleString('vi-VN') + ' kg), nguyên liệu đạt yêu cầu';
+            }
+
+            var rejBox = document.getElementById('ciRejectionNotice');
+            if (rejBox) {
+                if (rejection) {
+                    rejBox.style.display = '';
+                    document.getElementById('ciRejectionText').innerText = rejection;
+                } else {
+                    rejBox.style.display = 'none';
+                }
+            }
+
+            var scaleWrap = document.getElementById('ciScalePreviewWrap');
+            if (scaleWrap) {
+                if (scale) {
+                    scaleWrap.style.display = '';
+                    document.getElementById('ciScaleImg').src = scale;
+                    document.getElementById('ciScaleLink').href = scale;
+                } else {
+                    scaleWrap.style.display = 'none';
+                }
+            }
+
+            updateCiTotalPreview();
+        }
+
+        function updateCiTotalPreview() {
+            var q = parseFloat(document.getElementById('ciQuantityInput').value) || 0;
+            var p = parseFloat(document.getElementById('ciPriceInput').value) || 0;
+            var total = Math.round(q * p);
+            var hint = document.getElementById('ciPriceHint');
+            if (hint) {
+                hint.innerText = 'Thành tiền dự kiến: ' + total.toLocaleString('vi-VN') + ' VNĐ';
+            }
+        }
+
+        function setCiQuickNote(text) {
+            var noteInput = document.getElementById('ciNoteInput');
+            if (noteInput) noteInput.value = text;
+        }
+
+        function openRejectImportModal(importId, receiptId, code) {
+            document.getElementById('rejectImportIdInput').value = importId || '';
+            document.getElementById('rejectImportReceiptIdInput').value = receiptId || '';
+            document.getElementById('rejectImportCodeText').innerText = code || '';
+            openPmModal('rejectImportModal');
+        }
 
         function changeWhPageSize(size) {
             var url = new URL(window.location.href);
@@ -824,10 +1135,22 @@ else
                 document.getElementById('rdAt').innerText = d.at;
                 document.getElementById('rdImportCode').innerText = d.importCode || 'Chưa lập';
 
-                var whForm = document.getElementById('rdWarehouseConfirmForm');
-                if (whForm) {
+                var rejWrap = document.getElementById('rdRejectionWrap');
+                if (d.rejection) {
+                    rejWrap.style.display = '';
+                    document.getElementById('rdRejection').innerText = d.rejection;
+                } else {
+                    rejWrap.style.display = 'none';
+                }
+
+                var whBtn = document.getElementById('rdWarehouseConfirmBtn');
+                if (whBtn) {
                     document.getElementById('rdReceiptId').value = d.id;
-                    whForm.style.display = (d.rawStatus === 'Pending' || d.rawStatus === 'WaitWarehouse') ? 'inline-block' : 'none';
+                    var canCreatePnk = (d.rawStatus === 'Pending' || d.rawStatus === 'WaitWarehouse' || d.rawStatus === 'ImportRejected');
+                    whBtn.style.display = canCreatePnk ? 'inline-block' : 'none';
+                    whBtn.innerText = d.rawStatus === 'ImportRejected'
+                        ? 'Lập lại Phiếu nhập kho (PNK)'
+                        : 'Lập Phiếu nhập kho (PNK)';
                 }
 
                 var mgrForm = document.getElementById('rdManagerApproveForm');

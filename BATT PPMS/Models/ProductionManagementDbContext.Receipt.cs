@@ -55,6 +55,7 @@ public partial class ProductionManagementDbContext
             entity.Property(e => e.ScalePhotoPath).HasMaxLength(300).HasColumnName("scale_photo_path");
             entity.Property(e => e.InvoicePhotoPath).HasMaxLength(300).HasColumnName("invoice_photo_path");
             entity.Property(e => e.Status).HasMaxLength(50).HasDefaultValue("Pending").HasColumnName("status");
+            entity.Property(e => e.RejectionReason).HasMaxLength(500).HasColumnName("rejection_reason");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.CreatedAt).HasColumnType("datetime").HasColumnName("created_at");
 

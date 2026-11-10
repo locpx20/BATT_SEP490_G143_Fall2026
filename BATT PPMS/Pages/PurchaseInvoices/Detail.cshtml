@@ -10,7 +10,7 @@
     {
         "pending" or "wait_approval" => "background: #fffbeb; color: #b45309; border: 1px solid #fef3c7;",
         "warehouse" or "procuring" => "background: #ebf5ff; color: #1e40af; border: 1px solid #dbeafe;",
-        "received" => "background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;",
+        "received" or "completed" => "background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;",
         "expired" => "background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;",
         _ => "background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2;"
     };
@@ -66,7 +66,7 @@
 
             <!-- Phiếu mua hàng con -->
             <div style="@cardStyle">
-                <h2 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Phiếu mua hàng con</h2>
+                <h2 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Phiếu mua hàng con (Purchase Order &amp; Inbound Request)</h2>
                 <div style="font-size: 12px; color: #64748b; margin-bottom: 14px;">
                     @Model.WeighedTotal.ToString("N0", vi) kg đã cân qua @Model.Receipts.Count lần giao dịch.
                 </div>
@@ -79,22 +79,97 @@
                 {
                     var r = Model.Receipts[i];
                     <div style="padding: 14px 0; @(i > 0 ? "border-top: 1px solid #f1f5f9;" : "")">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="display: inline-flex; align-items: center; background: #faf4e8; border: 1px solid #ecdcc0; border-left: 4px solid #c88a2e; border-radius: 4px; padding: 3px 8px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; font-weight: 700; color: #6d4d12;">@r.Code</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="display: inline-flex; align-items: center; background: #faf4e8; border: 1px solid #ecdcc0; border-left: 4px solid #c88a2e; border-radius: 4px; padding: 3px 8px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; font-weight: 700; color: #6d4d12;">@r.Code</span>
+                                @if (!string.IsNullOrEmpty(r.ImportCode))
+                                {
+                                    <span style="display: inline-flex; align-items: center; background: #eef6f0; border: 1px solid #cde2d3; border-left: 4px solid #1a4332; border-radius: 4px; padding: 3px 8px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; font-weight: 700; color: #1a4332;" title="Mã Phiếu nhập kho nguyên liệu">
+                                        @r.ImportCode
+                                    </span>
+                                }
+                            </div>
                             <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; @BadgeStyle(r.StatusType)">
                                 <span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>@r.StatusText
                             </span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 8px;">
                             <span style="font-size: 12px; color: #475569;">@r.Quantity.ToString("N0", vi) kg · @r.Price.ToString("N0", vi) VNĐ / kg (@r.SupplierName)</span>
-                            <a href="javascript:void(0)" class="receipt-link"
-                               data-code="@r.Code" data-supplier="@r.SupplierName"
-                               data-qty="@r.Quantity.ToString("N0", vi)" data-price="@r.Price.ToString("N0", vi)"
-                               data-total="@r.Total.ToString("N0", vi)" data-by="@r.CreatedByName"
-                               data-at="@r.CreatedAt.ToString("HH:mm dd/MM/yyyy")" data-status="@r.StatusText"
-                               data-scale="@r.ScalePhoto" data-invoice="@r.InvoicePhoto"
-                               style="color: #2d3748; font-size: 12px; font-weight: 600; text-decoration: none;">Xem chi tiết phiếu mua</a>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <a href="javascript:void(0)" class="receipt-link"
+                                   data-id="@r.ReceiptId"
+                                   data-code="@r.Code" data-supplier="@r.SupplierName"
+                                   data-qty="@r.Quantity.ToString("N0", vi)" data-price="@r.Price.ToString("N0", vi)"
+                                   data-total="@r.Total.ToString("N0", vi)" data-by="@r.CreatedByName"
+                                   data-at="@r.CreatedAt.ToString("HH:mm dd/MM/yyyy")" data-status="@r.StatusText"
+                                   data-rejection="@(r.RejectionReason ?? "")"
+                                   data-import-code="@(r.ImportCode ?? "Chưa lập")"
+                                   data-import-by="@(r.ImportedByName ?? "—")"
+                                   data-approved-by="@(r.ApprovedByName ?? "—")"
+                                   data-approved-at="@(r.ApprovedAt?.ToString("HH:mm dd/MM/yyyy") ?? "—")"
+                                   data-scale="@r.ScalePhoto" data-invoice="@r.InvoicePhoto"
+                                   title="Xem chi tiết phiếu mua @r.Code"
+                                   style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; color: #1e293b; font-size: 14px; text-decoration: none;">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+
+                                @* BƯỚC 3 TRÊN SWIMLANE: Manager Approved? (Duyệt / Từ chối đơn mua) *@
+                                @if (Model.CanManagerReviewOrder && r.RawStatus == "PendingOrderApproval")
+                                {
+                                    <form method="post" asp-page-handler="ApproveOrder" style="display: inline; margin: 0;">
+                                        <input type="hidden" name="receiptId" value="@r.ReceiptId" />
+                                        <button type="submit" style="background: #15803d; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                            Duyệt
+                                        </button>
+                                    </form>
+                                    <button type="button"
+                                            onclick="openRejectOrderModal(@r.ReceiptId, '@r.Code')"
+                                            style="background: #fff; color: #b91c1c; border: 1px solid #fecaca; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                        Từ chối
+                                    </button>
+                                }
+
+                                @* Nếu bị từ chối đơn mua (No -> Rejection Reason -> Create Purchase Order): cho phép Purchasing Staff sửa & gửi lại *@
+                                @if (Model.CanCreateReceipt && r.RawStatus == "OrderRejected")
+                                {
+                                    <button type="button"
+                                            onclick="openEditReceiptModal(@r.ReceiptId, '@r.Code', @r.SupplierId, '@r.Quantity.ToString("0.##", CultureInfo.InvariantCulture)', '@r.Price.ToString("0.##", CultureInfo.InvariantCulture)')"
+                                            style="background: #1a4332; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                        Sửa &amp; gửi lại
+                                    </button>
+                                }
+
+                                @* BƯỚC 4 TRÊN SWIMLANE: Purchasing Staff -> Create Inbound Request *@
+                                @if (Model.CanCreateInboundRequest && r.RawStatus == "OrderApproved")
+                                {
+                                    <form method="post" asp-page-handler="CreateInboundRequest" style="display: inline; margin: 0;">
+                                        <input type="hidden" name="receiptId" value="@r.ReceiptId" />
+                                        <button type="submit" style="background: #1e40af; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                            Gửi yêu cầu nhập kho
+                                        </button>
+                                    </form>
+                                }
+                            </div>
                         </div>
+
+                        @if (!string.IsNullOrWhiteSpace(r.RejectionReason))
+                        {
+                            <div style="margin-top: 8px; padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 12px; color: #b91c1c;">
+                                <strong>Lý do từ chối (Rejection Reason):</strong> @r.RejectionReason
+                            </div>
+                        }
+
+                        @* BƯỚC CUỐI TRÊN SWIMLANE: Receive Goods Receipt information *@
+                        @if (r.RawStatus == "Received" && !string.IsNullOrEmpty(r.ImportCode))
+                        {
+                            <div style="margin-top: 8px; padding: 8px 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; color: #166534;">
+                                <strong>Thông tin Phiếu nhập kho nguyên liệu (@r.ImportCode):</strong>
+                                Đã nhập kho <strong>@((r.ImportedQuantity ?? r.Quantity).ToString("N0", vi)) kg</strong>
+                                · Thủ kho lập: <strong>@(r.ImportedByName ?? "—")</strong>
+                                · Manager duyệt: <strong>@(r.ApprovedByName ?? "—")</strong> (@(r.ApprovedAt?.ToString("HH:mm dd/MM/yyyy") ?? "—"))
+                            </div>
+                        }
                     </div>
                 }
             </div>
@@ -117,12 +192,26 @@
             <h2 style="font-size: 15px; font-weight: 600; margin-bottom: 14px;">Thao tác</h2>
             @if (Model.CanCreateReceipt)
             {
-                <button type="button" onclick="openPmModal('createReceiptModal')"
-                        style="width: 100%; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-weight: 600; padding: 10px; cursor: pointer;">
-                    Tạo phiếu mua con
-                </button>
+                @if (Model.RemainingQuantity > 0)
+                {
+                    <button type="button" onclick="openCreateNewReceiptModal()"
+                            style="width: 100%; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; font-weight: 600; padding: 10px; cursor: pointer;">
+                        + Tạo đơn mua hàng con (Create Purchase Order)
+                    </button>
+                }
+                else
+                {
+                    <div style="font-size: 12px; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px;">
+                        Đã tạo đủ 100% khối lượng cần mua của phiếu tổng (@Model.PlannedQuantity.ToString("N0", vi) kg). Không thể tạo thêm phiếu mua con mới.
+                    </div>
+                }
                 <div style="font-size: 11.5px; color: #64748b; margin-top: 8px;">
-                    Có thể tạo nhiều phiếu mua hàng con trên cùng phiếu tổng này cho đến 23:59 ngày @Model.ExpiresAt.ToString("dd/MM/yyyy").
+                    Quy trình chuẩn Swimlane:<br />
+                    1. Nhân viên thu mua tạo đơn mua con (<strong>Create Purchase Order</strong>)<br />
+                    2. Manager phê duyệt đơn mua (<strong>Approved?</strong>)<br />
+                    3. Nhân viên thu mua bấm <strong>Tạo yêu cầu nhập kho (Create Inbound Request)</strong> gửi sang Kho<br />
+                    4. Thủ kho đối chiếu &amp; lập <strong>Phiếu nhập kho nguyên liệu (PNK-26xxx)</strong><br />
+                    5. Manager duyệt phiếu nhập kho &rarr; Hoàn tất nhập kho.
                 </div>
             }
             else if (Model.IsExpired)
@@ -131,23 +220,32 @@
                     Phiếu tổng này đã hết hạn vào cuối ngày @Model.ExpiresAt.ToString("dd/MM/yyyy"), không thể tạo thêm phiếu mua hàng con.
                 </div>
             }
+            else if (Model.CanManagerReviewOrder)
+            {
+                <div style="font-size: 12px; color: #475569; line-height: 1.6;">
+                    <strong>Vai trò Quản lý (Manager):</strong><br />
+                    • Chỉ <strong>Nhân viên thu mua (Purchasing Staff)</strong> được phân công mới tạo đơn mua hàng con.<br />
+                    • Khi nhân viên gửi đơn mua con, bạn có thể bấm <strong>Duyệt đơn mua (Approve)</strong> hoặc <strong>Từ chối (Rejection Reason)</strong> ngay tại danh sách bên trái.
+                </div>
+            }
             else
             {
-                <div style="font-size: 12px; color: #94a3b8;">Chỉ nhân viên thu mua được giao hoặc quản lý mới nhập phiếu con.</div>
+                <div style="font-size: 12px; color: #94a3b8;">Chỉ nhân viên thu mua được giao mới tạo phiếu mua hàng con.</div>
             }
         </div>
     </div>
 </div>
 
-<!-- POPUP: TẠO PHIẾU MUA HÀNG CON -->
+<!-- POPUP: TẠO / SỬA ĐƠN MUA HÀNG CON (CREATE PURCHASE ORDER) -->
 @if (Model.CanCreateReceipt)
 {
     <div class="pm-overlay" id="createReceiptModal" onclick="if (event.target === this) closePmModal('createReceiptModal')">
         <div class="pm-dialog pm-lg" role="dialog" aria-modal="true">
             <form method="post" asp-page-handler="CreateReceipt" asp-route-id="@Model.InvoiceId" enctype="multipart/form-data">
                 <input type="hidden" name="invoiceId" value="@Model.InvoiceId" />
+                <input type="hidden" name="editReceiptId" id="editReceiptIdInput" value="" />
                 <div class="pm-head">
-                    <h5 class="pm-title">Tạo phiếu mua hàng con</h5>
+                    <h5 class="pm-title" id="createReceiptModalTitle">Tạo đơn mua hàng con (Create Purchase Order)</h5>
                     <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('createReceiptModal')">&times;</button>
                 </div>
                 <div class="pm-body">
@@ -158,7 +256,7 @@
                         </div>
                         <div>
                             <label class="pm-label">Nhà cung cấp <span style="color: #e53e3e;">*</span></label>
-                            <select name="supplierId" class="pm-input" required>
+                            <select name="supplierId" id="supplierIdSelect" class="pm-input" required>
                                 <option value="">Chọn...</option>
                                 @foreach (var s in Model.Suppliers)
                                 {
@@ -168,16 +266,16 @@
                         </div>
                         <div>
                             <label class="pm-label">Khối lượng cân tại xưởng <span style="color: #e53e3e;">*</span></label>
-                            <input type="number" name="weighedQuantity" id="weighedQuantityInput" min="1" step="any" placeholder="Vd: 5000" required class="pm-input" />
-                            <span class="pm-hint">kg</span>
+                            <input type="number" name="weighedQuantity" id="weighedQuantityInput" min="1" max="@Model.RemainingQuantity.ToString("0.##", CultureInfo.InvariantCulture)" step="any" placeholder="Vd: 5000" required class="pm-input" />
+                            <span class="pm-hint" id="weighedQuantityHint">kg (Còn lại tối đa: @Model.RemainingQuantity.ToString("N0", vi) / @Model.PlannedQuantity.ToString("N0", vi) kg)</span>
                         </div>
                         <div>
                             <label class="pm-label">Giá mua thực tế <span style="color: #e53e3e;">*</span></label>
-                            <input type="number" name="actualPrice" min="1" max="@Model.CeilingPrice.ToString("0.##", CultureInfo.InvariantCulture)" step="any" value="@Model.CeilingPrice.ToString("0.##", CultureInfo.InvariantCulture)" required class="pm-input" />
+                            <input type="number" name="actualPrice" id="actualPriceInput" min="1" max="@Model.CeilingPrice.ToString("0.##", CultureInfo.InvariantCulture)" step="any" value="@Model.CeilingPrice.ToString("0.##", CultureInfo.InvariantCulture)" required class="pm-input" />
                             <span class="pm-hint">VNĐ / kg (tối đa giá trần @Model.CeilingPrice.ToString("N0", vi))</span>
                         </div>
                         <div>
-                            <label class="pm-label">Ảnh xe cân tại xưởng <span style="color: #e53e3e;">*</span></label>
+                            <label class="pm-label">Ảnh xe cân tại xưởng <span id="scalePhotoReqStar" style="color: #e53e3e;">*</span></label>
                             <input type="file" name="scalePhoto" id="scalePhotoInput" accept="image/*" required class="pm-input" />
                             <span class="pm-hint">Có thể chọn tệp, kéo-thả ảnh vào ô này hoặc bấm Ctrl+V để dán ảnh</span>
                         </div>
@@ -190,7 +288,31 @@
                 </div>
                 <div class="pm-foot">
                     <button type="button" class="pm-btn-cancel" onclick="closePmModal('createReceiptModal')">Hủy</button>
-                    <button type="submit" class="pm-btn-primary">Gửi phiếu</button>
+                    <button type="submit" class="pm-btn-primary" id="createReceiptSubmitBtn">Gửi đơn mua chờ Manager duyệt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<!-- POPUP: NHẬP LÝ DO TỪ CHỐI ĐƠN MUA (REJECTION REASON - BƯỚC 3B) -->
+@if (Model.CanManagerReviewOrder)
+{
+    <div class="pm-overlay" id="rejectOrderModal" onclick="if (event.target === this) closePmModal('rejectOrderModal')">
+        <div class="pm-dialog" role="dialog" aria-modal="true" style="max-width: 480px;">
+            <form method="post" asp-page-handler="RejectOrder" asp-route-id="@Model.InvoiceId">
+                <input type="hidden" name="receiptId" id="rejectOrderReceiptId" />
+                <div class="pm-head">
+                    <h5 class="pm-title">Từ chối đơn mua <span id="rejectOrderCode" style="font-family: monospace;"></span></h5>
+                    <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('rejectOrderModal')">&times;</button>
+                </div>
+                <div class="pm-body">
+                    <label class="pm-label">Lý do từ chối (Rejection Reason) <span style="color: #e53e3e;">*</span></label>
+                    <textarea name="rejectionReason" rows="3" required class="pm-input" placeholder="Nhập lý do từ chối để Nhân viên thu mua kiểm tra và chỉnh sửa lại đơn mua..."></textarea>
+                </div>
+                <div class="pm-foot">
+                    <button type="button" class="pm-btn-cancel" onclick="closePmModal('rejectOrderModal')">Hủy</button>
+                    <button type="submit" class="pm-btn-primary" style="background: #b91c1c;">Xác nhận từ chối</button>
                 </div>
             </form>
         </div>
@@ -212,7 +334,15 @@
                 <div><div style="@labelStyle">Giá mua thực tế (VNĐ/kg)</div><div id="rdPrice" style="@valueStyle"></div></div>
                 <div><div style="@labelStyle">Thành tiền (VNĐ)</div><div id="rdTotal" style="@valueStyle"></div></div>
                 <div><div style="@labelStyle">Người tạo</div><div id="rdBy" style="@valueStyle"></div></div>
-                <div class="pm-full"><div style="@labelStyle">Thời điểm tạo</div><div id="rdAt" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Thời điểm tạo</div><div id="rdAt" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Phiếu nhập kho nguyên liệu</div><div id="rdImportCode" style="@valueStyle; color: #1a4332;"></div></div>
+                <div><div style="@labelStyle">Thủ kho lập phiếu nhập</div><div id="rdImportBy" style="@valueStyle"></div></div>
+                <div><div style="@labelStyle">Manager duyệt nhập kho</div><div id="rdApprovedBy" style="@valueStyle"></div></div>
+                <div class="pm-full" id="rdRejectionWrap" style="display: none;">
+                    <div style="padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 12px; color: #b91c1c;">
+                        <strong>Lý do từ chối (Rejection Reason):</strong> <span id="rdRejection"></span>
+                    </div>
+                </div>
             </div>
             <div class="pm-grid">
                 <div><div style="@labelStyle">Ảnh xe cân tại xưởng</div><a id="rdScaleLink" target="_blank"><img id="rdScale" alt="Ảnh xe cân" style="width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;" /></a></div>
@@ -227,11 +357,63 @@
         function openPmModal(id) { document.getElementById(id).classList.add('open'); }
         function closePmModal(id) { document.getElementById(id).classList.remove('open'); }
 
+        var defaultRemainingQty = @Model.RemainingQuantity.ToString("0.##", CultureInfo.InvariantCulture);
+        var plannedTotalQty = @Model.PlannedQuantity.ToString("0.##", CultureInfo.InvariantCulture);
+
+        function openCreateNewReceiptModal() {
+            document.getElementById('editReceiptIdInput').value = '';
+            document.getElementById('createReceiptModalTitle').innerText = 'Tạo đơn mua hàng con (Create Purchase Order)';
+            document.getElementById('createReceiptSubmitBtn').innerText = 'Gửi đơn mua chờ Manager duyệt';
+            var qtyInput = document.getElementById('weighedQuantityInput');
+            if (qtyInput) {
+                qtyInput.max = defaultRemainingQty;
+                qtyInput.value = '';
+            }
+            var qtyHint = document.getElementById('weighedQuantityHint');
+            if (qtyHint) {
+                qtyHint.innerText = 'kg (Còn lại tối đa: ' + Number(defaultRemainingQty).toLocaleString('vi-VN') + ' / ' + Number(plannedTotalQty).toLocaleString('vi-VN') + ' kg)';
+            }
+            var scaleInput = document.getElementById('scalePhotoInput');
+            if (scaleInput) scaleInput.required = true;
+            var star = document.getElementById('scalePhotoReqStar');
+            if (star) star.style.display = '';
+            openPmModal('createReceiptModal');
+        }
+
+        function openEditReceiptModal(receiptId, code, supplierId, qty, price) {
+            document.getElementById('editReceiptIdInput').value = receiptId;
+            document.getElementById('createReceiptModalTitle').innerText = 'Sửa & Gửi lại đơn mua ' + code;
+            document.getElementById('createReceiptSubmitBtn').innerText = 'Cập nhật & Gửi lại Manager duyệt';
+            document.getElementById('supplierIdSelect').value = supplierId;
+            var maxEditQty = Number(defaultRemainingQty) + Number(qty);
+            var qtyInput = document.getElementById('weighedQuantityInput');
+            if (qtyInput) {
+                qtyInput.max = maxEditQty;
+                qtyInput.value = qty;
+            }
+            var qtyHint = document.getElementById('weighedQuantityHint');
+            if (qtyHint) {
+                qtyHint.innerText = 'kg (Tối đa cho phép: ' + maxEditQty.toLocaleString('vi-VN') + ' / ' + Number(plannedTotalQty).toLocaleString('vi-VN') + ' kg)';
+            }
+            document.getElementById('actualPriceInput').value = price;
+            var scaleInput = document.getElementById('scalePhotoInput');
+            if (scaleInput) scaleInput.required = false;
+            var star = document.getElementById('scalePhotoReqStar');
+            if (star) star.style.display = 'none';
+            openPmModal('createReceiptModal');
+        }
+
+        function openRejectOrderModal(receiptId, code) {
+            document.getElementById('rejectOrderReceiptId').value = receiptId;
+            document.getElementById('rejectOrderCode').innerText = code;
+            openPmModal('rejectOrderModal');
+        }
+
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') document.querySelectorAll('.pm-overlay.open').forEach(function (m) { m.classList.remove('open'); });
         });
 
-        // Hỗ trợ dán ảnh trực tiếp (Ctrl+V) vào Ảnh xe cân tại xưởng để không cần mở hộp thoại File Explorer
+        // Hỗ trợ dán ảnh trực tiếp (Ctrl+V) vào Ảnh xe cân tại xưởng
         document.addEventListener('paste', function (e) {
             var modal = document.getElementById('createReceiptModal');
             if (!modal || !modal.classList.contains('open')) return;
@@ -267,6 +449,18 @@
                 document.getElementById('rdTotal').innerText = d.total;
                 document.getElementById('rdBy').innerText = d.by;
                 document.getElementById('rdAt').innerText = d.at;
+                document.getElementById('rdImportCode').innerText = d.importCode || 'Chưa lập';
+                document.getElementById('rdImportBy').innerText = d.importBy || '—';
+                document.getElementById('rdApprovedBy').innerText = d.approvedBy || '—';
+
+                var rejWrap = document.getElementById('rdRejectionWrap');
+                if (d.rejection) {
+                    rejWrap.style.display = '';
+                    document.getElementById('rdRejection').innerText = d.rejection;
+                } else {
+                    rejWrap.style.display = 'none';
+                }
+
                 document.getElementById('rdScale').src = d.scale;
                 document.getElementById('rdScaleLink').href = d.scale;
                 var wrap = document.getElementById('rdInvoiceWrap');

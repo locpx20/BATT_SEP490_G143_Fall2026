@@ -11,16 +11,28 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
     {
         public int ReceiptId { get; set; }
         public string Code { get; set; } = string.Empty;
+        public int SupplierId { get; set; }
         public string SupplierName { get; set; } = string.Empty;
         public decimal Quantity { get; set; }
         public decimal Price { get; set; }
         public decimal Total => Quantity * Price;
+        public string RawStatus { get; set; } = "PendingOrderApproval";
         public string StatusText { get; set; } = string.Empty;
-        public string StatusType { get; set; } = "pending"; // pending | warehouse | received
+        public string StatusType { get; set; } = "pending"; // pending | warehouse | received | rejected
+        public string? RejectionReason { get; set; }
         public string ScalePhoto { get; set; } = string.Empty;
         public string? InvoicePhoto { get; set; }
         public string CreatedByName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+
+        // Thông tin Phiếu nhập kho nguyên liệu (Receive Goods Receipt information)
+        public string? ImportCode { get; set; }
+        public string? ImportStatus { get; set; }
+        public decimal? ImportedQuantity { get; set; }
+        public string? ImportedByName { get; set; }
+        public DateTime? ImportDate { get; set; }
+        public string? ApprovedByName { get; set; }
+        public DateTime? ApprovedAt { get; set; }
     }
 
     public class TimelineEntry
@@ -59,6 +71,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public decimal PlannedQuantity { get; set; }
         public decimal CeilingPrice { get; set; }
         public decimal WeighedTotal { get; set; }
+        public decimal RemainingQuantity => Math.Max(0m, PlannedQuantity - WeighedTotal);
         public string AssignedName { get; set; } = string.Empty;
         public string CreatorName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
@@ -70,8 +83,9 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public List<PurchaseSupplierOption> Suppliers { get; set; } = new();
         public List<AssignedInvoiceOption> InvoiceOptions { get; set; } = new();
 
-        // Nhân viên thu mua (được giao), Quản lý hoặc Owner có thể nhập nhiều phiếu con khi phiếu tổng còn hạn trong ngày
         public bool CanCreateReceipt { get; set; }
+        public bool CanManagerReviewOrder => IsManager || IsOwner;
+        public bool CanCreateInboundRequest => IsPurchasingStaff;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -100,19 +114,24 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             return false;
         }
 
+        // BƯỚC 2 TRÊN SWIMLANE: Chỉ Purchasing Staff -> Create Purchase Order (hoặc sửa lại sau khi bị từ chối)
         public async Task<IActionResult> OnPostCreateReceiptAsync(
             int invoiceId,
+            int? editReceiptId,
             int supplierId,
             string? weighedQuantity,
             string? actualPrice,
             IFormFile? scalePhoto,
-            IFormFile? invoicePhoto)
+            IFormFile? invoicePhoto,
+            bool returnToIndex = false)
         {
-            var check = RequireRole(RoleConstants.PurchasingStaff, RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.PurchasingStaff);
             if (check != null) return check;
 
             var targetId = invoiceId > 0 ? invoiceId : Id;
-            IActionResult Back() => RedirectToPage(new { id = targetId });
+            IActionResult Back() => returnToIndex
+                ? RedirectToPage("/PurchaseInvoices/Index")
+                : RedirectToPage(new { id = targetId });
 
             await IndexModel.ExpirePastDayInvoicesAsync(_context);
 
@@ -122,7 +141,6 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .FirstOrDefaultAsync(p => p.InvoiceId == targetId);
             if (invoice == null) return NotFound();
 
-            // Kiểm tra hết hạn (hết ngày tính từ lúc lập phiếu)
             if (IndexModel.IsInvoiceExpiredByDate(invoice.PurchaseDate) ||
                 string.Equals(invoice.Status, "Expired", StringComparison.OrdinalIgnoreCase))
             {
@@ -140,6 +158,21 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 parsedWeight > PurchasePricing.MaxOrderQuantity)
             {
                 ErrorMessage = $"Khối lượng cân tại xưởng phải lớn hơn 0 và không vượt quá {PurchasePricing.MaxOrderQuantity:N0} kg.";
+                return Back();
+            }
+
+            var plannedQty = invoice.PurchaseInvoiceDetails.Sum(d => d.Quantity);
+            var existingTotalWeight = await _context.PurchaseReceipts
+                .AsNoTracking()
+                .Where(r => r.InvoiceId == invoice.InvoiceId
+                            && r.Status != "Rejected"
+                            && (!editReceiptId.HasValue || r.ReceiptId != editReceiptId.Value))
+                .SumAsync(r => r.WeighedQuantity);
+
+            if (plannedQty > 0 && existingTotalWeight + parsedWeight > plannedQty)
+            {
+                var remainingQty = Math.Max(0m, plannedQty - existingTotalWeight);
+                ErrorMessage = $"Tổng khối lượng các phiếu mua con ({existingTotalWeight + parsedWeight:N0} kg) vượt quá khối lượng cần mua của phiếu tổng ({plannedQty:N0} kg). Khối lượng còn lại có thể nhập tối đa là {remainingQty:N0} kg.";
                 return Back();
             }
 
@@ -163,12 +196,49 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 return Back();
             }
 
+            // Nếu là sửa lại đơn mua bị từ chối (Rejection Reason -> Create Purchase Order)
+            if (editReceiptId.HasValue && editReceiptId.Value > 0)
+            {
+                var existingReceipt = await _context.PurchaseReceipts
+                    .FirstOrDefaultAsync(r => r.ReceiptId == editReceiptId.Value && r.InvoiceId == invoice.InvoiceId);
+                if (existingReceipt == null)
+                {
+                    ErrorMessage = "Không tìm thấy phiếu mua hàng con cần chỉnh sửa.";
+                    return Back();
+                }
+
+                var scaleErr = ValidateImage(scalePhoto, required: false, "Ảnh xe cân tại xưởng");
+                if (scaleErr != null) { ErrorMessage = scaleErr; return Back(); }
+                var invErr = ValidateImage(invoicePhoto, required: false, "Hóa đơn");
+                if (invErr != null) { ErrorMessage = invErr; return Back(); }
+
+                existingReceipt.SupplierId = supplier.SupplierId;
+                existingReceipt.WeighedQuantity = parsedWeight;
+                existingReceipt.ActualPrice = parsedPrice;
+                if (scalePhoto is { Length: > 0 })
+                    existingReceipt.ScalePhotoPath = await SavePhotoAsync(scalePhoto);
+                if (invoicePhoto is { Length: > 0 })
+                    existingReceipt.InvoicePhotoPath = await SavePhotoAsync(invoicePhoto);
+
+                existingReceipt.Status = "PendingOrderApproval";
+                existingReceipt.RejectionReason = null;
+
+                await NotifyManagersAsync(
+                    $"Đơn mua {existingReceipt.ReceiptCode} đã chỉnh sửa & gửi lại",
+                    $"{CurrentFullName} đã chỉnh sửa và gửi lại đơn mua {existingReceipt.ReceiptCode} ({parsedWeight:N0} kg × {parsedPrice:N0} VNĐ/kg), chờ Manager phê duyệt.",
+                    $"/PurchaseInvoices/Detail?id={invoice.InvoiceId}");
+
+                await _context.SaveChangesAsync();
+                await IndexModel.ExpirePastDayInvoicesAsync(_context);
+                SuccessMessage = $"Đã cập nhật và gửi lại đơn mua {existingReceipt.ReceiptCode} cho Manager phê duyệt.";
+                return Back();
+            }
+
             var scaleError = ValidateImage(scalePhoto, required: true, "Ảnh xe cân tại xưởng");
             if (scaleError != null) { ErrorMessage = scaleError; return Back(); }
             var invoiceImgError = ValidateImage(invoicePhoto, required: false, "Hóa đơn");
             if (invoiceImgError != null) { ErrorMessage = invoiceImgError; return Back(); }
 
-            // Mã phiếu con PM-26xxx, nối tiếp mã lớn nhất của năm
             var prefix = $"PM-{DateTime.Now.Year % 100:D2}";
             var existing = await _context.PurchaseReceipts
                 .AsNoTracking()
@@ -193,14 +263,20 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 ActualPrice = parsedPrice,
                 ScalePhotoPath = scalePath,
                 InvoicePhotoPath = invoicePath,
-                Status = "Pending",
+                Status = "PendingOrderApproval",
                 CreatedBy = CurrentUserId,
                 CreatedAt = DateTime.Now
             });
 
             try
             {
+                await NotifyManagersAsync(
+                    $"Đơn mua hàng con {code} chờ duyệt",
+                    $"{CurrentFullName} vừa tạo đơn mua hàng con {code} ({parsedWeight:N0} kg × {parsedPrice:N0} VNĐ/kg) trên phiếu tổng {IndexModel.FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId)}, chờ Manager phê duyệt.",
+                    $"/PurchaseInvoices/Detail?id={invoice.InvoiceId}");
+
                 await _context.SaveChangesAsync();
+                await IndexModel.ExpirePastDayInvoicesAsync(_context);
             }
             catch (DataValidationException ex)
             {
@@ -213,8 +289,126 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 return Back();
             }
 
-            SuccessMessage = $"Đã tạo phiếu mua hàng con {code}: {parsedWeight:N0} kg × {parsedPrice:N0} VNĐ/kg. Phiếu đang chờ kho xác nhận.";
+            SuccessMessage = $"Đã tạo đơn mua hàng con {code} ({parsedWeight:N0} kg × {parsedPrice:N0} VNĐ/kg) và gửi cho Manager phê duyệt.";
             return Back();
+        }
+
+        // BƯỚC 3A TRÊN SWIMLANE: Manager -> Approved? -> Yes
+        public async Task<IActionResult> OnPostApproveOrderAsync(int receiptId)
+        {
+            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            if (check != null) return check;
+
+            var receipt = await _context.PurchaseReceipts.FirstOrDefaultAsync(r => r.ReceiptId == receiptId);
+            if (receipt == null) return NotFound();
+
+            receipt.Status = "OrderApproved";
+            receipt.RejectionReason = null;
+
+            if (receipt.CreatedBy.HasValue)
+            {
+                Notifier.Add(
+                    _context,
+                    receipt.CreatedBy.Value,
+                    $"Đơn mua {receipt.ReceiptCode} đã được Manager duyệt",
+                    $"Manager ({CurrentFullName}) đã phê duyệt đơn mua {receipt.ReceiptCode}. Vui lòng bấm 'Tạo yêu cầu nhập kho (Create Inbound Request)' để gửi sang Kho.",
+                    $"/PurchaseInvoices/Detail?id={receipt.InvoiceId}");
+            }
+
+            await _context.SaveChangesAsync();
+            SuccessMessage = $"Đã phê duyệt đơn mua {receipt.ReceiptCode}. Nhân viên thu mua có thể bấm 'Tạo yêu cầu nhập kho (Create Inbound Request)' để gửi sang Kho.";
+            return RedirectToPage(new { id = receipt.InvoiceId });
+        }
+
+        // BƯỚC 3B TRÊN SWIMLANE: Manager -> Approved? -> No -> Rejection Reason -> quay lại Create Purchase Order
+        public async Task<IActionResult> OnPostRejectOrderAsync(int receiptId, string? rejectionReason)
+        {
+            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            if (check != null) return check;
+
+            var receipt = await _context.PurchaseReceipts.FirstOrDefaultAsync(r => r.ReceiptId == receiptId);
+            if (receipt == null) return NotFound();
+
+            if (string.IsNullOrWhiteSpace(rejectionReason))
+            {
+                ErrorMessage = "Vui lòng nhập lý do từ chối (Rejection Reason) cho đơn mua hàng.";
+                return RedirectToPage(new { id = receipt.InvoiceId });
+            }
+
+            var reason = rejectionReason.Trim();
+            receipt.Status = "OrderRejected";
+            receipt.RejectionReason = reason;
+
+            if (receipt.CreatedBy.HasValue)
+            {
+                Notifier.Add(
+                    _context,
+                    receipt.CreatedBy.Value,
+                    $"Đơn mua {receipt.ReceiptCode} bị từ chối",
+                    $"Manager ({CurrentFullName}) đã từ chối đơn mua {receipt.ReceiptCode}. Lý do: {reason}. Vui lòng bấm 'Sửa & Gửi lại đơn mua'.",
+                    $"/PurchaseInvoices/Detail?id={receipt.InvoiceId}");
+            }
+
+            await _context.SaveChangesAsync();
+            SuccessMessage = $"Đã từ chối đơn mua {receipt.ReceiptCode} kèm lý do và gửi trả về cho Nhân viên thu mua chỉnh sửa.";
+            return RedirectToPage(new { id = receipt.InvoiceId });
+        }
+
+        // BƯỚC 4 TRÊN SWIMLANE: Purchasing Staff -> Create Inbound Request -> Warehouse Manager: Inbound Request Notification
+        public async Task<IActionResult> OnPostCreateInboundRequestAsync(int receiptId)
+        {
+            var check = RequireRole(RoleConstants.PurchasingStaff);
+            if (check != null) return check;
+
+            var receipt = await _context.PurchaseReceipts
+                .Include(r => r.Supplier)
+                .FirstOrDefaultAsync(r => r.ReceiptId == receiptId);
+            if (receipt == null) return NotFound();
+
+            if (receipt.Status != "OrderApproved")
+            {
+                ErrorMessage = $"Đơn mua {receipt.ReceiptCode} cần được Manager phê duyệt trước khi tạo yêu cầu nhập kho.";
+                return RedirectToPage(new { id = receipt.InvoiceId });
+            }
+
+            receipt.Status = "WaitWarehouse";
+            receipt.RejectionReason = null;
+
+            // Gửi Inbound Request Notification cho toàn bộ Thủ kho (Warehouse Staff)
+            var warehouseUserIds = await _context.Users
+                .Include(u => u.Role)
+                .Where(u => u.Status == StatusConstants.Active && u.Role.RoleName == RoleConstants.WarehouseStaff)
+                .Select(u => u.UserId)
+                .ToListAsync();
+
+            foreach (var whUserId in warehouseUserIds)
+            {
+                Notifier.Add(
+                    _context,
+                    whUserId,
+                    $"Yêu cầu nhập kho nguyên liệu mới ({receipt.ReceiptCode})",
+                    $"Nhân viên thu mua ({CurrentFullName}) đã gửi Yêu cầu nhập kho (Inbound Request) cho phiếu {receipt.ReceiptCode} — {receipt.WeighedQuantity:N0} kg từ {receipt.Supplier?.SupplierName}. Vui lòng kiểm tra đối chiếu và lập Phiếu nhập kho nguyên liệu.",
+                    "/Inventory/Index?tab=raw");
+            }
+
+            await _context.SaveChangesAsync();
+            SuccessMessage = $"Đã tạo Yêu cầu nhập kho (Inbound Request) cho phiếu {receipt.ReceiptCode} và gửi thông báo (Inbound Request Notification) tới Thủ kho.";
+            return RedirectToPage(new { id = receipt.InvoiceId });
+        }
+
+        private async Task NotifyManagersAsync(string title, string message, string url)
+        {
+            var managerIds = await _context.Users
+                .Include(u => u.Role)
+                .Where(u => u.Status == StatusConstants.Active &&
+                            (u.Role.RoleName == RoleConstants.Manager || u.Role.RoleName == RoleConstants.Owner))
+                .Select(u => u.UserId)
+                .ToListAsync();
+
+            foreach (var mgrId in managerIds)
+            {
+                Notifier.Add(_context, mgrId, title, message, url);
+            }
         }
 
         private string? ValidateImage(IFormFile? file, bool required, string label)
@@ -256,13 +450,29 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             var assignedId = invoice.AssignedTo ?? invoice.CreatedBy;
             if (IsPurchasingStaff && assignedId != CurrentUserId) return false;
 
+            var receiptIds = invoice.PurchaseReceipts.Select(r => r.ReceiptId).ToList();
+            var imports = await _context.RawMaterialImports
+                .AsNoTracking()
+                .Include(i => i.ImportedByNavigation)
+                .Include(i => i.ApprovedByNavigation)
+                .Where(i => i.ReceiptId.HasValue && receiptIds.Contains(i.ReceiptId.Value))
+                .OrderByDescending(i => i.ImportId)
+                .ToListAsync();
+
+            var importByReceiptId = imports
+                .GroupBy(i => i.ReceiptId!.Value)
+                .ToDictionary(g => g.Key, g => g.First());
+
             InvoiceId = invoice.InvoiceId;
             InvoiceCode = IndexModel.FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId);
-            var (statusText, statusType) = IndexModel.MapStatus(invoice.Status, invoice.PurchaseDate);
-            StatusText = statusText;
-            StatusType = statusType;
             PlannedQuantity = invoice.PurchaseInvoiceDetails.Sum(d => d.Quantity);
             CeilingPrice = invoice.PurchaseInvoiceDetails.Select(d => d.UnitPrice).DefaultIfEmpty(0).Max();
+            var activeReceipts = invoice.PurchaseReceipts.Where(r => r.Status != "Rejected").ToList();
+            var weighedQty = activeReceipts.Sum(r => r.WeighedQuantity);
+            var receivedQty = activeReceipts.Where(r => r.Status == "Received").Sum(r => r.WeighedQuantity);
+            var (statusText, statusType) = IndexModel.MapStatus(invoice.Status, invoice.PurchaseDate, weighedQty, PlannedQuantity, receivedQty);
+            StatusText = statusText;
+            StatusType = statusType;
             AssignedName = invoice.AssignedToNavigation?.FullName ?? invoice.CreatedByNavigation?.FullName ?? "—";
             CreatorName = invoice.CreatedByNavigation?.FullName ?? "—";
             CreatedAt = invoice.PurchaseDate;
@@ -276,33 +486,50 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .Select(r =>
                 {
                     var (text, type) = ReceiptStatus(r.Status);
+                    importByReceiptId.TryGetValue(r.ReceiptId, out var imp);
+                    var impCode = imp != null
+                        ? (string.IsNullOrWhiteSpace(imp.ImportCode) ? $"PNK-26{imp.ImportId:D3}" : imp.ImportCode)
+                        : null;
+
                     return new PurchaseReceiptViewModel
                     {
                         ReceiptId = r.ReceiptId,
                         Code = r.ReceiptCode,
+                        SupplierId = r.SupplierId,
                         SupplierName = r.Supplier?.SupplierName ?? "—",
                         Quantity = r.WeighedQuantity,
                         Price = r.ActualPrice,
+                        RawStatus = r.Status ?? "PendingOrderApproval",
                         StatusText = text,
                         StatusType = type,
+                        RejectionReason = r.RejectionReason,
                         ScalePhoto = r.ScalePhotoPath,
                         InvoicePhoto = r.InvoicePhotoPath,
                         CreatedByName = r.CreatedByNavigation?.FullName ?? "—",
-                        CreatedAt = r.CreatedAt
+                        CreatedAt = r.CreatedAt,
+                        ImportCode = impCode,
+                        ImportStatus = imp?.Status,
+                        ImportedQuantity = imp?.Quantity,
+                        ImportedByName = imp?.ImportedByNavigation?.FullName,
+                        ImportDate = imp?.ImportDate,
+                        ApprovedByName = imp?.ApprovedByNavigation?.FullName,
+                        ApprovedAt = imp?.ApprovedAt
                     };
                 })
                 .ToList();
             WeighedTotal = Receipts.Sum(r => r.Quantity);
 
             Timeline = Receipts
-                .Select(r => new TimelineEntry { At = r.CreatedAt, Text = $"{r.CreatedByName} tạo phiếu cân {r.Code}" })
+                .Select(r => new TimelineEntry { At = r.CreatedAt, Text = $"{r.CreatedByName} tạo đơn mua con {r.Code} ({r.StatusText})" })
                 .Append(new TimelineEntry { At = invoice.PurchaseDate, Text = $"{CreatorName} tạo phiếu tổng {InvoiceCode}" })
                 .OrderByDescending(t => t.At)
                 .ToList();
 
+            // Chỉ Nhân viên thu mua (Purchasing Staff) được giao phiếu mới tạo phiếu mua hàng con; Manager không tạo phiếu con
             CanCreateReceipt = !IsExpired &&
                                invoice.Status != "Rejected" &&
-                               (IsOwner || IsManager || (IsPurchasingStaff && assignedId == CurrentUserId));
+                               IsPurchasingStaff &&
+                               assignedId == CurrentUserId;
 
             Suppliers = await _context.Suppliers.AsNoTracking()
                 .Where(s => s.Status == StatusConstants.Active)
@@ -336,13 +563,17 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             return true;
         }
 
-        public static (string Text, string Type) ReceiptStatus(string? status) => (status ?? "Pending") switch
+        public static (string Text, string Type) ReceiptStatus(string? status) => (status ?? "PendingOrderApproval") switch
         {
+            "PendingOrderApproval" => ("Chờ duyệt đơn", "pending"),
+            "OrderApproved" => ("Chờ gửi kho", "warehouse"),
+            "OrderRejected" => ("Từ chối đơn", "rejected"),
+            "WaitWarehouse" or "Pending" => ("Chờ nhập kho", "warehouse"),
+            "WaitManagerApproval" => ("Chờ duyệt PNK", "pending"),
+            "ImportRejected" => ("Từ chối PNK", "rejected"),
             "Received" => ("Đã nhập kho", "received"),
-            "WaitManagerApproval" => ("Chờ Manager duyệt nhập kho", "warehouse"),
-            "WaitWarehouse" => ("Chờ kho xác nhận nhập", "warehouse"),
             "Rejected" => ("Đã từ chối", "rejected"),
-            _ => ("Chờ duyệt cân", "pending")
+            _ => ("Chờ duyệt", "pending")
         };
     }
 }

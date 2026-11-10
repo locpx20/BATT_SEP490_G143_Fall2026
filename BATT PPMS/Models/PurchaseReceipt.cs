@@ -24,7 +24,9 @@ public partial class PurchaseReceipt
 
     public string Status { get; set; } = "Pending";
 
-    public int CreatedBy { get; set; }
+    public string? RejectionReason { get; set; }
+
+    public int? CreatedBy { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -32,6 +34,6 @@ public partial class PurchaseReceipt
 
     public virtual Supplier Supplier { get; set; } = null!;
 
-    public virtual User CreatedByNavigation { get; set; } = null!;
+    public virtual User? CreatedByNavigation { get; set; }
 }
 

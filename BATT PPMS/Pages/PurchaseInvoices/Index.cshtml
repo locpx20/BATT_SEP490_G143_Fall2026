@@ -54,6 +54,14 @@
                     <span>Tạo phiếu tổng</span>
                 </button>
             }
+            @if (Model.CanCreateSubReceipt && Model.ActiveAssignedInvoices.Any())
+            {
+                var firstActive = Model.ActiveAssignedInvoices.First();
+                <button type="button" class="btn" onclick="openQuickCreateReceiptModal(@firstActive.InvoiceId, '@firstActive.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)')" style="background: #193f35; color: #ffffff; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: none;">
+                    <i class="bi bi-plus-lg" style="font-size: 13px;"></i>
+                    <span>Tạo phiếu mua con</span>
+                </button>
+            }
         </div>
     </div>
 
@@ -90,8 +98,9 @@
                         <select name="StatusFilter" onchange="this.form.submit()" class="form-select" style="min-width: 140px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 13px; height: 40px; color: #1e293b; background-color: #ffffff;">
                             <option value="all" selected="@(string.IsNullOrEmpty(Model.StatusFilter) || Model.StatusFilter == "all")">Tất cả</option>
                             <option value="procuring" selected="@(Model.StatusFilter == "procuring")">Đang thu mua</option>
-                            <option value="expired" selected="@(Model.StatusFilter == "expired")">Đã hết hạn</option>
+                            <option value="completed" selected="@(Model.StatusFilter == "completed")">Đã thu mua đủ</option>
                             <option value="received" selected="@(Model.StatusFilter == "received")">Đã nhập kho</option>
+                            <option value="expired" selected="@(Model.StatusFilter == "expired")">Đã hết hạn</option>
                         </select>
                     </div>
 
@@ -186,48 +195,110 @@
                                     {
                                         <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #ebf5ff; color: #1e40af; border: 1px solid #dbeafe;">
                                             <span style="width: 6px; height: 6px; border-radius: 50%; background: #3b82f6;"></span>
-                                            Đang thu mua
+                                            @o.StatusDisplayName
                                         </span>
                                     }
                                     else if (o.StatusBadgeType == "wait_approval")
                                     {
                                         <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #fffbeb; color: #b45309; border: 1px solid #fef3c7;">
                                             <span style="width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
-                                            Chờ Owner duyệt giá trần
+                                            @o.StatusDisplayName
+                                        </span>
+                                    }
+                                    else if (o.StatusBadgeType == "completed")
+                                    {
+                                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;">
+                                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
+                                            @o.StatusDisplayName
                                         </span>
                                     }
                                     else if (o.StatusBadgeType == "received")
                                     {
-                                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;">
-                                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e;"></span>
-                                            Đã nhập kho
+                                        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;">
+                                            <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                                            @o.StatusDisplayName
                                         </span>
                                     }
                                     else if (o.StatusBadgeType == "expired")
                                     {
                                         <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
                                             <span style="width: 6px; height: 6px; border-radius: 50%; background: #64748b;"></span>
-                                            Đã hết hạn
+                                            @o.StatusDisplayName
                                         </span>
                                     }
                                     else
                                     {
                                         <span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background: #fef2f2; color: #b91c1c; border: 1px solid #fee2e2;">
                                             <span style="width: 6px; height: 6px; border-radius: 50%; background: #ef4444;"></span>
-                                            Đã từ chối
+                                            @o.StatusDisplayName
                                         </span>
                                     }
                                 </td>
 
-                                <!-- Chi tiết -->
+                                <!-- Chi tiết (Icon mắt) & Sửa / Xóa khi chưa có phiếu con -->
                                 <td style="padding: 14px 20px; border: none;">
-                                    <a href="/PurchaseInvoices/Detail?id=@o.InvoiceId"
-                                       data-invoice="@o.InvoiceId"
-                                       style="color: #2d3748; font-size: 12px; font-weight: 500; text-decoration: none;"
-                                       onmouseover="this.style.textDecoration='underline'"
-                                       onmouseout="this.style.textDecoration='none'">
-                                        Xem chi tiết phiếu
-                                    </a>
+                                    <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                        <a href="/PurchaseInvoices/Detail?id=@o.InvoiceId"
+                                           data-invoice="@o.InvoiceId"
+                                           title="Xem chi tiết phiếu @o.InvoiceCode"
+                                           style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; background: #ffffff; color: #1e293b; text-decoration: none; font-size: 15px;">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        @if (Model.CanCreateSubReceipt && o.StatusBadgeType != "expired" && o.Status != "Rejected" && o.WeighedQuantity < o.PlannedQuantity)
+                                        {
+                                            var remQty = Math.Max(0m, o.PlannedQuantity - o.WeighedQuantity);
+                                            <button type="button"
+                                                    title="Tạo phiếu mua hàng con trên phiếu tổng @o.InvoiceCode (còn lại @remQty.ToString("N0", viCulture) kg)"
+                                                    onclick="openQuickCreateReceiptModal(@o.InvoiceId, '@o.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)', '@remQty.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)')"
+                                                    style="display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #193f35; background: #193f35; color: #ffffff; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                                                <i class="bi bi-plus-lg"></i>
+                                                <span>Tạo phiếu con</span>
+                                            </button>
+                                        }
+
+                                        @if (Model.CanCreateOrder)
+                                        {
+                                            if (!o.HasReceipts)
+                                            {
+                                                <button type="button"
+                                                        title="Chỉnh sửa phiếu tổng @o.InvoiceCode (chưa có phiếu con)"
+                                                        onclick="openEditPlanModal(@o.InvoiceId, '@o.InvoiceCode', '@o.PlannedQuantity.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)', '@o.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)', @(o.CreatedByStaffId ?? 0))"
+                                                        style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #1e40af; cursor: pointer; font-size: 14px;">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+
+                                                <form method="post" asp-page-handler="DeletePurchasePlan" style="display: inline; margin: 0;"
+                                                      onsubmit="return confirm('Bạn có chắc chắn muốn xóa phiếu thu mua tổng @o.InvoiceCode?');">
+                                                    <input type="hidden" name="invoiceId" value="@o.InvoiceId" />
+                                                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+                                                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                                                    <input type="hidden" name="StaffFilter" value="@Model.StaffFilter" />
+                                                    <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
+                                                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                                                    <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+                                                    <button type="submit"
+                                                            title="Xóa phiếu tổng @o.InvoiceCode (chưa có phiếu con)"
+                                                            style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fecaca; background: #ffffff; color: #b91c1c; cursor: pointer; font-size: 14px;">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <button type="button" disabled
+                                                        title="Không thể sửa phiếu tổng vì đã có @o.ReceiptCount phiếu mua hàng con"
+                                                        style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #f1f5f9; background: #f8fafc; color: #cbd5e1; cursor: not-allowed; font-size: 14px;">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
+                                                <button type="button" disabled
+                                                        title="Không thể xóa phiếu tổng vì đã có @o.ReceiptCount phiếu mua hàng con"
+                                                        style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #f1f5f9; background: #f8fafc; color: #cbd5e1; cursor: not-allowed; font-size: 14px;">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            }
+                                        }
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -337,6 +408,128 @@
     </div>
 </div>
 
+<!-- POPUP: CHỈNH SỬA PHIẾU THU MUA TỔNG (KHI CHƯA CÓ PHIẾU CON) -->
+<div class="pm-overlay" id="editPlanModal" onclick="if (event.target === this) closePmModal('editPlanModal')">
+    <div class="pm-dialog" role="dialog" aria-modal="true">
+        <form method="post" asp-page-handler="UpdatePurchasePlan">
+            <input type="hidden" name="invoiceId" id="editInvoiceIdInput" />
+            <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+            <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+            <input type="hidden" name="StaffFilter" value="@Model.StaffFilter" />
+            <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
+            <input type="hidden" name="PageSize" value="@Model.PageSize" />
+            <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+
+            <div class="pm-head">
+                <h5 class="pm-title">Chỉnh sửa phiếu thu mua tổng <span id="editInvoiceCodeText" style="font-family: monospace;"></span></h5>
+                <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('editPlanModal')">&times;</button>
+            </div>
+
+            <div class="pm-body">
+                <div class="pm-grid">
+                    <div>
+                        <label class="pm-label" for="editPlannedWeightInput">Khối lượng cần mua <span style="color: #e53e3e;">*</span></label>
+                        <input type="number" name="plannedWeight" id="editPlannedWeightInput" min="1" step="any" required class="pm-input" />
+                        <span class="pm-hint">kg</span>
+                    </div>
+                    <div>
+                        <label class="pm-label" for="editCeilingPriceInput">Giá trần <span style="color: #e53e3e;">*</span></label>
+                        <input type="number" id="editCeilingPriceInput" readonly tabindex="-1" class="pm-input" />
+                        <span class="pm-hint">VNĐ / kg (chỉ đọc)</span>
+                    </div>
+
+                    <div class="pm-full">
+                        <label class="pm-label">Nhân viên thu mua được phân công <span style="color: #e53e3e;">*</span></label>
+                        <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; max-height: 180px; overflow-y: auto; background: #ffffff;">
+                            @for (int i = 0; i < Model.PurchasingStaffs.Count; i++)
+                            {
+                                var staff = Model.PurchasingStaffs[i];
+                                <label for="editStaffRadio_@staff.UserId" style="display: flex; align-items: center; gap: 10px; margin-bottom: @(i == Model.PurchasingStaffs.Count - 1 ? "0" : "10px"); cursor: pointer; font-size: 13px; color: #1e293b; font-weight: 500;">
+                                    <input type="radio" name="assignedStaffId" id="editStaffRadio_@staff.UserId" class="edit-staff-radio" value="@staff.UserId" required style="width: 17px; height: 17px; margin: 0; cursor: pointer;" />
+                                    @staff.FullName
+                                </label>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pm-foot">
+                <button type="button" class="pm-btn-cancel" onclick="closePmModal('editPlanModal')">Hủy</button>
+                <button type="submit" class="pm-btn-primary">Lưu thay đổi</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- POPUP: TẠO NHANH PHIẾU MUA HÀNG CON NGAY TRÊN MÀN HÌNH DANH SÁCH (CHỈ DÀNH CHO PURCHASING STAFF) -->
+@if (Model.CanCreateSubReceipt)
+{
+    <div class="pm-overlay" id="quickCreateReceiptModal" onclick="if (event.target === this) closePmModal('quickCreateReceiptModal')">
+        <div class="pm-dialog pm-lg" role="dialog" aria-modal="true">
+            <form method="post" asp-page="/PurchaseInvoices/Detail" asp-page-handler="CreateReceipt" enctype="multipart/form-data">
+                <input type="hidden" name="returnToIndex" value="true" />
+                <div class="pm-head">
+                    <h5 class="pm-title">Tạo đơn mua hàng con (Create Purchase Order)</h5>
+                    <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('quickCreateReceiptModal')">&times;</button>
+                </div>
+                <div class="pm-body">
+                    <div class="pm-grid">
+                        <div>
+                            <label class="pm-label">Phiếu tổng được giao <span style="color: #e53e3e;">*</span></label>
+                            <select name="invoiceId" id="quickInvoiceIdSelect" class="pm-input" required onchange="onQuickInvoiceChange(this)">
+                                @foreach (var inv in Model.ActiveAssignedInvoices)
+                                {
+                                    var rem = Math.Max(0m, inv.PlannedQuantity - inv.WeighedQuantity);
+                                    <option value="@inv.InvoiceId"
+                                            data-ceiling="@inv.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-remaining="@rem.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)">
+                                        @inv.InvoiceCode (Còn lại: @rem.ToString("N0", viCulture) / @inv.PlannedQuantity.ToString("N0", viCulture) kg — Giá trần: @inv.UnitPrice.ToString("N0", viCulture) VNĐ/kg)
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="pm-label">Nhà cung cấp <span style="color: #e53e3e;">*</span></label>
+                            <select name="supplierId" class="pm-input" required>
+                                <option value="">Chọn...</option>
+                                @foreach (var s in Model.ActiveSuppliers)
+                                {
+                                    <option value="@s.SupplierId">@s.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="pm-label">Khối lượng cân tại xưởng <span style="color: #e53e3e;">*</span></label>
+                            <input type="number" name="weighedQuantity" id="quickWeighedQtyInput" min="1" step="any" placeholder="Vd: 5000" required class="pm-input" />
+                            <span class="pm-hint" id="quickRemainingHint">kg (tối đa bằng khối lượng còn lại của phiếu tổng)</span>
+                        </div>
+                        <div>
+                            <label class="pm-label">Giá mua thực tế <span style="color: #e53e3e;">*</span></label>
+                            <input type="number" name="actualPrice" id="quickActualPriceInput" min="1" step="any" required class="pm-input" />
+                            <span class="pm-hint" id="quickCeilingHint">VNĐ / kg (tối đa theo giá trần của phiếu tổng)</span>
+                        </div>
+                        <div>
+                            <label class="pm-label">Ảnh xe cân tại xưởng <span style="color: #e53e3e;">*</span></label>
+                            <input type="file" name="scalePhoto" id="quickScalePhotoInput" accept="image/*" required class="pm-input" />
+                            <span class="pm-hint">Có thể chọn tệp, kéo-thả ảnh hoặc bấm Ctrl+V để dán ảnh</span>
+                        </div>
+                        <div>
+                            <label class="pm-label">Hóa đơn (nếu có)</label>
+                            <input type="file" name="invoicePhoto" id="quickInvoicePhotoInput" accept="image/*" class="pm-input" />
+                            <span class="pm-hint">Có thể chọn tệp hoặc kéo-thả ảnh vào ô này</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="pm-foot">
+                    <button type="button" class="pm-btn-cancel" onclick="closePmModal('quickCreateReceiptModal')">Hủy</button>
+                    <button type="submit" class="pm-btn-primary">Gửi đơn mua chờ Manager duyệt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <script>
         function openCreatePlanModal() {
@@ -344,12 +537,105 @@
             document.getElementById('plannedWeightInput').focus();
         }
 
+        function openQuickCreateReceiptModal(invoiceId, ceilingPrice, remainingQty) {
+            var select = document.getElementById('quickInvoiceIdSelect');
+            if (select && invoiceId) {
+                select.value = invoiceId;
+            }
+            if (select) {
+                onQuickInvoiceChange(select);
+            }
+            var priceInput = document.getElementById('quickActualPriceInput');
+            if (priceInput && ceilingPrice) {
+                priceInput.value = ceilingPrice;
+                priceInput.max = ceilingPrice;
+            }
+            var hint = document.getElementById('quickCeilingHint');
+            if (hint && ceilingPrice) {
+                hint.innerText = 'VNĐ / kg (tối đa giá trần ' + Number(ceilingPrice).toLocaleString('vi-VN') + ' VNĐ/kg)';
+            }
+            var qtyInput = document.getElementById('quickWeighedQtyInput');
+            if (qtyInput && remainingQty) {
+                qtyInput.max = remainingQty;
+            }
+            var remHint = document.getElementById('quickRemainingHint');
+            if (remHint && remainingQty) {
+                remHint.innerText = 'kg (còn lại tối đa ' + Number(remainingQty).toLocaleString('vi-VN') + ' kg)';
+            }
+            document.getElementById('quickCreateReceiptModal').classList.add('open');
+            if (qtyInput) qtyInput.focus();
+        }
+
+        function onQuickInvoiceChange(sel) {
+            var opt = sel.options[sel.selectedIndex];
+            if (!opt) return;
+            var ceiling = opt.getAttribute('data-ceiling');
+            var remaining = opt.getAttribute('data-remaining');
+            var priceInput = document.getElementById('quickActualPriceInput');
+            if (priceInput && ceiling) {
+                priceInput.value = ceiling;
+                priceInput.max = ceiling;
+            }
+            var hint = document.getElementById('quickCeilingHint');
+            if (hint && ceiling) {
+                hint.innerText = 'VNĐ / kg (tối đa giá trần ' + Number(ceiling).toLocaleString('vi-VN') + ' VNĐ/kg)';
+            }
+            var qtyInput = document.getElementById('quickWeighedQtyInput');
+            if (qtyInput && remaining) {
+                qtyInput.max = remaining;
+            }
+            var remHint = document.getElementById('quickRemainingHint');
+            if (remHint && remaining) {
+                remHint.innerText = 'kg (còn lại tối đa ' + Number(remaining).toLocaleString('vi-VN') + ' kg)';
+            }
+        }
+
+        // Hỗ trợ dán ảnh trực tiếp (Ctrl+V) vào popup Tạo phiếu con ngoài danh sách
+        document.addEventListener('paste', function (e) {
+            var modal = document.getElementById('quickCreateReceiptModal');
+            if (!modal || !modal.classList.contains('open')) return;
+            var items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    var file = items[i].getAsFile();
+                    if (file) {
+                        var dt = new DataTransfer();
+                        dt.items.add(file);
+                        var scaleInput = document.getElementById('quickScalePhotoInput');
+                        var invoiceInput = document.getElementById('quickInvoicePhotoInput');
+                        if (scaleInput && (!scaleInput.files || scaleInput.files.length === 0)) {
+                            scaleInput.files = dt.files;
+                        } else if (invoiceInput) {
+                            invoiceInput.files = dt.files;
+                        }
+                    }
+                    break;
+                }
+            }
+        });
+
+        function openEditPlanModal(invoiceId, invoiceCode, plannedQty, ceilingPrice, staffId) {
+            document.getElementById('editInvoiceIdInput').value = invoiceId;
+            document.getElementById('editInvoiceCodeText').innerText = invoiceCode;
+            document.getElementById('editPlannedWeightInput').value = plannedQty;
+            document.getElementById('editCeilingPriceInput').value = ceilingPrice;
+            var radios = document.querySelectorAll('.edit-staff-radio');
+            radios.forEach(function (r) {
+                r.checked = (parseInt(r.value, 10) === parseInt(staffId, 10));
+            });
+            document.getElementById('editPlanModal').classList.add('open');
+        }
+
         function closePmModal(id) {
             document.getElementById(id).classList.remove('open');
         }
 
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closePmModal('createPlanModal');
+            if (e.key === 'Escape') {
+                closePmModal('createPlanModal');
+                closePmModal('editPlanModal');
+            }
         });
 
         function changePageSize(size) {

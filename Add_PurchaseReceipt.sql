@@ -40,10 +40,17 @@ BEGIN
         actual_price      DECIMAL(12,2) NOT NULL CHECK (actual_price > 0),
         scale_photo_path  NVARCHAR(300) NOT NULL,
         invoice_photo_path NVARCHAR(300) NULL,
-        status            NVARCHAR(50)  NOT NULL DEFAULT 'Pending', -- Pending = Chờ duyệt cân
-        created_by        INT           NOT NULL REFERENCES [User](user_id),
+        status            NVARCHAR(50)  NOT NULL DEFAULT 'Pending', -- PendingOrderApproval / OrderApproved / OrderRejected / WaitWarehouse / WaitManagerApproval / ImportRejected / Received
+        rejection_reason  NVARCHAR(500) NULL,
+        created_by        INT           NULL REFERENCES [User](user_id),
         created_at        DATETIME      NOT NULL DEFAULT GETDATE()
     );
+END
+GO
+
+IF COL_LENGTH('PurchaseReceipt', 'rejection_reason') IS NULL
+BEGIN
+    ALTER TABLE PurchaseReceipt ADD rejection_reason NVARCHAR(500) NULL;
 END
 GO
 

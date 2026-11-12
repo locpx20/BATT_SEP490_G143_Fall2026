@@ -275,7 +275,7 @@
                     @if (Model.StaffAssignments.Count == 0) {
                         <div class="staff-empty-state">
                             <i class="bi bi-check2-circle" style="font-size: 42px; color: #28543f;"></i>
-                            <h3>Chưa có ca được phân công để gửi QC</h3>
+                            <h3>Không có ca cần gửi yêu cầu QC</h3>
                             <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2" class="closeout-button primary">
                                 <i class="bi bi-arrow-right"></i> Theo dõi kết quả QC
                             </a>
@@ -318,8 +318,8 @@
                                     <option value="">Chọn ca làm việc</option>
                                     @foreach (var a in Model.StaffAssignments) {
                                         <option value="@a.AssignmentId" data-date="@a.AssignmentDate.ToString("yyyy-MM-dd")"
-                                                data-requires-exception="@(a.RequiresException ? "true" : null)">
-                                            @IndexModel.FormatShift(a.Shift)@(a.RequiresException ? " · Lô tiếp theo" : "")
+                                                data-lot-prefix="@a.LotPrefix" data-recheck-lot="@a.RecheckLot" data-recheck-bags="@LotCode.BagCount(a.RecheckLot)">
+                                            @IndexModel.FormatShift(a.Shift)@(a.RecheckLot != null ? " · Kiểm tra lại" : "")
                                         </option>
                                     }
                                 </select>
@@ -861,7 +861,7 @@
                                                             data-receiver="@(r.Receiver?.FullName ?? "")"
                                                             data-rec-time="@(r.ReceivedAt?.ToString("HH:mm dd/MM/yyyy") ?? "")"
                                                             data-req-note="@r.RequestNote"
-                                                            data-qc-note="@(r.QualityRequest.Inspection.Note?.StartsWith("Lý do tách lô:", StringComparison.Ordinal) == true ? r.QualityRequest.Inspection.Note : null)"
+                                                            data-qc-note="@(ProductionFlow.IsShiftIncidentNote(r.QualityRequest.Inspection.Note) ? r.QualityRequest.Inspection.Note : null)"
                                                             data-disc-note="@r.DiscrepancyNote"
                                                             data-rej-reason="@(Model.StaffView && !isRejected ? null : r.RejectionReason)"
                                                             data-qc-img-url="@(r.QualityRequest.ResultImage != null ? Url.Page("/QC/Index", "Image", new { requestId = r.QualityRequestId }) : "")"

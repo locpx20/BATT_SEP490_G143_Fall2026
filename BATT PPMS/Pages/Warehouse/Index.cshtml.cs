@@ -195,11 +195,11 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         }
         return RedirectToPage(new { tab, step, qcDate, qcShift });
     }
-    public async Task<IActionResult> OnPostRequestQcAsync(int assignmentId, int bags, string? note, string? exceptionReason) {
+    public async Task<IActionResult> OnPostRequestQcAsync(int assignmentId, int? bags, string? note, bool hasShiftIncident, string? exceptionReason) {
         var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
         var assignment = await db.PersonnelAssignments.AsNoTracking().FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         var targetDate = assignment?.AssignmentDate ?? Today;
-        return await Act(() => new ProductionFlow(db).RequestQc(CurrentUserId, assignmentId, bags, note, exceptionReason),
+        return await Act(() => new ProductionFlow(db).RequestQc(CurrentUserId, assignmentId, bags, note, hasShiftIncident, exceptionReason),
             "Đã gửi yêu cầu kiểm tra chất lượng cho nhân viên QC.", "receipts", 2, targetDate, assignment?.Shift, failureStep: 1);
     }
     public Task<IActionResult> OnPostRequestReceiptAsync(int requestId, string? note) {

@@ -80,7 +80,7 @@
                 <tbody>
                     @foreach (var batch in Model.Batches) {
                         <tr>
-                            <td><code title="@batch.Lot">@LotCode.ForListDisplay(batch.Lot)</code></td>
+                            <td><code>@batch.Lot</code></td>
                             <td>@batch.ProductionDate.ToString("dd/MM/yyyy")</td>
                             <td>@batch.Location</td>
                             <td><span class="stock-quality" data-grade="@batch.Grade">@batch.Quality</span></td>

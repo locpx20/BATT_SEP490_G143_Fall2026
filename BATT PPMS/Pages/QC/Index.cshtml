@@ -26,8 +26,9 @@
                         <select id="qcAssignment" name="assignmentId" required>
                             <option value="">Chọn ngày và ca</option>
                             @foreach (var assignment in Model.Assignments) {
-                                <option value="@assignment.AssignmentId" data-requires-exception="@(assignment.RequiresException ? "true" : null)">
-                                    @assignment.AssignmentDate.ToString("dd/MM/yyyy") · @assignment.Shift@(assignment.RequiresException ? " · Lô tiếp theo" : "")
+                                <option value="@assignment.AssignmentId" data-lot-prefix="@assignment.LotPrefix"
+                                        data-recheck-lot="@assignment.RecheckLot" data-recheck-bags="@LotCode.BagCount(assignment.RecheckLot)">
+                                    @assignment.AssignmentDate.ToString("dd/MM/yyyy") · @assignment.Shift@(assignment.RecheckLot != null ? " · Kiểm tra lại" : "")
                                 </option>
                             }
                         </select>

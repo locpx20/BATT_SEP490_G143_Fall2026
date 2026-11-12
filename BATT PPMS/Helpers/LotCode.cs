@@ -16,16 +16,6 @@ public static class LotCode
     public static string ShiftPrefix(DateOnly productionDate, int shiftNumber) =>
         FormattableString.Invariant($"LOT-{productionDate:yyMMdd}-C{shiftNumber}-");
 
-    public static int SequenceInShift(string lot, string prefix)
-    {
-        if (!lot.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            return 0;
-        var suffix = lot.AsSpan(prefix.Length);
-        var separator = suffix.IndexOf('-');
-        return separator > 0 && int.TryParse(suffix[..separator], NumberStyles.None, CultureInfo.InvariantCulture, out var sequence)
-            ? sequence : 0;
-    }
-
     public static string Create(string prefix, int sequence, int bags) =>
         FormattableString.Invariant($"{prefix}{sequence}-{bags}");
 

@@ -19,7 +19,6 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     {
         ["Pending"] = "Chờ Thủ kho xử lý",
         ["Rejected"] = "Từ chối",
-        ["AwaitingStaffConfirmation"] = "Đồng ý, chờ xác nhận",
         ["Received"] = "Đồng ý, đã nhập kho"
     };
 
@@ -33,6 +32,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     public IReadOnlyDictionary<string, string> Statuses => ShowReceipts ? ReceiptStatuses : MaterialStatuses;
     public List<string?> Shifts { get; private set; } = [];
     public List<ReportRow> Reports { get; private set; } = [];
+    public List<AppNotification> Notices { get; private set; } = [];
     public PageWindow Pagination { get; private set; } = new(0, 1);
     public Dictionary<string, string?> PaginationFilters => new()
     {
@@ -49,6 +49,8 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         if (!IsManager) return RedirectToPage("/Warehouse/Consumption");
 
         Tab = ShowReceipts ? "receipts" : "materials";
+        if (ShowReceipts && StatusFilter == "AwaitingStaffConfirmation")
+            StatusFilter = "Received";
         var query = ShowReceipts ? ReadReceipts() : ReadMaterials();
         if (ReportDate is { } date)
             query = query.Where(row => row.Date == date);
@@ -68,6 +70,8 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         Pagination = new PageWindow(await query.CountAsync(cancellationToken), PageWindow.ReadRequestedPage(Request.Query));
         Reports = await query.OrderByDescending(row => row.Date).ThenByDescending(row => row.Id)
             .Skip(Pagination.Offset).Take(Pagination.PageSize).ToListAsync(cancellationToken);
+        if (ShowReceipts)
+            Notices = await Notifier.TakeUnreadAsync(db, CurrentUserId);
         return Page();
     }
 
@@ -93,7 +97,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         Quantity = receipt.ExpectedQuantity,
         ReceivedQuantity = receipt.ActualQuantity,
         ReceivedAt = receipt.ReceivedAt,
-        Status = receipt.Status,
+        Status = receipt.Status == "AwaitingStaffConfirmation" ? "Received" : receipt.Status,
         Note = receipt.RequestNote,
         RejectionReason = receipt.Status == "Rejected" ? receipt.RejectionReason : null
     });

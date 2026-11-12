@@ -44,16 +44,12 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     public DateOnly SelectedQcDate { get; set; }
     public List<string> QcShiftsForDate { get; set; } = new();
     public List<ProductionQualityRequest> FilteredQcRequests { get; set; } = new();
-    public int EffectiveStep { get; set; } = 1;
+    public int EffectiveStep { get; private set; } = 4;
+    public bool StaffReceivedView => StaffView && EffectiveStep == 5;
+    public int? StaffReceiptStep => StaffView ? (StaffReceivedView ? 5 : 4) : null;
+    public static IReadOnlyList<string> OpenReceiptStatuses { get; } = ["Pending", "Rejected"];
     public DateOnly Today => DateOnly.FromDateTime(ProductionFlow.Now);
     public List<PersonnelAssignment> StaffAssignments { get; set; } = new();
-    public List<ProductionQualityRequest> StaffQcRequests { get; set; } = new();
-    public List<FinishedGoodsReceipt> StaffAllReceipts { get; set; } = new();
-    public int Step1Count { get; set; }
-    public int Step2Count { get; set; }
-    public int Step3Count { get; set; }
-    public int Step4Count { get; set; }
-    public int Step5Count { get; set; }
 
     public static string FormatShift(string? shift) {
         if (string.IsNullOrWhiteSpace(shift)) return "Chưa ghi nhận ca";
@@ -98,8 +94,10 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
                 }
             }
         } else {
-            if (IsStaff) {
-                // 1. Staff assignments available for QC
+            if (IsStaff)
+                EffectiveStep = Step is >= 1 and <= 5 ? Step.Value : QualityRequestId > 0 ? 3 : 4;
+
+            if (IsStaff && EffectiveStep == 1) {
                 StaffAssignments = await new ProductionFlow(db).AssignedShiftOptions(CurrentUserId);
                 var existingQc = await db.ProductionQualityRequests.AsNoTracking()
                     .Where(x => x.Inspection.RequestedBy == CurrentUserId && (x.Inspection.Status != "Completed" || x.Inspection.Result == "Pass"))
@@ -108,21 +106,14 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
                 StaffAssignments = StaffAssignments
                     .Where(a => !existingQc.Any(q => q.AssignmentDate == a.AssignmentDate && q.Shift == a.Shift))
                     .ToList();
-                Step1Count = StaffAssignments.Count;
-
-                // 2 & 3. QC Requests of Staff
-                StaffQcRequests = await new ProductionFlow(db).QualityQuery.AsNoTracking()
+            } else if (IsStaff && EffectiveStep is 2 or 3) {
+                var staffQcRequests = await new ProductionFlow(db).QualityQuery.AsNoTracking()
                     .Where(x => x.Inspection.RequestedBy == CurrentUserId && x.Assignment.StaffId == CurrentUserId && x.Assignment.Status != "Cancelled")
                     .OrderByDescending(x => x.RequestId)
                     .ToListAsync();
-                Step2Count = StaffQcRequests.Count(x => x.Inspection.Status != "Completed");
-
-                ReadyQc = StaffQcRequests.Where(x => x.Inspection.Status == "Completed" && x.Inspection.Result == "Pass" && x.Receipt == null).ToList();
-                Step3Count = ReadyQc.Count;
-
-                // Step 2 filter: default to Today (only what Step 1 sends), or user-selected date/shift
+                ReadyQc = staffQcRequests.Where(x => x.Inspection.Status == "Completed" && x.Inspection.Result == "Pass" && x.Receipt == null).ToList();
                 SelectedQcDate = QcDate ?? Today;
-                QcShiftsForDate = StaffQcRequests
+                QcShiftsForDate = staffQcRequests
                     .Where(x => x.Assignment.AssignmentDate == SelectedQcDate)
                     .Select(x => x.Assignment.Shift!)
                     .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -130,73 +121,68 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
                     .OrderBy(s => s)
                     .ToList();
 
-                var qcFiltered = StaffQcRequests.Where(x => x.Assignment.AssignmentDate == SelectedQcDate);
+                var qcFiltered = staffQcRequests.Where(x => x.Assignment.AssignmentDate == SelectedQcDate);
                 if (!string.IsNullOrWhiteSpace(QcShift)) {
                     qcFiltered = qcFiltered.Where(x => string.Equals(x.Assignment.Shift, QcShift, StringComparison.OrdinalIgnoreCase));
                 }
                 FilteredQcRequests = qcFiltered.ToList();
-
-                // 4 & 5. Receipts of Staff
-                StaffAllReceipts = await db.FinishedGoodsReceipts.AsNoTracking()
-                    .Include(x => x.Requester).Include(x => x.Receiver)
-                    .Include(x => x.QualityRequest).ThenInclude(x => x.Assignment)
-                    .Include(x => x.QualityRequest).ThenInclude(x => x.Report)
-                    .Include(x => x.QualityRequest).ThenInclude(x => x.Inspection).ThenInclude(x => x.Batch)
-                    .Where(x => x.RequestedBy == CurrentUserId)
-                    .OrderByDescending(x => x.ReceiptId)
-                    .ToListAsync();
-
-                Step4Count = StaffAllReceipts.Count(x => x.Status is "Pending" or "Rejected");
-                Step5Count = StaffAllReceipts.Count(x => x.Status is "AwaitingStaffConfirmation");
-
-                // Auto calculate active step if not supplied
-                if (Step.HasValue && Step.Value is >= 1 and <= 5) {
-                    EffectiveStep = Step.Value;
-                } else if (QualityRequestId > 0) {
-                    EffectiveStep = 3;
-                } else {
-                    if (Step5Count > 0) EffectiveStep = 5;
-                    else if (StaffAllReceipts.Any(x => x.Status == "Rejected")) EffectiveStep = 4;
-                    else if (Step3Count > 0) EffectiveStep = 3;
-                    else if (Step4Count > 0) EffectiveStep = 4;
-                    else if (Step2Count > 0) EffectiveStep = 2;
-                    else EffectiveStep = 1;
-                }
+            } else {
+                await LoadReceiptsAsync(page);
             }
-
-            var query = db.FinishedGoodsReceipts.AsNoTracking().Include(x => x.Requester).Include(x => x.Receiver)
-                .Include(x => x.QualityRequest).ThenInclude(x => x.Assignment)
-                .Include(x => x.QualityRequest).ThenInclude(x => x.Report)
-                .Include(x => x.QualityRequest).ThenInclude(x => x.Inspection).ThenInclude(x => x.Batch).AsQueryable();
-            if (IsStaff) query = query.Where(x => x.RequestedBy == CurrentUserId);
-            var statusQuery = string.IsNullOrWhiteSpace(StatusFilter) ? query : query.Where(x => x.Status == StatusFilter);
-            if (!IsStaff) {
-                SelectedReceiptDate = ReceiptDate ?? await statusQuery.OrderByDescending(x => x.ReceiptId)
-                    .Select(x => (DateOnly?)x.QualityRequest.Assignment.AssignmentDate).FirstOrDefaultAsync()
-                    ?? DateOnly.FromDateTime(ProductionFlow.Now);
-                query = query.Where(x => x.QualityRequest.Assignment.AssignmentDate == SelectedReceiptDate);
-                statusQuery = statusQuery.Where(x => x.QualityRequest.Assignment.AssignmentDate == SelectedReceiptDate);
-            } else if (ReceiptDate is { } receiptDate) {
-                statusQuery = statusQuery.Where(x => x.QualityRequest.Assignment.AssignmentDate == receiptDate);
-            }
-
-            var shiftQuery = IsStaff ? statusQuery : query;
-            ReceiptShifts = await shiftQuery.Select(x => x.QualityRequest.Assignment.Shift)
-                .Where(x => x != null && x.Trim() != "").Distinct().OrderBy(x => x).ToListAsync();
-            query = statusQuery;
-            if (!string.IsNullOrWhiteSpace(ShiftFilter) && !ReceiptShifts.Contains(ShiftFilter)) {
-                ShiftFilter = null;
-            }
-            if (!string.IsNullOrWhiteSpace(ShiftFilter)) {
-                query = query.Where(x => x.QualityRequest.Assignment.Shift == ShiftFilter);
-            }
-            Pagination = new(await query.CountAsync(), page);
-            Receipts = await query.OrderByDescending(x => x.ReceiptId).Skip(Pagination.Offset).Take(PageWindow.Size).ToListAsync();
         }
         Notices=IsWarehouseStaff && Tab=="plans"
             ? await WarehouseNavigationNotices.OpenAsync(db,CurrentUserId,WarehouseNavigationNotice.Plans,HttpContext.RequestAborted)
             : await Notifier.TakeUnreadAsync(db,CurrentUserId,preserveWarehouseNavigationNotices:IsWarehouseStaff);
         return Page();
+    }
+
+    private async Task LoadReceiptsAsync(int page)
+    {
+        var query = db.FinishedGoodsReceipts.AsNoTracking().Include(x => x.Requester).Include(x => x.Receiver)
+                .Include(x => x.QualityRequest).ThenInclude(x => x.Assignment)
+                .Include(x => x.QualityRequest).ThenInclude(x => x.Report)
+                .Include(x => x.QualityRequest).ThenInclude(x => x.Inspection).ThenInclude(x => x.Batch).AsQueryable();
+        if (IsStaff) {
+            query = query.Where(x => x.RequestedBy == CurrentUserId);
+            // The former confirmation status already recorded the stock movement.
+            query = StaffReceivedView
+                ? query.Where(x => x.Status == "Received" || x.Status == "AwaitingStaffConfirmation")
+                : query.Where(x => OpenReceiptStatuses.Contains(x.Status));
+            if (StaffReceivedView || !OpenReceiptStatuses.Contains(StatusFilter ?? ""))
+                StatusFilter = null;
+        }
+
+        if (StatusFilter == "AwaitingStaffConfirmation")
+            StatusFilter = "Received";
+        if (string.IsNullOrWhiteSpace(StatusFilter))
+            StatusFilter = null;
+        var statusQuery = StatusFilter switch
+        {
+            null => query,
+            "Received" => query.Where(x => x.Status == "Received" || x.Status == "AwaitingStaffConfirmation"),
+            _ => query.Where(x => x.Status == StatusFilter)
+        };
+        if (!IsStaff) {
+            SelectedReceiptDate = ReceiptDate ?? await statusQuery.OrderByDescending(x => x.ReceiptId)
+                .Select(x => (DateOnly?)x.QualityRequest.Assignment.AssignmentDate).FirstOrDefaultAsync() ?? Today;
+            query = query.Where(x => x.QualityRequest.Assignment.AssignmentDate == SelectedReceiptDate);
+            statusQuery = statusQuery.Where(x => x.QualityRequest.Assignment.AssignmentDate == SelectedReceiptDate);
+        } else if (ReceiptDate is { } receiptDate) {
+            statusQuery = statusQuery.Where(x => x.QualityRequest.Assignment.AssignmentDate == receiptDate);
+        }
+
+        var shiftQuery = IsStaff ? statusQuery : query;
+        ReceiptShifts = await shiftQuery.Select(x => x.QualityRequest.Assignment.Shift)
+            .Where(x => x != null && x.Trim() != "").Distinct().OrderBy(x => x).ToListAsync();
+        if (!string.IsNullOrWhiteSpace(ShiftFilter) && !ReceiptShifts.Contains(ShiftFilter))
+            ShiftFilter = null;
+        if (!string.IsNullOrWhiteSpace(ShiftFilter))
+            statusQuery = statusQuery.Where(x => x.QualityRequest.Assignment.Shift == ShiftFilter);
+        Pagination = new(await statusQuery.CountAsync(), page);
+        var ordered = StaffReceivedView
+            ? statusQuery.OrderByDescending(x => x.ReceivedAt).ThenByDescending(x => x.ReceiptId)
+            : statusQuery.OrderByDescending(x => x.ReceiptId);
+        Receipts = await ordered.Skip(Pagination.Offset).Take(PageWindow.Size).ToListAsync();
     }
     public async Task<IActionResult> OnGetInboxCountsAsync() {
         var check = RequireRole(RoleConstants.WarehouseStaff);
@@ -205,8 +191,15 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         return new JsonResult(await WarehouseInboxSummary.ReadAsync(db, CurrentUserId, HttpContext.RequestAborted));
     }
     private async Task<IActionResult> Act(Func<Task<int>> action, string success, string tab, int? step = null, DateOnly? qcDate = null, string? qcShift = null) {
-        if (!ModelState.IsValid) { ErrorMessage = "Dữ liệu nhập không hợp lệ. Vui lòng kiểm tra lại."; return RedirectToPage(new { tab, step, qcDate, qcShift }); }
-        try { await action(); SuccessMessage = success; } catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
+        if (!ModelState.IsValid) {
+            ErrorMessage = "Dữ liệu nhập không hợp lệ. Vui lòng kiểm tra lại.";
+            return RedirectToPage(new { tab, step, qcDate, qcShift });
+        }
+        try { await action(); SuccessMessage = success; }
+        catch (ProductionFlowException ex) {
+            ErrorMessage = ex.Message;
+            return RedirectToPage(new { tab, step, qcDate, qcShift });
+        }
         return RedirectToPage(new { tab, step, qcDate, qcShift });
     }
     public async Task<IActionResult> OnPostRequestQcAsync(int assignmentId, int quantity, string? note) {
@@ -222,14 +215,11 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     }
     public Task<IActionResult> OnPostReceiveAsync(int receiptId, decimal actualQuantity, string? note) {
         var check = RequireRole(RoleConstants.WarehouseStaff); if (check != null) return Task.FromResult(check);
-        return Act(() => new ProductionFlow(db).ReceiveGoods(CurrentUserId, receiptId, actualQuantity, note), "Đã lập phiếu nhập thành phẩm. Kết quả đối chiếu được chuyển theo luồng xác nhận.", "receipts");
+        return Act(() => new ProductionFlow(db).ReceiveGoods(CurrentUserId, receiptId, actualQuantity, note),
+            "Đã nhập kho thành phẩm và gửi thông báo cho Manager.", "receipts");
     }
     public Task<IActionResult> OnPostRejectAsync(int receiptId, string? reason) {
         var check = RequireRole(RoleConstants.WarehouseStaff); if (check != null) return Task.FromResult(check);
         return Act(() => new ProductionFlow(db).RejectReceipt(CurrentUserId, receiptId, reason), "Đã trả yêu cầu nhập kho kèm lý do cho Staff.", "receipts");
-    }
-    public Task<IActionResult> OnPostConfirmAsync(int receiptId) {
-        var check = RequireRole(RoleConstants.Staff); if (check != null) return Task.FromResult(check);
-        return Act(() => new ProductionFlow(db).ConfirmReceipt(CurrentUserId, receiptId), "Đã xác nhận đối chiếu phiếu nhập kho. Hoàn tất quy trình nhập kho.", "receipts", 5);
     }
 }

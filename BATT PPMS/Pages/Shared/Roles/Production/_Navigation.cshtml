@@ -5,7 +5,7 @@
 <details class="staff-closeout-nav" open="@(Model is "MaterialUsage" or "Warehouse" or "QC" or "ShiftReport")">
     <summary class="nav-item"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span>Báo cáo cuối ca làm việc</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
     <a class="nav-item @(Model == "MaterialUsage" ? "active" : "")" href="/Warehouse/Consumption"><i class="bi bi-box-arrow-up" aria-hidden="true"></i><span>Nguyên liệu tiêu thụ trong ca làm việc</span></a>
-    <a class="nav-item @(Model is "Warehouse" or "QC" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Yêu cầu nhập kho thành phẩm</span></a>
+    <a class="nav-item @(Model is "Warehouse" or "QC" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Danh sách yêu cầu nhập kho thành phẩm</span></a>
 </details>
 <a class="nav-item @(Model is "Maintenance" or "BrokenReport" ? "active" : "")" href="/Maintenance/Index">
     <i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span>Báo cáo sự cố máy móc</span>

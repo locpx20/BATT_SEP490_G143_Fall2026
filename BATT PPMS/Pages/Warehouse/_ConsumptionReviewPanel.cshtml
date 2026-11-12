@@ -33,7 +33,7 @@
                 <a class="plan-shift-link" href="/Warehouse/Consumption" style="padding: 10px 16px; border: 1px solid var(--plan-rule); border-radius: 8px;">Đặt lại</a>
             }
         </form>
-        @if (Model.StaffView) {
+        @if (Model.CanCreateConsumption) {
             <button type="button" class="closeout-button primary" data-bs-toggle="modal" data-bs-target="#consumptionEntry">
                 <i class="bi bi-plus-lg" aria-hidden="true"></i> Nhập nguyên liệu đã tiêu thụ
             </button>
@@ -174,8 +174,9 @@
                                                 <i class="bi bi-x-lg"></i> Từ chối
                                             </button>
                                         }
-                                        @if (Model.StaffView && review.Status is "Pending" or "Rejected") {
-                                            <a class="btn-wh-action btn-wh-receive" asp-route-EditId="@review.ReportId" title="Sửa và gửi lại">
+                                        @if (Model.CanEditConsumption(review)) {
+                                            <a class="btn-wh-action btn-wh-receive" asp-route-EditId="@review.ReportId"
+                                               asp-route-DateFilter="@Model.NavigationDateInput" title="Sửa và gửi lại">
                                                 <i class="bi bi-pencil-square"></i> Sửa
                                             </a>
                                         }

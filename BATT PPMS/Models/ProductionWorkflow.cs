@@ -65,6 +65,7 @@ public partial class ProductionManagementDbContext
     public DbSet<ShiftMaterialUsage> ShiftMaterialUsages => Set<ShiftMaterialUsage>();
     public DbSet<MaterialUsageReview> MaterialUsageReviews => Set<MaterialUsageReview>();
     public DbSet<ProductionQualityRequest> ProductionQualityRequests => Set<ProductionQualityRequest>();
+    public DbSet<ProductionQcResult> ProductionQcResults => Set<ProductionQcResult>();
     public DbSet<FinishedGoodsReceipt> FinishedGoodsReceipts => Set<FinishedGoodsReceipt>();
     public DbSet<ProductionMaterialRequest> ProductionMaterialRequests => Set<ProductionMaterialRequest>();
 
@@ -108,6 +109,25 @@ public partial class ProductionManagementDbContext
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId).OnDelete(DeleteBehavior.NoAction);
             e.HasOne(x => x.Inspection).WithMany().HasForeignKey(x => x.InspectionId).OnDelete(DeleteBehavior.NoAction);
             e.HasOne(x => x.Report).WithMany().HasForeignKey(x => x.ReportId).OnDelete(DeleteBehavior.NoAction);
+        });
+        modelBuilder.Entity<ProductionQcResult>(e =>
+        {
+            e.ToTable("ProductionQcResult", table =>
+            {
+                table.HasCheckConstraint("CK_ProductionQcResult_Length", "[PelletLengthMm] > 0");
+                table.HasCheckConstraint("CK_ProductionQcResult_Ash", "[AshPercent] BETWEEN 0 AND 100");
+                table.HasCheckConstraint("CK_ProductionQcResult_Grade", "[Grade] IN (N'A', N'B')");
+            });
+            e.HasKey(x => x.RequestId);
+            e.Property(x => x.RequestId).ValueGeneratedNever();
+            e.Property(x => x.PelletColor).HasMaxLength(100);
+            e.Property(x => x.PelletDescription).HasMaxLength(1000);
+            e.Property(x => x.PelletLengthMm).HasPrecision(8, 2);
+            e.Property(x => x.Compaction).HasMaxLength(100);
+            e.Property(x => x.AshPercent).HasPrecision(5, 2);
+            e.Property(x => x.Grade).HasMaxLength(1);
+            e.HasOne<ProductionQualityRequest>().WithOne().HasForeignKey<ProductionQcResult>(x => x.RequestId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<FinishedGoodsReceipt>(e => {
             e.ToTable("FinishedGoodsReceipt"); e.HasKey(x => x.ReceiptId);

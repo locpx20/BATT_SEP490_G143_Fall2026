@@ -1,10 +1,19 @@
 @page
 @model BATT_PPMS.Pages.QC.IndexModel
+@using BATT_PPMS.Helpers
 @using BATT_PPMS.Services
 @{ViewData["Title"]="Kiểm tra chất lượng thành phẩm";ViewData["ActivePage"]="QC";}
-@section Styles{<link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />}
-<div class="closeout">
-    <header class="closeout-header"><div><span class="closeout-kicker">Chất lượng thành phẩm</span><h1><i class="bi bi-patch-check" aria-hidden="true"></i> @(Model.StaffView?"Yêu cầu kiểm tra QC":"Kiểm tra chất lượng thành phẩm")</h1></div>@if(Model.StaffView){<a class="closeout-button secondary" asp-page="/Warehouse/Index" asp-route-tab="receipts">Theo dõi nhập kho</a>}</header>
+@section Styles {
+    <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/qc.css" asp-append-version="true" />
+}
+<div class="closeout qc-page">
+    <header class="closeout-header">
+        <h1><i class="bi bi-patch-check" aria-hidden="true"></i> @(Model.StaffView ? "Yêu cầu kiểm tra QC" : "Kiểm tra chất lượng thành phẩm")</h1>
+        @if (Model.StaffView) {
+            <a class="closeout-button secondary" asp-page="/Warehouse/Index" asp-route-tab="receipts">Theo dõi nhập kho</a>
+        }
+    </header>
     @if(Model.SuccessMessage!=null){<div class="closeout-message success" role="status">@Model.SuccessMessage</div>}
     @if(Model.ErrorMessage!=null){<div class="closeout-message error" role="alert">@Model.ErrorMessage</div>}
     <partial name="_CloseoutNotifications" model="Model.Notices" />
@@ -37,24 +46,107 @@
             </form>
         </details>
     }
-    <section class="closeout-register"><div class="closeout-section-head"><h2>@(Model.Legacy?"Phiếu QC lịch sử":"Yêu cầu và kết quả kiểm tra")</h2><form method="get" class="closeout-filter"><input type="hidden" name="Legacy" value="@Model.Legacy.ToString().ToLowerInvariant()" /><input aria-label="Tìm yêu cầu hoặc lô hàng" type="search" name="SearchTerm" value="@Model.SearchTerm" placeholder="Tìm yêu cầu, lô hàng..." /><select aria-label="Trạng thái kiểm tra" name="StatusFilter"><option value="">Tất cả trạng thái</option>@foreach(var status in new[]{"Pending","In Progress","Completed"}){<option value="@status" selected="@(status==Model.StatusFilter)">@ProductionFlow.Label(status)</option>}</select><button type="submit" class="closeout-button secondary">Tìm kiếm</button></form></div>
-        <div class="closeout-records">@foreach(var q in Model.Requests){
-            <article class="closeout-record"><header><div><span class="closeout-code">@q.Inspection.InspectionCode</span><h3>@q.Assignment.AssignmentDate.ToString("dd/MM/yyyy") <span>· @q.Assignment.Shift</span></h3><p>@q.Inspection.RequestedByNavigation?.FullName</p></div><span class="closeout-status @((q.Inspection.Status??"Pending").ToLowerInvariant().Replace(" ","-"))">@ProductionFlow.Label(q.Inspection.Status)</span></header>
-                <div class="closeout-facts"><div><span>Lô thành phẩm</span><strong class="closeout-code">@q.Inspection.Batch.BagNumber</strong></div><div><span>Sản lượng kiểm tra</span><strong>@((q.Receipt?.ExpectedQuantity??q.Inspection.Batch.Quantity).ToString("N2")) kg</strong></div><div><span>Nhân viên QC</span><strong>@(q.Inspection.InspectedByNavigation?.FullName??"Chưa tiếp nhận")</strong></div>@if(q.Inspection.Result!=null){<div><span>Kết quả</span><strong>@ProductionFlow.Label(q.Inspection.Result)</strong></div>}</div>
-                <p class="closeout-note">@q.Inspection.Note</p>
-                @if(q.ResultImage!=null){<div class="closeout-evidence"><a asp-page="/QC/Index" asp-page-handler="Image" asp-route-requestId="@q.RequestId" target="_blank" rel="noopener"><img src="@Url.Page("/QC/Index","Image",new{requestId=q.RequestId})" alt="Ảnh kết quả kiểm tra QC" loading="lazy" />Xem ảnh kết quả QC</a></div>}
-                <footer><small>@q.Inspection.InspectDate?.ToString("HH:mm dd/MM/yyyy")</small><div class="closeout-actions">
-                    @if(Model.QcView&&!Model.Legacy&&q.Inspection.Status=="Pending"){<form method="post" asp-page-handler="Start"><input type="hidden" name="requestId" value="@q.RequestId" /><button class="closeout-button primary" type="submit">Tiếp nhận kiểm tra</button></form>}
-                    @if(Model.CanFinish(q)){
-                        <details class="closeout-inline"><summary class="closeout-button primary"><i class="bi bi-pencil-square" aria-hidden="true"></i> Nhập kết quả kiểm tra</summary><form method="post" asp-page-handler="Finish" enctype="multipart/form-data"><input type="hidden" name="requestId" value="@q.RequestId" /><label for="result-@q.RequestId">Kết quả kiểm tra</label><select id="result-@q.RequestId" name="result" required><option value="">Chọn kết quả</option><option value="Pass">Đạt</option><option value="Fail">Không đạt</option></select><label for="conclusion-@q.RequestId">Kết luận</label><textarea id="conclusion-@q.RequestId" name="note" maxlength="5000" required rows="3"></textarea><label for="image-@q.RequestId">Ảnh kết quả kiểm tra <span aria-hidden="true">*</span></label><input type="file" id="image-@q.RequestId" name="image" accept="image/jpeg,image/png,image/webp" required /><small>JPG, PNG hoặc WebP · tối đa 5 MB</small><button type="submit" class="closeout-button primary">Trả kết quả cho Staff</button></form></details>
+    <section class="closeout-register" aria-label="Danh sách kiểm tra chất lượng">
+        <div class="closeout-section-head">
+            <h2>@(Model.Legacy ? "Phiếu QC lịch sử" : "Yêu cầu và kết quả kiểm tra")</h2>
+            <form method="get" class="closeout-filter">
+                <input type="hidden" name="Legacy" value="@Model.Legacy.ToString().ToLowerInvariant()" />
+                <input aria-label="Tìm yêu cầu hoặc lô hàng" type="search" name="SearchTerm" value="@Model.SearchTerm" placeholder="Tìm yêu cầu, lô hàng..." />
+                <select aria-label="Trạng thái kiểm tra" name="StatusFilter">
+                    <option value="">Tất cả trạng thái</option>
+                    @foreach (var status in new[] { "Pending", "In Progress", "Completed" }) {
+                        <option value="@status" selected="@(status == Model.StatusFilter)">@ProductionFlow.Label(status)</option>
                     }
-                    @if(Model.StaffView&&!Model.Legacy&&q.Inspection.Status=="Completed"&&q.Inspection.Result=="Pass"&&q.Receipt==null){<a class="closeout-button primary" asp-page="/Warehouse/Index" asp-route-tab="receipts" asp-route-QualityRequestId="@q.RequestId">Tạo yêu cầu nhập thành phẩm</a>}
-                    @if(q.Receipt!=null){<a class="closeout-button secondary" asp-page="/Warehouse/Index" asp-route-tab="receipts">Theo dõi phiếu nhập</a>}
-                </div></footer>
-            </article>
-        }
-        @if(Model.Requests.Count==0){<div class="closeout-empty"><i class="bi bi-clipboard-check" aria-hidden="true"></i><h3>Chưa có yêu cầu kiểm tra</h3><p>Các yêu cầu và kết quả QC sẽ được hiển thị tại đây.</p></div>}
+                </select>
+                <button type="submit" class="closeout-button primary"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
+            </form>
+        </div>
+        <div class="qc-table-wrap" tabindex="0" role="region" aria-label="Bảng yêu cầu kiểm tra">
+            <table class="qc-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Mã lô</th>
+                        <th scope="col">Ngày / Ca sản xuất</th>
+                        <th scope="col">Người gửi / QC</th>
+                        <th scope="col" class="qc-quantity">Khối lượng (kg)</th>
+                        <th scope="col">Trạng thái</th>
+                        <th scope="col">Kết quả</th>
+                        <th scope="col">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var q in Model.Requests) {
+                        var inspection = q.Inspection;
+                        var lot = inspection.Batch.BagNumber;
+                        var statusClass = (inspection.Status ?? "Pending").ToLowerInvariant().Replace(' ', '-');
+                        var detailId = $"qc-details-{inspection.InspectionId}";
+                        Model.Results.TryGetValue(q.RequestId, out var result);
+                        <tr>
+                            <th scope="row"><code title="@lot">@LotCode.ForListDisplay(lot)</code></th>
+                            <td>@inspection.Batch.ProductionDate.ToString("dd/MM/yyyy")<small>@(q.Assignment.Shift ?? "Chưa ghi nhận ca")</small></td>
+                            <td>
+                                @(inspection.RequestedByNavigation?.FullName ?? "—")
+                                <small>@(inspection.InspectedByNavigation?.FullName ?? "Chưa có QC phụ trách")</small>
+                            </td>
+                            <td class="qc-quantity">@((q.Receipt?.ExpectedQuantity ?? inspection.Batch.Quantity).ToString("N2"))</td>
+                            <td><span class="closeout-status @statusClass">@ProductionFlow.Label(inspection.Status)</span></td>
+                            <td>
+                                @if (inspection.Result != null) {
+                                    <span class="closeout-status @(inspection.Result == "Pass" ? "completed" : "fail")">@ProductionFlow.Label(inspection.Result)</span>
+                                    @if (result != null) { <small>Hàng loại @result.Grade</small> }
+                                } else {
+                                    <span>—</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="closeout-actions">
+                                    <button type="button" class="closeout-button secondary" data-bs-toggle="modal" data-bs-target="#@detailId">
+                                        <i class="bi bi-eye" aria-hidden="true"></i> Chi tiết
+                                    </button>
+                                    @if (Model.QcView && !Model.Legacy && inspection.Status == "Pending") {
+                                        <form method="post" asp-page-handler="Start">
+                                            <input type="hidden" name="requestId" value="@q.RequestId" />
+                                            <button type="submit" class="closeout-button primary">Tiếp nhận</button>
+                                        </form>
+                                    }
+                                    @if (Model.CanFinish(q)) {
+                                        <button type="button" class="closeout-button primary" data-bs-toggle="modal"
+                                                data-bs-target="#qc-result" data-request-id="@q.RequestId">
+                                            <i class="bi bi-pencil-square" aria-hidden="true"></i> Trả kết quả
+                                        </button>
+                                    }
+                                    @if (Model.StaffView && !Model.Legacy && inspection.Status == "Completed" && inspection.Result == "Pass" && q.Receipt == null) {
+                                        <a class="closeout-button primary" asp-page="/Warehouse/Index" asp-route-tab="receipts"
+                                           asp-route-QualityRequestId="@q.RequestId">Tạo yêu cầu nhập thành phẩm</a>
+                                    }
+                                    @if (q.Receipt != null) {
+                                        <a class="closeout-button secondary" asp-page="/Warehouse/Index" asp-route-tab="receipts">Theo dõi phiếu nhập</a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Requests.Count == 0) {
+                        <tr><td colspan="7" class="closeout-empty">Chưa có yêu cầu kiểm tra phù hợp.</td></tr>
+                    }
+                </tbody>
+            </table>
         </div>
         <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination,"/QC/Index",new(){["SearchTerm"]=Model.SearchTerm,["StatusFilter"]=Model.StatusFilter,["Legacy"]=Model.Legacy.ToString().ToLowerInvariant()})' />
-    </section><a class="closeout-button secondary" asp-page="/QC/Index" asp-route-Legacy="@(!Model.Legacy)">@(Model.Legacy?"Yêu cầu hiện tại":"Tra cứu phiếu QC cũ")</a>
+    </section>
+    <a class="closeout-button secondary" asp-page="/QC/Index" asp-route-Legacy="@(!Model.Legacy)">@(Model.Legacy ? "Yêu cầu hiện tại" : "Tra cứu phiếu QC cũ")</a>
+
+    @foreach (var q in Model.Requests) {
+        Model.Results.TryGetValue(q.RequestId, out var result);
+        <partial name="_ResultDetails" model="(q, result)" />
+    }
+    @if (Model.ResultShifts.Count > 0 || Model.ResultError != null) {
+        <partial name="_ResultForm" model="Model" />
+    }
 </div>
+
+@section Scripts {
+    @if (Model.ResultShifts.Count > 0 || Model.ResultError != null) {
+        <script src="~/js/qc-result.js" asp-append-version="true"></script>
+    }
+}

@@ -1,0 +1,110 @@
+@model BATT_PPMS.Pages.QC.IndexModel
+
+<div class="modal fade closeout-modal qc-modal" id="qc-result" tabindex="-1" aria-labelledby="qc-result-title" aria-hidden="true"
+     data-reopen="@(Model.ResultError != null ? "true" : "false")">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <form method="post" class="modal-content" asp-page-handler="Finish" asp-route-SearchTerm="@Model.SearchTerm"
+              asp-route-StatusFilter="@Model.StatusFilter" asp-route-PageNumber="@Model.PageNumber" enctype="multipart/form-data">
+            <header class="modal-header">
+                <h2 class="modal-title" id="qc-result-title"><i class="bi bi-clipboard-check" aria-hidden="true"></i> Phiếu trả kết quả QC</h2>
+                <button type="button" class="closeout-modal-close" data-bs-dismiss="modal" aria-label="Đóng">×</button>
+            </header>
+            <div class="modal-body">
+                @if (Model.ResultError != null) {
+                    <div class="closeout-message error" role="alert">@Model.ResultError</div>
+                }
+                @if (Model.ResultShifts.Count == 0) {
+                    <p>Hiện không có ca nào do bạn phụ trách đang chờ trả kết quả.</p>
+                } else {
+                    <fieldset class="qc-fields">
+                        <legend>Lô thành phẩm</legend>
+                        <div class="closeout-field qc-wide">
+                            <label asp-for="ResultInput.RequestId">Ca sản xuất</label>
+                            <select asp-for="ResultInput.RequestId" required>
+                                <option value="">Chọn ngày và ca</option>
+                                @foreach (var shift in Model.ResultShifts) {
+                                    <option value="@shift.RequestId" data-lot="@shift.Lot" data-date="@shift.ProductionDate.ToString("dd/MM/yyyy")">
+                                        @shift.ProductionDate.ToString("dd/MM/yyyy") · @(shift.Shift ?? "Chưa ghi nhận ca")
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div class="closeout-field">
+                            <label for="qc-result-lot">Mã lô</label>
+                            <input id="qc-result-lot" type="text" readonly />
+                        </div>
+                        <div class="closeout-field">
+                            <label for="qc-result-date">Ngày sản xuất</label>
+                            <input id="qc-result-date" type="text" readonly />
+                        </div>
+                    </fieldset>
+                    <fieldset class="qc-fields">
+                        <legend>Chỉ tiêu kiểm tra</legend>
+                        <div class="closeout-field">
+                            <label asp-for="ResultInput.PelletColor">Màu sắc viên</label>
+                            <input asp-for="ResultInput.PelletColor" maxlength="100" placeholder="Ví dụ: nâu sáng" required />
+                        </div>
+                        <div class="closeout-field">
+                            <label asp-for="ResultInput.PelletLengthMm">Độ dài viên (mm)</label>
+                            <input asp-for="ResultInput.PelletLengthMm" type="number" min="0.01" max="999999.99" step="0.01" required />
+                        </div>
+                        <div class="closeout-field">
+                            <label asp-for="ResultInput.Compaction">Độ nén</label>
+                            <input asp-for="ResultInput.Compaction" maxlength="100" placeholder="Nhập giá trị kèm đơn vị hoặc mô tả" required />
+                        </div>
+                        <div class="closeout-field">
+                            <label asp-for="ResultInput.AshPercent">Độ tro (%)</label>
+                            <input asp-for="ResultInput.AshPercent" type="number" min="0" max="100" step="0.01" required />
+                        </div>
+                        <div class="closeout-field qc-wide">
+                            <label asp-for="ResultInput.PelletDescription">Mô tả hình thức viên</label>
+                            <textarea asp-for="ResultInput.PelletDescription" maxlength="1000" rows="2" placeholder="Ví dụ: viên cứng, bề mặt nhẵn" required></textarea>
+                        </div>
+                        <div class="closeout-field qc-wide">
+                            <label asp-for="ResultInput.HasImpurities">Tạp chất</label>
+                            <select asp-for="ResultInput.HasImpurities" required>
+                                <option value="">Chọn tình trạng tạp chất</option>
+                                <option value="false">Không</option>
+                                <option value="true">Có</option>
+                            </select>
+                        </div>
+                    </fieldset>
+                    <fieldset class="qc-fields">
+                        <legend>Kết luận và phân loại</legend>
+                        <div class="closeout-field">
+                            <label asp-for="ResultInput.Result">Kết quả kiểm tra</label>
+                            <select asp-for="ResultInput.Result" required>
+                                <option value="">Chọn kết quả</option>
+                                <option value="Pass">Đạt</option>
+                                <option value="Fail">Không đạt</option>
+                            </select>
+                        </div>
+                        <div class="closeout-field">
+                            <label asp-for="ResultInput.Grade">Phân loại hàng</label>
+                            <select asp-for="ResultInput.Grade" required>
+                                <option value="">Chọn loại hàng</option>
+                                <option value="A">Hàng loại A</option>
+                                <option value="B">Hàng loại B</option>
+                            </select>
+                        </div>
+                        <div class="closeout-field qc-wide">
+                            <label asp-for="ResultInput.Note">Kết luận</label>
+                            <textarea asp-for="ResultInput.Note" maxlength="5000" rows="2" required></textarea>
+                        </div>
+                        <div class="closeout-field qc-wide">
+                            <label for="qc-result-image">Ảnh kết quả kiểm tra</label>
+                            <input type="file" id="qc-result-image" name="image" accept="image/jpeg,image/png,image/webp" aria-describedby="qc-result-image-hint" required />
+                            <small id="qc-result-image-hint">JPG, PNG hoặc WebP · tối đa 5 MB</small>
+                        </div>
+                    </fieldset>
+                }
+            </div>
+            <footer class="modal-footer">
+                <button type="button" class="closeout-button secondary" data-bs-dismiss="modal">Hủy</button>
+                @if (Model.ResultShifts.Count > 0) {
+                    <button type="submit" class="closeout-button primary"><i class="bi bi-send" aria-hidden="true"></i> Trả kết quả cho Staff</button>
+                }
+            </footer>
+        </form>
+    </div>
+</div>

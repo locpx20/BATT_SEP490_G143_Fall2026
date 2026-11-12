@@ -9,6 +9,8 @@ public class ConsumptionModel(ProductionManagementDbContext db) : BasePageModel
 {
     public bool CanReview => IsWarehouseStaff;
     public bool StaffView => IsStaff;
+    public bool CanCreateConsumption => StaffView && EditId == 0 && Assignments.Count > 0;
+    private HashSet<(DateOnly Date, string? Shift)> _chippingShifts = [];
     public string PaginationTarget => "/Warehouse/Consumption";
     public string FilterParameter => "StatusFilter";
     public string PageParameter => "pageNumber";
@@ -45,6 +47,16 @@ public class ConsumptionModel(ProductionManagementDbContext db) : BasePageModel
     public int WaitingCount { get; set; }
     [TempData] public string? ErrorMessage { get; set; }
     [TempData] public string? SuccessMessage { get; set; }
+
+    public bool CanEditConsumption(MaterialUsageReview review)
+    {
+        var assignment = review.Report.Assignment;
+        return StaffView && review.Report.StaffId == CurrentUserId
+            && review.Status is "Pending" or "Rejected"
+            && assignment.StaffId == CurrentUserId && assignment.Status != "Cancelled"
+            && _chippingShifts.Contains((assignment.AssignmentDate, assignment.Shift));
+    }
+
     public async Task<IActionResult> OnGetAsync() {
         var check = RequireRole(RoleConstants.WarehouseStaff, RoleConstants.Staff, RoleConstants.Manager, RoleConstants.Owner);
         if(check != null) return check;
@@ -83,26 +95,60 @@ public class ConsumptionModel(ProductionManagementDbContext db) : BasePageModel
             .ToDictionaryAsync(plan => (plan.PlanDate, plan.Shift));
         AvailableStockKg=await db.RawMaterials.Where(x=>x.Unit.Trim().ToLower()=="kg").SumAsync(x=>(decimal?)x.CurrentQuantity)??0;
         ApprovedTodayKg=await db.ShiftMaterialUsages.Where(x=>x.Report.ShiftDate==Today&&x.ExportId!=null).SumAsync(x=>(decimal?)x.Quantity)??0;
-        if(IsStaff) {
-            if(EditId>0) {
-                var edit=await db.MaterialUsageReviews.AsNoTracking().Include(x=>x.Report).SingleOrDefaultAsync(x=>x.ReportId==EditId&&x.Report.StaffId==CurrentUserId);
-                if(edit?.Status is "Pending" or "Rejected") {
+        if (IsStaff) {
+            var flow = new ProductionFlow(db);
+            var edit = EditId > 0
+                ? await db.MaterialUsageReviews.AsNoTracking().Include(x => x.Report).ThenInclude(x => x.Assignment)
+                    .SingleOrDefaultAsync(x => x.ReportId == EditId && x.Report.StaffId == CurrentUserId)
+                : null;
+            var editDates = Reviews.Where(x => x.Status is "Pending" or "Rejected")
+                .Select(x => x.Report.Assignment.AssignmentDate);
+            if (edit != null) editDates = editDates.Append(edit.Report.Assignment.AssignmentDate);
+            _chippingShifts = await flow.ChippingShiftsAsync(CurrentUserId, editDates.Distinct().ToArray());
+
+            if (EditId > 0) {
+                if (edit != null && CanEditConsumption(edit)) {
                     AssignmentId=edit.Report.AssignmentId; Note=edit.Report.Note;
+                    Assignments = [edit.Report.Assignment];
                     MaterialsUsed=await db.ShiftMaterialUsages.AsNoTracking().Where(x=>x.ReportId==EditId).Select(x=>new MaterialUsageInput{MaterialId=x.MaterialId,Quantity=x.Quantity}).ToListAsync();
                     QuantityKg=MaterialsUsed.Sum(x=>x.Quantity??0);
-                } else { EditId=0; ErrorMessage="Phiếu đã duyệt hoặc không thuộc tài khoản của bạn."; }
+                } else {
+                    EditId = 0;
+                    ErrorMessage = edit?.Status is "Pending" or "Rejected"
+                        ? "Bạn cần được phân công Máy băm trong ca này để sửa phiếu tiêu hao."
+                        : "Phiếu đã duyệt hoặc không thuộc tài khoản của bạn.";
+                }
             }
-            Assignments = await new ProductionFlow(db).ConsumptionShiftOptions(CurrentUserId, EditId);
+            if (EditId == 0) Assignments = await flow.ConsumptionShiftOptions(CurrentUserId);
         }
         Notices=await Notifier.TakeUnreadAsync(db,CurrentUserId,preserveWarehouseNavigationNotices:IsWarehouseStaff);
         return Page();
     }
-    public async Task<IActionResult> OnPostSaveAsync() {
-        var check=RequireRole(RoleConstants.Staff);if(check!=null)return check;
-        if(!ModelState.IsValid){ErrorMessage="Vui lòng kiểm tra ca và số lượng nguyên liệu.";return RedirectToPage(new{EditId});}
-        try{await new ProductionFlow(db).SaveConsumptionKg(CurrentUserId,AssignmentId,QuantityKg,Note,EditId);SuccessMessage="Đã gửi khối lượng nguyên liệu đã sử dụng cho Thủ kho.";}
-        catch(ProductionFlowException ex){ErrorMessage=ex.Message;return RedirectToPage(new{EditId});}
-        return RedirectToPage();
+    public async Task<IActionResult> OnPostSaveAsync()
+    {
+        var check = RequireRole(RoleConstants.Staff);
+        if (check != null) return check;
+        if (!ModelState.IsValid)
+        {
+            ErrorMessage = "Vui lòng kiểm tra ca và số lượng nguyên liệu.";
+            return RedirectToPage(new { EditId, DateFilter = DateFilterInput });
+        }
+
+        int reportId;
+        try
+        {
+            reportId = await new ProductionFlow(db).SaveConsumptionKg(CurrentUserId, AssignmentId, QuantityKg, Note, EditId);
+        }
+        catch (ProductionFlowException ex)
+        {
+            ErrorMessage = ex.Message;
+            return RedirectToPage(new { EditId, DateFilter = DateFilterInput });
+        }
+
+        var shiftDate = await db.EndOfShiftReports.Where(report => report.ReportId == reportId)
+            .Select(report => report.ShiftDate).SingleAsync();
+        SuccessMessage = "Đã gửi khối lượng nguyên liệu đã sử dụng cho Thủ kho.";
+        return RedirectToPage(new { DateFilter = shiftDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) });
     }
     public async Task<IActionResult> OnPostReviewAsync(int reportId,bool approve,string? reason) {
         var check=RequireRole(RoleConstants.WarehouseStaff);if(check!=null)return check;

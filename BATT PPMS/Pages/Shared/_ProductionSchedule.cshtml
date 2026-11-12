@@ -106,7 +106,7 @@
                             position++;
                             var taskName = task.Key.Length == 0 ? "Chưa có mô tả" : task.Key;
                             if (showShiftStatus) {
-                                taskName = BATT_PPMS.Pages.Personnel.IndexModel.StaffMachineName(taskName);
+                                taskName = BATT_PPMS.Helpers.ProductionAssignmentTasks.MachineName(taskName);
                             }
                             var workers = task.GroupBy(a => a.StaffId).Select(group => group.First()).ToList();
                             var assigners = task.GroupBy(a => a.AssignedBy)

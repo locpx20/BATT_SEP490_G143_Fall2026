@@ -1,0 +1,153 @@
+.qc-page .closeout-section-head {
+    background: #f6f7f1;
+}
+
+.qc-table-wrap {
+    overflow-x: auto;
+}
+
+.qc-table {
+    width: 100%;
+    min-width: 880px;
+    border-collapse: collapse;
+    font-size: 15px;
+}
+
+.qc-table th,
+.qc-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--co-border);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.qc-table thead {
+    background: #e2ebe4;
+    color: var(--co-green);
+}
+
+.qc-table tbody tr:nth-child(even) {
+    background: #f0f4ec;
+}
+
+.qc-table tbody tr:hover {
+    background: #e8f0e8;
+}
+
+.qc-table small {
+    display: block;
+    margin-top: 3px;
+}
+
+.qc-table .qc-quantity {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.qc-table td.closeout-empty {
+    padding: 48px 20px;
+    text-align: center;
+}
+
+.qc-table code,
+.qc-details code {
+    color: var(--co-green);
+    overflow-wrap: anywhere;
+}
+
+.qc-table .closeout-actions {
+    gap: 6px;
+}
+
+.qc-table .closeout-button {
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 14px;
+}
+
+@media (min-width: 576px) {
+    .qc-page .qc-modal .modal-dialog {
+        max-width: min(760px, calc(100% - 2rem));
+    }
+}
+
+.qc-modal .modal-content {
+    background: var(--co-paper);
+    border: 1px solid var(--co-border);
+    border-radius: 16px;
+}
+
+.qc-page .qc-modal .modal-header,
+.qc-page .qc-modal .modal-footer {
+    padding: 16px 24px;
+    border-color: var(--co-border);
+}
+
+.qc-modal .modal-footer {
+    background: #f4f2ea;
+}
+
+.qc-page .qc-modal .modal-body {
+    padding: 20px 24px;
+}
+
+.qc-modal .closeout-message:first-child {
+    margin-top: 0 !important;
+}
+
+.qc-fields,
+.qc-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin: 0;
+    min-width: 0;
+}
+
+.qc-fields + .qc-fields {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--co-border);
+}
+
+.qc-fields legend {
+    float: none;
+    width: auto;
+    margin: 0;
+    padding: 0 8px 0 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.qc-wide {
+    grid-column: 1 / -1;
+}
+
+.qc-details {
+    margin-bottom: 18px;
+}
+
+.qc-details dt {
+    color: var(--co-muted);
+    font-size: 14px;
+}
+
+.qc-details dd {
+    margin: 4px 0 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 575px) {
+    .qc-fields,
+    .qc-details {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .qc-page .qc-modal .modal-header,
+    .qc-page .qc-modal .modal-body,
+    .qc-page .qc-modal .modal-footer {
+        padding-inline: 16px;
+    }
+}

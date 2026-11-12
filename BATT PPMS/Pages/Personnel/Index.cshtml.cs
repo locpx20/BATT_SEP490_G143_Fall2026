@@ -1,8 +1,11 @@
 using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
+using BATT_PPMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace BATT_PPMS.Pages.Personnel
 {
@@ -18,6 +21,11 @@ namespace BATT_PPMS.Pages.Personnel
         // ── Output ──────────────────────────────────────────────────────────
         public List<PlanGroup> Plans { get; set; } = new();
         public List<User> AvailableStaff { get; set; } = new();
+        public DateOnly? PreviousDate { get; private set; }
+        public DateOnly? NextDate { get; private set; }
+        public IReadOnlyDictionary<string, ShiftProductionPlan> ShiftPlans { get; private set; }
+            = new Dictionary<string, ShiftProductionPlan>();
+        public bool HasLegacyShifts { get; private set; }
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -27,7 +35,7 @@ namespace BATT_PPMS.Pages.Personnel
 
         public bool CanCreatePlan { get; set; }
         public bool IsStaffView => IsStaff;
-        public bool IsCurrentWorker(int? staffId) => staffId == CurrentUserId && IsStaff;
+        public ProductionScheduleViewModel? StaffSchedule { get; private set; }
         public static string NormalizeAssignmentStatus(string? status) => status switch
         {
             "Done" or "Completed" => "Completed",
@@ -64,17 +72,19 @@ namespace BATT_PPMS.Pages.Personnel
         [BindProperty(SupportsGet = true)] public string? ShiftFilter { get; set; }
         [BindProperty(SupportsGet = true)] public DateOnly? PlanDate { get; set; }
         [BindProperty(SupportsGet = true)] public bool AllDates { get; set; }
+        [BindProperty(SupportsGet = true)] public bool AllPlanShifts { get; set; } = true;
+        [BindProperty(SupportsGet = true)] public int PageNumber { get; set; } = 1;
+        [BindProperty(SupportsGet = true)] public bool Create { get; set; }
 
         // ── Inner DTO ────────────────────────────────────────────────────────
         public class PlanGroup
         {
             public int PlanId { get; set; }
-            public string Code => $"PLAN-{PlanId:D4}";
+            public IEnumerable<string> Codes => Stages.GroupBy(a => a.AssignedBy)
+                .Select(group => $"PLAN-{group.Min(a => a.AssignmentId):D4}");
             public DateOnly AssignmentDate { get; set; }
             public string? Shift { get; set; }
-            public User? Assigner { get; set; }
             public string Status { get; set; } = "Assigned";
-            public string? TaskDescription { get; set; }
             public List<PersonnelAssignment> Stages { get; set; } = new();
         }
 
@@ -87,14 +97,20 @@ namespace BATT_PPMS.Pages.Personnel
                 RoleConstants.Staff);
             if (check != null) return check;
 
-            CanCreatePlan = IsManager;
+            if (IsStaff && !AllDates && Request.Query.ContainsKey(nameof(PlanDate)) && !PlanDate.HasValue)
+            {
+                StaffSchedule = BuildStaffSchedule([], invalidDate: true);
+                return Page();
+            }
 
-            // Load staff list for modal
-            AvailableStaff = await _context.Users
-                .Include(u => u.Role)
-                .Where(u => u.Role.RoleName == RoleConstants.Staff && u.Status == StatusConstants.Active)
-                .OrderBy(u => u.FullName)
-                .ToListAsync();
+            CanCreatePlan = IsManager;
+            if (Create)
+            {
+                if (!CanCreatePlan) return RedirectToPage("/Auth/AccessDenied");
+                NewPlanDate = PlanDate ?? Today;
+                await LoadAvailableStaffAsync();
+                return Page();
+            }
 
             // Load all assignments with navigation
             var query = _context.PersonnelAssignments
@@ -121,31 +137,44 @@ namespace BATT_PPMS.Pages.Personnel
                 PlanDate = DisplayDate;
                 query = query.Where(a => a.AssignmentDate == DisplayDate.Value);
             }
+            else if (!IsStaff)
+            {
+                var day = PlanDate ?? Today;
+                DisplayDate = day;
+                var dates = _context.PersonnelAssignments.Select(a => a.AssignmentDate);
+                PreviousDate = await dates.Where(date => date < day).Select(date => (DateOnly?)date).MaxAsync();
+                NextDate = await dates.Where(date => date > day).Select(date => (DateOnly?)date).MinAsync();
+                ShiftPlans = await _context.ShiftProductionPlans.AsNoTracking()
+                    .Where(plan => plan.PlanDate == day).ToDictionaryAsync(plan => plan.Shift);
+                query = query.Where(a => a.AssignmentDate == day);
+                if (CanCreatePlan)
+                {
+                    var plannedShifts = ShiftPlans.Keys.ToArray();
+                    HasLegacyShifts = await query.AnyAsync(a => a.Shift == null || !plannedShifts.Contains(a.Shift));
+                    if (HasLegacyShifts)
+                    {
+                        EstimateDate = day;
+                        EstimateKg = await _context.DailyMaterialPlans.Where(plan => plan.PlanDate == day)
+                            .Select(plan => (decimal?)plan.ExpectedKg).SingleOrDefaultAsync() ?? 0;
+                    }
+                }
+            }
 
             if (!string.IsNullOrEmpty(ShiftFilter) && ShiftFilter != "ALL")
                 query = query.Where(a => a.Shift == ShiftFilter);
 
-            var assignments = await query
-                .OrderByDescending(a => a.AssignmentDate)
-                .ThenBy(a => a.Shift)
-                .ToListAsync();
+            var assignments = await query.OrderByDescending(a => a.AssignmentDate).ThenBy(a => a.Shift).ToListAsync();
+            var shiftStatuses = IsStaff && assignments.Count > 0 ? await LoadShiftStatusesAsync(query) : null;
 
-            // Group by (AssignmentDate + Shift + AssignedBy)
             var grouped = assignments
-                .GroupBy(a => new { a.AssignmentDate, a.Shift, a.AssignedBy })
-                .Select(g =>
+                .GroupBy(a => new { a.AssignmentDate, a.Shift })
+                .Select(g => new PlanGroup
                 {
-                    var first = g.First();
-                    return new PlanGroup
-                    {
-                        PlanId = g.Min(a => a.AssignmentId),
-                        AssignmentDate = g.Key.AssignmentDate,
-                        Shift = g.Key.Shift,
-                        Assigner = first.AssignedByNavigation,
-                        Status = AggregateStatus(g),
-                        TaskDescription = first.TaskDescription,
-                        Stages = g.OrderBy(x => x.AssignmentId).ToList()
-                    };
+                    PlanId = g.Min(a => a.AssignmentId),
+                    AssignmentDate = g.Key.AssignmentDate,
+                    Shift = g.Key.Shift,
+                    Status = shiftStatuses?.GetValueOrDefault((g.Key.AssignmentDate, g.Key.Shift)) ?? AggregateStatus(g),
+                    Stages = g.OrderBy(x => x.AssignmentId).ToList()
                 })
                 .ToList();
 
@@ -157,135 +186,254 @@ namespace BATT_PPMS.Pages.Personnel
             {
                 var kw = SearchTerm.Trim().ToLower();
                 grouped = grouped.Where(p =>
-                    p.Code.ToLower().Contains(kw) ||
+                    p.Codes.Any(code => code.Contains(kw, StringComparison.OrdinalIgnoreCase)) ||
                     p.AssignmentDate.ToString("yyyy-MM-dd").Contains(kw) ||
                     p.AssignmentDate.ToString("dd/MM/yyyy").Contains(kw) ||
-                    (p.Assigner?.FullName ?? "").ToLower().Contains(kw) ||
                     (p.Shift ?? "").ToLower().Contains(kw) ||
                     p.Stages.Any(s => (s.Staff?.FullName ?? "").ToLower().Contains(kw) ||
+                                      (s.AssignedByNavigation?.FullName ?? "").ToLower().Contains(kw) ||
                                       (s.TaskDescription ?? "").ToLower().Contains(kw))
                 ).ToList();
             }
 
             Plans = grouped;
+            if (IsStaff)
+                StaffSchedule = BuildStaffSchedule(Plans.SelectMany(plan => plan.Stages), shiftStatuses: shiftStatuses);
             return Page();
         }
 
-        // ── OnPostCreatePlan ─────────────────────────────────────────────────
-        [BindProperty] public DateOnly NewPlanDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
-        [BindProperty] public string NewPlanShift { get; set; } = "Ca 1";
-        [BindProperty] public string? NewPlanNotes { get; set; }
-
-        [BindProperty] public List<int> Stage1StaffIds { get; set; } = new();
-
-        [BindProperty] public List<int> Stage2StaffIds { get; set; } = new();
-
-        [BindProperty] public List<int> Stage3StaffIds { get; set; } = new();
-
-        [BindProperty] public List<int> Stage4StaffIds { get; set; } = new();
-
-        [BindProperty] public List<int> Stage5StaffIds { get; set; } = new();
-
-        public record ProductionStage(int Number, string Name, string Machine, List<int> StaffIds)
+        private async Task<Dictionary<(DateOnly Date, string? Shift), string>> LoadShiftStatusesAsync(IQueryable<PersonnelAssignment> query)
         {
-            public string FieldName => $"Stage{Number}StaffIds";
+            var shifts = query.Select(assignment => new { assignment.AssignmentDate, assignment.Shift }).Distinct();
+            var rows = await shifts.Select(shift => new
+            {
+                shift.AssignmentDate,
+                shift.Shift,
+                HasDeduction = _context.MaterialUsageReviews.Any(review => review.Status == "Approved"
+                        && review.Report.ShiftDate == shift.AssignmentDate
+                        && review.Report.Assignment.Shift == shift.Shift
+                        && _context.ShiftMaterialUsages.Any(usage => usage.ReportId == review.ReportId && usage.ExportId != null)
+                        && !_context.ShiftMaterialUsages.Any(usage => usage.ReportId == review.ReportId && usage.ExportId == null)),
+                HasReceipt = _context.FinishedGoodsReceipts.Any(receipt =>
+                        receipt.QualityRequest.Assignment.AssignmentDate == shift.AssignmentDate
+                        && receipt.QualityRequest.Assignment.Shift == shift.Shift
+                        && receipt.ReceivedAt != null && receipt.ActualQuantity > 0
+                        && (receipt.Status == "Received" || receipt.Status == "AwaitingStaffConfirmation")),
+                HasActiveAssignment = query.Any(assignment => assignment.AssignmentDate == shift.AssignmentDate
+                        && assignment.Shift == shift.Shift && assignment.Status != "Cancelled")
+            }).ToListAsync(HttpContext.RequestAborted);
+
+            return rows.ToDictionary(row => (row.AssignmentDate, row.Shift), row =>
+                !row.HasActiveAssignment ? "Cancelled" :
+                row.HasDeduction && row.HasReceipt ? "Completed" :
+                row.HasDeduction || row.HasReceipt ? "InProgress" : "Assigned");
+        }
+
+        private ProductionScheduleViewModel BuildStaffSchedule(IEnumerable<PersonnelAssignment> assignments,
+            bool invalidDate = false, IReadOnlyDictionary<(DateOnly Date, string? Shift), string>? shiftStatuses = null)
+        {
+            var rows = assignments.OrderByDescending(a => a.AssignmentDate)
+                .ThenBy(a => a.Shift).ThenBy(a => a.AssignmentId).ToList();
+            var shifts = rows.Select(a => a.Shift).Distinct().OrderBy(shift => shift).ToList();
+            var page = new PageWindow(shifts.Count, PageWindow.ReadRequestedPage(Request.Query, PageNumber), pageSize: 1);
+            if (!AllPlanShifts && shifts.Count > 0)
+                rows = rows.Where(a => a.Shift == shifts[page.Offset]).ToList();
+
+            var filters = new Dictionary<string, string>();
+            if (AllDates) filters[nameof(AllDates)] = "true";
+            if (!string.IsNullOrWhiteSpace(SearchTerm)) filters[nameof(SearchTerm)] = SearchTerm;
+            if (!string.IsNullOrWhiteSpace(StatusFilter)) filters[nameof(StatusFilter)] = StatusFilter;
+            var dateInput = !AllDates && Request.Query.ContainsKey(nameof(PlanDate))
+                ? PlanDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                : null;
+            return new ProductionScheduleViewModel("/Personnel/Index", filters, DisplayDate, dateInput,
+                AllPlanShifts, shifts, rows, page, invalidDate, CurrentUserId, shiftStatuses);
+        }
+
+        [BindProperty] public DateOnly NewPlanDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        [BindProperty] public List<ShiftInput> ShiftInputs { get; set; } = [new() { Included = true }, new(), new()];
+        [BindProperty] public DateOnly EstimateDate { get; set; } = DateOnly.FromDateTime(ProductionFlow.Now);
+        [BindProperty] public decimal EstimateKg { get; set; }
+
+        public sealed class ShiftInput
+        {
+            public bool Included { get; set; }
+            public decimal? ExpectedMaterialKg { get; set; }
+            public decimal? ExpectedFinishedKg { get; set; }
+            public string? Note { get; set; }
+            public List<int> Stage1StaffIds { get; set; } = [];
+            public List<int> Stage2StaffIds { get; set; } = [];
+            public List<int> Stage3StaffIds { get; set; } = [];
+            public List<int> Stage4StaffIds { get; set; } = [];
+            public List<int> Stage5StaffIds { get; set; } = [];
+
+            public List<int>[] StaffByStage => [Stage1StaffIds, Stage2StaffIds, Stage3StaffIds, Stage4StaffIds, Stage5StaffIds];
+        }
+
+        public sealed record ProductionStage(string Name, string Machine)
+        {
             public string TaskDescription => $"{Name} ({Machine})";
         }
 
-        public List<ProductionStage> ProductionStages => new()
+        public static IReadOnlyList<ProductionStage> ProductionStages { get; } =
+        [
+            new("Băm nguyên liệu", "Máy băm"),
+            new("Nghiền nguyên liệu", "Máy nghiền"),
+            new("Sấy nguyên liệu", "Máy sấy"),
+            new("Nén viên", "Máy nén"),
+            new("Đóng gói thành phẩm", "Khâu đóng gói")
+        ];
+
+        public static IReadOnlyList<string> ProductionShifts { get; } = ["Ca 1", "Ca 2", "Ca 3"];
+        public static string ShiftHours(string? shift) => shift switch
         {
-            new(1, "Băm nguyên liệu", "Máy băm", Stage1StaffIds),
-            new(2, "Nghiền nguyên liệu", "Máy nghiền", Stage2StaffIds),
-            new(3, "Sấy nguyên liệu", "Máy sấy", Stage3StaffIds),
-            new(4, "Nén viên", "Máy nén", Stage4StaffIds),
-            new(5, "Đóng gói thành phẩm", "Khâu đóng gói", Stage5StaffIds)
+            "Ca 1" => "06:00 – 14:00",
+            "Ca 2" => "14:00 – 22:00",
+            "Ca 3" => "22:00 – 06:00",
+            _ => ""
         };
+
+        private async Task LoadAvailableStaffAsync()
+        {
+            AvailableStaff = await _context.Users.AsNoTracking()
+                .Where(u => u.Role.RoleName == RoleConstants.Staff && u.Status == StatusConstants.Active)
+                .OrderBy(u => u.FullName).ThenBy(u => u.UserId).ToListAsync();
+        }
+
+        private async Task<IActionResult> ShowPlanErrorAsync(string message)
+        {
+            Create = true;
+            CanCreatePlan = true;
+            ErrorMessage = message;
+            ShiftInputs = Enumerable.Range(0, ProductionShifts.Count)
+                .Select(i => ShiftInputs.ElementAtOrDefault(i) ?? new ShiftInput()).ToList();
+            await LoadAvailableStaffAsync();
+            return Page();
+        }
 
         public async Task<IActionResult> OnPostCreatePlanAsync()
         {
             var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
-            if (!ModelState.IsValid || NewPlanDate.Year < 2000 || NewPlanDate.Year > 2100)
+            if (!ModelState.IsValid || NewPlanDate.Year is < 2000 or > 2100 || ShiftInputs.Count != ProductionShifts.Count)
+                return await ShowPlanErrorAsync("Vui lòng kiểm tra ngày sản xuất và các trường số lượng.");
+
+            var shifts = ShiftInputs.Select((input, index) => (Name: ProductionShifts[index], Input: input))
+                .Where(shift => shift.Input.Included).ToList();
+            if (shifts.Count == 0)
+                return await ShowPlanErrorAsync("Vui lòng chọn ít nhất một ca để phân công.");
+
+            foreach (var (name, input) in shifts)
             {
-                ErrorMessage = "Vui lòng kiểm tra ngày, ca sản xuất và danh sách công nhân.";
-                return RedirectToPage();
+                if (!DailyMaterialPlanning.ValidQuantity(input.ExpectedMaterialKg ?? 0)
+                    || !DailyMaterialPlanning.ValidQuantity(input.ExpectedFinishedKg ?? 0))
+                    return await ShowPlanErrorAsync($"{name} cần khối lượng nguyên liệu và thành phẩm lớn hơn 0 kg, tối đa 2 chữ số thập phân.");
+                if (input.StaffByStage.Any(staff => staff.Count == 0 || staff.Any(id => id <= 0)))
+                    return await ShowPlanErrorAsync($"Chọn ít nhất một công nhân cho mỗi công đoạn của {name}.");
+                if (input.Note?.Length > 1000)
+                    return await ShowPlanErrorAsync($"Ghi chú của {name} tối đa 1.000 ký tự.");
             }
 
-            var currentUserId = CurrentUserId;
-
-            var stages = ProductionStages;
-
-            if (stages.Any(s => s.StaffIds == null || s.StaffIds.Count == 0 || s.StaffIds.Any(id => id <= 0)))
+            var shiftNames = shifts.Select(shift => shift.Name).ToArray();
+            var staffIds = shifts.SelectMany(shift => shift.Input.StaffByStage.SelectMany(ids => ids)).Distinct().ToArray();
+            var manager = CurrentUserId;
+            try
             {
-                ErrorMessage = "Vui lòng chọn ít nhất một công nhân cho mỗi máy/công đoạn.";
-                return RedirectToPage();
-            }
+                await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                var activeManager = await _context.Users.AnyAsync(u => u.UserId == manager
+                    && u.Role.RoleName == RoleConstants.Manager && u.Status == StatusConstants.Active);
+                if (!activeManager) return RedirectToPage("/Auth/AccessDenied");
 
-            var staffIds = stages.SelectMany(s => s.StaffIds).Distinct().ToList();
-            var validStaffCount = await _context.Users.CountAsync(u => staffIds.Contains(u.UserId)
-                && u.Role.RoleName == RoleConstants.Staff && u.Status == StatusConstants.Active);
-            if (validStaffCount != staffIds.Count)
-            {
-                ErrorMessage = "Chỉ được phân công cho nhân viên sản xuất (Staff) có tài khoản đang hoạt động.";
-                return RedirectToPage();
-            }
+                var existing = await _context.PersonnelAssignments
+                    .Where(a => a.AssignmentDate == NewPlanDate && shiftNames.Contains(a.Shift) && a.Status != "Cancelled")
+                    .Select(a => a.Shift).Union(_context.ShiftProductionPlans
+                        .Where(plan => plan.PlanDate == NewPlanDate && shiftNames.Contains(plan.Shift)).Select(plan => plan.Shift))
+                    .ToListAsync();
+                if (existing.Count > 0)
+                    throw new ProductionFlowException($"{string.Join(", ", existing.Order())} đã có phân công ngày {NewPlanDate:dd/MM/yyyy}. Bỏ chọn các ca này rồi lưu lại.");
 
-            if (NewPlanShift is not ("Ca 1" or "Ca 2" or "Ca 3"))
-            {
-                ErrorMessage = "Vui lòng chọn ca sản xuất hợp lệ.";
-                return RedirectToPage();
-            }
+                var activeStaff = await _context.Users.CountAsync(u => staffIds.Contains(u.UserId)
+                    && u.Role.RoleName == RoleConstants.Staff && u.Status == StatusConstants.Active);
+                if (activeStaff != staffIds.Length)
+                    throw new ProductionFlowException("Danh sách có tài khoản không còn hoạt động hoặc không thuộc vai trò nhân viên sản xuất.");
 
-            foreach (var stage in stages)
-            {
-                foreach (var staffId in stage.StaffIds.Distinct())
+                foreach (var (name, input) in shifts)
                 {
-                    var assignment = new PersonnelAssignment
+                    _context.ShiftProductionPlans.Add(new ShiftProductionPlan
                     {
-                        StaffId = staffId,
-                        AssignedBy = currentUserId,
-                        AssignmentDate = NewPlanDate,
-                        Shift = NewPlanShift,
-                        TaskDescription = stage.TaskDescription,
-                        Status = "Assigned"
-                    };
-                    _context.PersonnelAssignments.Add(assignment);
+                        PlanDate = NewPlanDate,
+                        Shift = name,
+                        ExpectedMaterialKg = input.ExpectedMaterialKg!.Value,
+                        ExpectedFinishedKg = input.ExpectedFinishedKg!.Value,
+                        Note = InputValidator.Clean(input.Note)
+                    });
+                    var assignments = input.StaffByStage.SelectMany((ids, index) => ids.Distinct().Select(id =>
+                        new PersonnelAssignment
+                        {
+                            StaffId = id,
+                            AssignedBy = manager,
+                            AssignmentDate = NewPlanDate,
+                            Shift = name,
+                            TaskDescription = ProductionStages[index].TaskDescription,
+                            Status = "Assigned"
+                        }));
+                    _context.PersonnelAssignments.AddRange(assignments);
                 }
+
+                var keepers = await _context.Users.Where(u => u.Role.RoleName == RoleConstants.WarehouseStaff
+                    && u.Status == StatusConstants.Active).Select(u => u.UserId).ToListAsync();
+                var projected = shifts.Sum(shift => shift.Input.ExpectedMaterialKg!.Value);
+                foreach (var keeper in keepers)
+                    Notifier.Add(_context, keeper, "Phân công lao động đã cập nhật",
+                        $"Ngày {NewPlanDate:dd/MM/yyyy}, {string.Join(", ", shiftNames)} dự kiến tiêu thụ {projected:N2} kg.",
+                        $"/Warehouse/Index?tab=plans&PlanDate={NewPlanDate:yyyy-MM-dd}&AllPlanShifts=true");
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch (ProductionFlowException ex)
+            {
+                return await ShowPlanErrorAsync(ex.Message);
+            }
+            catch (Exception ex) when (ex is SqlException { Number: 1205 or 2601 or 2627 }
+                or DbUpdateException { InnerException: SqlException { Number: 1205 or 2601 or 2627 } })
+            {
+                return await ShowPlanErrorAsync("Lịch ngày này vừa được cập nhật. Kiểm tra các ca đã phân công trước khi lưu lại.");
             }
 
-            await _context.SaveChangesAsync();
-            SuccessMessage = $"Đã tạo kế hoạch {NewPlanShift} ngày {NewPlanDate:dd/MM/yyyy} và gửi phân công cho {staffIds.Count} nhân viên sản xuất.";
-            return RedirectToPage();
+            SuccessMessage = $"Đã lưu phân công ngày {NewPlanDate:dd/MM/yyyy} cho {shifts.Count} ca.";
+            return RedirectToPage(new { PlanDate = NewPlanDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) });
         }
 
-        public List<PersonnelAssignment> GetStagesForPlan(int planId)
+        public async Task<IActionResult> OnPostSaveDailyMaterialAsync() {
+            var check=RequireRole(RoleConstants.Manager);if(check!=null)return check;
+            if(!ModelState.IsValid){ErrorMessage="Ngày và khối lượng dự kiến không hợp lệ.";return RedirectToPage();}
+            await using var tx=await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try{await new DailyMaterialPlanning(_context).Set(CurrentUserId,EstimateDate,EstimateKg);await _context.SaveChangesAsync();await tx.CommitAsync();SuccessMessage=$"Đã cập nhật {EstimateKg:N2} kg dự kiến ngày {EstimateDate:dd/MM/yyyy} cho Thủ kho.";}
+            catch(ProductionFlowException ex){ErrorMessage=ex.Message;}
+            return RedirectToPage(new { PlanDate = EstimateDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) });
+        }
+
+        public static string StaffMachineName(string task)
         {
-            var plan = Plans.FirstOrDefault(p => p.PlanId == planId);
-            return plan?.Stages ?? new List<PersonnelAssignment>();
+            var description = task.ToLowerInvariant();
+            if (description.Contains("đóng gói") || description.Contains("đóng bao")) return "Đóng gói";
+            if (description.Contains("sấy")) return "Máy sấy";
+            if (description.Contains("nén") || description.Contains("ép viên")) return "Máy nén";
+            if (description.Contains("băm")) return "Máy băm";
+            if (description.Contains("nghiền")) return "Máy nghiền";
+            return task;
         }
 
         public class StageGroup
         {
             public string TaskDescription { get; set; } = string.Empty;
-            public string StaffMachineName
-            {
-                get
-                {
-                    var description = TaskDescription.ToLowerInvariant();
-                    if (description.Contains("đóng gói") || description.Contains("đóng bao")) return "Đóng gói";
-                    if (description.Contains("sấy")) return "Máy sấy";
-                    if (description.Contains("nén") || description.Contains("ép viên")) return "Máy nén";
-                    if (description.Contains("băm")) return "Máy băm";
-                    if (description.Contains("nghiền")) return "Máy nghiền";
-                    return TaskDescription;
-                }
-            }
             public List<PersonnelAssignment> Assignments { get; set; } = new();
         }
 
-        public List<StageGroup> GetStageGroupsForPlan(int planId) => GetStagesForPlan(planId)
-            .GroupBy(a => a.TaskDescription ?? "Công đoạn sản xuất")
+        public static List<StageGroup> GetStageGroupsForPlan(PlanGroup plan) => plan.Stages
+            .GroupBy(a => a.TaskDescription ?? "Công đoạn sản xuất", StringComparer.OrdinalIgnoreCase)
             .Select(group => new StageGroup
             {
                 TaskDescription = group.Key,

@@ -58,8 +58,8 @@ GO
 
 -- 9. Thêm dữ liệu bảng FinishedGoodBatch (Các bao/lô thành phẩm đánh số theo ngày)
 INSERT INTO FinishedGoodBatch (bag_number, production_date, quantity, status, created_by) VALUES
-('BAG-2026-06-07-01', '2026-06-07', 150.00, 'In Stock', 7),
-('BAG-2026-06-07-02', '2026-06-07', 150.00, 'In Stock', 7);
+('LOT-20260607-' + LEFT(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 25), '2026-06-07', 150.00, 'In Stock', 7),
+('LOT-20260607-' + LEFT(REPLACE(CONVERT(VARCHAR(36), NEWID()), '-', ''), 25), '2026-06-07', 150.00, 'In Stock', 7);
 GO
 
 -- 10. Thêm dữ liệu bảng QCInspection (Kiểm tra chất lượng bao thành phẩm)

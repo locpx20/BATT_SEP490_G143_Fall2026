@@ -1,5 +1,19 @@
 (() => {
-    const pickers = [...document.querySelectorAll('[data-staff-picker]')];
+    const form = document.querySelector('.labor-form');
+    if (!form) return;
+
+    form.querySelectorAll('[data-plan-shift]').forEach(shift => {
+        const include = shift.querySelector('[data-plan-include]');
+        const fields = shift.querySelector('[data-plan-fields]');
+        function updateShift() {
+            fields.disabled = !include.checked;
+            fields.querySelectorAll('[data-plan-quantity]').forEach(input => input.required = include.checked);
+        }
+        include.addEventListener('change', updateShift);
+        updateShift();
+    });
+
+    const pickers = [...form.querySelectorAll('[data-staff-picker]')];
     function refresh(picker) {
         const inputs = [...picker.querySelectorAll('input[type="checkbox"]')];
         const selected = inputs.filter(input => input.checked);
@@ -26,5 +40,4 @@
         picker.open = false;
         picker.querySelector('summary').focus();
     }, true);
-    pickers[0]?.closest('form')?.addEventListener('reset', () => requestAnimationFrame(() => pickers.forEach(refresh)));
 })();

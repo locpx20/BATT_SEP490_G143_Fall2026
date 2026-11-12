@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Pages.QC
 {
+    [RequestSizeLimit(6 * 1024 * 1024)]
     public class IndexModel : BasePageModel
     {
         private readonly AppDbContext _context;
@@ -15,6 +16,7 @@ namespace BATT_PPMS.Pages.QC
         public bool QcView => IsQCStaff;
         public List<ProductionQualityRequest> Requests { get; set; } = new();
         public List<PersonnelAssignment> Assignments { get; set; } = new();
+        public List<AppNotification> Notices { get; set; } = new();
         [BindProperty(SupportsGet = true)] public string? SearchTerm { get; set; }
         [BindProperty(SupportsGet = true)] public string? StatusFilter { get; set; }
         [BindProperty(SupportsGet = true)] public bool Legacy { get; set; }
@@ -28,6 +30,7 @@ namespace BATT_PPMS.Pages.QC
         {
             var check = RequireRole(RoleConstants.Staff, RoleConstants.QCStaff, RoleConstants.Manager, RoleConstants.Owner);
             if (check != null) return check;
+            Notices=await Notifier.TakeUnreadAsync(_context,CurrentUserId);
             if (Legacy) {
                 var old = _context.Qcinspections.AsNoTracking().Include(x => x.Batch).Include(x => x.RequestedByNavigation).Include(x => x.InspectedByNavigation)
                     .Where(x => !_context.ProductionQualityRequests.Any(q => q.InspectionId == x.InspectionId));
@@ -50,15 +53,14 @@ namespace BATT_PPMS.Pages.QC
             }
             Pagination = new(await query.CountAsync(), PageWindow.ReadRequestedPage(Request.Query, PageNumber));
             Requests = await query.OrderByDescending(x => x.RequestId).Skip(Pagination.Offset).Take(PageWindow.Size).ToListAsync();
-            if (IsStaff) Assignments = await _context.PersonnelAssignments.AsNoTracking().Where(x => x.StaffId == CurrentUserId && x.Status != "Cancelled"
-                && x.AssignmentDate <= DateOnly.FromDateTime(ProductionFlow.Now)).OrderByDescending(x => x.AssignmentDate).ThenBy(x => x.Shift).ToListAsync();
+            if (IsStaff) Assignments = await new ProductionFlow(_context).AssignedShiftOptions(CurrentUserId);
 
             return Page();
         }
         public async Task<IActionResult> OnPostRequestAsync(int assignmentId, int quantity, string? note) {
             var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
-            if (!ModelState.IsValid) { ErrorMessage = "Kiểm tra lại phân công và sản lượng cần kiểm tra."; return RedirectToPage(); }
-            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, quantity, note); SuccessMessage = "Đã gửi yêu cầu kiểm tra. QC sẽ trả kết quả trước khi bạn lập báo cáo ca."; }
+            if (!ModelState.IsValid) { ErrorMessage = "Kiểm tra lại ca và sản lượng cần kiểm tra."; return RedirectToPage(); }
+            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, quantity, note); SuccessMessage = "Đã gửi yêu cầu tới nhân viên QC để tiếp nhận và kiểm tra chất lượng."; }
             catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
         }
@@ -68,12 +70,27 @@ namespace BATT_PPMS.Pages.QC
             catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
         }
-        public async Task<IActionResult> OnPostFinishAsync(int requestId, string? result, string? note) {
+        public async Task<IActionResult> OnPostFinishAsync(int requestId, string? result, string? note, IFormFile? image) {
             var check = RequireRole(RoleConstants.QCStaff); if (check != null) return check;
             if (!ModelState.IsValid) { ErrorMessage = "Dữ liệu kết quả kiểm tra không hợp lệ."; return RedirectToPage(); }
-            try { await new ProductionFlow(_context).FinishQc(CurrentUserId, requestId, result, note); SuccessMessage = "Đã trả kết quả cho Staff. Manager và Owner có thể xem cùng kết quả này."; }
+            try {
+                if(image == null || image.Length == 0 || image.Length > QcEvidence.MaxBytes) throw new ProductionFlowException("Vui lòng đính kèm ảnh kết quả, tối đa 5 MB.");
+                using var buffer = new MemoryStream(); await image.CopyToAsync(buffer);
+                await new ProductionFlow(_context).FinishQc(CurrentUserId, requestId, result, note, buffer.ToArray());
+                SuccessMessage = "Đã trả kết quả và hình ảnh kiểm tra cho Staff.";
+            }
             catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
+        }
+        public async Task<IActionResult> OnGetImageAsync(int requestId) {
+            var check=RequireRole(RoleConstants.Staff,RoleConstants.QCStaff,RoleConstants.WarehouseStaff,RoleConstants.Manager,RoleConstants.Owner);
+            if(check!=null)return check;
+            var query=_context.ProductionQualityRequests.AsNoTracking().Where(x=>x.RequestId==requestId);
+            if(IsStaff)query=query.Where(x=>x.Inspection.RequestedBy==CurrentUserId);
+            var item=await query.Select(x=>new{x.ResultImage,x.ResultImageType}).SingleOrDefaultAsync();
+            if(item?.ResultImage==null)return NotFound();
+            Response.Headers["X-Content-Type-Options"]="nosniff";Response.Headers["Cache-Control"]="private, no-store";
+            return File(item.ResultImage,item.ResultImageType??"application/octet-stream");
         }
     }
 }

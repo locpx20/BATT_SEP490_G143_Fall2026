@@ -35,6 +35,10 @@
     {
         <link rel="stylesheet" href="~/css/operations-workspace.css" asp-append-version="true" />
     }
+    @if (Context.Session.GetString("RoleName") == "Warehouse Staff")
+    {
+        <link rel="stylesheet" href="~/css/warehouse-inbox.css" asp-append-version="true" />
+    }
 </head>
 <body class="@(Context.Session.GetString("RoleName") == "Staff" ? "staff-workspace" : BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")) ? "owner-workspace" : "") @(Context.Session.GetString("RoleName") == "Manager" ? "manager-workspace" : "") @(Context.Session.GetString("RoleName") is "QC Staff" or "Warehouse Staff" ? "operations-workspace" : "") @ViewData["PageClass"]">
 
@@ -88,7 +92,11 @@
     <!-- Navigation -->
     <nav class="sidebar-nav" id="sidebarNav">
 
-        @if (BATT_PPMS.Helpers.RoleViews.Folder(roleName) is string roleFolder)
+        @if (roleName == "Warehouse Staff")
+        {
+            @await Component.InvokeAsync("WarehouseNavigation", new { activePage = ap })
+        }
+        else if (BATT_PPMS.Helpers.RoleViews.Folder(roleName) is string roleFolder)
         {
             <partial name="@($"~/Pages/Shared/Roles/{roleFolder}/_Navigation.cshtml")" model="ap" />
         }
@@ -250,5 +258,9 @@
     <script src="~/js/batt-select.js" asp-append-version="true"></script>
 }
 @await RenderSectionAsync("Scripts", required: false)
+@if (roleName == "Warehouse Staff")
+{
+    <script src="~/js/warehouse-inbox.js" asp-append-version="true"></script>
+}
 </body>
 </html>

@@ -66,6 +66,7 @@
             options.forEach((option, i) => {
                 option.setAttribute('aria-selected', String(i === select.selectedIndex));
                 option.disabled = select.options[i].disabled;
+                option.hidden = select.options[i].hidden;
             });
         }
         function position() {
@@ -94,7 +95,10 @@
             trigger.setAttribute('aria-expanded', 'true');
             active = { menu, wrapper, close, position };
             position();
-            (options[select.selectedIndex] || options.find(option => !option.disabled))?.focus({ preventScroll: true });
+            const selected = options[select.selectedIndex];
+            const target = selected && !selected.hidden && !selected.disabled
+                ? selected : options.find(option => !option.hidden && !option.disabled);
+            target?.focus({ preventScroll: true });
         }
         trigger.addEventListener('click', () => menu.hidden ? open() : close());
         trigger.addEventListener('keydown', event => {
@@ -105,7 +109,7 @@
             if (event.key === 'Tab') close(true);
             if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
                 event.preventDefault();
-                const available = options.filter(option => !option.disabled);
+                const available = options.filter(option => !option.hidden && !option.disabled);
                 const index = available.indexOf(document.activeElement);
                 const next = event.key === 'Home' ? 0 : event.key === 'End' ? available.length - 1
                     : (index + (event.key === 'ArrowDown' ? 1 : -1) + available.length) % available.length;
@@ -116,7 +120,7 @@
         select.addEventListener('invalid', event => { event.preventDefault(); trigger.setAttribute('aria-invalid', 'true'); trigger.focus(); });
         select.form?.addEventListener('reset', () => setTimeout(refresh, 0));
         wrapper.append(trigger);
-        (select.closest('.modal') || document.body).append(menu);
+        (select.closest('.modal, .pm-overlay') || document.body).append(menu);
         select.hidden = true;
         refresh();
     });

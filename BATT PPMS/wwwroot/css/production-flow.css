@@ -17,9 +17,9 @@
 .flow-filters > .flow-field { flex: 1 1 220px; }
 .flow-filters .btn { min-height: 54px; }
 .flow-table-wrap { overflow-x: auto; }
-.flow-table { width: 100%; border-collapse: collapse; font-size: 15px; }
-.flow-table th { padding: 16px 12px; background: var(--primary-light); color: var(--text-secondary); text-align: left; font-size: 14px; font-weight: 600; }
-.flow-table td { vertical-align: top; padding: 20px 12px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.flow-table { width: 100%; border-collapse: collapse; font-size: 17px; }
+.flow-table th { padding: 16px 14px; background: var(--primary-light); color: var(--text-secondary); text-align: left; font-size: 15.5px; font-weight: 700; }
+.flow-table td { vertical-align: top; padding: 18px 14px; border-bottom: 1px solid var(--border); overflow-wrap: normal; font-size: 16.5px; }
 .flow-table td > strong, .flow-table small { display: block; }
 .flow-table small { margin-top: 6px; }
 .flow-state { display: inline-block; padding: 5px 9px; border-radius: 6px; background: var(--primary-light); color: var(--primary); font-size: 13px; margin-bottom: 6px; }

@@ -42,6 +42,12 @@ namespace BATT_PPMS.Pages.Dashboard
 
         public List<OperationalTaskItem> PendingTasks { get; set; } = new();
         public List<StockMovementItem> RecentMovements { get; set; } = new();
+        public BATT_PPMS.Services.WarehouseOverviewData? WarehouseOverview { get; set; }
+        [BindProperty(SupportsGet = true)] public DateOnly? MovementFrom { get; set; }
+        [BindProperty(SupportsGet = true)] public DateOnly? MovementTo { get; set; }
+        [BindProperty(SupportsGet = true)] public string? MovementDirection { get; set; }
+        [BindProperty(SupportsGet = true)] public string? MovementGroup { get; set; }
+        public string? WarehouseFilterError { get; set; }
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -50,7 +56,14 @@ namespace BATT_PPMS.Pages.Dashboard
             if (check != null) return check;
             if (IsStaff) return RedirectToPage("/Personnel/Index");
             if (IsQCStaff) return RedirectToPage("/QC/Index");
-            if (IsWarehouseStaff) return RedirectToPage("/Warehouse/Index", new { tab = "plans" });
+            if (IsWarehouseStaff)
+            {
+                if (MovementFrom.HasValue && MovementTo.HasValue && MovementFrom > MovementTo)
+                    WarehouseFilterError = "Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.";
+                WarehouseOverview = await new BATT_PPMS.Services.WarehouseOverview(_context)
+                    .ReadAsync(PageNumber, MovementFrom, MovementTo, MovementDirection, MovementGroup, HttpContext.RequestAborted);
+                return Page();
+            }
 
             var roleName = HttpContext.Session.GetString("RoleName") ?? "";
             IsAdminRole = roleName == RoleConstants.Admin || roleName == "Admin";
@@ -116,7 +129,7 @@ namespace BATT_PPMS.Pages.Dashboard
                     {
                         PendingTasks.Add(new OperationalTaskItem
                         {
-                            Title = $"{InProgressPlansCount} Kế hoạch sản xuất ca đang vận hành",
+                            Title = $"{InProgressPlansCount} ca sản xuất đang thực hiện",
                             Description = "Vận hành dây chuyền băm nghiền, sấy mùn cưa và ép viên nén",
                             ActionText = "Xem lịch ca →",
                             ActionUrl = "/Personnel/Index",
@@ -214,15 +227,6 @@ namespace BATT_PPMS.Pages.Dashboard
                     },
                     new StockMovementItem
                     {
-                        Type = "IN",
-                        QuantityKg = 20000,
-                        RefCode = "LOT-20261024-01",
-                        Time = "22:00",
-                        Notes = "Nhập 20 bao Jumbo LOT-20261024-01 vào Kho A",
-                        ConfirmedBy = "Phạm Thị Phương Thảo (Thủ kho)"
-                    },
-                    new StockMovementItem
-                    {
                         Type = "OUT",
                         QuantityKg = 10000,
                         RefCode = "OUT-PROP-2026-015",
@@ -231,6 +235,25 @@ namespace BATT_PPMS.Pages.Dashboard
                         ConfirmedBy = "Phạm Thị Phương Thảo (Thủ kho)"
                     }
                 };
+                var latestReceipt = await _context.FinishedGoodsReceipts.AsNoTracking()
+                    .Where(r => r.ReceivedAt != null && r.ActualQuantity != null
+                        && (r.Status == "Received" || r.Status == "AwaitingStaffConfirmation"))
+                    .OrderByDescending(r => r.ReceivedAt).ThenByDescending(r => r.ReceiptId)
+                    .Select(r => new {
+                        Lot = r.QualityRequest.Inspection.Batch.BagNumber,
+                        Quantity = r.ActualQuantity!.Value,
+                        ReceivedAt = r.ReceivedAt!.Value,
+                        Receiver = r.Receiver == null ? "Tài khoản đã xóa" : r.Receiver.FullName
+                    }).FirstOrDefaultAsync();
+                if (latestReceipt != null)
+                {
+                    RecentMovements.Insert(2, new StockMovementItem {
+                        Type = "IN", QuantityKg = latestReceipt.Quantity, RefCode = latestReceipt.Lot,
+                        Time = latestReceipt.ReceivedAt.ToString("HH:mm dd/MM"),
+                        Notes = $"Nhập kho thành phẩm lô {latestReceipt.Lot}",
+                        ConfirmedBy = latestReceipt.Receiver
+                    });
+                }
             }
 
             return Page();
@@ -259,7 +282,7 @@ namespace BATT_PPMS.Pages.Dashboard
     public class StockMovementItem
     {
         public string Type { get; set; } = "IN";
-        public int QuantityKg { get; set; }
+        public decimal QuantityKg { get; set; }
         public string RefCode { get; set; } = string.Empty;
         public string Time { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;

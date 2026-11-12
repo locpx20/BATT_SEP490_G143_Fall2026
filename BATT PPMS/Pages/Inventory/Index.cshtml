@@ -1,5 +1,6 @@
 @page
 @model BATT_PPMS.Pages.Inventory.IndexModel
+@using BATT_PPMS.Helpers
 @using System.Globalization
 @{
     ViewData["Title"] = Model.Tab == "finished" ? "Kho thành phẩm" : "Kho nguyên vật liệu thô";
@@ -7,12 +8,23 @@
     var viCulture = new CultureInfo("vi-VN");
 
     var labelStyle = "font-size: 12px; color: #64748b; margin-bottom: 2px;";
-    var valueStyle = "font-size: 14px; font-weight: 700; color: #1e293b;";
 }
 
 @section Styles {
+    <link rel="stylesheet" href="~/css/warehouse-dialogs.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/production-flow.css" asp-append-version="true" />
+    @if (Model.Tab == "finished") {
+        <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/warehouse-plans.css" asp-append-version="true" />
+    }
+    <link rel="stylesheet" href="~/css/warehouse-import.css" asp-append-version="true" />
     <style>
+        .warehouse-plans .finished-stock-filter { flex: 0 1 650px; flex-wrap: wrap; justify-content: flex-start; }
+        .warehouse-plans .finished-stock-table { min-width: 640px; }
+        .finished-stock-table .stock-lot-code { color: var(--co-ink); font-weight: 700; overflow-wrap: anywhere; }
+        .finished-stock-table .stock-quantity { text-align: right; white-space: nowrap; }
+        .finished-stock-table td.stock-quantity { font-weight: 700; font-variant-numeric: tabular-nums; }
+
         .wh-page-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -356,39 +368,57 @@
 
 @if (Model.Tab == "finished")
 {
-    <div class="flow-screen">
-        <header class="page-header"><h1 class="page-title"><i class="bi bi-boxes" aria-hidden="true"></i> @ViewData["Title"]</h1></header>
-        <section class="flow-card">
-            <form method="get" class="flow-filters">
-                <input type="hidden" name="Tab" value="@Model.Tab" />
-                <div class="flow-field">
-                    <label for="inventorySearch">Tìm mã lô thành phẩm</label>
-                    <input id="inventorySearch" type="search" name="SearchTerm" value="@Model.SearchTerm" class="form-control" />
-                </div>
-                <button class="btn btn-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
-            </form>
-            <p class="flow-help">Các lô đã được Thủ kho ghi nhận nhập kho. Lô chờ QC và chờ nhập kho không tính vào tồn kho.</p>
-            <div class="flow-table-wrap">
-                <table class="flow-table">
-                    <thead><tr><th>Mã lô</th><th>Ngày sản xuất</th><th>Khối lượng tồn</th><th>Người tạo</th></tr></thead>
+    <div class="closeout">
+        <header class="closeout-header">
+            <h1><i class="bi bi-boxes" aria-hidden="true"></i> @ViewData["Title"]</h1>
+        </header>
+        <section class="closeout-register warehouse-plans">
+            <div class="closeout-section-head">
+                <form method="get" asp-page="/Inventory/Index" class="closeout-filter finished-stock-filter">
+                    <input type="hidden" name="Tab" value="finished" />
+                    <label class="plan-filter-label" for="inventoryProductionDate">Ngày sản xuất</label>
+                    <input id="inventoryProductionDate" type="date" name="ProductionDateFilter" value="@Model.ProductionDateInput" />
+                    <button class="closeout-button secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
+                </form>
+            </div>
+            <div class="warehouse-plans-scroll" role="region" aria-label="Bảng tồn kho thành phẩm" tabindex="0">
+                <table class="warehouse-plans-table finished-stock-table" aria-label="Tồn kho thành phẩm">
+                    <colgroup>
+                        <col style="width: 30%;" />
+                        <col style="width: 22%;" />
+                        <col style="width: 24%;" />
+                        <col style="width: 24%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col">Mã lô</th>
+                            <th scope="col">Ngày sản xuất</th>
+                            <th scope="col" class="stock-quantity">Khối lượng tồn</th>
+                            <th scope="col">Người tạo</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        @foreach (var b in Model.Batches)
+                        @foreach (var batch in Model.Batches)
                         {
                             <tr>
-                                <td data-label="Mã lô">@b.BagNumber</td>
-                                <td data-label="Ngày sản xuất">@b.ProductionDate.ToString("dd/MM/yyyy")</td>
-                                <td data-label="Khối lượng tồn">@b.Quantity.ToString("N2") kg</td>
-                                <td data-label="Người tạo">@(b.CreatedByNavigation?.FullName ?? "Tài khoản đã xóa")</td>
+                                <td><code class="stock-lot-code" title="@batch.BagNumber">@LotCode.ForListDisplay(batch.BagNumber)</code></td>
+                                <td>@batch.ProductionDate.ToString("dd/MM/yyyy")</td>
+                                <td class="stock-quantity">@batch.Quantity.ToString("N2") kg</td>
+                                <td>@(batch.CreatedByNavigation?.FullName ?? "Tài khoản đã xóa")</td>
                             </tr>
                         }
                         @if (Model.Batches.Count == 0)
                         {
-                            <tr><td colspan="4" class="flow-empty">Không có lô thành phẩm phù hợp.</td></tr>
+                            <tr>
+                                <td colspan="4" class="plan-empty">
+                                    @(Model.InvalidProductionDateFilter ? "Vui lòng chọn ngày sản xuất hợp lệ." : "Không có lô thành phẩm phù hợp.")
+                                </td>
+                            </tr>
                         }
                     </tbody>
                 </table>
             </div>
-            <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/Inventory/Index", new() { ["Tab"] = Model.Tab, ["SearchTerm"] = Model.SearchTerm })' />
+            <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/Inventory/Index", new() { ["Tab"] = Model.Tab, ["ProductionDateFilter"] = Model.ProductionDateInput })' />
         </section>
     </div>
 }
@@ -451,6 +481,14 @@ else
             </div>
         </div>
 
+        <section class="flow-card" aria-labelledby="rawStockHeading">
+            <h2 id="rawStockHeading" class="wh-card-title" style="padding:20px">Tồn kho nguyên liệu</h2>
+            <div class="flow-table-wrap"><table class="flow-table"><thead><tr><th>Nguyên liệu</th><th>Số lượng tồn</th><th>Đơn vị</th></tr></thead><tbody>
+            @foreach(var m in Model.Materials){<tr><td>@m.MaterialName</td><td>@m.CurrentQuantity.ToString("N2",viCulture)</td><td>@m.Unit</td></tr>}
+            @if(Model.Materials.Count==0){<tr><td colspan="3" class="flow-empty">Không có nguyên liệu phù hợp.</td></tr>}
+            </tbody></table></div>
+            <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination,"/Inventory/Index",new(){["Tab"]="raw",["SearchTerm"]=Model.SearchTerm,["StatusFilter"]=Model.StatusFilter,["SupplierFilter"]=Model.SupplierFilter?.ToString(),["DateFilter"]=Model.DateFilter,["CurrentPage"]=Model.CurrentPage.ToString(),["PageSize"]=Model.PageSize.ToString()})' />
+        </section>
         <!-- Table 1: Danh sách Yêu cầu nhập kho / Phiếu mua hàng con -->
         <div class="wh-card">
             <form method="get" id="whFilterForm">
@@ -766,7 +804,7 @@ else
     @if (Model.CanWarehouseConfirm)
     {
         <div class="pm-overlay" id="createImportModal" onclick="if (event.target === this) closePmModal('createImportModal')">
-            <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" style="max-width: 720px;">
+            <div class="pm-dialog pm-lg" role="dialog" aria-modal="true">
                 <form method="post" asp-page-handler="ConfirmReceipt">
                     <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
                     <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
@@ -923,50 +961,50 @@ else
     }
 
     <!-- POPUP: CHI TIẾT & ĐỐI CHIẾU YÊU CẦU NHẬP KHO (CHECK AND COMPARE WITH IR) -->
-    <div class="pm-overlay" id="receiptDetailModal" onclick="if (event.target === this) closePmModal('receiptDetailModal')">
-        <div class="pm-dialog pm-lg" role="dialog" aria-modal="true">
+    <div class="pm-overlay warehouse-dialog" id="receiptDetailModal" onclick="if (event.target === this) closePmModal('receiptDetailModal')">
+        <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" aria-labelledby="receiptDetailTitle">
             <div class="pm-head">
-                <h5 class="pm-title">Đối chiếu Yêu cầu nhập kho (IR) <span id="rdCode" style="font-family: monospace;"></span></h5>
+                <h3 class="pm-title" id="receiptDetailTitle"><i class="bi bi-info-circle-fill" aria-hidden="true"></i> Đối chiếu yêu cầu nhập kho <code id="rdCode" class="wh-dialog-code"></code></h3>
                 <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('receiptDetailModal')">&times;</button>
             </div>
             <div class="pm-body">
-                <div class="pm-grid" style="margin-bottom: 16px;">
-                    <div><div style="@labelStyle">Nhà cung cấp</div><div id="rdSupplier" style="@valueStyle"></div></div>
-                    <div><div style="@labelStyle">Trạng thái</div><div id="rdStatus" style="@valueStyle"></div></div>
-                    <div><div style="@labelStyle">Khối lượng cân</div><div id="rdQty" style="@valueStyle"></div></div>
-                    <div><div style="@labelStyle">Giá mua thực tế (VNĐ/kg)</div><div id="rdPrice" style="@valueStyle"></div></div>
-                    <div><div style="@labelStyle">Thành tiền (VNĐ)</div><div id="rdTotal" style="@valueStyle"></div></div>
-                    <div><div style="@labelStyle">Người tạo</div><div id="rdBy" style="@valueStyle"></div></div>
-                    <div><div style="@labelStyle">Thời điểm tạo</div><div id="rdAt" style="@valueStyle"></div></div>
-                    <div><div style="@labelStyle">Phiếu nhập kho nguyên liệu</div><div id="rdImportCode" style="@valueStyle; color: #1a4332;"></div></div>
+                <div class="pm-grid wh-detail-grid">
+                    <div class="wh-detail-field"><span class="wh-dialog-label">Nhà cung cấp</span><div id="rdSupplier" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field"><span class="wh-dialog-label">Trạng thái</span><div id="rdStatus" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field"><span class="wh-dialog-label">Khối lượng cân</span><div id="rdQty" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field"><span class="wh-dialog-label">Giá mua thực tế (VNĐ/kg)</span><div id="rdPrice" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field"><span class="wh-dialog-label">Thành tiền (VNĐ)</span><div id="rdTotal" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field"><span class="wh-dialog-label">Người tạo</span><div id="rdBy" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field"><span class="wh-dialog-label">Thời điểm tạo</span><div id="rdAt" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field"><span class="wh-dialog-label">Phiếu nhập kho nguyên liệu</span><div id="rdImportCode" class="wh-dialog-value"></div></div>
                     <div class="pm-full" id="rdRejectionWrap" style="display: none;">
-                        <div style="padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 12px; color: #b91c1c;">
-                            <strong>Lý do từ chối (Rejection Reason):</strong> <span id="rdRejection"></span>
+                        <div class="wh-note-block danger">
+                            <strong>Lý do từ chối:</strong> <span id="rdRejection"></span>
                         </div>
                     </div>
                 </div>
-                <div class="pm-grid">
+                <div class="pm-grid wh-detail-grid">
                     <div>
-                        <div style="@labelStyle">Ảnh xe cân tại xưởng</div>
+                        <div class="wh-dialog-label">Ảnh xe cân tại xưởng</div>
                         <a id="rdScaleLink" target="_blank">
-                            <img id="rdScale" alt="Ảnh xe cân" style="width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;" />
+                            <img id="rdScale" alt="Ảnh xe cân" class="wh-dialog-image" />
                         </a>
                     </div>
                     <div id="rdInvoiceWrap">
-                        <div style="@labelStyle">Hóa đơn</div>
+                        <div class="wh-dialog-label">Hóa đơn</div>
                         <a id="rdInvoiceLink" target="_blank">
-                            <img id="rdInvoice" alt="Hóa đơn" style="width: 100%; border-radius: 8px; border: 1px solid #e2e8f0;" />
+                            <img id="rdInvoice" alt="Hóa đơn" class="wh-dialog-image" />
                         </a>
                     </div>
                 </div>
             </div>
-            <div class="pm-foot" style="display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="pm-btn-cancel" onclick="closePmModal('receiptDetailModal')">Đóng</button>
+            <div class="pm-foot">
+                <button type="button" class="wh-dialog-button" onclick="closePmModal('receiptDetailModal')">Đóng</button>
 
                 @if (Model.CanWarehouseConfirm)
                 {
                     <input type="hidden" id="rdReceiptId" />
-                    <button type="button" class="pm-btn-primary" id="rdWarehouseConfirmBtn" style="display: none; background: #1a4332;"
+                    <button type="button" class="wh-dialog-button wh-dialog-button--primary" id="rdWarehouseConfirmBtn" style="display: none;"
                             onclick="openCreateImportModalFromDetail()">
                         Lập Phiếu nhập kho từ phiếu này
                     </button>
@@ -983,7 +1021,7 @@ else
                         <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
                         <input type="hidden" name="PageSize" value="@Model.PageSize" />
                         <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
-                        <button type="submit" class="pm-btn-primary" style="background: #15803d;">Manager Approve (Duyệt nhập kho)</button>
+                        <button type="submit" class="wh-dialog-button wh-dialog-button--primary">Manager Approve (Duyệt nhập kho)</button>
                     </form>
                 }
             </div>
@@ -1002,7 +1040,7 @@ else
                 sel.value = receiptId;
             }
             if (sel) {
-                onCiReceiptChange(sel);
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
             }
             openPmModal('createImportModal');
         }
@@ -1044,11 +1082,17 @@ else
                 Number(qty).toLocaleString('vi-VN') + ' kg × ' + Number(price).toLocaleString('vi-VN') + ' VNĐ/kg · ' + supName;
 
             var supSel = document.getElementById('ciSupplierSelect');
-            if (supSel && supId) supSel.value = supId;
+            if (supSel && supId) {
+                supSel.value = supId;
+                supSel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             document.getElementById('ciSupplierHint').innerText = 'Gợi ý từ IR: ' + supName;
 
             var matSel = document.getElementById('ciMaterialSelect');
-            if (matSel && matId) matSel.value = matId;
+            if (matSel && matId) {
+                matSel.value = matId;
+                matSel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             document.getElementById('ciMaterialHint').innerText = 'Gợi ý từ phiếu tổng: ' + matName;
 
             var qtyInput = document.getElementById('ciQuantityInput');

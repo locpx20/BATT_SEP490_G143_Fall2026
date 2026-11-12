@@ -1,0 +1,424 @@
+@page
+@model BATT_PPMS.Pages.Warehouse.ConsumptionModel
+@{
+    ViewData["Title"] = Model.StaffView ? "Nguyên liệu tiêu thụ trong ca làm việc" : "Phiếu tiêu hao nguyên liệu";
+    ViewData["ActivePage"] = "MaterialUsage";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/warehouse-dialogs.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/consumption-slip.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/warehouse-plans.css" asp-append-version="true" />
+    <style>
+        #consumptionEntry .consumption-entry-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+
+        .warehouse-table-records {
+            padding: 0 !important;
+        }
+        .warehouse-plans-table td {
+            vertical-align: middle !important;
+            font-size: 16.5px;
+        }
+        .badge-warning-subtle {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            font-size: 12px !important;
+            padding: 3px 8px !important;
+            margin-top: 2px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            border-radius: 4px;
+            white-space: nowrap !important;
+        }
+        .badge-pending, .badge-approved, .badge-rejected, .badge-inactive {
+            font-size: 13px !important;
+            padding: 5px 12px !important;
+            border-radius: 6px !important;
+            white-space: nowrap !important;
+            display: inline-flex !important;
+            align-items: center !important;
+        }
+        .btn-wh-action {
+            border-radius: 7px;
+            font-size: 13.5px !important;
+            font-weight: 600;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            line-height: 1.3 !important;
+            text-decoration: none;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+        .btn-wh-receive {
+            background: #193f35;
+            color: #fffefa;
+            border: 1px solid #193f35;
+            padding: 7px 14px !important;
+            white-space: nowrap !important;
+        }
+        .btn-wh-receive:hover {
+            background: #123329;
+            border-color: #123329;
+            color: #fffefa;
+        }
+        .btn-wh-reject {
+            background: #faf0e9;
+            color: #a55449;
+            border: 1px solid #e4c8bf;
+            padding: 7px 14px !important;
+            white-space: nowrap !important;
+        }
+        .btn-wh-reject:hover {
+            background: #f5dfd6;
+            color: #883f36;
+            border-color: #d8b2a5;
+        }
+        .btn-wh-detail {
+            background: #eef2e9;
+            color: #2f6153;
+            border: 1px solid #c7d8cc;
+            width: 36px !important;
+            height: 34px !important;
+            min-width: 36px !important;
+            justify-content: center !important;
+            font-size: 16px !important;
+            padding: 0 !important;
+            white-space: nowrap !important;
+        }
+        .btn-wh-detail:hover {
+            background: #e1ebe2;
+            color: #254e43;
+            border-color: #a6beb2;
+        }
+    </style>
+}
+
+<div class="closeout">
+    <header class="closeout-header">
+        <div>
+            <h1><i class="bi bi-box-arrow-up" aria-hidden="true"></i> @ViewData["Title"]</h1>
+        </div>
+    </header>
+
+    @if (Model.StaffView) {
+        var selectedDay = Model.EditId > 0 ? Model.Assignments.FirstOrDefault()?.AssignmentDate ?? Model.Today : Model.Today;
+        var workDates = Model.Assignments.Select(a => a.AssignmentDate).Append(selectedDay).Distinct().OrderBy(d => d).ToList();
+        var canChooseDate = workDates.Count > 1;
+        var hasAvailableShift = Model.Assignments.Any(a => a.AssignmentDate == selectedDay);
+        <div class="modal fade closeout-modal" id="consumptionEntry" tabindex="-1" aria-labelledby="consumptionEntryTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="post" asp-page-handler="Save">
+                        <input type="hidden" asp-for="EditId" />
+                        <div class="modal-header">
+                            <h2 id="consumptionEntryTitle" class="modal-title">@(Model.EditId > 0 ? $"Chỉnh sửa phiếu TH-{Model.EditId:D4}" : "Nguyên liệu đã tiêu thụ")</h2>
+                            <button type="button" class="closeout-modal-close" data-bs-dismiss="modal" aria-label="Đóng">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="consumption-entry-fields">
+                                <div class="closeout-field">
+                                    <label for="consumptionEntryDate">Ngày làm việc</label>
+                                    @if (canChooseDate) {
+                                        <select id="consumptionEntryDate">
+                                            @foreach (var date in workDates) {
+                                                <option value="@date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" selected="@(date == selectedDay)">@date.ToString("dd/MM/yyyy")</option>
+                                            }
+                                        </select>
+                                    } else {
+                                        <input id="consumptionEntryDate" type="text" value="@selectedDay.ToString("dd/MM/yyyy")" readonly />
+                                    }
+                                </div>
+                                <div class="closeout-field">
+                                    <label for="AssignmentId">Ca làm việc</label>
+                                    <select asp-for="AssignmentId" required disabled="@(!hasAvailableShift)">
+                                        @if (Model.EditId == 0 || !hasAvailableShift) {
+                                            <option value="">Chọn ca làm việc</option>
+                                        }
+                                        @foreach (var a in Model.Assignments) {
+                                            var otherDay = a.AssignmentDate != selectedDay;
+                                            <option value="@a.AssignmentId" data-date="@a.AssignmentDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" hidden="@otherDay" disabled="@otherDay">@(a.Shift ?? "Chưa ghi nhận ca")</option>
+                                        }
+                                    </select>
+                                    <small id="consumptionEntryNoShift" hidden="@hasAvailableShift">@(Model.EditId > 0 ? "Phân công của phiếu không còn hiệu lực." : "Không có ca chưa báo cáo trong ngày này.")</small>
+                                </div>
+                                <div class="closeout-field">
+                                    <label for="QuantityKg">Tổng nguyên liệu đã sử dụng trong ca (kg)</label>
+                                    <input id="QuantityKg" name="QuantityKg" type="number" value="@(Model.QuantityKg > 0 ? Model.QuantityKg.ToString(System.Globalization.CultureInfo.InvariantCulture) : null)" min="0.01" max="9999999999.99" step="0.01" placeholder="Nhập khối lượng đã sử dụng" required />
+                                </div>
+                                <div class="closeout-field">
+                                    <label for="Note">Ghi chú ca làm việc</label>
+                                    <textarea asp-for="Note" maxlength="5000" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="consumptionEntrySubmit" type="submit" class="closeout-button primary" disabled="@(!hasAvailableShift)">
+                                <i class="bi bi-send" aria-hidden="true"></i> Gửi Thủ kho duyệt
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    <partial name="~/Pages/Warehouse/_ConsumptionReviewPanel.cshtml" model="Model" />
+</div>
+
+<!-- ===== MODAL 1: DUYỆT PHIẾU TIÊU HAO ===== -->
+<div class="modal-overlay warehouse-dialog" id="approveModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="approveModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="approveModalTitle">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i> Duyệt Phiếu Tiêu Hao Nguyên Liệu
+            </h3>
+            <button class="modal-close" aria-label="Đóng" onclick="hideModal('approveModal')" type="button">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form method="post" asp-page-handler="Review">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="reportId" id="approveReportId" />
+            <input type="hidden" name="approve" value="true" />
+            <div class="modal-body">
+                <div class="wh-detail-summary">
+                    <div>
+                        <span class="wh-dialog-label">Mã phiếu</span>
+                        <code id="approveDisplayCode" class="wh-dialog-code"></code>
+                    </div>
+                    <div>
+                        <span class="wh-dialog-label">Người gửi</span>
+                        <div class="wh-dialog-value" id="approveDisplayStaff"></div>
+                    </div>
+                    <div>
+                        <span class="wh-dialog-label">Lượng tiêu hao</span>
+                        <div class="wh-dialog-value" id="approveDisplayQty"></div>
+                    </div>
+                </div>
+                <p class="wh-dialog-message">
+                    Xác nhận đồng ý phiếu tiêu hao này? Hệ thống sẽ ghi nhận và tự động <strong>trừ tồn kho</strong> nguyên liệu tương ứng.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="wh-dialog-button" onclick="hideModal('approveModal')">Hủy bỏ</button>
+                <button type="submit" class="wh-dialog-button wh-dialog-button--primary">
+                    <i class="bi bi-check2"></i> Đồng ý và trừ tồn kho
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MODAL 2: TỪ CHỐI PHIẾU TIÊU HAO ===== -->
+<div class="modal-overlay warehouse-dialog" id="rejectModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="rejectModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title wh-dialog-title--danger" id="rejectModalTitle">
+                <i class="bi bi-x-circle-fill" aria-hidden="true"></i> Từ Chối Phiếu Tiêu Hao
+            </h3>
+            <button class="modal-close" aria-label="Đóng" onclick="hideModal('rejectModal')" type="button">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form method="post" asp-page-handler="Review">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="reportId" id="rejectReportId" />
+            <input type="hidden" name="approve" value="false" />
+            <div class="modal-body">
+                <p class="wh-dialog-message">
+                    Từ chối phiếu <strong id="rejectDisplayCode" style="color: #243d35;"></strong> của nhân viên <strong id="rejectDisplayStaff" style="color: #243d35;"></strong>. Phiếu sẽ được chuyển lại cho nhân viên kèm lý do bên dưới để chỉnh sửa lại.
+                </p>
+                <div>
+                    <label for="rejectReason" class="wh-dialog-label">
+                        Lý do từ chối <span style="color: #a55449;">*</span>
+                    </label>
+                    <textarea name="reason" id="rejectReason" rows="3" maxlength="1000" required class="wh-dialog-input"
+                              placeholder="Nhập lý do cụ thể (sai khối lượng, sai phân công ca, v.v.)..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="wh-dialog-button" onclick="hideModal('rejectModal')">Hủy bỏ</button>
+                <button type="submit" class="wh-dialog-button wh-dialog-button--danger">
+                    <i class="bi bi-x-lg"></i> Gửi lại cho Staff
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MODAL 3: XEM CHI TIẾT PHIẾU TIÊU HAO ===== -->
+<div class="modal-overlay warehouse-dialog" id="detailConsumptionModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="detailConsumptionModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="detailConsumptionModalTitle">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i> Chi Tiết Phiếu Tiêu Hao Nguyên Liệu
+            </h3>
+            <button class="modal-close" aria-label="Đóng" onclick="hideModal('detailConsumptionModal')" type="button">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="wh-detail-summary">
+                <div>
+                    <span class="wh-dialog-label">Mã phiếu</span>
+                    <code id="detailCode" class="wh-dialog-code"></code>
+                </div>
+                <div>
+                    <span class="wh-dialog-label">Trạng thái</span>
+                    <div id="detailStatusBadge"></div>
+                </div>
+            </div>
+
+            <div class="wh-detail-grid">
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Ca · Ngày làm việc</span>
+                    <div class="val" id="detailDateShift"></div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Người gửi báo cáo</span>
+                    <div class="val" id="detailStaff"></div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Người duyệt</span>
+                    <div class="val">
+                        <span id="detailReviewer"></span>
+                        <div class="wh-dialog-caption" id="detailReviewedAt"></div>
+                    </div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Khối lượng tiêu hao</span>
+                    <div class="val" id="detailQty"></div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Nguyên liệu dự kiến</span>
+                    <div class="val" id="detailPlanQty"></div>
+                </div>
+            </div>
+
+            <div id="detailNoteWrap" style="display: none;">
+                <span class="wh-dialog-label">Ghi chú ca làm việc:</span>
+                <div id="detailNote" class="wh-note-block info"></div>
+            </div>
+
+            <div id="detailRejWrap" style="display: none;">
+                <span class="wh-dialog-label">Lý do từ chối:</span>
+                <div id="detailRejReason" class="wh-note-block danger"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="wh-dialog-button" onclick="hideModal('detailConsumptionModal')">Đóng</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @if (Model.StaffView && Model.EditId > 0) {
+        <script>bootstrap.Modal.getOrCreateInstance(document.getElementById("consumptionEntry")).show();</script>
+    }
+    <script>
+        const consumptionEntryDate = document.querySelector('select#consumptionEntryDate');
+        consumptionEntryDate?.addEventListener('change', () => {
+            const shiftSelect = document.getElementById('AssignmentId');
+            const options = [...shiftSelect.options].slice(1);
+            for (const option of options) {
+                const match = option.dataset.date === consumptionEntryDate.value;
+                option.hidden = !match;
+                option.disabled = !match;
+            }
+            const hasShift = options.some(option => !option.disabled);
+            shiftSelect.value = '';
+            shiftSelect.disabled = !hasShift;
+            document.getElementById('consumptionEntryNoShift').hidden = hasShift;
+            document.getElementById('consumptionEntrySubmit').disabled = !hasShift;
+            shiftSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        function showModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('show');
+        }
+        function hideModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('show');
+        }
+        function openApproveModal(id, code, dateShift, staff, qty) {
+            document.getElementById('approveReportId').value = id;
+            document.getElementById('approveDisplayCode').textContent = code;
+            document.getElementById('approveDisplayStaff').textContent = staff;
+            document.getElementById('approveDisplayQty').textContent = qty;
+            showModal('approveModal');
+        }
+        function openRejectModal(id, code, staff) {
+            document.getElementById('rejectReportId').value = id;
+            document.getElementById('rejectDisplayCode').textContent = code;
+            document.getElementById('rejectDisplayStaff').textContent = staff;
+            document.getElementById('rejectReason').value = '';
+            showModal('rejectModal');
+        }
+        function openDetailModal(btn) {
+            const d = btn.dataset;
+            document.getElementById('detailCode').textContent = d.code || '';
+            document.getElementById('detailDateShift').textContent = d.dateShift || '';
+            document.getElementById('detailStaff').textContent = d.staff || '';
+            document.getElementById('detailQty').textContent = d.qty || '';
+            document.getElementById('detailPlanQty').textContent = d.planQty || 'Chưa cập nhật';
+            document.getElementById('detailReviewer').textContent = d.reviewer || 'Chưa ghi nhận';
+            document.getElementById('detailReviewedAt').textContent = d.reviewedAt ? ('(' + d.reviewedAt + ')') : '';
+
+            const badgeEl = document.getElementById('detailStatusBadge');
+            const st = d.status || '';
+            if (st === 'Pending') {
+                badgeEl.className = 'badge badge-pending';
+                badgeEl.innerHTML = '<i class="bi bi-clock-fill" style="font-size: 8px; margin-right: 4px;"></i> Chờ duyệt';
+            } else if (st === 'Approved') {
+                badgeEl.className = 'badge badge-approved';
+                badgeEl.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size: 8px; margin-right: 4px;"></i> Đã trừ tồn';
+            } else if (st === 'Rejected') {
+                badgeEl.className = 'badge badge-rejected';
+                badgeEl.innerHTML = '<i class="bi bi-x-circle-fill" style="font-size: 8px; margin-right: 4px;"></i> Cần chỉnh sửa';
+            } else {
+                badgeEl.className = 'badge badge-inactive';
+                badgeEl.textContent = d.statusLabel || st;
+            }
+
+            const noteWrap = document.getElementById('detailNoteWrap');
+            if (d.note && d.note.trim() !== '') {
+                document.getElementById('detailNote').textContent = d.note;
+                noteWrap.style.display = 'block';
+            } else {
+                noteWrap.style.display = 'none';
+            }
+
+            const rejWrap = document.getElementById('detailRejWrap');
+            if (d.rejReason && d.rejReason.trim() !== '') {
+                document.getElementById('detailRejReason').textContent = d.rejReason;
+                rejWrap.style.display = 'block';
+            } else {
+                rejWrap.style.display = 'none';
+            }
+
+            showModal('detailConsumptionModal');
+        }
+
+        // Close on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('show');
+                }
+            });
+        });
+        // Close on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
+            }
+        });
+    </script>
+}

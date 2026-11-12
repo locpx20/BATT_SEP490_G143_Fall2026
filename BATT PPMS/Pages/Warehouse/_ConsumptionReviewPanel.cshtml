@@ -1,0 +1,208 @@
+@model BATT_PPMS.Pages.Warehouse.ConsumptionModel
+
+<partial name="_CloseoutNotifications" model="Model.Notices" />
+@if (Model.ErrorMessage != null) {
+    <div class="closeout-message error" role="alert">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right: 6px;"></i> @Model.ErrorMessage
+    </div>
+}
+@if (Model.SuccessMessage != null) {
+    <div class="closeout-message success" role="status">
+        <i class="bi bi-check-circle-fill" style="margin-right: 6px;"></i> @Model.SuccessMessage
+    </div>
+}
+
+<section class="closeout-register warehouse-plans usage-register">
+    <div class="closeout-section-head usage-register-head--staff">
+        <form method="get" class="closeout-filter" style="margin-left: 0;">
+            <div class="usage-filter-field">
+                <label class="plan-filter-label" for="consumptionDate">Ngày làm việc</label>
+                <input id="consumptionDate" type="date" name="DateFilter" value="@Model.DateFilterInput" />
+            </div>
+            <div class="usage-filter-field">
+                <label for="consumptionStatus">Trạng thái</label>
+                <select id="consumptionStatus" name="@Model.FilterParameter" onchange="this.form.requestSubmit()" style="min-width: 180px;">
+                    <option value="All" selected="@(Model.StatusFilter == "All")">Tất cả trạng thái</option>
+                    @foreach (var state in new[] { "Pending", "Rejected", "Approved" }) {
+                        <option value="@state" selected="@(state == Model.StatusFilter)">@(state == "Pending" ? "Chờ Thủ kho duyệt" : state == "Approved" ? "Đã trừ tồn" : "Cần chỉnh sửa")</option>
+                    }
+                </select>
+            </div>
+            <button class="closeout-button secondary" type="submit">Tìm kiếm</button>
+            @if (Model.StatusFilter != "All" || Model.DateFilter.HasValue || !string.IsNullOrWhiteSpace(Model.ShiftFilter)) {
+                <a class="plan-shift-link" href="/Warehouse/Consumption" style="padding: 10px 16px; border: 1px solid var(--plan-rule); border-radius: 8px;">Đặt lại</a>
+            }
+        </form>
+        @if (Model.StaffView) {
+            <button type="button" class="closeout-button primary" data-bs-toggle="modal" data-bs-target="#consumptionEntry">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Nhập nguyên liệu đã tiêu thụ
+            </button>
+        }
+    </div>
+
+    <div class="closeout-records warehouse-table-records">
+        <!-- SHIFT & DATE NAVIGATION FOR CONSUMPTION -->
+        <nav class="warehouse-plan-shifts" aria-label="Chọn ca làm việc" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px;">
+            <div style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                @{ var allActive = string.IsNullOrWhiteSpace(Model.ShiftFilter); }
+                <a class="plan-shift-link @(allActive ? "active" : "")" asp-page="/Warehouse/Consumption" asp-route-DateFilter="@Model.NavigationDateInput" asp-route-StatusFilter="@Model.StatusFilter" aria-current="@(allActive ? "page" : null)">
+                    Tất cả ca
+                </a>
+                @foreach (var shift in Model.ConsumptionShifts) {
+                    var active = string.Equals(Model.ShiftFilter, shift, StringComparison.OrdinalIgnoreCase);
+                    <a class="plan-shift-link @(active ? "active" : "")" asp-page="/Warehouse/Consumption" asp-route-DateFilter="@Model.NavigationDateInput" asp-route-StatusFilter="@Model.StatusFilter" asp-route-ShiftFilter="@shift" aria-current="@(active ? "page" : null)">
+                        <i class="bi bi-clock" aria-hidden="true"></i> @shift
+                    </a>
+                }
+            </div>
+            <span class="plan-group-date" style="margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: #243d35;">
+                <i class="bi bi-calendar3" aria-hidden="true" style="color: #52675d;"></i> Ngày @Model.SelectedDate.ToString("dd/MM/yyyy")
+            </span>
+        </nav>
+
+        <section class="warehouse-plan-group" aria-label="Bảng phiếu tiêu hao nguyên liệu">
+            <div class="warehouse-plans-scroll" role="region" aria-label="Bảng phiếu tiêu hao nguyên liệu" tabindex="0">
+                <table class="warehouse-plans-table" aria-label="Bảng phiếu tiêu hao nguyên liệu" style="min-width: 1180px;">
+                    <colgroup>
+                        <col style="width: 12%;" />
+                        <col style="width: 25%;" />
+                        <col style="width: 16%;" />
+                        <col style="width: 16%;" />
+                        <col style="width: 13%;" />
+                        <col style="width: 18%;" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col">Mã phiếu</th>
+                            <th scope="col">Người gửi</th>
+                            <th scope="col" style="text-align: right;">KL Tiêu hao</th>
+                            <th scope="col" style="text-align: right;">Nguyên liệu dự kiến</th>
+                            <th scope="col" style="text-align: center;">Trạng thái</th>
+                            <th scope="col" style="text-align: center;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Reviews.Count == 0) {
+                            <tr>
+                                <td colspan="6" class="plan-empty" style="padding: 50px 20px; text-align: center;">
+                                    <i class="bi bi-inbox" style="font-size: 32px; display: block; margin-bottom: 8px; color: #96a298;" aria-hidden="true"></i>
+                                    <div style="font-size: 16px; font-weight: 700; color: #243d35;">Chưa có phiếu tiêu hao nguyên liệu</div>
+                                    <div style="font-size: 14px; color: #7a887f; margin-top: 4px;">Phiếu đã gửi sẽ xuất hiện tại đây.</div>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var review in Model.Reviews) {
+                            var shift = review.Report.Assignment?.Shift;
+                            var shiftPlan = shift == null ? null : Model.ShiftPlans.GetValueOrDefault((review.Report.ShiftDate, shift));
+                            var plannedMaterialKg = shiftPlan?.ExpectedMaterialKg
+                                ?? Model.DailyPlans.GetValueOrDefault(review.Report.ShiftDate)?.ExpectedKg;
+                            var hasMaterialPlan = plannedMaterialKg is > 0;
+                            var plannedScope = shiftPlan == null ? "Cả ngày" : "Theo ca";
+                            var totalKg = Model.Usage.Where(x => x.ReportId == review.ReportId).Sum(x => x.Quantity);
+                            var isPending = review.Status == "Pending";
+                            var isApproved = review.Status == "Approved";
+                            var isRejected = review.Status == "Rejected";
+                            <tr>
+                                <!-- Mã phiếu -->
+                                <td class="plan-index" style="font-family: monospace; font-weight: 700; font-size: 15.5px;">
+                                    TH-@review.ReportId.ToString("D4")
+                                </td>
+
+                                <!-- Người gửi -->
+                                <td>
+                                    <div class="plan-person" style="font-size: 16px;">@(review.Report.Staff?.FullName ?? "Tài khoản đã xóa")</div>
+                                </td>
+
+                                <!-- Khối lượng tiêu hao -->
+                                <td style="text-align: right;">
+                                    <div style="font-weight: 700; color: #193f35; font-size: 17px;">@totalKg.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("vi-VN")) kg</div>
+                                </td>
+
+                                <td style="text-align: right;">
+                                    @if (plannedMaterialKg is > 0) {
+                                        <div style="font-weight: 600; color: #243d35; font-size: 16.5px;">@plannedMaterialKg.Value.ToString("N2") kg</div>
+                                        <small>@plannedScope</small>
+                                    } else {
+                                        <div><span style="color: #96a298; font-style: italic; font-size: 13.5px;">Chưa cập nhật</span></div>
+                                        @if (isPending) {
+                                            <span class="badge-warning-subtle" title="Manager cần nhập nguyên liệu dự kiến trước khi duyệt">
+                                                <i class="bi bi-exclamation-triangle"></i> Cần KH ngày
+                                            </span>
+                                        }
+                                    }
+                                </td>
+
+                                <!-- Trạng thái -->
+                                <td style="text-align: center; white-space: nowrap;">
+                                    @if (isPending) {
+                                        <span class="badge badge-pending">
+                                            <i class="bi bi-clock-fill" style="font-size: 8px; margin-right: 4px;"></i> Chờ duyệt
+                                        </span>
+                                    } else if (isApproved) {
+                                        <span class="badge badge-approved">
+                                            <i class="bi bi-check-circle-fill" style="font-size: 8px; margin-right: 4px;"></i> Đã trừ tồn
+                                        </span>
+                                    } else if (isRejected) {
+                                        <span class="badge badge-rejected">
+                                            <i class="bi bi-x-circle-fill" style="font-size: 8px; margin-right: 4px;"></i> Cần chỉnh sửa
+                                        </span>
+                                    } else {
+                                        <span class="badge badge-inactive">@review.Status</span>
+                                    }
+                                </td>
+
+                                <!-- Thao tác -->
+                                <td style="text-align: center; white-space: nowrap;">
+                                    <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap;">
+                                        @if (Model.CanReview && isPending) {
+                                            @if (hasMaterialPlan) {
+                                                <button type="button" class="btn-wh-action btn-wh-receive"
+                                                        onclick="openApproveModal(@review.ReportId, 'TH-@review.ReportId.ToString("D4")', '@shift · Ngày @review.Report.ShiftDate.ToString("dd/MM/yyyy")', '@(review.Report.Staff?.FullName ?? "Staff")', '@totalKg.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("vi-VN")) kg')"
+                                                        title="Duyệt tiêu hao và trừ tồn kho">
+                                                    <i class="bi bi-check-lg"></i> Duyệt
+                                                </button>
+                                            } else {
+                                                <button type="button" class="btn-wh-action btn-wh-receive" disabled
+                                                        style="opacity: 0.5; cursor: not-allowed;"
+                                                        title="Quản lý chưa nhập nguyên liệu dự kiến">
+                                                    <i class="bi bi-check-lg"></i> Duyệt
+                                                </button>
+                                            }
+                                            <button type="button" class="btn-wh-action btn-wh-reject"
+                                                    onclick="openRejectModal(@review.ReportId, 'TH-@review.ReportId.ToString("D4")', '@(review.Report.Staff?.FullName ?? "Staff")')"
+                                                    title="Từ chối phiếu tiêu hao">
+                                                <i class="bi bi-x-lg"></i> Từ chối
+                                            </button>
+                                        }
+                                        @if (Model.StaffView && review.Status is "Pending" or "Rejected") {
+                                            <a class="btn-wh-action btn-wh-receive" asp-route-EditId="@review.ReportId" title="Sửa và gửi lại">
+                                                <i class="bi bi-pencil-square"></i> Sửa
+                                            </a>
+                                        }
+                                        <button type="button" class="btn-wh-action btn-wh-detail"
+                                                data-code="TH-@review.ReportId.ToString("D4")"
+                                                data-status="@review.Status"
+                                                data-status-label="@(isPending ? "Chờ duyệt" : isApproved ? "Đã trừ tồn" : "Cần chỉnh sửa")"
+                                                data-date-shift="@shift · Ngày @review.Report.ShiftDate.ToString("dd/MM/yyyy")"
+                                                data-staff="@(review.Report.Staff?.FullName ?? "Tài khoản đã xóa")"
+                                                data-qty="@totalKg.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("vi-VN")) kg"
+                                                data-plan-qty="@(plannedMaterialKg is > 0 ? $"{plannedMaterialKg.Value:N2} kg ({plannedScope.ToLowerInvariant()})" : "Chưa cập nhật")"
+                                                data-reviewer="@(review.Reviewer?.FullName ?? "")"
+                                                data-reviewed-at="@(review.ReviewedAt?.ToString("HH:mm dd/MM/yyyy") ?? "")"
+                                                data-note="@review.Report.Note"
+                                                data-rej-reason="@review.RejectionReason"
+                                                onclick="openDetailModal(this)"
+                                                title="Xem chi tiết phiếu tiêu hao">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+    <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination,Model.PaginationTarget,Model.PaginationFilters,Model.PageParameter)' />
+</section>

@@ -164,10 +164,10 @@ namespace BATT_PPMS.Pages.Inventory
             if (IsWarehouseStaff && Request.Query.ContainsKey("UsageStatusFilter"))
                 return RedirectToPage("/Warehouse/Consumption", new { StatusFilter = Request.Query["UsageStatusFilter"].ToString(), pageNumber = Request.Query["usagePageNumber"].ToString() });
             if (Tab != "finished") Tab = "raw";
-            var page = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
 
             if (Tab == "finished")
             {
+                var page = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
                 var query = _context.FinishedGoodBatches
                     .AsNoTracking()
                     .Include(x => x.CreatedByNavigation)
@@ -191,15 +191,9 @@ namespace BATT_PPMS.Pages.Inventory
             if (PageSize <= 0) PageSize = 10;
             if (CurrentPage <= 0) CurrentPage = 1;
 
-            var matQuery = _context.RawMaterials.AsNoTracking();
-            if (!string.IsNullOrWhiteSpace(SearchTerm))
-                matQuery = matQuery.Where(x => x.MaterialName.Contains(SearchTerm.Trim()));
-            Pagination = new(await matQuery.CountAsync(), page);
-            Materials = await matQuery
+            Materials = await _context.RawMaterials.AsNoTracking()
                 .OrderBy(x => x.MaterialName)
                 .ThenBy(x => x.MaterialId)
-                .Skip(Pagination.Offset)
-                .Take(PageWindow.Size)
                 .ToListAsync();
 
             await LoadDataAsync();

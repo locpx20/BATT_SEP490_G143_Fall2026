@@ -82,7 +82,9 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
                 }
                 var query = db.PersonnelAssignments.AsNoTracking().Include(x => x.Staff).Include(x => x.AssignedByNavigation).Where(x => x.AssignmentDate == PlanDate);
                 if (IsWarehouseStaff) {
-                    PlanShifts = await query.Select(x => x.Shift).Distinct().OrderBy(x => x).ToListAsync();
+                    PlanShifts = (await query.Select(x => x.Shift).Distinct().ToListAsync())
+                        .Union(ShiftPlans.Values.Where(p => p.IsDayOff).Select(p => (string?)p.Shift))
+                        .OrderBy(shift => shift).ToList();
                     if (AllPlanShifts) {
                         Plans = await query.OrderBy(x => x.Shift).ThenBy(x => x.AssignmentId).ToListAsync();
                     } else if (PlanShifts.Count > 0) {

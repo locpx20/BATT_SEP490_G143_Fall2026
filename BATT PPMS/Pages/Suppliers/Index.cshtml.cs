@@ -17,6 +17,7 @@ namespace BATT_PPMS.Pages.Suppliers
         public string? Address { get; set; }
         public string Status { get; set; } = "Active";
         public int TotalPurchasesCount { get; set; }
+        public int ReceivedPurchaseCount { get; set; }
         public decimal TotalPurchasesKg { get; set; }
         public decimal TotalPaidVnd { get; set; }
         public List<SupplierPurchaseItemViewModel> RecentPurchases { get; set; } = new();
@@ -56,6 +57,13 @@ namespace BATT_PPMS.Pages.Suppliers
         public decimal TotalAmount { get; set; }
         public string Status { get; set; } = "";
     }
+
+    public sealed record PartnerDetailsViewModel(
+        string Code, string Name, string? ContactPerson, string? Phone, string? Address, string? Status,
+        int? ReceivedPurchaseCount, IReadOnlyList<PartnerTransactionViewModel> Transactions);
+
+    public sealed record PartnerTransactionViewModel(
+        string Code, DateTime Date, decimal Quantity, decimal Value, string Status, decimal? UnitPrice = null);
 
     public class IndexModel : BasePageModel
     {
@@ -109,6 +117,78 @@ namespace BATT_PPMS.Pages.Suppliers
             }
             return Page();
         }
+
+        public async Task<IActionResult> OnGetDetailsAsync(int id, string? tab, CancellationToken cancellationToken)
+        {
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            if (check != null) return check;
+
+            var details = tab switch
+            {
+                "suppliers" => await LoadSupplierDetailsAsync(id, cancellationToken),
+                "customers" => await LoadCustomerDetailsAsync(id, cancellationToken),
+                _ => null
+            };
+            return details == null ? NotFound() : Partial("_PartnerDetails", details);
+        }
+
+        private IQueryable<PurchaseReceipt> ReceivedPurchases =>
+            _context.PurchaseReceipts.AsNoTracking().Where(receipt => receipt.Status == "Received");
+
+        private async Task<PartnerDetailsViewModel?> LoadSupplierDetailsAsync(int id, CancellationToken cancellationToken)
+        {
+            var supplier = await _context.Suppliers.AsNoTracking().Where(s => s.SupplierId == id)
+                .Select(s => new { s.SupplierName, s.ContactPerson, s.Phone, s.Address, s.Status })
+                .SingleOrDefaultAsync(cancellationToken);
+            if (supplier == null) return null;
+
+            var receivedCount = await ReceivedPurchases.CountAsync(r => r.SupplierId == id, cancellationToken);
+            var receipts = await _context.PurchaseReceipts.AsNoTracking().Where(r => r.SupplierId == id)
+                .OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.ReceiptId).Take(PageWindow.Size)
+                .Select(r => new { r.ReceiptCode, r.CreatedAt, r.WeighedQuantity, r.ActualPrice, r.Status })
+                .ToListAsync(cancellationToken);
+            var invoicePlans = await _context.PurchaseInvoices.AsNoTracking()
+                .Where(p => p.SupplierId == id && !p.PurchaseReceipts.Any())
+                .OrderByDescending(p => p.PurchaseDate).ThenByDescending(p => p.InvoiceId).Take(PageWindow.Size)
+                .Select(p => new
+                {
+                    p.InvoiceId, p.InvoiceCode, p.PurchaseDate, p.TotalAmount, p.Status,
+                    Quantity = p.PurchaseInvoiceDetails.Sum(d => (decimal)d.Quantity)
+                }).ToListAsync(cancellationToken);
+            var transactions = receipts.Select(r => new PartnerTransactionViewModel(r.ReceiptCode, r.CreatedAt,
+                    r.WeighedQuantity, r.WeighedQuantity * r.ActualPrice, PurchaseInvoices.DetailModel.ReceiptStatus(r.Status).Text))
+                .Concat(invoicePlans.Select(p => new PartnerTransactionViewModel(
+                    PurchaseInvoices.IndexModel.FormatInvoiceBadgeCode(p.InvoiceCode, p.InvoiceId), p.PurchaseDate,
+                    p.Quantity, p.TotalAmount, PurchasePlanStatusLabel(p.Status))))
+                .OrderByDescending(row => row.Date).Take(PageWindow.Size).ToList();
+
+            return new($"NCC-{id:D2}", supplier.SupplierName, supplier.ContactPerson, supplier.Phone, supplier.Address,
+                supplier.Status, receivedCount, transactions);
+        }
+
+        private async Task<PartnerDetailsViewModel?> LoadCustomerDetailsAsync(int id, CancellationToken cancellationToken)
+        {
+            var customer = await _context.Customers.AsNoTracking().Where(c => c.CustomerId == id)
+                .Select(c => new { c.CustomerName, c.ContactPerson, c.Phone, c.Address, c.Status })
+                .SingleOrDefaultAsync(cancellationToken);
+            if (customer == null) return null;
+
+            var orders = await _context.Orders.AsNoTracking().Where(o => o.CustomerId == id)
+                .OrderByDescending(o => o.OrderDate).ThenByDescending(o => o.OrderId).Take(PageWindow.Size)
+                .Select(o => new { o.OrderCode, o.OrderDate, o.Quantity, o.UnitPrice, o.TotalAmount, o.Status })
+                .ToListAsync(cancellationToken);
+            return new($"KH-{id:D2}", customer.CustomerName, customer.ContactPerson, customer.Phone, customer.Address,
+                customer.Status, null, orders.Select(o => new PartnerTransactionViewModel(o.OrderCode, o.OrderDate,
+                    o.Quantity, o.TotalAmount, CustomerOrderStatusLabel(o.Status), o.UnitPrice)).ToList());
+        }
+
+        private static string PurchasePlanStatusLabel(string? status) => status == StatusConstants.Cancelled
+            ? "Đã hủy"
+            : PurchaseInvoices.IndexModel.MapStatus(status).DisplayName.Replace("Owner", "Chủ doanh nghiệp");
+
+        private static string CustomerOrderStatusLabel(string? status) => status != null && Orders.OrderWorkflow.AllStatuses.Contains(status)
+            ? Orders.OrderWorkflow.Label(status)
+            : "Chưa xác định";
 
         // ==========================================
         // VALIDATION
@@ -186,19 +266,23 @@ namespace BATT_PPMS.Pages.Suppliers
                 return RedirectToPage(new { Tab = "suppliers" });
             }
 
-            var supUpdErr = ValidatePartner("Nhà cung cấp", SupplierName, ContactPerson, Phone, Email, Address, Status);
-            if (supUpdErr == null && await _context.Suppliers.AnyAsync(s => s.SupplierId != SupplierId && s.SupplierName.ToLower() == SupplierName.Trim().ToLower()))
-                supUpdErr = $"Nhà cung cấp '{SupplierName.Trim()}' đã tồn tại.";
+            var supplierName = SupplierName.Trim();
+            var nameChanged = !string.Equals(supplier.SupplierName.Trim(), supplierName, StringComparison.OrdinalIgnoreCase);
+            var supUpdErr = ValidatePartner("Nhà cung cấp", supplierName, ContactPerson, Phone, Email, Address, Status);
+            if (supUpdErr == null && nameChanged && await _context.Suppliers.AnyAsync(s =>
+                s.SupplierId != SupplierId && s.SupplierName.ToLower() == supplierName.ToLower()))
+                supUpdErr = $"Nhà cung cấp '{supplierName}' đã tồn tại.";
             if (supUpdErr != null)
             {
                 ErrorMessage = supUpdErr;
                 return RedirectToPage(new { Tab = "suppliers" });
             }
 
-            supplier.SupplierName = SupplierName.Trim();
+            supplier.SupplierName = supplierName;
             supplier.ContactPerson = InputValidator.Clean(ContactPerson);
             supplier.Phone = InputValidator.Clean(Phone);
-            supplier.Email = InputValidator.Clean(Email);
+            if (Email != null || (Request.HasFormContentType && Request.Form.ContainsKey(nameof(Email))))
+                supplier.Email = InputValidator.Clean(Email);
             supplier.Address = InputValidator.Clean(Address);
             if (!string.IsNullOrWhiteSpace(Status))
                 supplier.Status = Status;
@@ -293,19 +377,23 @@ namespace BATT_PPMS.Pages.Suppliers
                 return RedirectToPage(new { Tab = "customers" });
             }
 
-            var cusUpdErr = ValidatePartner("Khách hàng", CustomerName, ContactPerson, Phone, Email, Address, Status);
-            if (cusUpdErr == null && await _context.Customers.AnyAsync(c => c.CustomerId != CustomerId && c.CustomerName.ToLower() == CustomerName.Trim().ToLower()))
-                cusUpdErr = $"Khách hàng '{CustomerName.Trim()}' đã tồn tại.";
+            var customerName = CustomerName.Trim();
+            var nameChanged = !string.Equals(customer.CustomerName.Trim(), customerName, StringComparison.OrdinalIgnoreCase);
+            var cusUpdErr = ValidatePartner("Khách hàng", customerName, ContactPerson, Phone, Email, Address, Status);
+            if (cusUpdErr == null && nameChanged && await _context.Customers.AnyAsync(c =>
+                c.CustomerId != CustomerId && c.CustomerName.ToLower() == customerName.ToLower()))
+                cusUpdErr = $"Khách hàng '{customerName}' đã tồn tại.";
             if (cusUpdErr != null)
             {
                 ErrorMessage = cusUpdErr;
                 return RedirectToPage(new { Tab = "customers" });
             }
 
-            customer.CustomerName = CustomerName.Trim();
+            customer.CustomerName = customerName;
             customer.ContactPerson = InputValidator.Clean(ContactPerson);
             customer.Phone = InputValidator.Clean(Phone);
-            customer.Email = InputValidator.Clean(Email);
+            if (Email != null || (Request.HasFormContentType && Request.Form.ContainsKey(nameof(Email))))
+                customer.Email = InputValidator.Clean(Email);
             customer.Address = InputValidator.Clean(Address);
             if (!string.IsNullOrWhiteSpace(Status))
                 customer.Status = Status;
@@ -362,6 +450,14 @@ namespace BATT_PPMS.Pages.Suppliers
             if (UseWorkspaceView && StatusFilter is "Active" or "Inactive")
                 supQuery = supQuery.Where(s => s.Status == StatusFilter);
             var rawSuppliers = await supQuery.OrderBy(s => s.SupplierId).ToListAsync();
+            var receivedPurchaseCounts = new Dictionary<int, int>();
+            if (Tab != "customers" && rawSuppliers.Count > 0)
+            {
+                var supplierIds = rawSuppliers.Select(s => s.SupplierId).ToArray();
+                receivedPurchaseCounts = await ReceivedPurchases.Where(r => supplierIds.Contains(r.SupplierId))
+                    .GroupBy(r => r.SupplierId).Select(group => new { SupplierId = group.Key, Count = group.Count() })
+                    .ToDictionaryAsync(row => row.SupplierId, row => row.Count, HttpContext.RequestAborted);
+            }
             Suppliers = rawSuppliers.Select(s => {
                 var invoices = s.PurchaseInvoices.ToList();
                 var totalPaid = invoices.Sum(i => i.TotalAmount);
@@ -377,6 +473,7 @@ namespace BATT_PPMS.Pages.Suppliers
                     Address = s.Address ?? "—",
                     Status = s.Status ?? StatusConstants.Active,
                     TotalPurchasesCount = invoices.Count,
+                    ReceivedPurchaseCount = receivedPurchaseCounts.GetValueOrDefault(s.SupplierId),
                     TotalPurchasesKg = totalKg,
                     TotalPaidVnd = totalPaid,
                     RecentPurchases = invoices.OrderByDescending(i => i.PurchaseDate).Take(10).Select(i => new SupplierPurchaseItemViewModel
@@ -385,7 +482,7 @@ namespace BATT_PPMS.Pages.Suppliers
                         Date = i.PurchaseDate,
                         Quantity = i.PurchaseInvoiceDetails.Sum(d => (decimal)d.Quantity),
                         TotalAmount = i.TotalAmount,
-                        Status = i.Status ?? ""
+                        Status = PurchasePlanStatusLabel(i.Status)
                     }).ToList()
                 };
             }).ToList();
@@ -436,7 +533,7 @@ namespace BATT_PPMS.Pages.Suppliers
                         Quantity = o.Quantity,
                         UnitPrice = o.UnitPrice,
                         TotalAmount = o.TotalAmount,
-                        Status = o.Status ?? ""
+                        Status = CustomerOrderStatusLabel(o.Status)
                     }).ToList()
                 };
             }).ToList();

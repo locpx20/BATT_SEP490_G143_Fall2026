@@ -1,0 +1,65 @@
+@model BATT_PPMS.Pages.Suppliers.PartnerDetailsViewModel
+@using BATT_PPMS.Helpers
+@using System.Globalization
+@{
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    var isSupplier = Model.ReceivedPurchaseCount.HasValue;
+    var isActive = (Model.Status ?? StatusConstants.Active) == StatusConstants.Active;
+    string OrBlank(string? value) => string.IsNullOrWhiteSpace(value) ? "Chưa cập nhật" : value;
+}
+<div class="partner-details-heading">
+    <div>
+        <span class="owner-partner-code">@Model.Code</span>
+        <h3>@Model.Name</h3>
+    </div>
+    <span class="owner-partner-status @(isActive ? "is-active" : "is-inactive")">@(isActive ? "Đang hợp tác" : "Ngừng hợp tác")</span>
+</div>
+
+<dl class="partner-details-fields">
+    <div><dt>Người liên hệ</dt><dd>@OrBlank(Model.ContactPerson)</dd></div>
+    <div><dt>Số điện thoại</dt><dd>@OrBlank(Model.Phone)</dd></div>
+    @if (Model.ReceivedPurchaseCount is { } count)
+    {
+        <div><dt>Số lần mua đã nhập kho</dt><dd>@count lần</dd></div>
+    }
+    <div class="partner-details-address"><dt>Địa chỉ</dt><dd>@OrBlank(Model.Address)</dd></div>
+</dl>
+
+<section aria-labelledby="partnerTransactionTitle">
+    <h3 id="partnerTransactionTitle">@(isSupplier ? "Giao dịch thu mua gần đây" : "Đơn hàng gần đây")</h3>
+    @if (Model.Transactions.Count == 0)
+    {
+        <p class="partner-details-empty">@(isSupplier ? "Chưa có giao dịch thu mua." : "Chưa có đơn hàng.")</p>
+    }
+    else
+    {
+        <div class="owner-table-scroll" role="region" aria-labelledby="partnerTransactionTitle" tabindex="0">
+            <table class="data-table partner-transaction-table">
+                <thead><tr>
+                    <th scope="col">@(isSupplier ? "Mã phiếu" : "Mã đơn hàng")</th>
+                    <th scope="col">Ngày</th>
+                    <th scope="col">Khối lượng</th>
+                    @if (!isSupplier) { <th scope="col">Đơn giá bán</th> }
+                    <th scope="col">Giá trị</th>
+                    <th scope="col">Trạng thái</th>
+                </tr></thead>
+                <tbody>
+                    @foreach (var transaction in Model.Transactions)
+                    {
+                        <tr>
+                            <td><strong>@transaction.Code</strong></td>
+                            <td class="owner-nowrap">@transaction.Date.ToString("dd/MM/yyyy", vi)</td>
+                            <td class="owner-amount">@transaction.Quantity.ToString("N2", vi) kg</td>
+                            @if (!isSupplier)
+                            {
+                                <td class="owner-amount">@(transaction.UnitPrice is { } price ? $"{price.ToString("N0", vi)} VNĐ/kg" : "—")</td>
+                            }
+                            <td class="owner-amount">@transaction.Value.ToString("N0", vi) VNĐ</td>
+                            <td>@transaction.Status</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

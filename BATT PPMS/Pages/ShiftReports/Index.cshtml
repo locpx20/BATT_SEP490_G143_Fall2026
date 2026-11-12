@@ -1,2 +1,160 @@
 @page
 @model BATT_PPMS.Pages.ShiftReports.IndexModel
+@using BATT_PPMS.Helpers
+@using System.Globalization
+@{
+    var listTitle = Model.ShowReceipts ? "Yêu cầu nhập kho thành phẩm" : "Nguyên liệu tiêu thụ";
+    var titleIcon = Model.ShowReceipts ? "bi-box-arrow-in-down" : "bi-box-arrow-up";
+    ViewData["Title"] = listTitle;
+    ViewData["ActivePage"] = "ShiftReport";
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string FormatKg(decimal? kg) => kg is { } value ? $"{value.ToString("N2", vi)} kg" : "—";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/warehouse-plans.css" asp-append-version="true" />
+    <style>
+        .shift-report-monitor .closeout-section-head {
+            padding: 18px 24px;
+            container-type: inline-size;
+        }
+        .shift-report-monitor .report-filters {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) max-content;
+            align-items: end;
+            gap: 12px 16px;
+            width: 100%;
+            max-width: 880px;
+        }
+        .shift-report-monitor .report-filters label { margin-bottom: 6px; }
+        .shift-report-monitor .report-field { min-width: 0; }
+        .shift-report-monitor .report-filters .closeout-button { min-height: 54px; }
+        .shift-report-monitor .warehouse-plans-table { min-width: 880px; table-layout: auto; }
+        .shift-report-monitor .report-number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .shift-report-monitor .report-status { margin-top: 4px; }
+        .shift-report-monitor .report-details { min-width: 130px; max-width: 250px; }
+        .shift-report-monitor .report-details summary { color: var(--primary); font-weight: 600; cursor: pointer; }
+        .shift-report-monitor .report-details p { margin-top: 8px; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .shift-report-monitor .report-details .report-reason { color: var(--danger); }
+        .shift-report-monitor .report-details summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+        @@container (max-width: 720px) {
+            .shift-report-monitor .report-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @@container (max-width: 390px) {
+            .shift-report-monitor .report-filters { grid-template-columns: minmax(0, 1fr); }
+        }
+        @@media (max-width: 600px) {
+            .shift-report-monitor .closeout-section-head { padding: 16px; }
+        }
+    </style>
+}
+
+<div class="closeout shift-report-monitor">
+    <header class="closeout-header">
+        <h1><i class="bi @titleIcon" aria-hidden="true"></i> @listTitle</h1>
+    </header>
+
+    <section class="closeout-register warehouse-plans" aria-label="@listTitle">
+        <div class="closeout-section-head">
+            <form method="get" asp-page="./Index" class="report-filters">
+                <input type="hidden" name="tab" value="@Model.Tab" />
+                <div class="report-field">
+                    <label for="ReportDate">Ngày sản xuất</label>
+                    <input type="date" id="ReportDate" name="ReportDate" value="@Model.DateInput" />
+                </div>
+                <div class="report-field">
+                    <label for="ShiftFilter">Ca sản xuất</label>
+                    <select id="ShiftFilter" name="ShiftFilter">
+                        <option value="">Tất cả ca</option>
+                        @foreach (var shift in Model.Shifts) {
+                            <option value="@shift" selected="@(Model.ShiftFilter == shift)">@shift</option>
+                        }
+                    </select>
+                </div>
+                <div class="report-field">
+                    <label for="StatusFilter">Trạng thái</label>
+                    <select id="StatusFilter" name="StatusFilter">
+                        <option value="">Tất cả trạng thái</option>
+                        @foreach (var (value, label) in Model.Statuses) {
+                            <option value="@value" selected="@(Model.StatusFilter == value)">@label</option>
+                        }
+                    </select>
+                </div>
+                <button class="closeout-button primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
+            </form>
+        </div>
+
+        @if (Model.Reports.Count == 0) {
+            <p class="plan-empty" role="status">Không có phiếu phù hợp.</p>
+        } else {
+            <div class="warehouse-plans-scroll" role="region" aria-label="@listTitle" tabindex="0">
+                <table class="warehouse-plans-table" aria-label="@listTitle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Mã phiếu</th>
+                            <th scope="col">Ngày / Ca</th>
+                            <th scope="col">Người gửi</th>
+                            @if (Model.ShowReceipts) {
+                                <th scope="col">Lô thành phẩm</th>
+                            }
+                            <th scope="col" class="report-number">@(Model.ShowReceipts ? "KL đề nghị" : "KL tiêu hao")</th>
+                            @if (Model.ShowReceipts) {
+                                <th scope="col" class="report-number">KL thực nhập</th>
+                            }
+                            <th scope="col">Trạng thái</th>
+                            <th scope="col">Chi tiết</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var report in Model.Reports) {
+                            var code = Model.ShowReceipts ? $"NK-{report.Id:D4}" : $"TH-{report.Id:D4}";
+                            var statusClass = report.Status switch {
+                                "Approved" or "Received" or "AwaitingStaffConfirmation" => "approved",
+                                "Rejected" => "rejected",
+                                _ => "pending"
+                            };
+                            <tr>
+                                <td><strong class="closeout-code">@code</strong></td>
+                                <td>@report.Date.ToString("dd/MM/yyyy")<small>@(report.Shift ?? "Chưa ghi nhận ca")</small></td>
+                                <td>@(report.Sender ?? "Tài khoản đã xóa")</td>
+                                @if (Model.ShowReceipts) {
+                                    <td title="@report.Lot">@(report.Lot is { } lot ? LotCode.ForListDisplay(lot) : "—")</td>
+                                }
+                                <td class="report-number">@FormatKg(report.Quantity)</td>
+                                @if (Model.ShowReceipts) {
+                                    <td class="report-number">@FormatKg(report.ReceivedQuantity)</td>
+                                }
+                                <td>
+                                    <span class="closeout-status @statusClass">@(Model.Statuses.GetValueOrDefault(report.Status) ?? "Chưa xác định")</span>
+                                    @if (Model.ShowReceipts) {
+                                        <small class="report-status">@(report.ReceivedAt is { } receivedAt ? $"Nhập lúc {receivedAt:HH:mm dd/MM/yyyy}" : "Chưa nhập kho")</small>
+                                    }
+                                </td>
+                                <td class="report-details">
+                                    @if (!string.IsNullOrWhiteSpace(report.RejectionReason) || !string.IsNullOrWhiteSpace(report.Note)) {
+                                        <details>
+                                            <summary>@(!string.IsNullOrWhiteSpace(report.RejectionReason) ? "Lý do từ chối" : "Ghi chú")</summary>
+                                            @if (!string.IsNullOrWhiteSpace(report.RejectionReason)) {
+                                                <p class="report-reason">@report.RejectionReason</p>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(report.Note)) {
+                                                <p>@report.Note</p>
+                                            }
+                                        </details>
+                                    } else {
+                                        <span>—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        @if (Model.Pagination.TotalPages > 1) {
+            var pagination = new AdminPaginationViewModel(Model.Pagination, "/ShiftReports/Index", Model.PaginationFilters);
+            <partial name="_AdminPagination" model="pagination" />
+        }
+    </section>
+</div>

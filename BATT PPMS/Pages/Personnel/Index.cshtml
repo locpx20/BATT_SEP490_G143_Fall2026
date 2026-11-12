@@ -3,7 +3,9 @@
 @using BATT_PPMS.Pages.Personnel
 @using System.Globalization
 @{
-    ViewData["Title"] = Model.IsStaffView ? "Lịch phân công lao động" : Model.Create ? "Tạo phân công lao động" : "Phân công lao động";
+    ViewData["Title"] = Model.IsStaffView ? "Lịch phân công lao động"
+        : Model.IsEditingPlan ? "Chỉnh sửa phân công lao động"
+        : "Phân công lao động";
     ViewData["ActivePage"] = "Personnel";
 }
 
@@ -17,7 +19,7 @@
 }
 
 @section Scripts {
-    @if (Model.Create && Model.CanCreatePlan) {
+    @if (Model.CanCreatePlan) {
         <script src="~/js/production-plan.js" asp-append-version="true"></script>
     }
 }
@@ -38,50 +40,41 @@
 <div class="labor-page">
     <header class="labor-header">
         <div>
-            @if (Model.Create) {
-                <a class="labor-back" asp-page="./Index" asp-route-PlanDate="@Model.PlanDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">
+            @if (Model.IsEditingPlan) {
+                <a class="labor-back" asp-page="./Index" asp-route-PlanDate="@Model.NewPlanDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                   asp-route-ShiftFilter="@Model.EditShift">
                     <i class="bi bi-arrow-left" aria-hidden="true"></i> Lịch phân công
                 </a>
             }
             <h1>@ViewData["Title"]</h1>
         </div>
-        @if (Model.CanCreatePlan && !Model.Create) {
-            <a class="labor-button labor-primary" asp-page="./Index" asp-route-Create="true" asp-route-PlanDate="@Model.DisplayDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo phân công
-            </a>
-        }
     </header>
 
     @if (!string.IsNullOrEmpty(Model.SuccessMessage)) {
         <p class="labor-message" role="status"><i class="bi bi-check-circle" aria-hidden="true"></i> @Model.SuccessMessage</p>
     }
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage)) {
+    @if (!Model.Create && !string.IsNullOrEmpty(Model.ErrorMessage)) {
         <p class="labor-message labor-message-error" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> @Model.ErrorMessage</p>
     }
 
-    @if (Model.Create && Model.CanCreatePlan) {
+    @if (Model.IsEditingPlan && Model.CanCreatePlan) {
         <partial name="_CreateDayPlan" model="Model" />
     } else if (Model.DisplayDate is { } day) {
         var dateValue = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var vi = CultureInfo.GetCultureInfo("vi-VN");
+        var allShifts = string.IsNullOrEmpty(Model.ShiftFilter) || Model.ShiftFilter == "ALL";
         <section class="labor-day" aria-labelledby="labor-day-title">
             <header class="labor-day-head">
                 <div>
-                    <p>Ngày sản xuất</p>
                     <h2 id="labor-day-title"><time datetime="@dateValue">@day.ToString("dd/MM/yyyy")</time></h2>
                     <span>@vi.DateTimeFormat.GetDayName(day.DayOfWeek)@(day == Model.Today ? " (Hôm nay)" : "")</span>
                 </div>
-                <nav class="labor-day-nav" aria-label="Chuyển ngày sản xuất">
-                    @if (day != Model.Today) {
-                        <a class="labor-button" asp-page="./Index">Hôm nay</a>
-                    }
-                    @if (Model.PreviousDate is { } previous) {
-                        <a class="labor-button" asp-page="./Index" asp-route-PlanDate="@previous.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" aria-label="Ngày có phân công trước"><i class="bi bi-chevron-left" aria-hidden="true"></i> Ngày trước</a>
-                    }
-                    @if (Model.NextDate is { } next) {
-                        <a class="labor-button" asp-page="./Index" asp-route-PlanDate="@next.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" aria-label="Ngày có phân công sau">Ngày sau <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
-                    }
-                </nav>
+                @if (Model.CanCreatePlan) {
+                    <button class="labor-button labor-primary labor-create-button" type="button"
+                            aria-haspopup="dialog" aria-controls="labor-create-dialog" data-plan-open>
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo phân công
+                    </button>
+                }
             </header>
             <form method="get" asp-page="./Index" class="labor-filters">
                 <div>
@@ -105,34 +98,35 @@
                         <option value="InProgress">Đang thực hiện</option>
                         <option value="Completed">Hoàn thành</option>
                         <option value="Cancelled">Đã hủy</option>
+                        <option value="Off">Nghỉ</option>
                     </select>
-                </div>
-                <div class="labor-search">
-                    <label asp-for="SearchTerm">Tìm phân công</label>
-                    <input asp-for="SearchTerm" type="search" placeholder="Mã, nhân viên hoặc công đoạn" />
                 </div>
                 <button class="labor-button" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
             </form>
-        </section>
-
-        @if (Model.Plans.Count > 1) {
-            <nav class="labor-shift-index" aria-label="Đến ca sản xuất">
-                @foreach (var plan in Model.Plans) {
-                    <a href="#labor-shift-@plan.PlanId">@(plan.Shift ?? "Chưa ghi nhận ca") <span>@IndexModel.ShiftHours(plan.Shift)</span></a>
+            <nav class="labor-shift-index" aria-label="Chọn ca sản xuất">
+                <a asp-page="./Index" asp-route-PlanDate="@dateValue" asp-route-StatusFilter="@Model.StatusFilter"
+                   asp-route-SearchTerm="@Model.SearchTerm" aria-current="@(allShifts ? "page" : null)">Tất cả ca</a>
+                @foreach (var shift in IndexModel.ProductionShifts) {
+                    <a asp-page="./Index" asp-route-PlanDate="@dateValue" asp-route-ShiftFilter="@shift"
+                       asp-route-StatusFilter="@Model.StatusFilter" asp-route-SearchTerm="@Model.SearchTerm"
+                       aria-current="@(Model.ShiftFilter == shift ? "page" : null)">
+                        @shift <span>@IndexModel.ShiftHours(shift)</span>
+                    </a>
                 }
             </nav>
-        }
+        </section>
 
         @if (Model.Plans.Count == 0) {
             <div class="labor-empty" role="status">
                 <i class="bi bi-calendar-x" aria-hidden="true"></i>
-                <p>@(string.IsNullOrEmpty(Model.ShiftFilter) && string.IsNullOrEmpty(Model.SearchTerm) && string.IsNullOrEmpty(Model.StatusFilter)
+                <p>@(allShifts && string.IsNullOrEmpty(Model.SearchTerm) && string.IsNullOrEmpty(Model.StatusFilter)
                     ? "Chưa có phân công cho ngày này." : "Không có phân công phù hợp với bộ lọc.")</p>
             </div>
         }
         @foreach (var plan in Model.Plans) {
             var projection = plan.Shift == null ? null : Model.ShiftPlans.GetValueOrDefault(plan.Shift);
             var hours = IndexModel.ShiftHours(plan.Shift);
+            var isDayOff = plan.Status == "Off";
             <section id="labor-shift-@plan.PlanId" class="labor-shift" aria-labelledby="labor-shift-title-@plan.PlanId">
                 <header class="labor-shift-head">
                     <div class="labor-shift-name">
@@ -141,8 +135,14 @@
                             @if (hours.Length > 0) { <span><i class="bi bi-clock" aria-hidden="true"></i> @hours</span> }
                         </div>
                         <span class="labor-status" data-status="@plan.Status">@IndexModel.AssignmentStatusLabel(plan.Status)</span>
+                        @if (Model.CanCreatePlan && day == Model.Today && plan.Shift is { } shift
+                            && IndexModel.ProductionShifts.Contains(shift) && plan.Status != "Cancelled") {
+                            <a class="labor-button" asp-page="./Index" asp-route-PlanDate="@dateValue" asp-route-EditShift="@shift"
+                               aria-label="Chỉnh sửa @shift"><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</a>
+                        }
                     </div>
-                    <dl class="labor-estimates">
+                    @if (!isDayOff) {
+                        <dl class="labor-estimates">
                         <div>
                             <dt>Nguyên liệu tiêu thụ dự kiến</dt>
                             <dd>@(projection is null ? "Chưa cập nhật" : projection.ExpectedMaterialKg.ToString("N2", vi) + " kg")</dd>
@@ -151,8 +151,10 @@
                             <dt>Thành phẩm dự kiến</dt>
                             <dd>@(projection is null ? "Chưa cập nhật" : projection.ExpectedFinishedKg.ToString("N2", vi) + " kg")</dd>
                         </div>
-                    </dl>
+                        </dl>
+                    }
                 </header>
+                @if (!isDayOff) {
                 <table class="labor-table" aria-labelledby="labor-shift-title-@plan.PlanId">
                     <thead><tr><th scope="col">Công đoạn</th><th scope="col">Nhân viên</th><th scope="col">Người phân công</th></tr></thead>
                     <tbody>
@@ -168,25 +170,27 @@
                         }
                     </tbody>
                 </table>
-                <footer class="labor-shift-foot">
-                    <span>@string.Join(", ", plan.Codes)</span>
-                    @if (!string.IsNullOrWhiteSpace(projection?.Note)) { <p>@projection.Note</p> }
-                </footer>
+                }
+                @if (!isDayOff || !string.IsNullOrWhiteSpace(projection?.Note)) {
+                    <footer class="labor-shift-foot">
+                        @if (!isDayOff) { <span>@string.Join(", ", plan.Codes)</span> }
+                        @if (!string.IsNullOrWhiteSpace(projection?.Note)) { <p>@projection.Note</p> }
+                    </footer>
+                }
             </section>
         }
 
-        @if (Model.CanCreatePlan && Model.HasLegacyShifts) {
-            <details class="labor-legacy">
-                <summary>Cập nhật dự kiến nguyên liệu cho phân công cũ</summary>
-                <form method="post" asp-page-handler="SaveDailyMaterial" class="labor-legacy-form">
-                    <input asp-for="EstimateDate" type="hidden" />
-                    <div>
-                        <label asp-for="EstimateKg">Nguyên liệu dự kiến ngày @day.ToString("dd/MM/yyyy") (kg)</label>
-                        <input asp-for="EstimateKg" type="number" min="0.01" max="9999999999.99" step="0.01" required />
-                    </div>
-                    <button type="submit" class="labor-button">Lưu dự kiến ngày</button>
-                </form>
-            </details>
+        @if (Model.CanCreatePlan) {
+            <dialog class="labor-create-dialog" id="labor-create-dialog" aria-labelledby="labor-create-title"
+                    data-open-on-load="@(Model.Create ? "true" : "false")">
+                <header class="labor-dialog-head">
+                    <h2 id="labor-create-title"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Tạo phân công lao động</h2>
+                    <button class="labor-dialog-close" type="button" aria-label="Đóng" data-plan-close>
+                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    </button>
+                </header>
+                <partial name="_CreateDayPlan" model="Model" />
+            </dialog>
         }
     }
 </div>

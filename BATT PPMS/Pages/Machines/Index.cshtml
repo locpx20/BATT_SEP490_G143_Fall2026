@@ -623,7 +623,14 @@
                         <!-- Top Row: Code & Status -->
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                             <span class="machine-code-badge">@m.MachineCode</span>
-                            @if (Model.CanChangeStatus)
+                            @if (Model.CanChangeStatus && m.StatusLocked)
+                            {
+                                <span class="status-pill @statusClass" title="Đang có báo cáo sự cố, không thể đổi trạng thái cho tới khi sửa xong">
+                                    <i class="bi bi-lock-fill" style="font-size: 10px;"></i>
+                                    <span>@statusText</span>
+                                </span>
+                            }
+                            else if (Model.CanChangeStatus)
                             {
                                 <form method="post" asp-page-handler="ChangeStatus" style="margin: 0;">
                                     <input type="hidden" name="machineId" value="@m.MachineId" />
@@ -660,6 +667,11 @@
                             <span>Công đoạn: <strong style="color: #243d35;">@m.ProcessName</strong></span>
                         </div>
 
+                        <div class="process-tag">
+                            <i class="bi bi-geo-alt" style="color: #96a298; font-size: 13px;"></i>
+                            <span>Khu vực: <strong style="color: #243d35;">@(string.IsNullOrWhiteSpace(m.Area) ? "Chưa cập nhật" : m.Area)</strong></span>
+                        </div>
+
                         <!-- Info Details -->
                         <div class="info-box">
                             <div>
@@ -689,6 +701,12 @@
                                     <i class="bi bi-wrench"></i> @m.ActiveIncidents sự cố đang xử lý
                                 </span>
                             }
+                            else if (m.StatusLocked)
+                            {
+                                <span style="font-size: 11px; font-weight: 700; color: #a55449; display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="bi bi-lock-fill"></i> Khóa trạng thái – chờ sửa xong
+                                </span>
+                            }
                             else if (m.Status == "Down")
                             {
                                 <span style="font-size: 11px; font-weight: 700; color: #a55449; display: inline-flex; align-items: center; gap: 4px;">
@@ -713,7 +731,7 @@
                         {
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <button type="button" class="btn-edit-action" title="Cập nhật thông tin"
-                                        onclick="openEditMachineModal(@m.MachineId, '@Html.Raw(m.MachineCode)', '@Html.Raw(m.MachineName.Replace("'","\\'"))', '@Html.Raw(m.ProcessName.Replace("'","\\'"))', '@Html.Raw((m.Brand ?? "").Replace("'","\\'"))', '@m.Status')">
+                                        onclick="openEditMachineModal(@m.MachineId, '@Html.Raw(m.MachineCode)', '@Html.Raw(m.MachineName.Replace("'","\\'"))', '@Html.Raw(m.ProcessName.Replace("'","\\'"))', '@Html.Raw((m.Brand ?? "").Replace("'","\\'"))', '@m.Status', '@Html.Raw((m.Area ?? "").Replace("'","\\'"))', @(m.StatusLocked ? "true" : "false"))">
                                     <i class="bi bi-pencil-square"></i> Cập nhật
                                 </button>
 
@@ -821,6 +839,15 @@
                                placeholder="Vd: Máy sàng làm sạch tạp chất và tách kim loại" required />
                     </div>
 
+                    <div class="mform-group">
+                        <label class="mform-label">
+                            Khu vực <span class="req">*</span>
+                            <span class="hint">→ Tự điền khi báo sự cố</span>
+                        </label>
+                        <input type="text" name="NewArea" class="mform-input" maxlength="200"
+                               placeholder="Vd: Xưởng 1 – khu băm nghiền" required autocomplete="off" />
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                         <div class="mform-group">
                             <label class="mform-label">
@@ -901,6 +928,13 @@
                         <input type="text" name="NewMachineName" id="editMachineName" class="mform-input" required />
                     </div>
 
+                    <div class="mform-group">
+                        <label class="mform-label">
+                            Khu vực <span class="req">*</span>
+                        </label>
+                        <input type="text" name="NewArea" id="editMachineArea" class="mform-input" maxlength="200" required autocomplete="off" />
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                         <div class="mform-group">
                             <label class="mform-label">
@@ -917,6 +951,9 @@
                                 <option value="Warning">Cần bảo trì</option>
                                 <option value="Down">Ngừng hoạt động</option>
                             </select>
+                            <div id="editStatusLockNote" style="display: none; font-size: 11px; color: #a55449; margin-top: 4px;">
+                                <i class="bi bi-lock-fill"></i> Có báo cáo sự cố chưa sửa xong – không thể đổi trạng thái.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -948,16 +985,20 @@
         }
     }
 
-    function openEditMachineModal(id, code, name, process, brand, status) {
+    function openEditMachineModal(id, code, name, process, brand, status, area, locked) {
         document.getElementById('editMachineId').value = id;
         document.getElementById('editMachineCode').value = code;
         document.getElementById('editMachineName').value = name;
         document.getElementById('editMachineProcess').value = process;
         document.getElementById('editMachineBrand').value = brand;
+        document.getElementById('editMachineArea').value = area || '';
         const statusSelect = document.getElementById('editMachineStatus');
         if (statusSelect) {
             statusSelect.value = status || 'Active';
+            statusSelect.disabled = !!locked;   // server cũng chặn, đây chỉ là gợi ý giao diện
         }
+        const lockNote = document.getElementById('editStatusLockNote');
+        if (lockNote) lockNote.style.display = locked ? 'block' : 'none';
 
         const sub = document.getElementById('editModalMachineSubtitle');
         if (sub) {

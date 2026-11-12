@@ -258,6 +258,9 @@ public partial class ProductionManagementDbContext : DbContext
             entity.HasIndex(e => e.MachineCode, "UQ__Machine__FDCF4D73A268A568").IsUnique();
 
             entity.Property(e => e.MachineId).HasColumnName("machine_id");
+            entity.Property(e => e.Area)
+                .HasMaxLength(200)
+                .HasColumnName("area");
             entity.Property(e => e.Brand)
                 .HasMaxLength(100)
                 .HasColumnName("brand");

@@ -55,7 +55,7 @@
                 <option value="">-- Chọn máy --</option>
                 @foreach (var m in Model.Machines)
                 {
-                    <option value="@m.MachineId" data-process="@m.ProcessName" data-brand="@m.Brand" selected="@(Model.MachineId == m.MachineId)">
+                    <option value="@m.MachineId" data-process="@m.ProcessName" data-brand="@m.Brand" data-area="@m.Area" data-status="@m.Status" selected="@(Model.MachineId == m.MachineId)">
                         @m.MachineCode – @m.MachineName
                     </option>
                 }
@@ -64,9 +64,9 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Vị trí máy <span style="color: #a55449;">*</span></label>
-            <input type="text" name="Location" value="@Model.Location" maxlength="200" required class="form-control"
-                   placeholder="Ví dụ: Xưởng 1 – khu băm nghiền, cạnh băng tải cấp liệu" style="font-size: 13px; border-radius: 10px;" />
+            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Khu vực máy <span style="font-weight: 500; color: #7a887f;">(tự động theo máy đã chọn)</span></label>
+            <input type="text" id="machineArea" readonly tabindex="-1" class="form-control"
+                   placeholder="Chọn máy để hiển thị khu vực" style="font-size: 13px; border-radius: 10px; background: #f3f4ee;" />
         </div>
 
         <div class="mb-3">
@@ -115,10 +115,13 @@
             var sel = document.getElementById('machineSelect');
             var opt = sel.options[sel.selectedIndex];
             var box = document.getElementById('machineInfo');
-            if (!opt || !opt.value) { box.innerText = ''; return; }
+            var area = document.getElementById('machineArea');
+            if (!opt || !opt.value) { box.innerText = ''; area.value = ''; return; }
+            area.value = opt.getAttribute('data-area') || 'Chưa xác định khu vực';
             var parts = [];
             if (opt.getAttribute('data-process')) parts.push('Công đoạn: ' + opt.getAttribute('data-process'));
             if (opt.getAttribute('data-brand')) parts.push('Hãng: ' + opt.getAttribute('data-brand'));
+            if (opt.getAttribute('data-status') === 'Down') parts.push('Máy đang ngừng hoạt động');
             box.innerText = parts.join('  |  ');
         }
         showMachineInfo();

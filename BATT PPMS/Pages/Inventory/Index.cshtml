@@ -351,6 +351,93 @@
             opacity: 0.5;
             pointer-events: none;
         }
+
+        .pm-overlay {
+            position: fixed; inset: 0;
+            background: rgba(15, 23, 42, .5);
+            backdrop-filter: blur(3px);
+            z-index: 1000;
+            display: none;
+            align-items: center; justify-content: center;
+            padding: 16px;
+            overflow-y: auto;
+        }
+        .pm-overlay.open { display: flex; }
+        .pm-dialog {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            width: 100%; max-width: 560px;
+            max-height: calc(100vh - 32px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, .15), 0 8px 10px -6px rgba(0, 0, 0, .1);
+            margin: auto;
+            overflow: hidden;
+        }
+        .pm-dialog > form {
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 32px);
+            margin: 0;
+        }
+        .pm-dialog.pm-lg { max-width: 660px; }
+        .pm-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 22px; border-bottom: 1px solid #f1f5f9;
+            flex-shrink: 0;
+        }
+        .pm-title { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0; }
+        .pm-close {
+            width: 30px; height: 30px; border: none; background: none; border-radius: 8px;
+            font-size: 18px; color: #64748b; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .pm-close:hover { background: #f1f5f9; }
+        .pm-body {
+            padding: 18px 22px;
+            overflow-y: auto;
+            flex: 1 1 auto;
+        }
+        .pm-foot {
+            display: flex; justify-content: flex-end; gap: 10px;
+            padding: 12px 22px; border-top: 1px solid #f1f5f9;
+            background: #ffffff;
+            flex-shrink: 0;
+        }
+        .pm-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 14px;
+        }
+        .pm-grid > div { min-width: 0; }
+        .pm-grid .pm-full { grid-column: 1 / -1; min-width: 0; }
+        .pm-label { display: block; font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 5px; }
+        .pm-input {
+            width: 100%; height: 40px; padding: 0 12px;
+            border: 1px solid #cbd5e1; border-radius: 8px;
+            font-size: 13.5px; color: #0f172a; background: #ffffff;
+            box-sizing: border-box;
+            max-width: 100%;
+        }
+        textarea.pm-input {
+            height: auto;
+            min-height: 64px;
+            padding: 8px 12px;
+            line-height: 1.45;
+            resize: vertical;
+        }
+        .pm-input:focus { outline: none; border-color: #193f35; box-shadow: 0 0 0 3px rgba(25, 63, 53, .12); }
+        .pm-input[readonly] { background: #f4f2ea; font-weight: 600; cursor: not-allowed; }
+        .pm-hint { font-size: 12px; color: #64748b; margin-top: 4px; display: block; }
+        .pm-btn-cancel {
+            background: #ffffff; border: 1px solid #cbd5e1; color: #475569;
+            border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 500; cursor: pointer;
+        }
+        .pm-btn-primary {
+            background: #193f35; color: #ffffff; border: none;
+            border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+        }
     </style>
 }
 
@@ -414,10 +501,30 @@ else
             </div>
         }
 
+        <!-- Thanh chuyển đổi 2 trang trong Kho nguyên liệu thô -->
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;">
+            <a href="@Url.Page("/Inventory/Index", new { Tab = "raw", ViewMode = "requests", PageSize = Model.PageSize })"
+               style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 600; text-decoration: none; transition: all 0.15s; @(Model.ViewMode != "imports" ? "background: #1a4332; color: #ffffff; box-shadow: 0 2px 6px rgba(26, 67, 50, 0.2);" : "background: #ffffff; color: #475569; border: 1px solid #cbd5e1;")">
+                <i class="bi bi-inbox-fill"></i>
+                <span>Yêu cầu nhập kho (IR)</span>
+                <span style="padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; @(Model.ViewMode != "imports" ? "background: rgba(255,255,255,0.2); color: #ffffff;" : "background: #f1f5f9; color: #334155;")">
+                    @Model.TotalRequestsCount
+                </span>
+            </a>
+
+            <a href="@Url.Page("/Inventory/Index", new { Tab = "raw", ViewMode = "imports", PageSize = Model.PageSize })"
+               style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 600; text-decoration: none; transition: all 0.15s; @(Model.ViewMode == "imports" ? "background: #1a4332; color: #ffffff; box-shadow: 0 2px 6px rgba(26, 67, 50, 0.2);" : "background: #ffffff; color: #475569; border: 1px solid #cbd5e1;")">
+                <i class="bi bi-file-earmark-check-fill"></i>
+                <span>Phiếu nhập kho nguyên liệu (PNK)</span>
+                <span style="padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; @(Model.ViewMode == "imports" ? "background: rgba(255,255,255,0.2); color: #ffffff;" : "background: #f1f5f9; color: #334155;")">
+                    @Model.TotalImportsCount
+                </span>
+            </a>
+        </div>
+
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
             <div>
                 <h1 class="wh-title">Yêu cầu nhập kho (Inbound Request) &amp; Phiếu nhập kho nguyên liệu</h1>
-                <p class="wh-subtitle" style="margin-bottom: 0;">Thủ kho đối chiếu Yêu cầu nhập kho (IR) để lập Phiếu nhập kho nguyên liệu (PNK-26xxx) gửi Manager phê duyệt.</p>
             </div>
             @if (Model.CanWarehouseConfirm && Model.PendingInboundRequests.Any())
             {
@@ -451,10 +558,13 @@ else
             </div>
         </div>
 
-        <!-- Table 1: Danh sách Yêu cầu nhập kho / Phiếu mua hàng con -->
+        @if (Model.ViewMode != "imports")
+        {
+        <!-- TRANG 1: Danh sách Yêu cầu nhập kho / Phiếu mua hàng -->
         <div class="wh-card">
             <form method="get" id="whFilterForm">
                 <input type="hidden" name="Tab" value="raw" />
+                <input type="hidden" name="ViewMode" value="requests" />
                 <input type="hidden" name="PageSize" value="@Model.PageSize" />
                 <div class="wh-filter-bar">
                     <div class="wh-search-wrap">
@@ -504,11 +614,11 @@ else
                 <table class="wh-table">
                     <thead>
                         <tr>
-                            <th>Mã phiếu con (IR)</th>
-                            <th>Phiếu tổng</th>
+                            <th>Mã phiếu mua hàng (IR)</th>
+                            <th>Yêu cầu thu mua</th>
                             <th>Phiếu nhập kho</th>
                             <th>Nhà cung cấp</th>
-                            <th>Khối lượng cân</th>
+                            <th>KL ước tính / Cân thực tế</th>
                             <th>Giá mua thực tế</th>
                             <th>Thành tiền</th>
                             <th>Người tạo</th>
@@ -549,10 +659,19 @@ else
                                     </td>
                                     <td style="font-weight: 600;">@r.SupplierName</td>
                                     <td>
-                                        <span class="wh-mono-num">@r.WeighedQuantity.ToString("N0", viCulture) kg</span>
+                                        @if (r.ImportedQuantity.HasValue)
+                                        {
+                                            <span class="wh-mono-num" style="color: #15803d; font-weight: 700;">@r.ImportedQuantity.Value.ToString("N0", viCulture) kg</span>
+                                            <div style="font-size: 11px; color: #166534;">Đã cân thực tế tại kho</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="wh-mono-num">@r.WeighedQuantity.ToString("N0", viCulture) kg</span>
+                                            <div style="font-size: 11px; color: #64748b;">KL ước tính (chưa cân kho)</div>
+                                        }
                                     </td>
                                     <td>
-                                        <span class="wh-mono-num">@r.ActualPrice.ToString("N0", viCulture) VNĐ</span>
+                                        <span class="wh-mono-num">@r.DisplayPrice.ToString("N0", viCulture) VNĐ</span>
                                     </td>
                                     <td>
                                         <span class="wh-mono-num" style="font-weight: 700;">@r.TotalAmount.ToString("N0", viCulture) VNĐ</span>
@@ -580,8 +699,9 @@ else
                                                data-import-id="@(r.ImportId?.ToString() ?? "")"
                                                data-import-code="@(r.ImportCode ?? "Chưa lập")"
                                                data-supplier="@r.SupplierName"
-                                               data-qty="@r.WeighedQuantity.ToString("N0", viCulture)"
-                                               data-price="@r.ActualPrice.ToString("N0", viCulture)"
+                                               data-qty="@r.DisplayQuantity.ToString("N0", viCulture)"
+                                               data-qty-label="@(r.ImportedQuantity.HasValue ? "Khối lượng cân thực tế (tại kho)" : "Khối lượng ước tính (trên IR)")"
+                                               data-price="@r.DisplayPrice.ToString("N0", viCulture)"
                                                data-total="@r.TotalAmount.ToString("N0", viCulture)"
                                                data-by="@r.CreatedByName"
                                                data-at="@r.CreatedAt.ToString("HH:mm dd/MM/yyyy")"
@@ -608,6 +728,7 @@ else
                                                 <form method="post" asp-page-handler="ApproveImport" style="display: inline; margin: 0;">
                                                     <input type="hidden" name="importId" value="@r.ImportId" />
                                                     <input type="hidden" name="receiptId" value="@r.ReceiptId" />
+                                                    <input type="hidden" name="ViewMode" value="requests" />
                                                     <button type="submit" class="wh-btn-approve" title="Manager phê duyệt phiếu nhập kho">
                                                         Duyệt
                                                     </button>
@@ -640,40 +761,90 @@ else
                     </select>
 
                     <a class="wh-page-btn @(Model.CurrentPage <= 1 ? "disabled" : "")"
-                       href="@Url.Page("/Inventory/Index", new { Tab = "raw", SearchTerm = Model.SearchTerm, StatusFilter = Model.StatusFilter, SupplierFilter = Model.SupplierFilter, DateFilter = Model.DateFilter, PageSize = Model.PageSize, CurrentPage = Model.CurrentPage - 1 })">
+                       href="@Url.Page("/Inventory/Index", new { Tab = "raw", ViewMode = "requests", SearchTerm = Model.SearchTerm, StatusFilter = Model.StatusFilter, SupplierFilter = Model.SupplierFilter, DateFilter = Model.DateFilter, PageSize = Model.PageSize, CurrentPage = Model.CurrentPage - 1 })">
                         <i class="bi bi-arrow-left"></i>
                     </a>
 
                     <span>Trang @Model.CurrentPage / @Model.TotalPages</span>
 
                     <a class="wh-page-btn @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")"
-                       href="@Url.Page("/Inventory/Index", new { Tab = "raw", SearchTerm = Model.SearchTerm, StatusFilter = Model.StatusFilter, SupplierFilter = Model.SupplierFilter, DateFilter = Model.DateFilter, PageSize = Model.PageSize, CurrentPage = Model.CurrentPage + 1 })">
+                       href="@Url.Page("/Inventory/Index", new { Tab = "raw", ViewMode = "requests", SearchTerm = Model.SearchTerm, StatusFilter = Model.StatusFilter, SupplierFilter = Model.SupplierFilter, DateFilter = Model.DateFilter, PageSize = Model.PageSize, CurrentPage = Model.CurrentPage + 1 })">
                         <i class="bi bi-arrow-right"></i>
                     </a>
                 </div>
             </div>
         </div>
-
-        <!-- Table 2: Danh sách Phiếu nhập kho nguyên liệu (PNK-26xxx) -->
+        }
+        else
+        {
+        <!-- TRANG 2: Danh sách Phiếu nhập kho nguyên liệu (PNK-26xxx) -->
         <div class="wh-card">
             <div class="wh-card-header">
                 <div>
-                    <h2 class="wh-card-title">Phiếu nhập kho nguyên liệu (Goods Receipt Raw Material note — PNK-26xxx)</h2>
+                    <h2 class="wh-card-title">Phiếu nhập kho nguyên liệu (PNK-26xxx)</h2>
                     <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
                         Danh sách phiếu nhập kho được Thủ kho lập sau khi đối chiếu IR — gửi Manager phê duyệt để cộng tồn kho và báo kết quả về cho Nhân viên thu mua.
                     </div>
                 </div>
             </div>
 
+            <form method="get" id="whImportFilterForm">
+                <input type="hidden" name="Tab" value="raw" />
+                <input type="hidden" name="ViewMode" value="imports" />
+                <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                <div class="wh-filter-bar">
+                    <div class="wh-search-wrap">
+                        <i class="bi bi-search wh-search-icon"></i>
+                        <input type="text"
+                               name="SearchTerm"
+                               value="@Model.SearchTerm"
+                               class="wh-search-input"
+                               placeholder="Tìm mã PNK-26xxx, PM-26xxx, NCC..."
+                               onchange="this.form.submit()" />
+                    </div>
+
+                    <div class="wh-filter-group">
+                        <label class="wh-filter-label">Trạng thái</label>
+                        <select name="StatusFilter" class="wh-filter-select" onchange="this.form.submit()">
+                            <option value="all" selected="@(string.IsNullOrEmpty(Model.StatusFilter) || Model.StatusFilter == "all")">Tất cả</option>
+                            <option value="pending" selected="@(Model.StatusFilter == "pending" || Model.StatusFilter == "wait_manager")">Chờ duyệt</option>
+                            <option value="received" selected="@(Model.StatusFilter == "received" || Model.StatusFilter == "approved")">Đã duyệt</option>
+                            <option value="rejected" selected="@(Model.StatusFilter == "rejected")">Từ chối PNK</option>
+                        </select>
+                    </div>
+
+                    <div class="wh-filter-group">
+                        <label class="wh-filter-label">Nhà cung cấp</label>
+                        <select name="SupplierFilter" class="wh-filter-select" onchange="this.form.submit()">
+                            <option value="" selected="@(!Model.SupplierFilter.HasValue)">Tất cả</option>
+                            @foreach (var s in Model.Suppliers)
+                            {
+                                <option value="@s.SupplierId" selected="@(Model.SupplierFilter == s.SupplierId)">@s.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="wh-filter-group">
+                        <label class="wh-filter-label">Ngày</label>
+                        <select name="DateFilter" class="wh-filter-select" onchange="this.form.submit()">
+                            <option value="all" selected="@(string.IsNullOrEmpty(Model.DateFilter) || Model.DateFilter == "all")">Tất cả</option>
+                            <option value="today" selected="@(Model.DateFilter == "today")">Hôm nay</option>
+                            <option value="week" selected="@(Model.DateFilter == "week")">Tuần này</option>
+                            <option value="month" selected="@(Model.DateFilter == "month")">Tháng này</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+
             <div class="table-responsive">
                 <table class="wh-table">
                     <thead>
                         <tr>
                             <th>Mã phiếu nhập kho</th>
-                            <th>Từ phiếu con (IR)</th>
+                            <th>Từ phiếu mua hàng (IR)</th>
                             <th>Nhà cung cấp</th>
                             <th>Nguyên liệu</th>
-                            <th>Khối lượng nhập</th>
+                            <th>Khối lượng cân thực tế</th>
                             <th>Đơn giá</th>
                             <th>Thành tiền</th>
                             <th>Thủ kho lập</th>
@@ -682,7 +853,7 @@ else
                             <th>Người duyệt</th>
                             @if (Model.CanManagerApprove)
                             {
-                                <th>Thao tác Manager</th>
+                                <th>Thao tác</th>
                             }
                         </tr>
                     </thead>
@@ -691,7 +862,7 @@ else
                         {
                             <tr>
                                 <td colspan="@(Model.CanManagerApprove ? 12 : 11)" style="text-align: center; padding: 36px 20px; color: #a0aec0;">
-                                    Chưa có phiếu nhập kho nguyên liệu nào.
+                                    Chưa có phiếu nhập kho nguyên liệu nào phù hợp với bộ lọc.
                                 </td>
                             </tr>
                         }
@@ -739,6 +910,7 @@ else
                                                 <div style="display: flex; align-items: center; gap: 6px;">
                                                     <form method="post" asp-page-handler="ApproveImport" style="margin: 0;">
                                                         <input type="hidden" name="importId" value="@imp.ImportId" />
+                                                        <input type="hidden" name="ViewMode" value="imports" />
                                                         <button type="submit" class="wh-btn-approve">Duyệt</button>
                                                     </form>
                                                     <button type="button" class="wh-btn-reject"
@@ -759,14 +931,42 @@ else
                     </tbody>
                 </table>
             </div>
+
+            <div class="wh-footer">
+                <div>
+                    Hiển thị @Model.DisplayFrom–@Model.DisplayTo trong @Model.TotalItems kết quả
+                </div>
+
+                <div class="wh-pagination-controls">
+                    <span>Số dòng</span>
+                    <select class="wh-filter-select" style="min-width: 70px; padding: 6px 24px 6px 10px;" onchange="changeWhPageSize(this.value)">
+                        <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                        <option value="20" selected="@(Model.PageSize == 20)">20</option>
+                        <option value="50" selected="@(Model.PageSize == 50)">50</option>
+                    </select>
+
+                    <a class="wh-page-btn @(Model.CurrentPage <= 1 ? "disabled" : "")"
+                       href="@Url.Page("/Inventory/Index", new { Tab = "raw", ViewMode = "imports", SearchTerm = Model.SearchTerm, StatusFilter = Model.StatusFilter, SupplierFilter = Model.SupplierFilter, DateFilter = Model.DateFilter, PageSize = Model.PageSize, CurrentPage = Model.CurrentPage - 1 })">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+
+                    <span>Trang @Model.CurrentPage / @Model.TotalPages</span>
+
+                    <a class="wh-page-btn @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")"
+                       href="@Url.Page("/Inventory/Index", new { Tab = "raw", ViewMode = "imports", SearchTerm = Model.SearchTerm, StatusFilter = Model.StatusFilter, SupplierFilter = Model.SupplierFilter, DateFilter = Model.DateFilter, PageSize = Model.PageSize, CurrentPage = Model.CurrentPage + 1 })">
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
         </div>
+        }
     </div>
 
     <!-- POPUP: THỦ KHO LẬP PHIẾU NHẬP KHO NGUYÊN LIỆU CÓ GỢI Ý TỪ IR (CREATE GOODS RECEIPT NOTE) -->
     @if (Model.CanWarehouseConfirm)
     {
         <div class="pm-overlay" id="createImportModal" onclick="if (event.target === this) closePmModal('createImportModal')">
-            <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" style="max-width: 720px;">
+            <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" style="max-width: 660px;">
                 <form method="post" asp-page-handler="ConfirmReceipt">
                     <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
                     <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
@@ -782,19 +982,19 @@ else
 
                     <div class="pm-body">
                         <!-- Khung gợi ý thông tin gốc từ Yêu cầu nhập kho (IR) -->
-                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
-                            <div style="font-size: 12.5px; color: #166534;">
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="font-size: 12px; color: #166534; min-width: 0; flex: 1;">
                                 <i class="bi bi-lightbulb-fill me-1"></i>
-                                <strong>Gợi ý tự động từ phiếu IR <span id="ciSugCode" style="font-family: monospace;"></span>:</strong>
+                                <strong>Gợi ý từ IR <span id="ciSugCode" style="font-family: monospace;"></span>:</strong>
                                 <span id="ciSugSummary"></span>
                             </div>
                             <button type="button" onclick="applyCiSuggestedValues()"
-                                    style="background: #ffffff; color: #15803d; border: 1px solid #86efac; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                                    style="background: #ffffff; color: #15803d; border: 1px solid #86efac; border-radius: 6px; padding: 3px 9px; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;">
                                 Điền lại theo gợi ý IR
                             </button>
                         </div>
 
-                        <div id="ciRejectionNotice" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; font-size: 12px; color: #b91c1c;">
+                        <div id="ciRejectionNotice" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 12px; color: #b91c1c;">
                             <strong>Lý do Manager từ chối lần trước:</strong> <span id="ciRejectionText"></span>
                         </div>
 
@@ -815,7 +1015,7 @@ else
                                                 data-price="@ir.ActualPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
                                                 data-rejection="@(ir.RejectionReason ?? "")"
                                                 data-scale="@ir.ScalePhotoPath">
-                                            @ir.ReceiptCode (Phiếu tổng @ir.InvoiceCode — @ir.WeighedQuantity.ToString("N0", viCulture) kg — @ir.SupplierName)
+                                            @ir.ReceiptCode — @ir.WeighedQuantity.ToString("N0", viCulture) kg (@ir.InvoiceCode)
                                         </option>
                                     }
                                 </select>
@@ -834,7 +1034,7 @@ else
                                         <option value="@s.SupplierId">@s.Name</option>
                                     }
                                 </select>
-                                <span class="pm-hint" id="ciSupplierHint">Gợi ý từ IR</span>
+                                <span class="pm-hint" id="ciSupplierHint" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Gợi ý từ IR</span>
                             </div>
 
                             <div>
@@ -845,13 +1045,13 @@ else
                                         <option value="@m.MaterialId">@m.MaterialName (@m.Unit)</option>
                                     }
                                 </select>
-                                <span class="pm-hint" id="ciMaterialHint">Gợi ý từ phiếu tổng</span>
+                                <span class="pm-hint" id="ciMaterialHint" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Gợi ý từ phiếu tổng</span>
                             </div>
 
                             <div>
-                                <label class="pm-label">Khối lượng thực nhập kho (kg) <span style="color: #e53e3e;">*</span></label>
+                                <label class="pm-label">Khối lượng cân thực tế (kg) <span style="color: #e53e3e;">*</span></label>
                                 <input type="number" name="importedQuantity" id="ciQuantityInput" min="1" step="any" required class="pm-input" oninput="updateCiTotalPreview()" />
-                                <span class="pm-hint" id="ciQtyHint">Gợi ý theo phiếu cân IR</span>
+                                <span class="pm-hint" id="ciQtyHint">Gợi ý từ khối lượng ước tính trên IR</span>
                             </div>
 
                             <div>
@@ -861,7 +1061,7 @@ else
                             </div>
 
                             <div class="pm-full">
-                                <label class="pm-label">Ghi chú kiểm nhận của Thủ kho (bấm chọn gợi ý nhanh hoặc nhập thêm)</label>
+                                <label class="pm-label">Ghi chú kiểm nhận của Thủ kho (chọn gợi ý nhanh hoặc nhập thêm)</label>
                                 <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;">
                                     <button type="button" onclick="setCiQuickNote('Đã đối chiếu khớp phiếu cân IR, nguyên liệu đạt chuẩn nhập kho')"
                                             style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 999px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;">
@@ -879,11 +1079,16 @@ else
                                 <textarea name="warehouseNote" id="ciNoteInput" rows="2" class="pm-input" placeholder="Ghi chú kiểm nhận nguyên liệu của Thủ kho..."></textarea>
                             </div>
 
-                            <div class="pm-full" id="ciScalePreviewWrap" style="display: none;">
-                                <div style="@labelStyle">Ảnh xe cân tại xưởng (từ phiếu IR để đối chiếu)</div>
-                                <a id="ciScaleLink" target="_blank">
-                                    <img id="ciScaleImg" alt="Ảnh xe cân" style="max-height: 160px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover;" />
-                                </a>
+                            <div class="pm-full" id="ciScalePreviewWrap" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                                    <div>
+                                        <div style="font-size: 12px; font-weight: 600; color: #334155;">Ảnh xe cân tại xưởng (đối chiếu từ IR)</div>
+                                        <div style="font-size: 11.5px; color: #64748b;">Bấm vào ảnh để mở kích thước đầy đủ trong tab mới</div>
+                                    </div>
+                                    <a id="ciScaleLink" target="_blank" style="flex-shrink: 0;">
+                                        <img id="ciScaleImg" alt="Ảnh xe cân" style="height: 64px; width: 100px; border-radius: 6px; border: 1px solid #cbd5e1; object-fit: cover; display: block;" />
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -933,7 +1138,7 @@ else
                 <div class="pm-grid" style="margin-bottom: 16px;">
                     <div><div style="@labelStyle">Nhà cung cấp</div><div id="rdSupplier" style="@valueStyle"></div></div>
                     <div><div style="@labelStyle">Trạng thái</div><div id="rdStatus" style="@valueStyle"></div></div>
-                    <div><div style="@labelStyle">Khối lượng cân</div><div id="rdQty" style="@valueStyle"></div></div>
+                    <div><div style="@labelStyle" id="rdQtyLabel">Khối lượng ước tính / Cân thực tế</div><div id="rdQty" style="@valueStyle"></div></div>
                     <div><div style="@labelStyle">Giá mua thực tế (VNĐ/kg)</div><div id="rdPrice" style="@valueStyle"></div></div>
                     <div><div style="@labelStyle">Thành tiền (VNĐ)</div><div id="rdTotal" style="@valueStyle"></div></div>
                     <div><div style="@labelStyle">Người tạo</div><div id="rdBy" style="@valueStyle"></div></div>
@@ -1053,7 +1258,7 @@ else
 
             var qtyInput = document.getElementById('ciQuantityInput');
             if (qtyInput) qtyInput.value = qty;
-            document.getElementById('ciQtyHint').innerText = 'Gợi ý theo phiếu cân IR: ' + Number(qty).toLocaleString('vi-VN') + ' kg';
+            document.getElementById('ciQtyHint').innerText = 'Gợi ý từ KL ước tính trên IR: ' + Number(qty).toLocaleString('vi-VN') + ' kg';
 
             var priceInput = document.getElementById('ciPriceInput');
             if (priceInput) priceInput.value = price;
@@ -1128,6 +1333,8 @@ else
                 document.getElementById('rdCode').innerText = d.code;
                 document.getElementById('rdSupplier').innerText = d.supplier;
                 document.getElementById('rdStatus').innerText = d.status;
+                var qtyLbl = document.getElementById('rdQtyLabel');
+                if (qtyLbl && d.qtyLabel) qtyLbl.innerText = d.qtyLabel;
                 document.getElementById('rdQty').innerText = d.qty + ' kg';
                 document.getElementById('rdPrice').innerText = d.price;
                 document.getElementById('rdTotal').innerText = d.total;

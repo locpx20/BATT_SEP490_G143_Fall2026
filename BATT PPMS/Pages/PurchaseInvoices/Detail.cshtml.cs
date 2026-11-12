@@ -73,6 +73,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public decimal WeighedTotal { get; set; }
         public decimal RemainingQuantity => Math.Max(0m, PlannedQuantity - WeighedTotal);
         public string AssignedName { get; set; } = string.Empty;
+        public List<StaffAssignmentNote> StaffAssignments { get; set; } = new();
         public string CreatorName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime ExpiresAt { get; set; }
@@ -144,20 +145,20 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             if (IndexModel.IsInvoiceExpiredByDate(invoice.PurchaseDate) ||
                 string.Equals(invoice.Status, "Expired", StringComparison.OrdinalIgnoreCase))
             {
-                ErrorMessage = $"Phiếu tổng {IndexModel.FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId)} đã hết hạn (chỉ có hiệu lực đến 23:59 ngày {invoice.PurchaseDate:dd/MM/yyyy}). Không thể tạo thêm phiếu mua hàng con.";
+                ErrorMessage = $"Yêu cầu thu mua {IndexModel.FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId)} đã hết hạn (chỉ có hiệu lực đến 23:59 ngày {invoice.PurchaseDate:dd/MM/yyyy}). Không thể tạo thêm phiếu mua hàng.";
                 return Back();
             }
 
-            if (IsPurchasingStaff && (invoice.AssignedTo ?? invoice.CreatedBy) != CurrentUserId)
+            if (IsPurchasingStaff && !NoteTags.IsStaffAssigned(invoice.Note, invoice.AssignedTo, invoice.CreatedBy, CurrentUserId))
             {
-                ErrorMessage = "Phiếu tổng này không được giao cho bạn.";
+                ErrorMessage = "Yêu cầu thu mua này không được giao cho bạn.";
                 return Back();
             }
 
             if (!TryParsePositiveDecimal(weighedQuantity, out var parsedWeight) ||
                 parsedWeight > PurchasePricing.MaxOrderQuantity)
             {
-                ErrorMessage = $"Khối lượng cân tại xưởng phải lớn hơn 0 và không vượt quá {PurchasePricing.MaxOrderQuantity:N0} kg.";
+                ErrorMessage = $"Khối lượng ước tính phải lớn hơn 0 và không vượt quá {PurchasePricing.MaxOrderQuantity:N0} kg.";
                 return Back();
             }
 
@@ -172,7 +173,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             if (plannedQty > 0 && existingTotalWeight + parsedWeight > plannedQty)
             {
                 var remainingQty = Math.Max(0m, plannedQty - existingTotalWeight);
-                ErrorMessage = $"Tổng khối lượng các phiếu mua con ({existingTotalWeight + parsedWeight:N0} kg) vượt quá khối lượng cần mua của phiếu tổng ({plannedQty:N0} kg). Khối lượng còn lại có thể nhập tối đa là {remainingQty:N0} kg.";
+                ErrorMessage = $"Tổng khối lượng các phiếu mua hàng ({existingTotalWeight + parsedWeight:N0} kg) vượt quá khối lượng cần mua của yêu cầu thu mua ({plannedQty:N0} kg). Khối lượng còn lại có thể nhập tối đa là {remainingQty:N0} kg.";
                 return Back();
             }
 
@@ -185,7 +186,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             }
             if (ceiling > 0 && parsedPrice > ceiling)
             {
-                ErrorMessage = $"Giá mua thực tế ({parsedPrice:N0}) không được vượt giá trần của phiếu tổng ({ceiling:N0} VNĐ/kg).";
+                ErrorMessage = $"Giá mua thực tế ({parsedPrice:N0}) không được vượt giá trần của yêu cầu thu mua ({ceiling:N0} VNĐ/kg).";
                 return Back();
             }
 
@@ -207,7 +208,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                     return Back();
                 }
 
-                var scaleErr = ValidateImage(scalePhoto, required: false, "Ảnh xe cân tại xưởng");
+                var scaleErr = ValidateImage(scalePhoto, required: false, "Ảnh minh chứng / hàng hóa");
                 if (scaleErr != null) { ErrorMessage = scaleErr; return Back(); }
                 var invErr = ValidateImage(invoicePhoto, required: false, "Hóa đơn");
                 if (invErr != null) { ErrorMessage = invErr; return Back(); }
@@ -234,7 +235,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 return Back();
             }
 
-            var scaleError = ValidateImage(scalePhoto, required: true, "Ảnh xe cân tại xưởng");
+            var scaleError = ValidateImage(scalePhoto, required: true, "Ảnh minh chứng / hàng hóa");
             if (scaleError != null) { ErrorMessage = scaleError; return Back(); }
             var invoiceImgError = ValidateImage(invoicePhoto, required: false, "Hóa đơn");
             if (invoiceImgError != null) { ErrorMessage = invoiceImgError; return Back(); }
@@ -271,8 +272,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             try
             {
                 await NotifyManagersAsync(
-                    $"Đơn mua hàng con {code} chờ duyệt",
-                    $"{CurrentFullName} vừa tạo đơn mua hàng con {code} ({parsedWeight:N0} kg × {parsedPrice:N0} VNĐ/kg) trên phiếu tổng {IndexModel.FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId)}, chờ Manager phê duyệt.",
+                    $"Phiếu mua hàng {code} chờ duyệt",
+                    $"{CurrentFullName} vừa tạo phiếu mua hàng {code} ({parsedWeight:N0} kg × {parsedPrice:N0} VNĐ/kg) trên yêu cầu thu mua {IndexModel.FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId)}, chờ Manager phê duyệt.",
                     $"/PurchaseInvoices/Detail?id={invoice.InvoiceId}");
 
                 await _context.SaveChangesAsync();
@@ -285,11 +286,11 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             }
             catch (DbUpdateException ex)
             {
-                ErrorMessage = $"Không thể tạo phiếu mua hàng con: {ex.InnerException?.Message ?? ex.Message}";
+                ErrorMessage = $"Không thể tạo phiếu mua hàng: {ex.InnerException?.Message ?? ex.Message}";
                 return Back();
             }
 
-            SuccessMessage = $"Đã tạo đơn mua hàng con {code} ({parsedWeight:N0} kg × {parsedPrice:N0} VNĐ/kg) và gửi cho Manager phê duyệt.";
+            SuccessMessage = $"Đã tạo phiếu mua hàng {code} ({parsedWeight:N0} kg × {parsedPrice:N0} VNĐ/kg) và gửi cho Manager phê duyệt.";
             return Back();
         }
 
@@ -447,8 +448,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .FirstOrDefaultAsync(p => p.InvoiceId == id);
             if (invoice == null) return false;
 
-            var assignedId = invoice.AssignedTo ?? invoice.CreatedBy;
-            if (IsPurchasingStaff && assignedId != CurrentUserId) return false;
+            var isAssignedToMe = NoteTags.IsStaffAssigned(invoice.Note, invoice.AssignedTo, invoice.CreatedBy, CurrentUserId);
+            if (IsPurchasingStaff && !isAssignedToMe) return false;
 
             var receiptIds = invoice.PurchaseReceipts.Select(r => r.ReceiptId).ToList();
             var imports = await _context.RawMaterialImports
@@ -473,7 +474,11 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             var (statusText, statusType) = IndexModel.MapStatus(invoice.Status, invoice.PurchaseDate, weighedQty, PlannedQuantity, receivedQty);
             StatusText = statusText;
             StatusType = statusType;
-            AssignedName = invoice.AssignedToNavigation?.FullName ?? invoice.CreatedByNavigation?.FullName ?? "—";
+            var fallbackName = invoice.AssignedToNavigation?.FullName ?? invoice.CreatedByNavigation?.FullName;
+            StaffAssignments = NoteTags.GetAssignments(invoice.Note, invoice.AssignedTo ?? invoice.CreatedBy, fallbackName);
+            AssignedName = StaffAssignments.Count > 0
+                ? string.Join(", ", StaffAssignments.Select(a => a.FullName))
+                : (fallbackName ?? "—");
             CreatorName = invoice.CreatedByNavigation?.FullName ?? "—";
             CreatedAt = invoice.PurchaseDate;
             ExpiresAt = invoice.PurchaseDate.Date.AddDays(1).AddSeconds(-1);
@@ -520,8 +525,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             WeighedTotal = Receipts.Sum(r => r.Quantity);
 
             Timeline = Receipts
-                .Select(r => new TimelineEntry { At = r.CreatedAt, Text = $"{r.CreatedByName} tạo đơn mua con {r.Code} ({r.StatusText})" })
-                .Append(new TimelineEntry { At = invoice.PurchaseDate, Text = $"{CreatorName} tạo phiếu tổng {InvoiceCode}" })
+                .Select(r => new TimelineEntry { At = r.CreatedAt, Text = $"{r.CreatedByName} tạo phiếu mua hàng {r.Code} ({r.StatusText})" })
+                .Append(new TimelineEntry { At = invoice.PurchaseDate, Text = $"{CreatorName} tạo yêu cầu thu mua {InvoiceCode}" })
                 .OrderByDescending(t => t.At)
                 .ToList();
 
@@ -529,7 +534,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             CanCreateReceipt = !IsExpired &&
                                invoice.Status != "Rejected" &&
                                IsPurchasingStaff &&
-                               assignedId == CurrentUserId;
+                               isAssignedToMe;
 
             Suppliers = await _context.Suppliers.AsNoTracking()
                 .Where(s => s.Status == StatusConstants.Active)
@@ -538,12 +543,18 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .ToListAsync();
 
             var today = DateTime.Today;
-            var optionQuery = _context.PurchaseInvoices.AsNoTracking()
-                .Where(p => p.Status != "Rejected" && p.Status != "Expired" && p.PurchaseDate >= today);
+            var allTodayInvoices = await _context.PurchaseInvoices.AsNoTracking()
+                .Where(p => p.Status != "Rejected" && p.Status != "Expired" && p.PurchaseDate >= today)
+                .OrderByDescending(p => p.InvoiceId)
+                .ToListAsync();
             if (IsPurchasingStaff)
-                optionQuery = optionQuery.Where(p => (p.AssignedTo ?? p.CreatedBy) == CurrentUserId);
+            {
+                allTodayInvoices = allTodayInvoices
+                    .Where(p => NoteTags.IsStaffAssigned(p.Note, p.AssignedTo, p.CreatedBy, CurrentUserId))
+                    .ToList();
+            }
 
-            InvoiceOptions = (await optionQuery.OrderByDescending(p => p.InvoiceId).ToListAsync())
+            InvoiceOptions = allTodayInvoices
                 .Select(p => new AssignedInvoiceOption
                 {
                     InvoiceId = p.InvoiceId,

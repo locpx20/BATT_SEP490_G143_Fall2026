@@ -3,7 +3,7 @@
 @using BATT_PPMS.Helpers
 @using System.Globalization
 @{
-    ViewData["Title"] = "Thu mua nguyên vật liệu thô";
+    ViewData["Title"] = "Danh sách yêu cầu thu mua";
     ViewData["ActivePage"] = "PurchaseInvoice";
     var viCulture = new CultureInfo("vi-VN");
 }
@@ -14,7 +14,7 @@
     <div style="font-size: 13px; color: #718096; margin-bottom: 8px;">
         <span style="color: #a0aec0;">BATT PPMS</span>
         <span style="margin: 0 6px; color: #cbd5e1;">/</span>
-        <span style="color: #2d3748; font-weight: 500;">Thu mua NVL thô</span>
+        <span style="color: #2d3748; font-weight: 500;">Danh sách yêu cầu thu mua</span>
     </div>
 
     <!-- Alerts / Messages -->
@@ -37,10 +37,10 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;">
         <div>
             <h1 style="font-size: 24px; font-weight: 700; color: #1a202c; margin-bottom: 4px; letter-spacing: -0.02em;">
-                Thu mua nguyên vật liệu thô
+                Danh sách yêu cầu thu mua
             </h1>
             <p style="font-size: 13px; color: #718096; margin-bottom: 0;">
-                Phiếu thu mua và xác nhận nhập kho.
+                Quản lý yêu cầu thu mua, phiếu mua hàng và xác nhận nhập kho.
             </p>
         </div>
         <div style="display: flex; align-items: center; gap: 10px;">
@@ -51,7 +51,7 @@
             {
                 <button type="button" class="btn" onclick="openCreatePlanModal()" style="background: #193f35; color: #ffffff; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: none;">
                     <i class="bi bi-plus-lg" style="font-size: 13px;"></i>
-                    <span>Tạo phiếu tổng</span>
+                    <span>Tạo yêu cầu thu mua</span>
                 </button>
             }
             @if (Model.CanCreateSubReceipt && Model.ActiveAssignedInvoices.Any())
@@ -59,7 +59,7 @@
                 var firstActive = Model.ActiveAssignedInvoices.First();
                 <button type="button" class="btn" onclick="openQuickCreateReceiptModal(@firstActive.InvoiceId, '@firstActive.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)')" style="background: #193f35; color: #ffffff; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: none;">
                     <i class="bi bi-plus-lg" style="font-size: 13px;"></i>
-                    <span>Tạo phiếu mua con</span>
+                    <span>Tạo phiếu mua hàng</span>
                 </button>
             }
         </div>
@@ -144,7 +144,7 @@
                         <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Nhân viên được giao</th>
                         <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Đã cân</th>
                         <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Trạng thái</th>
-                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Chi tiết</th>
+                        <th style="padding: 14px 20px; font-weight: 600; border: none; white-space: nowrap;">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody style="border-top: 1px solid #f1f5f9;">
@@ -179,9 +179,29 @@
                                     @o.UnitPrice.ToString("N0", viCulture) VNĐ
                                 </td>
 
-                                <!-- Nhân viên được giao -->
+                                <!-- Nhân viên được giao & ghi chú từng người -->
                                 <td style="padding: 14px 20px; border: none; font-weight: 500;">
-                                    @o.CreatedByName
+                                    @if (o.StaffAssignments.Any())
+                                    {
+                                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                                            @foreach (var sa in o.StaffAssignments)
+                                            {
+                                                <div>
+                                                    <span style="font-weight: 600; color: #1e293b;">@sa.FullName</span>
+                                                    @if (!string.IsNullOrWhiteSpace(sa.Note))
+                                                    {
+                                                        <span style="font-size: 11.5px; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 1px 7px; margin-left: 4px; display: inline-block;">
+                                                            @sa.Note
+                                                        </span>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @o.CreatedByName
+                                    }
                                 </td>
 
                                 <!-- Đã cân -->
@@ -235,12 +255,12 @@
                                     }
                                 </td>
 
-                                <!-- Chi tiết (Icon mắt) & Sửa / Xóa khi chưa có phiếu con -->
+                                <!-- Thao tác -->
                                 <td style="padding: 14px 20px; border: none;">
                                     <div style="display: inline-flex; align-items: center; gap: 6px;">
                                         <a href="/PurchaseInvoices/Detail?id=@o.InvoiceId"
                                            data-invoice="@o.InvoiceId"
-                                           title="Xem chi tiết phiếu @o.InvoiceCode"
+                                           title="Xem chi tiết yêu cầu thu mua @o.InvoiceCode"
                                            style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; background: #ffffff; color: #1e293b; text-decoration: none; font-size: 15px;">
                                             <i class="bi bi-eye"></i>
                                         </a>
@@ -249,27 +269,29 @@
                                         {
                                             var remQty = Math.Max(0m, o.PlannedQuantity - o.WeighedQuantity);
                                             <button type="button"
-                                                    title="Tạo phiếu mua hàng con trên phiếu tổng @o.InvoiceCode (còn lại @remQty.ToString("N0", viCulture) kg)"
+                                                    title="Tạo phiếu mua hàng trên yêu cầu thu mua @o.InvoiceCode (còn lại @remQty.ToString("N0", viCulture) kg)"
                                                     onclick="openQuickCreateReceiptModal(@o.InvoiceId, '@o.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)', '@remQty.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)')"
                                                     style="display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid #193f35; background: #193f35; color: #ffffff; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;">
                                                 <i class="bi bi-plus-lg"></i>
-                                                <span>Tạo phiếu con</span>
+                                                <span>Tạo phiếu mua hàng</span>
                                             </button>
                                         }
 
                                         @if (Model.CanCreateOrder)
                                         {
-                                            if (!o.HasReceipts)
+                                            var isExpiredOrder = o.StatusBadgeType == "expired" || string.Equals(o.Status, "Expired", StringComparison.OrdinalIgnoreCase);
+                                            if (!o.HasReceipts && !isExpiredOrder)
                                             {
                                                 <button type="button"
-                                                        title="Chỉnh sửa phiếu tổng @o.InvoiceCode (chưa có phiếu con)"
-                                                        onclick="openEditPlanModal(@o.InvoiceId, '@o.InvoiceCode', '@o.PlannedQuantity.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)', '@o.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)', @(o.CreatedByStaffId ?? 0))"
+                                                        title="Chỉnh sửa yêu cầu thu mua @o.InvoiceCode (chưa có phiếu mua hàng)"
+                                                        data-assignments="@o.StaffAssignmentsJson"
+                                                        onclick="openEditPlanModal(this, @o.InvoiceId, '@o.InvoiceCode', '@o.PlannedQuantity.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)', '@o.UnitPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)')"
                                                         style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #1e40af; cursor: pointer; font-size: 14px;">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
 
                                                 <form method="post" asp-page-handler="DeletePurchasePlan" style="display: inline; margin: 0;"
-                                                      onsubmit="return confirm('Bạn có chắc chắn muốn xóa phiếu thu mua tổng @o.InvoiceCode?');">
+                                                      onsubmit="return confirm('Bạn có chắc chắn muốn xóa yêu cầu thu mua @o.InvoiceCode?');">
                                                     <input type="hidden" name="invoiceId" value="@o.InvoiceId" />
                                                     <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
                                                     <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
@@ -278,7 +300,7 @@
                                                     <input type="hidden" name="PageSize" value="@Model.PageSize" />
                                                     <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
                                                     <button type="submit"
-                                                            title="Xóa phiếu tổng @o.InvoiceCode (chưa có phiếu con)"
+                                                            title="Xóa yêu cầu thu mua @o.InvoiceCode (chưa có phiếu mua hàng)"
                                                             style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fecaca; background: #ffffff; color: #b91c1c; cursor: pointer; font-size: 14px;">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
@@ -286,13 +308,16 @@
                                             }
                                             else
                                             {
+                                                var disableReason = isExpiredOrder
+                                                    ? $"Không thể sửa/xóa yêu cầu thu mua {o.InvoiceCode} vì đã hết hạn"
+                                                    : $"Không thể sửa/xóa yêu cầu thu mua vì đã có {o.ReceiptCount} phiếu mua hàng";
                                                 <button type="button" disabled
-                                                        title="Không thể sửa phiếu tổng vì đã có @o.ReceiptCount phiếu mua hàng con"
+                                                        title="@disableReason"
                                                         style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #f1f5f9; background: #f8fafc; color: #cbd5e1; cursor: not-allowed; font-size: 14px;">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
                                                 <button type="button" disabled
-                                                        title="Không thể xóa phiếu tổng vì đã có @o.ReceiptCount phiếu mua hàng con"
+                                                        title="@disableReason"
                                                         style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #f1f5f9; background: #f8fafc; color: #cbd5e1; cursor: not-allowed; font-size: 14px;">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -352,14 +377,14 @@
 </div>
 
 
-<!-- POPUP: TẠO PHIẾU THU MUA TỔNG -->
+<!-- POPUP: TẠO YÊU CẦU THU MUA -->
 <div class="pm-overlay" id="createPlanModal" onclick="if (event.target === this) closePmModal('createPlanModal')">
     <div class="pm-dialog" role="dialog" aria-modal="true" aria-labelledby="createPlanTitle">
         <form method="post" asp-page-handler="CreatePurchasePlan">
             <input type="hidden" name="materialId" value="@Model.DefaultMaterialId" />
 
             <div class="pm-head">
-                <h5 class="pm-title" id="createPlanTitle">Tạo phiếu thu mua tổng</h5>
+                <h5 class="pm-title" id="createPlanTitle">Tạo yêu cầu thu mua</h5>
                 <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('createPlanModal')">&times;</button>
             </div>
 
@@ -381,8 +406,8 @@
                     </div>
 
                     <div class="pm-full">
-                        <label class="pm-label">Nhân viên thu mua được phân công <span style="color: #e53e3e;">*</span></label>
-                        <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; max-height: 180px; overflow-y: auto; background: #ffffff;">
+                        <label class="pm-label">Nhân viên thu mua được phân công (có thể chọn nhiều nhân viên) <span style="color: #e53e3e;">*</span></label>
+                        <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; max-height: 240px; overflow-y: auto; background: #ffffff; display: flex; flex-direction: column; gap: 10px;">
                             @if (!Model.PurchasingStaffs.Any())
                             {
                                 <span style="font-size: 12px; color: #94a3b8;">Chưa có nhân viên thu mua (Purchasing Staff) nào đang hoạt động.</span>
@@ -390,10 +415,19 @@
                             @for (int i = 0; i < Model.PurchasingStaffs.Count; i++)
                             {
                                 var staff = Model.PurchasingStaffs[i];
-                                <label for="staffRadio_@staff.UserId" style="display: flex; align-items: center; gap: 10px; margin-bottom: @(i == Model.PurchasingStaffs.Count - 1 ? "0" : "10px"); cursor: pointer; font-size: 13px; color: #1e293b; font-weight: 500;">
-                                    <input type="radio" name="assignedStaffId" id="staffRadio_@staff.UserId" value="@staff.UserId" required @(i == 0 ? "checked" : "") style="width: 17px; height: 17px; margin: 0; cursor: pointer;" />
-                                    @staff.FullName
-                                </label>
+                                var isChecked = i == 0;
+                                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #f8fafc;">
+                                    <label for="staffCheck_@staff.UserId" style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: #1e293b; font-weight: 600;">
+                                        <input type="checkbox" name="assignedStaffIds" id="staffCheck_@staff.UserId" class="create-staff-check" value="@staff.UserId" @(isChecked ? "checked" : "")
+                                               onchange="toggleStaffNoteBox('staffNoteWrap_@staff.UserId', this.checked)"
+                                               style="width: 17px; height: 17px; margin: 0; cursor: pointer;" />
+                                        <span>@staff.FullName</span>
+                                    </label>
+                                    <div id="staffNoteWrap_@staff.UserId" style="margin-top: 8px; display: @(isChecked ? "block" : "none");">
+                                        <input type="text" name="staffNote_@staff.UserId" class="pm-input" style="height: 36px; font-size: 12.5px;"
+                                               placeholder="Ghi chú phân chia cho @staff.FullName (VD: Mua 20.000 kg từ NCC A...)" />
+                                    </div>
+                                </div>
                             }
                         </div>
                     </div>
@@ -402,13 +436,13 @@
 
             <div class="pm-foot">
                 <button type="button" class="pm-btn-cancel" onclick="closePmModal('createPlanModal')">Hủy</button>
-                <button type="submit" class="pm-btn-primary">Gửi phiếu</button>
+                <button type="submit" class="pm-btn-primary" onclick="return validateStaffSelection('.create-staff-check')">Gửi phiếu</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- POPUP: CHỈNH SỬA PHIẾU THU MUA TỔNG (KHI CHƯA CÓ PHIẾU CON) -->
+<!-- POPUP: CHỈNH SỬA YÊU CẦU THU MUA (KHI CHƯA CÓ PHIẾU MUA HÀNG) -->
 <div class="pm-overlay" id="editPlanModal" onclick="if (event.target === this) closePmModal('editPlanModal')">
     <div class="pm-dialog" role="dialog" aria-modal="true">
         <form method="post" asp-page-handler="UpdatePurchasePlan">
@@ -421,7 +455,7 @@
             <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
 
             <div class="pm-head">
-                <h5 class="pm-title">Chỉnh sửa phiếu thu mua tổng <span id="editInvoiceCodeText" style="font-family: monospace;"></span></h5>
+                <h5 class="pm-title">Chỉnh sửa yêu cầu thu mua <span id="editInvoiceCodeText" style="font-family: monospace;"></span></h5>
                 <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('editPlanModal')">&times;</button>
             </div>
 
@@ -439,15 +473,23 @@
                     </div>
 
                     <div class="pm-full">
-                        <label class="pm-label">Nhân viên thu mua được phân công <span style="color: #e53e3e;">*</span></label>
-                        <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; max-height: 180px; overflow-y: auto; background: #ffffff;">
+                        <label class="pm-label">Nhân viên thu mua được phân công (có thể chọn nhiều nhân viên) <span style="color: #e53e3e;">*</span></label>
+                        <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 14px; max-height: 240px; overflow-y: auto; background: #ffffff; display: flex; flex-direction: column; gap: 10px;">
                             @for (int i = 0; i < Model.PurchasingStaffs.Count; i++)
                             {
                                 var staff = Model.PurchasingStaffs[i];
-                                <label for="editStaffRadio_@staff.UserId" style="display: flex; align-items: center; gap: 10px; margin-bottom: @(i == Model.PurchasingStaffs.Count - 1 ? "0" : "10px"); cursor: pointer; font-size: 13px; color: #1e293b; font-weight: 500;">
-                                    <input type="radio" name="assignedStaffId" id="editStaffRadio_@staff.UserId" class="edit-staff-radio" value="@staff.UserId" required style="width: 17px; height: 17px; margin: 0; cursor: pointer;" />
-                                    @staff.FullName
-                                </label>
+                                <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #f8fafc;">
+                                    <label for="editStaffCheck_@staff.UserId" style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: #1e293b; font-weight: 600;">
+                                        <input type="checkbox" name="assignedStaffIds" id="editStaffCheck_@staff.UserId" class="edit-staff-check" value="@staff.UserId"
+                                               onchange="toggleStaffNoteBox('editStaffNoteWrap_@staff.UserId', this.checked)"
+                                               style="width: 17px; height: 17px; margin: 0; cursor: pointer;" />
+                                        <span>@staff.FullName</span>
+                                    </label>
+                                    <div id="editStaffNoteWrap_@staff.UserId" style="margin-top: 8px; display: none;">
+                                        <input type="text" name="editStaffNote_@staff.UserId" id="editStaffNoteInput_@staff.UserId" class="pm-input" style="height: 36px; font-size: 12.5px;"
+                                               placeholder="Ghi chú phân chia cho @staff.FullName (VD: Mua 20.000 kg từ NCC A...)" />
+                                    </div>
+                                </div>
                             }
                         </div>
                     </div>
@@ -456,13 +498,13 @@
 
             <div class="pm-foot">
                 <button type="button" class="pm-btn-cancel" onclick="closePmModal('editPlanModal')">Hủy</button>
-                <button type="submit" class="pm-btn-primary">Lưu thay đổi</button>
+                <button type="submit" class="pm-btn-primary" onclick="return validateStaffSelection('.edit-staff-check')">Lưu thay đổi</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- POPUP: TẠO NHANH PHIẾU MUA HÀNG CON NGAY TRÊN MÀN HÌNH DANH SÁCH (CHỈ DÀNH CHO PURCHASING STAFF) -->
+<!-- POPUP: TẠO NHANH PHIẾU MUA HÀNG NGAY TRÊN MÀN HÌNH DANH SÁCH (CHỈ DÀNH CHO PURCHASING STAFF) -->
 @if (Model.CanCreateSubReceipt)
 {
     <div class="pm-overlay" id="quickCreateReceiptModal" onclick="if (event.target === this) closePmModal('quickCreateReceiptModal')">
@@ -470,13 +512,13 @@
             <form method="post" asp-page="/PurchaseInvoices/Detail" asp-page-handler="CreateReceipt" enctype="multipart/form-data">
                 <input type="hidden" name="returnToIndex" value="true" />
                 <div class="pm-head">
-                    <h5 class="pm-title">Tạo đơn mua hàng con (Create Purchase Order)</h5>
+                    <h5 class="pm-title">Tạo phiếu mua hàng</h5>
                     <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('quickCreateReceiptModal')">&times;</button>
                 </div>
                 <div class="pm-body">
                     <div class="pm-grid">
                         <div>
-                            <label class="pm-label">Phiếu tổng được giao <span style="color: #e53e3e;">*</span></label>
+                            <label class="pm-label">Yêu cầu thu mua được giao <span style="color: #e53e3e;">*</span></label>
                             <select name="invoiceId" id="quickInvoiceIdSelect" class="pm-input" required onchange="onQuickInvoiceChange(this)">
                                 @foreach (var inv in Model.ActiveAssignedInvoices)
                                 {
@@ -500,17 +542,17 @@
                             </select>
                         </div>
                         <div>
-                            <label class="pm-label">Khối lượng cân tại xưởng <span style="color: #e53e3e;">*</span></label>
+                            <label class="pm-label">Khối lượng ước tính <span style="color: #e53e3e;">*</span></label>
                             <input type="number" name="weighedQuantity" id="quickWeighedQtyInput" min="1" step="any" placeholder="Vd: 5000" required class="pm-input" />
-                            <span class="pm-hint" id="quickRemainingHint">kg (tối đa bằng khối lượng còn lại của phiếu tổng)</span>
+                            <span class="pm-hint" id="quickRemainingHint">kg (tối đa bằng khối lượng còn lại của yêu cầu thu mua)</span>
                         </div>
                         <div>
                             <label class="pm-label">Giá mua thực tế <span style="color: #e53e3e;">*</span></label>
                             <input type="number" name="actualPrice" id="quickActualPriceInput" min="1" step="any" required class="pm-input" />
-                            <span class="pm-hint" id="quickCeilingHint">VNĐ / kg (tối đa theo giá trần của phiếu tổng)</span>
+                            <span class="pm-hint" id="quickCeilingHint">VNĐ / kg (tối đa theo giá trần của yêu cầu thu mua)</span>
                         </div>
                         <div>
-                            <label class="pm-label">Ảnh xe cân tại xưởng <span style="color: #e53e3e;">*</span></label>
+                            <label class="pm-label">Ảnh minh chứng / hàng hóa <span style="color: #e53e3e;">*</span></label>
                             <input type="file" name="scalePhoto" id="quickScalePhotoInput" accept="image/*" required class="pm-input" />
                             <span class="pm-hint">Có thể chọn tệp, kéo-thả ảnh hoặc bấm Ctrl+V để dán ảnh</span>
                         </div>
@@ -615,15 +657,48 @@
             }
         });
 
-        function openEditPlanModal(invoiceId, invoiceCode, plannedQty, ceilingPrice, staffId) {
+        function toggleStaffNoteBox(wrapId, isChecked) {
+            var wrap = document.getElementById(wrapId);
+            if (wrap) {
+                wrap.style.display = isChecked ? 'block' : 'none';
+            }
+        }
+
+        function validateStaffSelection(selector) {
+            var checked = document.querySelectorAll(selector + ':checked');
+            if (!checked || checked.length === 0) {
+                alert('Vui lòng chọn ít nhất 1 nhân viên thu mua được phân công.');
+                return false;
+            }
+            return true;
+        }
+
+        function openEditPlanModal(btnEl, invoiceId, invoiceCode, plannedQty, ceilingPrice) {
             document.getElementById('editInvoiceIdInput').value = invoiceId;
             document.getElementById('editInvoiceCodeText').innerText = invoiceCode;
             document.getElementById('editPlannedWeightInput').value = plannedQty;
             document.getElementById('editCeilingPriceInput').value = ceilingPrice;
-            var radios = document.querySelectorAll('.edit-staff-radio');
-            radios.forEach(function (r) {
-                r.checked = (parseInt(r.value, 10) === parseInt(staffId, 10));
+
+            var assignedList = [];
+            try {
+                var rawJson = btnEl ? btnEl.getAttribute('data-assignments') : '';
+                if (rawJson) assignedList = JSON.parse(rawJson);
+            } catch (err) {
+                assignedList = [];
+            }
+
+            var checks = document.querySelectorAll('.edit-staff-check');
+            checks.forEach(function (chk) {
+                var uid = parseInt(chk.value, 10);
+                var found = assignedList.find(function (a) { return a.UserId === uid; });
+                chk.checked = !!found;
+                toggleStaffNoteBox('editStaffNoteWrap_' + uid, !!found);
+                var noteInput = document.getElementById('editStaffNoteInput_' + uid);
+                if (noteInput) {
+                    noteInput.value = (found && found.Note) ? found.Note : '';
+                }
             });
+
             document.getElementById('editPlanModal').classList.add('open');
         }
 

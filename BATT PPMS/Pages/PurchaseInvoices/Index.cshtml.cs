@@ -24,6 +24,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public decimal TotalAmount { get; set; }
         public int? CreatedByStaffId { get; set; }
         public string CreatedByName { get; set; } = string.Empty;
+        public List<StaffAssignmentNote> StaffAssignments { get; set; } = new();
+        public string StaffAssignmentsJson => System.Text.Json.JsonSerializer.Serialize(StaffAssignments);
         public string Status { get; set; } = "Pending";
         public string StatusDisplayName { get; set; } = "Đang thu mua";
         public string StatusBadgeType { get; set; } = "procuring"; // "procuring", "wait_approval", "received", "rejected"
@@ -203,10 +205,12 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
             var allInvoices = await query.ToListAsync();
 
-            // Nhân viên thu mua chỉ thấy các phiếu tổng được giao cho mình
+            // Nhân viên thu mua chỉ thấy các phiếu tổng được giao cho mình (hỗ trợ giao nhiều nhân viên)
             if (IsPurchasingStaff)
             {
-                allInvoices = allInvoices.Where(p => (p.AssignedTo ?? p.CreatedBy) == CurrentUserId).ToList();
+                allInvoices = allInvoices
+                    .Where(p => NoteTags.IsStaffAssigned(p.Note, p.AssignedTo, p.CreatedBy, CurrentUserId))
+                    .ToList();
                 ActiveAssignedInvoices = allInvoices
                     .Where(p => !IsInvoiceExpiredByDate(p.PurchaseDate) && p.Status != "Expired" && p.Status != "Rejected")
                     .OrderByDescending(p => p.InvoiceId)
@@ -247,7 +251,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             // Lọc theo nhân viên thu mua
             if (StaffFilter.HasValue && StaffFilter.Value > 0)
             {
-                filtered = filtered.Where(p => (p.AssignedTo ?? p.CreatedBy) == StaffFilter.Value);
+                filtered = filtered.Where(p => NoteTags.IsStaffAssigned(p.Note, p.AssignedTo, p.CreatedBy, StaffFilter.Value));
             }
 
             // Lọc theo trạng thái
@@ -293,6 +297,11 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                     var (dispStatus, badgeType) = MapStatus(p.Status, p.PurchaseDate, weighedQty, plannedQty, receivedQty);
 
                     var badgeCode = FormatInvoiceBadgeCode(p.InvoiceCode, p.InvoiceId);
+                    var fallbackName = p.AssignedToNavigation?.FullName ?? p.CreatedByNavigation?.FullName;
+                    var staffList = NoteTags.GetAssignments(p.Note, p.AssignedTo ?? p.CreatedBy, fallbackName);
+                    var assignedNames = staffList.Count > 0
+                        ? string.Join(", ", staffList.Select(a => a.FullName))
+                        : (fallbackName ?? "Chưa phân công");
 
                     return new PurchaseOrderItemViewModel
                     {
@@ -310,7 +319,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                         UnitPrice = UnitPriceOf(p),
                         TotalAmount = p.TotalAmount,
                         CreatedByStaffId = p.AssignedTo ?? p.CreatedBy,
-                        CreatedByName = p.AssignedToNavigation?.FullName ?? p.CreatedByNavigation?.FullName ?? "Chưa phân công",
+                        CreatedByName = assignedNames,
+                        StaffAssignments = staffList,
                         Status = p.Status ?? "Pending",
                         StatusDisplayName = dispStatus,
                         StatusBadgeType = badgeType,
@@ -442,7 +452,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public async Task<IActionResult> OnPostCreatePurchasePlanAsync(
             decimal plannedWeight,
             decimal ceilingPrice,
-            int assignedStaffId,
+            List<int>? assignedStaffIds,
+            int? assignedStaffId,
             int? materialId)
         {
             var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
@@ -485,16 +496,45 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             }
             ceilingPrice = currentPrice;
 
-            // Chỉ được giao cho người dùng đang hoạt động có vai trò Purchasing Staff
-            var assignedUser = await _context.Users
+            var selectedIds = (assignedStaffIds ?? new List<int>())
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            if (selectedIds.Count == 0 && assignedStaffId.HasValue && assignedStaffId.Value > 0)
+            {
+                selectedIds.Add(assignedStaffId.Value);
+            }
+            if (selectedIds.Count == 0)
+            {
+                ErrorMessage = "Vui lòng chọn ít nhất 1 nhân viên thu mua được phân công.";
+                return Back();
+            }
+
+            var assignedUsers = await _context.Users
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.UserId == assignedStaffId);
-            if (assignedUser == null || assignedUser.Status != StatusConstants.Active ||
-                assignedUser.Role?.RoleName != RoleConstants.PurchasingStaff)
+                .Where(u => selectedIds.Contains(u.UserId) &&
+                            u.Status == StatusConstants.Active &&
+                            u.Role.RoleName == RoleConstants.PurchasingStaff)
+                .ToListAsync();
+
+            if (assignedUsers.Count == 0)
             {
                 ErrorMessage = "Nhân viên được phân công phải là nhân viên thu mua (Purchasing Staff) đang hoạt động.";
                 return Back();
             }
+
+            var assignmentNotes = assignedUsers
+                .Select(u =>
+                {
+                    var staffNote = Request.Form[$"staffNote_{u.UserId}"].ToString().Trim();
+                    return new StaffAssignmentNote
+                    {
+                        UserId = u.UserId,
+                        FullName = u.FullName,
+                        Note = string.IsNullOrWhiteSpace(staffNote) ? null : staffNote
+                    };
+                })
+                .ToList();
 
             // Nhà cung cấp mặc định đang hoạt động
             var supplier = await _context.Suppliers.FirstOrDefaultAsync(s => s.Status == StatusConstants.Active);
@@ -543,8 +583,9 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             var invoiceCode = $"{prefix}{nextSeq:D3}";
             var totalAmount = Math.Round(plannedWeight * ceilingPrice, 2);
 
-            // Giá trần đã được thiết lập sẵn trong "Giá Thu mua Nguyên liệu" -> không cần duyệt, phiếu vào thẳng "Đang thu mua"
             const string initialStatus = "Approved";
+            var baseNote = $"Yêu cầu thu mua - Khối lượng dự kiến: {plannedWeight:N0} kg, Giá trần: {ceilingPrice:N0} VNĐ/kg";
+            var fullNote = NoteTags.SetAssignments(baseNote, assignmentNotes);
 
             var invoice = new PurchaseInvoice
             {
@@ -554,8 +595,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 TotalAmount = totalAmount,
                 Status = initialStatus,
                 CreatedBy = CurrentUserId,
-                AssignedTo = assignedStaffId,
-                Note = $"Phiếu thu mua tổng - Khối lượng dự kiến: {plannedWeight:N0} kg, Giá trần: {ceilingPrice:N0} VNĐ/kg"
+                AssignedTo = assignmentNotes[0].UserId,
+                Note = fullNote
             };
 
             invoice.PurchaseInvoiceDetails.Add(new PurchaseInvoiceDetail
@@ -570,29 +611,35 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             try
             {
                 await _context.SaveChangesAsync();
-                Notifier.Add(
-                    _context,
-                    assignedStaffId,
-                    $"Phiếu thu mua tổng {invoiceCode} mới",
-                    $"Bạn được giao phiếu thu mua tổng {invoiceCode} ({plannedWeight:N0} kg - giá trần {ceilingPrice:N0} VNĐ/kg). Vui lòng liên hệ NCC và tạo đơn mua hàng con.",
-                    $"/PurchaseInvoices/Detail?id={invoice.InvoiceId}");
+                foreach (var a in assignmentNotes)
+                {
+                    var personalNoteText = string.IsNullOrWhiteSpace(a.Note) ? "" : $" Ghi chú phân công cho bạn: \"{a.Note}\".";
+                    Notifier.Add(
+                        _context,
+                        a.UserId,
+                        $"Yêu cầu thu mua {invoiceCode} mới",
+                        $"Bạn được giao yêu cầu thu mua {invoiceCode} ({plannedWeight:N0} kg - giá trần {ceilingPrice:N0} VNĐ/kg).{personalNoteText} Vui lòng liên hệ NCC và tạo phiếu mua hàng.",
+                        $"/PurchaseInvoices/Detail?id={invoice.InvoiceId}");
+                }
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateException)
             {
-                ErrorMessage = "Không thể tạo phiếu thu mua (có thể trùng mã phiếu). Vui lòng thử lại.";
+                ErrorMessage = "Không thể tạo yêu cầu thu mua (có thể trùng mã phiếu). Vui lòng thử lại.";
                 return Back();
             }
 
             var (statusLabel, _) = MapStatus(initialStatus);
-            SuccessMessage = $"Đã tạo thành công phiếu thu mua tổng {invoiceCode} ({plannedWeight:N0} kg - {ceilingPrice:N0} VNĐ/kg). Trạng thái: {statusLabel}.";
+            var staffNamesStr = string.Join(", ", assignmentNotes.Select(a => a.FullName));
+            SuccessMessage = $"Đã tạo thành công yêu cầu thu mua {invoiceCode} ({plannedWeight:N0} kg - {ceilingPrice:N0} VNĐ/kg) phân công cho: {staffNamesStr}. Trạng thái: {statusLabel}.";
             return Back();
         }
 
         public async Task<IActionResult> OnPostUpdatePurchasePlanAsync(
             int invoiceId,
             decimal plannedWeight,
-            int assignedStaffId)
+            List<int>? assignedStaffIds,
+            int? assignedStaffId)
         {
             var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
             if (check != null) return check;
@@ -614,14 +661,20 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
             if (invoice == null)
             {
-                ErrorMessage = "Không tìm thấy phiếu thu mua tổng.";
+                ErrorMessage = "Không tìm thấy yêu cầu thu mua.";
                 return Back();
             }
 
             var badgeCode = FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId);
+            if (IsInvoiceExpiredByDate(invoice.PurchaseDate) ||
+                string.Equals(invoice.Status, "Expired", StringComparison.OrdinalIgnoreCase))
+            {
+                ErrorMessage = $"Không thể chỉnh sửa yêu cầu thu mua {badgeCode} vì đã hết hạn.";
+                return Back();
+            }
             if (invoice.PurchaseReceipts.Any())
             {
-                ErrorMessage = $"Không thể chỉnh sửa phiếu tổng {badgeCode} vì nhân viên thu mua đã tạo {invoice.PurchaseReceipts.Count} phiếu mua hàng con.";
+                ErrorMessage = $"Không thể chỉnh sửa yêu cầu thu mua {badgeCode} vì nhân viên thu mua đã tạo {invoice.PurchaseReceipts.Count} phiếu mua hàng.";
                 return Back();
             }
 
@@ -631,15 +684,45 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 return Back();
             }
 
-            var assignedUser = await _context.Users
+            var selectedIds = (assignedStaffIds ?? new List<int>())
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+            if (selectedIds.Count == 0 && assignedStaffId.HasValue && assignedStaffId.Value > 0)
+            {
+                selectedIds.Add(assignedStaffId.Value);
+            }
+            if (selectedIds.Count == 0)
+            {
+                ErrorMessage = "Vui lòng chọn ít nhất 1 nhân viên thu mua được phân công.";
+                return Back();
+            }
+
+            var assignedUsers = await _context.Users
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.UserId == assignedStaffId);
-            if (assignedUser == null || assignedUser.Status != StatusConstants.Active ||
-                assignedUser.Role?.RoleName != RoleConstants.PurchasingStaff)
+                .Where(u => selectedIds.Contains(u.UserId) &&
+                            u.Status == StatusConstants.Active &&
+                            u.Role.RoleName == RoleConstants.PurchasingStaff)
+                .ToListAsync();
+
+            if (assignedUsers.Count == 0)
             {
                 ErrorMessage = "Nhân viên được phân công phải là nhân viên thu mua (Purchasing Staff) đang hoạt động.";
                 return Back();
             }
+
+            var assignmentNotes = assignedUsers
+                .Select(u =>
+                {
+                    var staffNote = Request.Form[$"editStaffNote_{u.UserId}"].ToString().Trim();
+                    return new StaffAssignmentNote
+                    {
+                        UserId = u.UserId,
+                        FullName = u.FullName,
+                        Note = string.IsNullOrWhiteSpace(staffNote) ? null : staffNote
+                    };
+                })
+                .ToList();
 
             var detail = invoice.PurchaseInvoiceDetails.FirstOrDefault();
             var unitPrice = detail?.UnitPrice ?? CurrentCeilingPrice;
@@ -648,12 +731,14 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 detail.Quantity = plannedWeight;
             }
 
-            invoice.AssignedTo = assignedStaffId;
+            invoice.AssignedTo = assignmentNotes[0].UserId;
             invoice.TotalAmount = Math.Round(plannedWeight * unitPrice, 2);
-            invoice.Note = $"Phiếu thu mua tổng - Khối lượng dự kiến: {plannedWeight:N0} kg, Giá trần: {unitPrice:N0} VNĐ/kg";
+            var baseNote = $"Yêu cầu thu mua - Khối lượng dự kiến: {plannedWeight:N0} kg, Giá trần: {unitPrice:N0} VNĐ/kg";
+            invoice.Note = NoteTags.SetAssignments(baseNote, assignmentNotes);
 
             await _context.SaveChangesAsync();
-            SuccessMessage = $"Đã cập nhật phiếu thu mua tổng {badgeCode} ({plannedWeight:N0} kg — phân công cho {assignedUser.FullName}).";
+            var staffNamesStr = string.Join(", ", assignmentNotes.Select(a => a.FullName));
+            SuccessMessage = $"Đã cập nhật yêu cầu thu mua {badgeCode} ({plannedWeight:N0} kg — phân công cho: {staffNamesStr}).";
             return Back();
         }
 
@@ -679,14 +764,20 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
             if (invoice == null)
             {
-                ErrorMessage = "Không tìm thấy phiếu thu mua tổng.";
+                ErrorMessage = "Không tìm thấy yêu cầu thu mua.";
                 return Back();
             }
 
             var badgeCode = FormatInvoiceBadgeCode(invoice.InvoiceCode, invoice.InvoiceId);
+            if (IsInvoiceExpiredByDate(invoice.PurchaseDate) ||
+                string.Equals(invoice.Status, "Expired", StringComparison.OrdinalIgnoreCase))
+            {
+                ErrorMessage = $"Không thể xóa yêu cầu thu mua {badgeCode} vì đã hết hạn.";
+                return Back();
+            }
             if (invoice.PurchaseReceipts.Any())
             {
-                ErrorMessage = $"Không thể xóa phiếu tổng {badgeCode} vì nhân viên thu mua đã tạo {invoice.PurchaseReceipts.Count} phiếu mua hàng con.";
+                ErrorMessage = $"Không thể xóa yêu cầu thu mua {badgeCode} vì nhân viên thu mua đã tạo {invoice.PurchaseReceipts.Count} phiếu mua hàng.";
                 return Back();
             }
 
@@ -697,7 +788,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             _context.PurchaseInvoices.Remove(invoice);
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã xóa phiếu thu mua tổng {badgeCode}.";
+            SuccessMessage = $"Đã xóa yêu cầu thu mua {badgeCode}.";
             return Back();
         }
 

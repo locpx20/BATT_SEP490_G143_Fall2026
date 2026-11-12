@@ -1,12 +1,19 @@
 @model string
-@{ var tab = Context.Request.Query["tab"].ToString(); }
+@{
+    var tab = Context.Request.Query["tab"].ToString();
+    var viewMode = Context.Request.Query["ViewMode"].ToString();
+}
 <div class="owner-nav-section">
     <div class="owner-nav-label">Vận hành kho</div>
     <a class="nav-item @(Model == "Warehouse" && tab == "plans" ? "active" : "")" href="/Warehouse/Index?tab=plans"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Kế hoạch sản xuất trong ngày</span></a>
     <a class="nav-item @(Model == "Warehouse" && tab != "plans" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Nhập kho thành phẩm</span></a>
 </div>
 <div class="owner-nav-section">
-    <div class="owner-nav-label">Tồn kho</div>
-    <a class="nav-item @(Model == "Inventory" && tab != "finished" ? "active" : "")" href="/Inventory/Index?tab=raw"><i class="bi bi-box" aria-hidden="true"></i><span>Kho nguyên liệu</span></a>
+    <div class="owner-nav-label">Kho nguyên liệu</div>
+    <a class="nav-item @(Model == "Inventory" && tab != "finished" && !string.Equals(viewMode, "imports", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="/Inventory/Index?tab=raw&amp;ViewMode=requests"><i class="bi bi-inbox" aria-hidden="true"></i><span>Yêu cầu nhập kho (IR)</span></a>
+    <a class="nav-item @(Model == "Inventory" && tab != "finished" && string.Equals(viewMode, "imports", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="/Inventory/Index?tab=raw&amp;ViewMode=imports"><i class="bi bi-file-earmark-check" aria-hidden="true"></i><span>Phiếu nhập kho (PNK)</span></a>
+</div>
+<div class="owner-nav-section">
+    <div class="owner-nav-label">Tồn kho thành phẩm</div>
     <a class="nav-item @(Model == "Inventory" && tab == "finished" ? "active" : "")" href="/Inventory/Index?tab=finished"><i class="bi bi-stack" aria-hidden="true"></i><span>Kho thành phẩm</span></a>
 </div>

@@ -18,7 +18,11 @@ namespace BATT_PPMS.Pages.Inventory
         public string SupplierName { get; set; } = string.Empty;
         public decimal WeighedQuantity { get; set; }
         public decimal ActualPrice { get; set; }
-        public decimal TotalAmount => WeighedQuantity * ActualPrice;
+        public decimal? ImportedQuantity { get; set; }
+        public decimal? ImportedUnitPrice { get; set; }
+        public decimal DisplayQuantity => ImportedQuantity ?? WeighedQuantity;
+        public decimal DisplayPrice => ImportedUnitPrice ?? ActualPrice;
+        public decimal TotalAmount => DisplayQuantity * DisplayPrice;
         public string Status { get; set; } = "WaitWarehouse";
         public string StatusText { get; set; } = "Đã gửi yêu cầu nhập kho — Chờ Thủ kho xử lý";
         public string StatusType { get; set; } = "warehouse"; // pending | warehouse | received | rejected
@@ -46,6 +50,7 @@ namespace BATT_PPMS.Pages.Inventory
         public string ReceiptCode { get; set; } = "—";
         public string InvoiceCode { get; set; } = "—";
         public string MaterialName { get; set; } = string.Empty;
+        public int SupplierId { get; set; }
         public string SupplierName { get; set; } = string.Empty;
         public decimal Quantity { get; set; }
         public decimal UnitPrice { get; set; }
@@ -81,6 +86,9 @@ namespace BATT_PPMS.Pages.Inventory
         public string Tab { get; set; } = "raw";
 
         [BindProperty(SupportsGet = true)]
+        public string ViewMode { get; set; } = "requests"; // requests | imports
+
+        [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
 
         [BindProperty(SupportsGet = true)]
@@ -113,6 +121,8 @@ namespace BATT_PPMS.Pages.Inventory
         public List<WarehouseReceiptRowViewModel> Receipts { get; set; } = new();
         public List<WarehouseReceiptRowViewModel> PendingInboundRequests { get; set; } = new();
         public List<RawMaterialImportRowViewModel> ImportTickets { get; set; } = new();
+        public int TotalRequestsCount { get; set; }
+        public int TotalImportsCount { get; set; }
         public List<SupplierFilterOption> Suppliers { get; set; } = new();
         public string NextSuggestedImportCode { get; set; } = string.Empty;
 
@@ -212,7 +222,7 @@ namespace BATT_PPMS.Pages.Inventory
                 .GroupBy(i => i.ReceiptId!.Value)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            ImportTickets = allImports.Select(i =>
+            var mappedImports = allImports.Select(i =>
             {
                 var st = (i.Status ?? "Pending").Trim();
                 var (stText, stType) = st switch
@@ -223,7 +233,7 @@ namespace BATT_PPMS.Pages.Inventory
                 };
 
                 var invCode = i.Receipt?.Invoice != null
-                    ? BATT_PPMS.Pages.PurchaseInvoices.IndexModel.FormatInvoiceBadgeCode(i.Receipt.Invoice.InvoiceCode, i.Receipt.Invoice.InvoiceId)
+                    ? BATT_PPMS.Pages.PurchaseInvoices.IndexModel.FormatInvoiceBadgeCode(i.Receipt.Invoice.InvoiceId > 0 ? i.Receipt.Invoice.InvoiceCode : null, i.Receipt.Invoice.InvoiceId)
                     : "—";
 
                 return new RawMaterialImportRowViewModel
@@ -234,6 +244,7 @@ namespace BATT_PPMS.Pages.Inventory
                     ReceiptCode = i.Receipt?.ReceiptCode ?? "—",
                     InvoiceCode = invCode,
                     MaterialName = i.Material?.MaterialName ?? "Nguyên liệu thô",
+                    SupplierId = i.SupplierId,
                     SupplierName = i.Supplier?.SupplierName ?? "—",
                     Quantity = i.Quantity,
                     UnitPrice = i.UnitPrice,
@@ -249,6 +260,8 @@ namespace BATT_PPMS.Pages.Inventory
                     InvoicePhotoPath = i.Receipt?.InvoicePhotoPath
                 };
             }).ToList();
+
+            TotalImportsCount = mappedImports.Count;
 
             var allReceipts = await _context.PurchaseReceipts
                 .AsNoTracking()
@@ -299,6 +312,8 @@ namespace BATT_PPMS.Pages.Inventory
                     SupplierName = r.Supplier?.SupplierName ?? "—",
                     WeighedQuantity = r.WeighedQuantity,
                     ActualPrice = r.ActualPrice,
+                    ImportedQuantity = linkedImport?.Quantity,
+                    ImportedUnitPrice = linkedImport?.UnitPrice,
                     Status = r.Status ?? "WaitWarehouse",
                     StatusText = statusText,
                     StatusType = statusType,
@@ -319,6 +334,9 @@ namespace BATT_PPMS.Pages.Inventory
                 };
             }).ToList();
 
+            TotalRequestsCount = mapped.Count;
+            TotalWeighedKg = mapped.Sum(r => r.DisplayQuantity);
+
             var prefix = $"PNK-{DateTime.Now.Year % 100:D2}";
             var nextSeq = allImports
                 .Where(i => !string.IsNullOrWhiteSpace(i.ImportCode) && i.ImportCode.StartsWith(prefix))
@@ -331,10 +349,89 @@ namespace BATT_PPMS.Pages.Inventory
                 .Where(r => r.Status == "WaitWarehouse" || r.Status == "Pending" || r.Status == "ImportRejected")
                 .ToList();
 
+            if (!string.Equals(ViewMode, "imports", StringComparison.OrdinalIgnoreCase))
+            {
+                ViewMode = "requests";
+            }
+            else
+            {
+                ViewMode = "imports";
+            }
+
+            var now = DateTime.Now;
+            if (ViewMode == "imports")
+            {
+                var filteredImports = mappedImports.AsEnumerable();
+
+                if (!string.IsNullOrWhiteSpace(DateFilter) && DateFilter != "all")
+                {
+                    if (DateFilter == "today")
+                    {
+                        var today = now.Date;
+                        filteredImports = filteredImports.Where(i => i.ImportDate.Date == today);
+                    }
+                    else if (DateFilter == "week")
+                    {
+                        var startOfWeek = now.Date.AddDays(-(int)now.DayOfWeek + (int)DayOfWeek.Monday);
+                        filteredImports = filteredImports.Where(i => i.ImportDate >= startOfWeek);
+                    }
+                    else if (DateFilter == "month")
+                    {
+                        var startOfMonth = new DateTime(now.Year, now.Month, 1);
+                        filteredImports = filteredImports.Where(i => i.ImportDate >= startOfMonth);
+                    }
+                }
+
+                if (SupplierFilter.HasValue && SupplierFilter.Value > 0)
+                {
+                    filteredImports = filteredImports.Where(i => i.SupplierId == SupplierFilter.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(StatusFilter) && StatusFilter != "all")
+                {
+                    var sf = StatusFilter.Trim().ToLowerInvariant();
+                    if (sf == "pending" || sf == "wait_manager")
+                    {
+                        filteredImports = filteredImports.Where(i => i.Status == "Pending");
+                    }
+                    else if (sf == "received" || sf == "approved")
+                    {
+                        filteredImports = filteredImports.Where(i => i.Status == "Approved");
+                    }
+                    else if (sf == "rejected")
+                    {
+                        filteredImports = filteredImports.Where(i => i.Status == "Rejected");
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(SearchTerm))
+                {
+                    var term = SearchTerm.Trim().ToLowerInvariant();
+                    filteredImports = filteredImports.Where(i =>
+                        i.ImportCode.ToLowerInvariant().Contains(term) ||
+                        i.ReceiptCode.ToLowerInvariant().Contains(term) ||
+                        i.InvoiceCode.ToLowerInvariant().Contains(term) ||
+                        i.SupplierName.ToLowerInvariant().Contains(term) ||
+                        i.ImportedByName.ToLowerInvariant().Contains(term) ||
+                        i.MaterialName.ToLowerInvariant().Contains(term));
+                }
+
+                var finalImports = filteredImports.ToList();
+                TotalItems = finalImports.Count;
+                if (CurrentPage > TotalPages) CurrentPage = TotalPages;
+                if (CurrentPage < 1) CurrentPage = 1;
+
+                ImportTickets = finalImports
+                    .Skip((CurrentPage - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToList();
+                return;
+            }
+
+            ImportTickets = mappedImports;
             var filtered = mapped.AsEnumerable();
 
             // Lọc theo ngày
-            var now = DateTime.Now;
             if (!string.IsNullOrWhiteSpace(DateFilter) && DateFilter != "all")
             {
                 if (DateFilter == "today")
@@ -426,9 +523,10 @@ namespace BATT_PPMS.Pages.Inventory
             var check = RequireRole(RoleConstants.WarehouseStaff, RoleConstants.Manager, RoleConstants.Owner);
             if (check != null) return check;
 
-            IActionResult Back() => RedirectToPage(new
+            IActionResult Back(string? targetView = null) => RedirectToPage(new
             {
                 Tab = "raw",
+                ViewMode = targetView ?? ViewMode,
                 SearchTerm,
                 StatusFilter,
                 SupplierFilter,
@@ -514,6 +612,12 @@ namespace BATT_PPMS.Pages.Inventory
                 ? $"Phiếu nhập kho nguyên liệu {importCode} tạo từ {receipt.ReceiptCode} — Chờ Manager phê duyệt"
                 : $"Phiếu nhập kho {importCode} (từ {receipt.ReceiptCode}): {warehouseNote.Trim()}";
 
+            var estimatedQuantity = receipt.WeighedQuantity;
+            if (finalQuantity != estimatedQuantity)
+            {
+                noteText += $" (KL ước tính: {estimatedQuantity:N0} kg → KL cân thực tế: {finalQuantity:N0} kg)";
+            }
+
             var importTicket = new RawMaterialImport
             {
                 ImportCode = importCode,
@@ -529,6 +633,9 @@ namespace BATT_PPMS.Pages.Inventory
             };
 
             _context.RawMaterialImports.Add(importTicket);
+            // Cập nhật khối lượng cân thực tế tại kho và đơn giá thực nhập vào phiếu con để đồng bộ toàn hệ thống
+            receipt.WeighedQuantity = finalQuantity;
+            receipt.ActualPrice = finalUnitPrice;
             receipt.Status = "WaitManagerApproval";
             receipt.RejectionReason = null;
 
@@ -546,14 +653,15 @@ namespace BATT_PPMS.Pages.Inventory
                     _context,
                     mgrId,
                     $"Phiếu nhập kho nguyên liệu {importCode} chờ duyệt",
-                    $"Thủ kho ({CurrentFullName}) đã đối chiếu IR và lập Phiếu nhập kho nguyên liệu {importCode} (từ phiếu {receipt.ReceiptCode}, {finalQuantity:N0} kg × {finalUnitPrice:N0} VNĐ/kg). Chờ Manager phê duyệt.",
+                    $"Thủ kho ({CurrentFullName}) đã đối chiếu IR và lập Phiếu nhập kho nguyên liệu {importCode} (từ phiếu {receipt.ReceiptCode}, KL cân thực tế {finalQuantity:N0} kg × {finalUnitPrice:N0} VNĐ/kg). Chờ Manager phê duyệt.",
                     "/Inventory/Index?tab=raw");
             }
 
             await _context.SaveChangesAsync();
+            await BATT_PPMS.Pages.PurchaseInvoices.IndexModel.ExpirePastDayInvoicesAsync(_context);
 
-            SuccessMessage = $"Đã lập Phiếu nhập kho nguyên liệu {importCode} ({finalQuantity:N0} kg × {finalUnitPrice:N0} VNĐ/kg) từ phiếu {receipt.ReceiptCode} và gửi cho Manager phê duyệt.";
-            return Back();
+            SuccessMessage = $"Đã lập Phiếu nhập kho nguyên liệu {importCode} (KL cân thực tế: {finalQuantity:N0} kg × {finalUnitPrice:N0} VNĐ/kg) từ phiếu {receipt.ReceiptCode} và gửi cho Manager phê duyệt.";
+            return Back("imports");
         }
 
         // BƯỚC 6A TRÊN SWIMLANE: Manager -> Approved (Yes) -> Cộng tồn kho & gửi Receive Goods Receipt information về cho Purchasing Staff
@@ -562,9 +670,10 @@ namespace BATT_PPMS.Pages.Inventory
             var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
             if (check != null) return check;
 
-            IActionResult Back() => RedirectToPage(new
+            IActionResult Back(string? targetView = null) => RedirectToPage(new
             {
                 Tab = "raw",
+                ViewMode = targetView ?? ViewMode,
                 SearchTerm,
                 StatusFilter,
                 SupplierFilter,
@@ -658,9 +767,10 @@ namespace BATT_PPMS.Pages.Inventory
             var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
             if (check != null) return check;
 
-            IActionResult Back() => RedirectToPage(new
+            IActionResult Back(string? targetView = null) => RedirectToPage(new
             {
                 Tab = "raw",
+                ViewMode = targetView ?? ViewMode,
                 SearchTerm,
                 StatusFilter,
                 SupplierFilter,

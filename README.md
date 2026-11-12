@@ -8,7 +8,7 @@ Với database đang có dữ liệu, chạy `Add_MaintenanceRequest_Workflow.sq
 
 Mã lô thành phẩm dùng chung định dạng của main: `LOT-yyyyMMdd-<25 ký tự hex ngẫu nhiên>` (38 ký tự), lấy ngày sản xuất của phân công. Mã được tạo một lần khi Staff gửi yêu cầu QC, lưu tại `FinishedGoodBatch.bag_number`; QC, yêu cầu nhập kho, tồn kho, đơn hàng và thông báo đọc lại cùng mã này. Dashboard hiển thị mã từ phiếu nhập thành phẩm thực tế, không dùng mã LOT mẫu. Dữ liệu mẫu mới cũng theo định dạng này; các mã đã lưu trước đây được giữ để tra cứu lịch sử. Không cần chạy lại database hay dữ liệu mẫu để áp dụng thay đổi mã cho lô mới.
 
-Database đã có dữ liệu: chạy lần lượt các script bổ sung chưa chạy: `Add_Production_QC_Warehouse_Workflow.sql`, `Add_ShiftMaterialUsage.sql`, `Add_MaterialUsageReview.sql`, `Add_QC_ResultImage.sql`, `Add_DailyMaterialPlan.sql`, `Add_ShiftProductionPlan.sql`, rồi khởi động lại ứng dụng. Các script chạy lại được, giữ dữ liệu lịch sử. Không chạy lại database nền để cập nhật.
+Với database đang có dữ liệu, chạy lần lượt các script còn thiếu theo thứ tự `Add_Production_QC_Warehouse_Workflow.sql`, `Add_ShiftMaterialUsage.sql`, `Add_MaterialUsageReview.sql`, `Add_QC_ResultImage.sql` và `Add_DailyMaterialPlan.sql`. Sau đó chạy bản mới của `Add_ShiftProductionPlan.sql` để bổ sung trạng thái ca nghỉ, kể cả khi đã chạy bản trước. Script giữ các phân công đã lưu. Khởi động lại ứng dụng sau khi cập nhật.
 
 Menu Staff “Báo cáo cuối ca làm việc” có hai mục:
 
@@ -19,11 +19,11 @@ Giữ đúng nhánh sơ đồ đã chốt: có chênh lệch → thông báo Man
 
 Ảnh kết quả QC bắt buộc với kết quả mới, hỗ trợ JPG/PNG/WebP tối đa 5 MB, lưu trong database. Endpoint xem ảnh kiểm tra quyền theo role; Staff chỉ xem ảnh yêu cầu của mình. Kết quả QC cũ chưa có ảnh vẫn được giữ để tra cứu.
 
-Giao diện báo cáo cũ được thay bằng màn hình tiêu hao, phiếu nhập và QC mới. `/ShiftReports/Index` chuyển tới mục tiêu hao để giữ các liên kết cũ hoạt động. Dữ liệu cũ, phiếu xuất đã ghi nhận và phiếu nhập đã có được giữ nguyên.
+Manager xem hai mục **Nguyên liệu tiêu thụ** và **Yêu cầu nhập kho thành phẩm** trong nhóm **Báo cáo cuối ca** tại `/ShiftReports/Index`. Các liên kết báo cáo cũ của Staff và Owner chuyển tới mục tiêu hao.
 
 ### Dự kiến nguyên liệu và phiếu chờ Thủ kho
 
-Trong **Phân công lao động**, Manager chọn một ngày và các ca cần làm việc. Mỗi ca có nguyên liệu tiêu thụ dự kiến, thành phẩm dự kiến và danh sách công nhân theo công đoạn. Các ca trong phiếu được lưu cùng nhau và Thủ kho nhận thông báo. Với các ca cũ, mục **Cập nhật dự kiến nguyên liệu cho phân công cũ** vẫn dùng số dự kiến theo ngày.
+Trong **Phân công lao động**, Manager lập từng ca hoặc lập cả ngày trong một phiếu. Ca làm việc có nguyên liệu tiêu thụ dự kiến, thành phẩm dự kiến và danh sách công nhân theo công đoạn. Manager có thể chỉnh sửa hoặc đánh dấu nghỉ cho ca của ngày hiện tại. Ca đã có báo cáo hoặc yêu cầu nghiệp vụ được bảo vệ khỏi việc chuyển sang nghỉ. Thủ kho nhận thông báo khi lịch được cập nhật.
 
 Staff gửi hoặc sửa/gửi lại phiếu tiêu hao sẽ thông báo tới các tài khoản Thủ kho đang hoạt động. Menu **Kho nguyên liệu** của Thủ kho có hai mục riêng: **Phiếu nhập kho nguyên liệu** và **Phiếu tiêu hao nguyên liệu**. Mỗi mục đếm số phiếu đang cần Thủ kho xử lý; không đếm số thông báo chưa đọc. Phiếu nhập tính các trạng thái Pending, WaitWarehouse, ImportRejected (và dữ liệu cũ chưa có trạng thái); tiêu hao tính Pending. Đã xử lý thì số giảm, gửi lại thì số tăng. Các số hiện trên mọi trang của Thủ kho, tự cập nhật sau tối đa 30 giây khi trang đang mở, đồng thời cập nhật khi quay lại cửa sổ. Số 0 được ẩn. Mục cha hiển thị tổng hai số. Mục tiêu hao có đối chiếu dự kiến và mặc định hiển thị phiếu chờ trên tất cả các ngày. Trang Kế hoạch trong ngày chỉ hiển thị các phân công đúng ngày chọn, không phải nơi nhận phiếu Staff.
 

@@ -2,16 +2,33 @@
     const form = document.querySelector('.labor-form');
     if (!form) return;
 
-    form.querySelectorAll('[data-plan-shift]').forEach(shift => {
-        const include = shift.querySelector('[data-plan-include]');
+    const date = form.querySelector('[data-plan-date]');
+    const shifts = [...form.querySelectorAll('[data-plan-shift]')];
+    function updateShift(shift) {
+        const mode = shift.querySelector('[data-plan-mode]');
         const fields = shift.querySelector('[data-plan-fields]');
-        function updateShift() {
-            fields.disabled = !include.checked;
-            fields.querySelectorAll('[data-plan-quantity]').forEach(input => input.required = include.checked);
-        }
-        include.addEventListener('change', updateShift);
-        updateShift();
+        const note = shift.querySelector('[data-plan-note]');
+        const off = mode.querySelector('option[value="Off"]');
+        off.disabled = date.value !== form.dataset.today;
+        if (off.disabled && mode.value === 'Off') mode.value = mode.options[0].value;
+        const working = mode.value === 'Work';
+        const scheduled = mode.value !== 'Skip';
+        shift.dataset.mode = mode.value;
+        fields.hidden = fields.disabled = !working;
+        note.hidden = note.disabled = !scheduled;
+        fields.querySelectorAll('[data-plan-quantity]').forEach(input => input.required = working);
+    }
+    shifts.forEach(shift => shift.querySelector('[data-plan-mode]')
+        .addEventListener('change', () => updateShift(shift)));
+    date.addEventListener('change', () => shifts.forEach(updateShift));
+    form.querySelector('[data-plan-all]')?.addEventListener('click', () => {
+        shifts.forEach(shift => {
+            const mode = shift.querySelector('[data-plan-mode]');
+            if (mode.value === 'Skip') mode.value = 'Work';
+            updateShift(shift);
+        });
     });
+    shifts.forEach(updateShift);
 
     const pickers = [...form.querySelectorAll('[data-staff-picker]')];
     function refresh(picker) {
@@ -40,4 +57,18 @@
         picker.open = false;
         picker.querySelector('summary').focus();
     }, true);
+
+    const dialog = form.closest('dialog');
+    if (dialog) {
+        const trigger = document.querySelector('[data-plan-open]');
+        function openDialog() {
+            dialog.showModal();
+            (dialog.querySelector('[data-plan-error]') ?? date).focus();
+        }
+        trigger.addEventListener('click', openDialog);
+        dialog.querySelectorAll('[data-plan-close]').forEach(button =>
+            button.addEventListener('click', () => dialog.close()));
+        dialog.addEventListener('close', () => trigger.focus({ preventScroll: true }));
+        if (dialog.dataset.openOnLoad === 'true') openDialog();
+    }
 })();

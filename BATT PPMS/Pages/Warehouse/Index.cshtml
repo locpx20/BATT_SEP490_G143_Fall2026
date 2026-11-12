@@ -405,7 +405,9 @@
     @if (warehousePlans) {
         var schedule = new ProductionScheduleViewModel("/Warehouse/Index", new() { ["Tab"] = "plans" },
             Model.PlanDate, Model.PlanDateInput, Model.AllPlanShifts, Model.PlanShifts, Model.Plans, Model.Pagination, Model.PlanDateInvalid,
-            ShiftPlans: Model.ShiftPlans);
+            ShiftPlans: Model.ShiftPlans, DaysOff: Model.ShiftPlans.Values
+                .Where(plan => plan.IsDayOff && (Model.AllPlanShifts || plan.Shift == Model.PlanShifts.ElementAtOrDefault(Model.Pagination.Offset)))
+                .ToList());
         <partial name="~/Pages/Shared/_ProductionSchedule.cshtml" model="schedule" />
     } else if (Model.StaffView) {
         @* ===== QUY TRÌNH 5 BƯỚC DÀNH CHO NHÂN VIÊN SẢN XUẤT (STAFF) ===== *@

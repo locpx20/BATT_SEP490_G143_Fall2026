@@ -561,8 +561,8 @@ else
                 <div class="form-group">
                     <label class="form-label">TRẠNG THÁI HỢP TÁC</label>
                     <select name="Status" id="editPartnerStatus" class="form-control">
-                        <option value="Active">Đang hợp tác (Active)</option>
-                        <option value="Inactive">Ngừng hợp tác (Inactive)</option>
+                        <option value="Active">Đang hợp tác</option>
+                        <option value="Inactive">Ngừng hợp tác</option>
                     </select>
                 </div>
             </div>
@@ -620,13 +620,13 @@ else
             const nameInput = document.getElementById('editPartnerName');
 
             if (type === 'SUPPLIER') {
-                title.innerHTML = `Chỉnh sửa: <span style="font-family:monospace; color:#123329;">${code}</span> — Nhà cung cấp`;
+                title.textContent = `Chỉnh sửa nhà cung cấp ${code}`;
                 form.action = '?handler=UpdateSupplier';
                 document.getElementById('editSupplierId').value = id;
                 document.getElementById('editCustomerId').value = '';
                 nameInput.name = 'SupplierName';
             } else {
-                title.innerHTML = `Chỉnh sửa: <span style="font-family:monospace; color:#28543f;">${code}</span> — Khách hàng`;
+                title.textContent = `Chỉnh sửa khách hàng ${code}`;
                 form.action = '?handler=UpdateCustomer';
                 document.getElementById('editCustomerId').value = id;
                 document.getElementById('editSupplierId').value = '';
@@ -731,6 +731,35 @@ else
             }
             document.getElementById('historyModalBody').innerHTML = html;
             openModal('modalHistory');
+        }
+
+        const partnerDetailsDialog = document.getElementById('partnerDetailsDialog');
+        if (partnerDetailsDialog) {
+            const content = document.getElementById('partnerDetailsContent');
+            let activeRequest;
+            partnerDetailsDialog.querySelector('[data-close-partner-details]').addEventListener('click', () => partnerDetailsDialog.close());
+            partnerDetailsDialog.addEventListener('close', () => {
+                if (!partnerDetailsDialog.open) activeRequest?.abort();
+            });
+
+            document.querySelectorAll('[data-partner-details]').forEach(button => button.addEventListener('click', async () => {
+                activeRequest?.abort();
+                const request = new AbortController();
+                activeRequest = request;
+                content.textContent = 'Đang tải thông tin…';
+                content.setAttribute('aria-busy', 'true');
+                partnerDetailsDialog.showModal();
+                try {
+                    const response = await fetch(button.dataset.partnerDetails, { signal: request.signal, redirect: 'error' });
+                    if (!response.ok) throw new Error(String(response.status));
+                    const details = await response.text();
+                    if (!request.signal.aborted) content.innerHTML = details;
+                } catch {
+                    if (!request.signal.aborted) content.textContent = 'Không tải được chi tiết. Vui lòng thử lại.';
+                } finally {
+                    if (activeRequest === request) content.removeAttribute('aria-busy');
+                }
+            }));
         }
 
         document.querySelectorAll('.modal-overlay').forEach(overlay => {

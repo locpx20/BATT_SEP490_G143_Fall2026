@@ -1,6 +1,11 @@
 @model string
-@{ var ap = Model; var tab = ViewContext.HttpContext.Request.Query["tab"].ToString(); }
-<a class="nav-item @(Model == "MaterialUsage" ? "active" : "")" href="/Warehouse/Consumption"><i class="bi bi-box-arrow-up" aria-hidden="true"></i><span>Nguyên liệu đã sử dụng</span></a>
+@{
+    var ap = Model;
+    var tab = ViewContext.HttpContext.Request.Query["tab"].ToString();
+    var shiftReportActive = ap == "ShiftReport";
+    var receiptReportActive = shiftReportActive && tab == "receipts";
+    var materialReportActive = shiftReportActive && !receiptReportActive;
+}
 <div class="owner-nav-section">
     <div class="owner-nav-label">Tổng quan</div>
     <a class="nav-item @(ap == "Dashboard" ? "active" : "")" href="/Dashboard/Index"><i class="bi bi-grid"></i><span>Tổng quan</span></a>
@@ -11,7 +16,6 @@
     <a class="nav-item @(ap == "PurchasePrice" ? "active" : "")" href="/PurchasePrices/Index"><i class="bi bi-tag"></i><span>Giá thu mua NVL</span></a>
     <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Phân công lao động</span></a>
     <a class="nav-item @(ap == "QC" ? "active" : "")" href="/QC/Index"><i class="bi bi-patch-check" aria-hidden="true"></i><span>Kiểm tra chất lượng</span></a>
-    <a class="nav-item @(ap == "Warehouse" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Theo dõi nhập thành phẩm</span></a>
     <details class="owner-nav-details" open="@(ap is "Maintenance" or "MaterialPurchase" or "BrokenReport" or "Machines")">
         <summary class="nav-item"><i class="bi bi-wrench"></i><span>Sự cố &amp; bảo trì</span><i class="bi bi-chevron-down"></i></summary>
         <a class="nav-item @(ap is "Maintenance" or "BrokenReport" ? "active" : "")" href="/Maintenance/Index">Sự cố &amp; máy móc</a>
@@ -27,5 +31,17 @@
     <a class="nav-item @(ap == "Suppliers" ? "active" : "")" href="/Suppliers/Index?tab=suppliers"><i class="bi bi-buildings"></i><span>Nhà cung cấp</span></a>
     <a class="nav-item @(ap == "Customers" ? "active" : "")" href="/Suppliers/Index?tab=customers"><i class="bi bi-people"></i><span>Khách hàng</span></a>
     <a class="nav-item" href="/Dashboard/Index#owner-finance"><i class="bi bi-cash-coin"></i><span>Công nợ &amp; tài chính</span></a>
-    <a class="nav-item @(ap == "ShiftReport" ? "active" : "")" href="/ShiftReports/Index"><i class="bi bi-graph-up"></i><span>Báo cáo vận hành</span></a>
+    <details class="owner-nav-details" open="@shiftReportActive">
+        <summary class="nav-item">
+            <i class="bi bi-clipboard-data" aria-hidden="true"></i><span>Báo cáo cuối ca</span><i class="bi bi-chevron-down" aria-hidden="true"></i>
+        </summary>
+        <a class="nav-item @(materialReportActive ? "active" : "")" asp-page="/ShiftReports/Index" asp-route-tab="materials"
+           aria-current="@(materialReportActive ? "page" : null)">
+            <i class="bi bi-box-arrow-up" aria-hidden="true"></i><span>Nguyên liệu tiêu thụ</span>
+        </a>
+        <a class="nav-item @(receiptReportActive ? "active" : "")" asp-page="/ShiftReports/Index" asp-route-tab="receipts"
+           aria-current="@(receiptReportActive ? "page" : null)">
+            <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Yêu cầu nhập kho thành phẩm</span>
+        </a>
+    </details>
 </div>

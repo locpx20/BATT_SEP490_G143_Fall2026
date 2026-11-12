@@ -8,6 +8,10 @@
     }
     var pagingFilters = allShiftFilters.ToDictionary(filter => filter.Key, filter => (string?)filter.Value);
     pagingFilters["AllPlanShifts"] = "false";
+    var assignments = Model.Assignments.ToLookup(a => (a.AssignmentDate, a.Shift));
+    var daysOff = (Model.DaysOff ?? []).ToDictionary(p => (AssignmentDate: p.PlanDate, Shift: (string?)p.Shift));
+    var scheduleKeys = assignments.Select(g => g.Key).Union(daysOff.Keys)
+        .OrderByDescending(k => k.AssignmentDate).ThenBy(k => k.Shift).ToList();
 }
 <section class="closeout-register warehouse-plans">
     <div class="closeout-section-head">
@@ -43,14 +47,27 @@
         </nav>
     }
 
-    @foreach (var shift in Model.Assignments.GroupBy(a => new { a.AssignmentDate, a.Shift })) {
+    @foreach (var shift in scheduleKeys) {
+        var shiftName = string.IsNullOrWhiteSpace(shift.Shift) ? "Chưa ghi nhận ca" : shift.Shift;
+        var dateLabel = shift.AssignmentDate.ToString("dd/MM/yyyy");
+        if (daysOff.TryGetValue(shift, out var dayOff)) {
+            <section class="warehouse-plan-group">
+                <header class="warehouse-plan-group-head schedule-day-off">
+                    <h2>
+                        <span><i class="bi bi-clock" aria-hidden="true"></i> @shiftName</span>
+                        @if (Model.DisplayDate is null) { <span class="plan-group-date">Ngày @dateLabel</span> }
+                        <span class="schedule-shift-state" data-status="Off">Nghỉ</span>
+                    </h2>
+                    @if (!string.IsNullOrWhiteSpace(dayOff.Note)) { <p>@dayOff.Note</p> }
+                </header>
+            </section>
+            continue;
+        }
         var position = 0;
-        var shiftName = string.IsNullOrWhiteSpace(shift.Key.Shift) ? "Chưa ghi nhận ca" : shift.Key.Shift;
-        var dateLabel = shift.Key.AssignmentDate.ToString("dd/MM/yyyy");
         var tableLabel = $"Bảng phân công {shiftName} ngày {dateLabel}";
-        var tasks = shift.GroupBy(a => a.TaskDescription?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList();
-        var shiftStatus = Model.ShiftStatuses?.GetValueOrDefault((shift.Key.AssignmentDate, shift.Key.Shift)) ?? "Assigned";
-        var projection = shift.Key.Shift == null ? null : Model.ShiftPlans?.GetValueOrDefault(shift.Key.Shift);
+        var tasks = assignments[shift].GroupBy(a => a.TaskDescription?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList();
+        var shiftStatus = Model.ShiftStatuses?.GetValueOrDefault(shift) ?? "Assigned";
+        var projection = shift.Shift == null ? null : Model.ShiftPlans?.GetValueOrDefault(shift.Shift);
         <section class="warehouse-plan-group" aria-label="@tableLabel">
             @if (Model.AllShifts || Model.DisplayDate is null || projection != null) {
                 <header class="warehouse-plan-group-head">
@@ -127,7 +144,7 @@
     }
     @if (Model.InvalidDate) {
         <div class="plan-empty" role="alert">Vui lòng chọn ngày sản xuất hợp lệ.</div>
-    } else if (Model.Assignments.Count == 0) {
+    } else if (scheduleKeys.Count == 0) {
         <div class="plan-empty" role="status">@(Model.DisplayDate is { } emptyDate ? $"Chưa có phân công lao động ngày {emptyDate:dd/MM/yyyy}." : "Chưa có phân công lao động phù hợp.")</div>
     }
     @if (!Model.AllShifts && !Model.InvalidDate) {

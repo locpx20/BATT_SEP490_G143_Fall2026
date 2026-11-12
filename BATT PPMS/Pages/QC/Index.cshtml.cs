@@ -15,7 +15,7 @@ namespace BATT_PPMS.Pages.QC
         public bool StaffView => IsStaff;
         public bool QcView => IsQCStaff;
         public List<ProductionQualityRequest> Requests { get; set; } = new();
-        public List<PersonnelAssignment> Assignments { get; set; } = new();
+        public List<QcShiftOption> Assignments { get; set; } = new();
         public List<AppNotification> Notices { get; set; } = new();
         public IReadOnlyDictionary<int, ProductionQcResult> Results { get; private set; } = new Dictionary<int, ProductionQcResult>();
         public List<ResultShift> ResultShifts { get; private set; } = new();
@@ -65,17 +65,17 @@ namespace BATT_PPMS.Pages.QC
             if (IsQCStaff && (Requests.Any(CanFinish) || ResultError != null))
                 ResultShifts = await _context.ProductionQualityRequests.AsNoTracking()
                     .Where(x => x.Inspection.Status == "In Progress" && x.Inspection.InspectedBy == CurrentUserId)
-                    .OrderByDescending(x => x.Inspection.Batch.ProductionDate).ThenBy(x => x.Assignment.Shift)
+                    .OrderByDescending(x => x.Inspection.Batch.ProductionDate).ThenBy(x => x.Assignment.Shift).ThenBy(x => x.RequestId)
                     .Select(x => new ResultShift(x.RequestId, x.Inspection.Batch.ProductionDate, x.Assignment.Shift, x.Inspection.Batch.BagNumber))
                     .ToListAsync();
-            if (IsStaff) Assignments = await new ProductionFlow(_context).AssignedShiftOptions(CurrentUserId);
+            if (IsStaff) Assignments = await new ProductionFlow(_context).QcShiftOptions(CurrentUserId);
 
             return Page();
         }
-        public async Task<IActionResult> OnPostRequestAsync(int assignmentId, int quantity, string? note) {
+        public async Task<IActionResult> OnPostRequestAsync(int assignmentId, int bags, string? note, string? exceptionReason) {
             var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
-            if (!ModelState.IsValid) { ErrorMessage = "Kiểm tra lại ca và sản lượng cần kiểm tra."; return RedirectToPage(); }
-            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, quantity, note); SuccessMessage = "Đã gửi yêu cầu tới nhân viên QC để tiếp nhận và kiểm tra chất lượng."; }
+            if (!ModelState.IsValid) { ErrorMessage = "Kiểm tra lại ca và số bao thành phẩm."; return RedirectToPage(); }
+            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, bags, note, exceptionReason); SuccessMessage = "Đã gửi yêu cầu tới nhân viên QC để tiếp nhận và kiểm tra chất lượng."; }
             catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
         }

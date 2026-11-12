@@ -100,6 +100,14 @@ namespace BATT_PPMS.Pages.Inventory
             ModelState.TryGetValue(nameof(ProductionDateFilter), out var state) && state.Errors.Count > 0;
 
         [BindProperty(SupportsGet = true)]
+        public string? StockGrade { get; set; }
+
+        public FinishedStockTotal TotalFinishedStock { get; private set; } = new(0, 0);
+        public FinishedStockTotal StockA { get; private set; } = new(0, 0);
+        public FinishedStockTotal StockB { get; private set; } = new(0, 0);
+        public bool CanViewFinishedQcImage => IsWarehouseStaff || IsManager || IsOwner;
+
+        [BindProperty(SupportsGet = true)]
         public int PageNumber { get; set; } = 1;
 
         [BindProperty(SupportsGet = true)]
@@ -124,7 +132,7 @@ namespace BATT_PPMS.Pages.Inventory
         public int DisplayTo => Math.Min(CurrentPage * PageSize, TotalItems);
 
         public List<RawMaterial> Materials { get; set; } = new();
-        public List<FinishedGoodBatch> Batches { get; set; } = new();
+        public List<FinishedStockLot> Batches { get; private set; } = [];
         public PageWindow Pagination { get; set; } = new(0, 1);
 
         public List<WarehouseReceiptRowViewModel> Receipts { get; set; } = new();
@@ -167,22 +175,7 @@ namespace BATT_PPMS.Pages.Inventory
 
             if (Tab == "finished")
             {
-                var page = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
-                var query = _context.FinishedGoodBatches
-                    .AsNoTracking()
-                    .Include(x => x.CreatedByNavigation)
-                    .Where(x => x.Status == "In Stock");
-                if (InvalidProductionDateFilter)
-                    query = query.Where(x => false);
-                else if (ProductionDateFilter is { } productionDate)
-                    query = query.Where(x => x.ProductionDate == productionDate);
-                Pagination = new(await query.CountAsync(), page);
-                Batches = await query
-                    .OrderByDescending(x => x.ProductionDate)
-                    .ThenByDescending(x => x.BatchId)
-                    .Skip(Pagination.Offset)
-                    .Take(PageWindow.Size)
-                    .ToListAsync();
+                await LoadFinishedStockAsync(HttpContext.RequestAborted);
                 if (IsWarehouseStaff)
                     await WarehouseNavigationNotices.OpenAsync(_context, CurrentUserId, WarehouseNavigationNotice.FinishedStock, HttpContext.RequestAborted);
                 return Page();
@@ -198,6 +191,69 @@ namespace BATT_PPMS.Pages.Inventory
 
             await LoadDataAsync();
             return Page();
+        }
+
+        private async Task LoadFinishedStockAsync(CancellationToken cancellationToken)
+        {
+            StockGrade = StockGrade is "A" or "B" ? StockGrade : null;
+            var gradedLots = from request in _context.ProductionQualityRequests.AsNoTracking()
+                             join result in _context.ProductionQcResults on request.RequestId equals result.RequestId
+                             where request.Inspection.Status == "Completed" && request.Inspection.Result == "Pass"
+                             select new { request.Inspection.BatchId, request.RequestId, result.Grade };
+            var latestResults = gradedLots.GroupBy(x => x.BatchId).Select(group => group.Max(x => x.RequestId));
+            var latestGrades = gradedLots.Where(x => latestResults.Contains(x.RequestId));
+            var stock = from batch in _context.FinishedGoodBatches.AsNoTracking()
+                        where batch.Status == "In Stock"
+                        join grade in latestGrades on batch.BatchId equals grade.BatchId into grades
+                        from grade in grades.DefaultIfEmpty()
+                        select new FinishedStockLot
+                        {
+                            BatchId = batch.BatchId,
+                            Lot = batch.BagNumber,
+                            ProductionDate = batch.ProductionDate,
+                            StockKg = batch.Quantity,
+                            Grade = grade.Grade
+                        };
+
+            var totals = await stock.Where(x => x.StockKg > 0).GroupBy(x => x.Grade)
+                .Select(group => new { Grade = group.Key, Kg = group.Sum(x => x.StockKg), Lots = group.Count() })
+                .ToListAsync(cancellationToken);
+            TotalFinishedStock = new(totals.Sum(x => x.Kg), totals.Sum(x => x.Lots));
+            var gradeA = totals.Find(x => x.Grade == "A");
+            var gradeB = totals.Find(x => x.Grade == "B");
+            StockA = new(gradeA?.Kg ?? 0, gradeA?.Lots ?? 0);
+            StockB = new(gradeB?.Kg ?? 0, gradeB?.Lots ?? 0);
+
+            var query = stock;
+            if (StockGrade != null)
+                query = query.Where(x => x.Grade == StockGrade);
+            if (InvalidProductionDateFilter)
+                query = query.Where(x => false);
+            else if (ProductionDateFilter is { } productionDate)
+                query = query.Where(x => x.ProductionDate == productionDate);
+
+            Pagination = new(await query.CountAsync(cancellationToken), PageWindow.ReadRequestedPage(Request.Query, PageNumber));
+            Batches = await query.OrderByDescending(x => x.ProductionDate).ThenByDescending(x => x.BatchId)
+                .Skip(Pagination.Offset).Take(Pagination.PageSize).ToListAsync(cancellationToken);
+            if (Batches.Count == 0)
+                return;
+
+            var batchIds = Batches.Select(x => x.BatchId).ToArray();
+            var receipts = await _context.FinishedGoodsReceipts.AsNoTracking()
+                .Where(r => batchIds.Contains(r.QualityRequest.Inspection.BatchId)
+                    && r.ReceivedAt != null && r.ActualQuantity > 0
+                    && (r.Status == "Received" || r.Status == "AwaitingStaffConfirmation"))
+                .OrderByDescending(r => r.ReceivedAt).ThenByDescending(r => r.ReceiptId)
+                .Select(r => new
+                {
+                    r.QualityRequest.Inspection.BatchId,
+                    Receipt = new FinishedStockReceipt(r.ReceiptId, r.QualityRequestId, r.ReceivedAt,
+                        r.ActualQuantity, r.Receiver == null ? null : r.Receiver.FullName, r.DiscrepancyNote,
+                        r.QualityRequest.ResultImage != null)
+                }).ToListAsync(cancellationToken);
+            var latestReceipts = receipts.GroupBy(x => x.BatchId).ToDictionary(group => group.Key, group => group.First().Receipt);
+            foreach (var batch in Batches)
+                batch.Receipt = latestReceipts.GetValueOrDefault(batch.BatchId);
         }
 
         private async Task LoadDataAsync()

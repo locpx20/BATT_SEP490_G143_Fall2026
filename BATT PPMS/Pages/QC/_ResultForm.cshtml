@@ -1,4 +1,5 @@
 @model BATT_PPMS.Pages.QC.IndexModel
+@using BATT_PPMS.Helpers
 
 <div class="modal fade closeout-modal qc-modal" id="qc-result" tabindex="-1" aria-labelledby="qc-result-title" aria-hidden="true"
      data-reopen="@(Model.ResultError != null ? "true" : "false")">
@@ -24,7 +25,7 @@
                                 <option value="">Chọn ngày và ca</option>
                                 @foreach (var shift in Model.ResultShifts) {
                                     <option value="@shift.RequestId" data-lot="@shift.Lot" data-date="@shift.ProductionDate.ToString("dd/MM/yyyy")">
-                                        @shift.ProductionDate.ToString("dd/MM/yyyy") · @(shift.Shift ?? "Chưa ghi nhận ca")
+                                        @shift.ProductionDate.ToString("dd/MM/yyyy") · @(shift.Shift ?? "Chưa ghi nhận ca") · @LotCode.ForListDisplay(shift.Lot)
                                     </option>
                                 }
                             </select>

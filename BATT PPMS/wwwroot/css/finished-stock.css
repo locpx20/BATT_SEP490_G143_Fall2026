@@ -1,0 +1,173 @@
+.finished-stock-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.finished-stock .stock-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding: 20px 22px;
+    border: 1px solid var(--co-border);
+    border-radius: 12px;
+    color: var(--co-ink);
+    background: var(--co-paper);
+    text-decoration: none;
+}
+
+.finished-stock .stock-card--all {
+    color: #fffefa;
+    background: var(--co-green);
+    border-color: var(--co-green);
+}
+
+.finished-stock .stock-card--a { background: #eaf1e9; }
+.finished-stock .stock-card--b { background: #f6f1e3; }
+
+.finished-stock .stock-card:hover,
+.finished-stock .stock-card[aria-current="page"] {
+    border-color: #92742c;
+    box-shadow: inset 0 -3px #ba9d58;
+}
+
+.finished-stock .stock-card:focus-visible {
+    outline: 2px solid #92742c;
+    outline-offset: 3px;
+}
+
+.stock-card-title {
+    font-weight: 700;
+}
+
+.stock-card strong {
+    font-size: clamp(23px, 2.3vw, 32px);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.stock-card span:last-child,
+.stock-card strong small {
+    font-size: 14px;
+}
+
+.finished-stock .stock-card--all small {
+    color: inherit;
+}
+
+.finished-stock .finished-stock-toolbar {
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.finished-stock .finished-stock-filter {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+.finished-stock .finished-stock-filter input[type="date"] {
+    width: min(100%, 210px);
+}
+
+.finished-stock .finished-stock-table {
+    min-width: 1140px;
+}
+
+.finished-stock-table .stock-col-lot { width: 15%; }
+.finished-stock-table .stock-col-quality { width: 10%; }
+.finished-stock-table .stock-col-weight { width: 11%; }
+.finished-stock-table .stock-col-receiver { width: 12%; }
+.finished-stock-table .stock-col-detail { width: 9%; }
+
+.finished-stock .finished-stock-table :is(td, th) {
+    padding: 13px 14px;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.finished-stock-table code,
+.stock-detail-lot {
+    color: var(--co-green);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.finished-stock .finished-stock-table .stock-number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.finished-stock-table td.stock-number { white-space: nowrap; }
+.finished-stock-table th.stock-number small { display: block; font-weight: 400; }
+.stock-on-hand { font-weight: 700; }
+
+.stock-quality {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #eeeae0;
+    color: #534b38;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.stock-quality[data-grade="A"] { background: #dcebe0; color: #24523c; }
+.stock-quality[data-grade="B"] { background: #f0e6cb; color: #74551b; }
+
+.finished-stock-table .closeout-button {
+    padding: 6px 9px;
+    min-height: 36px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.finished-stock-dialog {
+    width: min(680px, calc(100% - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    color: var(--co-ink);
+    background: var(--co-paper);
+    border: 1px solid var(--co-border);
+    border-radius: 14px;
+}
+
+.finished-stock-dialog::backdrop {
+    background: rgb(25 63 53 / 50%);
+}
+
+.finished-stock-dialog header {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--co-border);
+    background: var(--co-paper);
+}
+
+.finished-stock-dialog-body {
+    padding: 22px;
+}
+
+.finished-stock-dialog dl {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    gap: 12px;
+    margin: 16px 0 20px;
+}
+
+.finished-stock-dialog dl > div {
+    padding: 10px 12px;
+    background: #f4f6ef;
+    border-radius: 8px;
+}
+
+.finished-stock-dialog dt { color: var(--co-muted); font-size: 13px; }
+.finished-stock-dialog dd { margin: 4px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.finished-stock-dialog p.stock-detail-note { margin-bottom: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }

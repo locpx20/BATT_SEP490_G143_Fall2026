@@ -243,13 +243,20 @@ namespace BATT_PPMS.Pages.Personnel
                         && receipt.QualityRequest.Assignment.Shift == shift.Shift
                         && receipt.ReceivedAt != null && receipt.ActualQuantity > 0
                         && (receipt.Status == "Received" || receipt.Status == "AwaitingStaffConfirmation")),
+                HasOutstandingLots = _context.ProductionQualityRequests.Any(request =>
+                        request.Assignment.AssignmentDate == shift.AssignmentDate
+                        && request.Assignment.Shift == shift.Shift
+                        && (request.Inspection.Status != "Completed" || request.Inspection.Result != "Fail")
+                        && (request.Receipt == null || request.Receipt.ReceivedAt == null
+                            || request.Receipt.ActualQuantity == null || request.Receipt.ActualQuantity <= 0
+                            || (request.Receipt.Status != "Received" && request.Receipt.Status != "AwaitingStaffConfirmation"))),
                 HasActiveAssignment = query.Any(assignment => assignment.AssignmentDate == shift.AssignmentDate
                         && assignment.Shift == shift.Shift && assignment.Status != "Cancelled")
             }).ToListAsync(HttpContext.RequestAborted);
 
             return rows.ToDictionary(row => (row.AssignmentDate, row.Shift), row =>
                 !row.HasActiveAssignment ? "Cancelled" :
-                row.HasDeduction && row.HasReceipt ? "Completed" :
+                row.HasDeduction && row.HasReceipt && !row.HasOutstandingLots ? "Completed" :
                 row.HasDeduction || row.HasReceipt ? "InProgress" : "Assigned");
         }
 

@@ -1,11 +1,13 @@
 using System.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Services;
 
 public sealed class ProductionFlowException(string message) : Exception(message);
+public sealed record QcShiftOption(int AssignmentId, DateOnly AssignmentDate, string? Shift, bool RequiresException);
 
 /// <summary>Enforces production handoffs and posts stock exactly once, in one transaction.</summary>
 public sealed class ProductionFlow(ProductionManagementDbContext db)
@@ -59,6 +61,25 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             .Select(shift => shift.FirstOrDefault(a => a.AssignmentId == preferredAssignmentId) ?? shift.First())
             .ToList();
     }
+
+    public async Task<List<QcShiftOption>> QcShiftOptions(int staff)
+    {
+        var assignments = (await AssignedShiftOptions(staff)).Where(a => LotCode.ShiftNumber(a.Shift).HasValue).ToList();
+        if (assignments.Count == 0)
+            return [];
+
+        var dates = assignments.Select(a => a.AssignmentDate).Distinct().ToArray();
+        var requestedShifts = await db.ProductionQualityRequests.AsNoTracking()
+            .Where(q => dates.Contains(q.Assignment.AssignmentDate))
+            .Select(q => new { q.Assignment.AssignmentDate, q.Assignment.Shift }).Distinct().ToListAsync();
+        var used = requestedShifts.Select(a => (a.AssignmentDate, LotCode.ShiftNumber(a.Shift))).ToHashSet();
+        return assignments.GroupBy(a => (a.AssignmentDate, LotCode.ShiftNumber(a.Shift)))
+            .Select(shift =>
+            {
+                var a = shift.First();
+                return new QcShiftOption(a.AssignmentId, a.AssignmentDate, a.Shift, used.Contains(shift.Key));
+            }).ToList();
+    }
     public async Task<List<PersonnelAssignment>> ConsumptionShiftOptions(int staff)
     {
         var available = await db.PersonnelAssignments.AsNoTracking()
@@ -82,16 +103,44 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             .Select(a => (a.AssignmentDate, a.Shift)).ToHashSet();
     }
 
-    public Task<int> RequestQc(int staff, int assignmentId, int quantity, string? note) => Change(async () => {
+    public Task<int> RequestQc(int staff, int assignmentId, int bags, string? note, string? exceptionReason = null) => Change(async () => {
         await Actor(staff, RoleConstants.Staff); var a = await OwnAssignment(assignmentId, staff);
         Need(a.AssignmentDate >= DateOnly.FromDateTime(Now), "Chỉ được tạo yêu cầu QC từ ngày hôm nay trở đi.");
-        Need(quantity > 0, "Sản lượng cần kiểm tra phải lớn hơn 0 kg.");
+        Need(bags is >= 1 and <= FinishedGoodsQuantity.MaxBags, "Số bao thành phẩm phải là số nguyên dương trong giới hạn cho phép.");
+        var shift = LotCode.ShiftNumber(a.Shift);
+        Need(shift.HasValue, "Phân công chưa có ca hợp lệ để cấp mã lô.");
+        var prefix = LotCode.ShiftPrefix(a.AssignmentDate, shift!.Value);
+        var lockName = FormattableString.Invariant($"FinishedGoodsLot:{a.AssignmentDate:yyyy-MM-dd}");
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                DECLARE @lockResult int;
+                EXEC @lockResult = sp_getapplock
+                    @Resource = {lockName}, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 5000;
+                IF @lockResult < 0 THROW 51021, 'Unable to allocate a finished goods lot number.', 1;
+                """);
+        }
+        catch (SqlException ex) when (ex.Number is 51021 or 1205)
+        {
+            throw new ProductionFlowException("Ca này đang được cấp mã lô. Vui lòng thử gửi lại.");
+        }
+
+        var previous = await db.ProductionQualityRequests.AsNoTracking()
+            .Where(x => x.Assignment.AssignmentDate == a.AssignmentDate)
+            .Select(x => new { x.Assignment.Shift, x.Inspection.Batch.BagNumber }).Distinct().ToListAsync();
+        var shiftLots = previous.Where(x => LotCode.ShiftNumber(x.Shift) == shift)
+            .Select(x => x.BagNumber).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var savedCodes = await db.FinishedGoodBatches.AsNoTracking().Where(b => b.BagNumber.StartsWith(prefix))
+            .Select(b => b.BagNumber).ToListAsync();
+        var lastSequence = Math.Max(shiftLots.Count, savedCodes.Select(code => LotCode.SequenceInShift(code, prefix)).DefaultIfEmpty().Max());
+        Need(lastSequence < int.MaxValue, "Ca này đã hết số thứ tự lô.");
+        var sequence = lastSequence + 1;
+        var reason = Text(exceptionReason, 1000, "lý do tách lô", sequence > 1);
         var text = Text(note, 5000, "ghi chú");
-        Need(!await db.ProductionQualityRequests.AnyAsync(x =>
-            x.Assignment.AssignmentDate == a.AssignmentDate && x.Assignment.Shift == a.Shift
-            && (x.Inspection.Status != "Completed" || x.Inspection.Result != "Fail")),
-            "Ca này đã có lô thành phẩm gửi kiểm tra. Mỗi ca chỉ gửi một lô tổng.");
-        var batch = new FinishedGoodBatch { BagNumber = LotCode.Create(a.AssignmentDate), ProductionDate = a.AssignmentDate, Quantity = quantity, CreatedBy = staff, Status = "Pending QC" };
+        if (reason != null)
+            text = string.IsNullOrWhiteSpace(text) ? $"Lý do tách lô: {reason}" : $"Lý do tách lô: {reason}\n{text}";
+        var quantity = (decimal)bags * FinishedGoodsQuantity.KilogramsPerBag;
+        var batch = new FinishedGoodBatch { BagNumber = LotCode.Create(prefix, sequence, bags), ProductionDate = a.AssignmentDate, Quantity = quantity, CreatedBy = staff, Status = "Pending QC" };
         var inspection = new Qcinspection { InspectionCode = $"QC-{Guid.NewGuid():N}", Batch = batch, RequestedBy = staff, RequestDate = Now, Status = "Pending", Note = text };
         var request = new ProductionQualityRequest { Assignment = a, Inspection = inspection, CreatedAt = Now };
         db.ProductionQualityRequests.Add(request); await db.SaveChangesAsync();
@@ -260,9 +309,8 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         Need(q!.Inspection.Status == "Completed" && q.Inspection.Result == "Pass", "Chỉ được yêu cầu nhập kho sau khi QC trả kết quả đạt.");
         Need(q.Assignment.Status != "Cancelled", "Phân công đã bị hủy.");
         Need(!await db.FinishedGoodsReceipts.AnyAsync(x => x.QualityRequestId != requestId
-            && x.QualityRequest.Assignment.AssignmentDate == q.Assignment.AssignmentDate
-            && x.QualityRequest.Assignment.Shift == q.Assignment.Shift),
-            "Ca này đã có yêu cầu nhập lô thành phẩm tổng.");
+            && x.QualityRequest.Inspection.BatchId == q.Inspection.BatchId),
+            "Lô thành phẩm này đã có yêu cầu nhập kho.");
         if (q.Receipt != null) {
             Need(q.Receipt.Status == "Rejected", "Yêu cầu nhập kho đã được gửi hoặc xử lý.");
             q.Receipt.RequestNote = Text(note, 2000, "nội dung điều chỉnh", true);
@@ -299,9 +347,8 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         Need(r!.QualityRequest.Inspection.Status == "Completed" && r.QualityRequest.Inspection.Result == "Pass", "Lô hàng chưa có kết quả QC đạt.");
         var assignment = r.QualityRequest.Assignment;
         Need(!await db.FinishedGoodsReceipts.AnyAsync(x => x.ReceiptId != receiptId && x.ReceivedAt != null && x.ActualQuantity > 0
-            && x.QualityRequest.Assignment.AssignmentDate == assignment.AssignmentDate
-            && x.QualityRequest.Assignment.Shift == assignment.Shift),
-            "Ca này đã nhập lô thành phẩm tổng vào kho.");
+            && x.QualityRequest.Inspection.BatchId == r.QualityRequest.Inspection.BatchId),
+            "Lô thành phẩm này đã được nhập kho.");
         var text = Text(note, 2000, "ghi chú đối chiếu", actual != r.ExpectedQuantity);
         r.ActualQuantity = actual; r.DiscrepancyNote = text; r.ReceivedBy = keeper; r.ReceivedAt = Now;
         r.Status = "Received";

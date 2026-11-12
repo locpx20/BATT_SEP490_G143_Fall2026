@@ -16,7 +16,7 @@
     var tabs = new[]
     {
         (Label: "Tất cả", Value: (int?)null, Filter: "ALL", Css: ""),
-        (Label: "Chờ duyệt", Value: (int?)Model.PendingCount, Filter: RepairStatus.Pending, Css: Model.PendingCount > 0 ? "alert" : ""),
+        (Label: "Chờ duyệt", Value: (int?)Model.PendingCount, Filter: RepairStatus.Pending, Css: ""),
         (Label: "Bị từ chối", Value: (int?)Model.RejectedCount, Filter: RepairStatus.Rejected, Css: ""),
         (Label: "Chờ xác nhận", Value: (int?)Model.AssignedCount, Filter: RepairStatus.Assigned, Css: ""),
         (Label: "Đang sửa chữa", Value: (int?)Model.InProgressCount, Filter: RepairStatus.InProgress, Css: ""),

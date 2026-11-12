@@ -116,6 +116,8 @@ body.staff-workspace { --font: var(--font-body); --text-secondary: var(--color-i
 .staff-workspace .page-title { max-width: none; margin: 0 !important; overflow-wrap: break-word; min-width: 0; text-wrap: balance; }
 .staff-workspace .sidebar :is(a, button):focus-visible { outline-color: var(--color-sidebar-focus); }
 .staff-workspace .sidebar-nav .nav-item { font-size: var(--text-sm); font-weight: 600; }
+.staff-workspace .sidebar-nav .staff-closeout-nav > a.nav-item { margin: 4px 0 0 22px; padding: 10px 12px; min-height: 0; gap: 9px; font-size: 13px; font-weight: 500; line-height: 1.45; border-radius: 8px; }
+.staff-workspace .sidebar-nav .staff-closeout-nav > a.nav-item > i { font-size: 14px; }
 .staff-workspace .user-display-role { color: var(--color-sidebar-ink); }
 .staff-workspace .account-menu-trigger { min-height: 72px; }
 .staff-workspace :is(a, button, input, textarea, select):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
@@ -230,8 +232,9 @@ body.staff-workspace { --font: var(--font-body); --text-secondary: var(--color-i
 .staff-workspace .staff-plan-heading h3 + span { font-size: var(--text-sm) !important; }
 .staff-workspace .staff-plan-target > span { color: var(--color-ink-2) !important; }
 .staff-workspace .staff-ledger td :is(span, .badge)[style*='background: #f2e9cb'] { color: var(--color-ink-2) !important; }
-.staff-workspace .staff-ledger th:last-child, .staff-workspace .staff-ledger td:last-child { position: sticky; right: 0; background: var(--color-paper-2); }
-.staff-workspace .staff-ledger th:last-child { background: var(--color-paper-3); }
+.staff-workspace .staff-ledger thead th { background: var(--color-paper-3); }
+.staff-workspace .staff-ledger tbody tr:hover,
+.staff-workspace .staff-ledger tbody tr:hover > td { background: var(--color-paper); }
 @media (hover: hover) {
   .staff-workspace .btn.staff-report-icon-action:not(.is-delete):not(:disabled):hover { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-ink); }
   .staff-workspace .btn.staff-report-icon-action.is-delete:not(:disabled):hover { background: var(--color-error); border-color: var(--color-error); color: var(--color-accent-ink); }

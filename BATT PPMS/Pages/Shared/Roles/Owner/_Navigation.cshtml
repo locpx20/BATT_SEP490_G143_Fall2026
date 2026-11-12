@@ -1,5 +1,6 @@
 ﻿@model string
 @{ var ap = Model; var tab = ViewContext.HttpContext.Request.Query["tab"].ToString(); }
+<a class="nav-item @(Model == "MaterialUsage" ? "active" : "")" href="/Warehouse/Consumption"><i class="bi bi-box-arrow-up" aria-hidden="true"></i><span>Nguyên liệu đã sử dụng</span></a>
 <div class="owner-nav-section">
     <div class="owner-nav-label">Tổng quan</div>
     <a class="nav-item @(ap == "Dashboard" ? "active" : "")" href="/Dashboard/Index"><i class="bi bi-grid"></i><span>Tổng quan</span></a>
@@ -8,7 +9,7 @@
     <div class="owner-nav-label">Vận hành</div>
     <a class="nav-item @(ap == "PurchaseInvoice" ? "active" : "")" href="/PurchaseInvoices/Index"><i class="bi bi-inbox"></i><span>Thu mua NVL thô</span></a>
     <a class="nav-item @(ap == "PurchasePrice" ? "active" : "")" href="/PurchasePrices/Index"><i class="bi bi-tag"></i><span>Giá thu mua NVL</span></a>
-    <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Kế hoạch sản xuất</span></a>
+    <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Phân công lao động</span></a>
     <a class="nav-item @(ap == "QC" ? "active" : "")" href="/QC/Index"><i class="bi bi-patch-check" aria-hidden="true"></i><span>Kiểm tra chất lượng</span></a>
     <a class="nav-item @(ap == "Warehouse" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Theo dõi nhập thành phẩm</span></a>
     <details class="owner-nav-details" open="@(ap is "Maintenance" or "MaterialPurchase" or "BrokenReport" or "Machines")">

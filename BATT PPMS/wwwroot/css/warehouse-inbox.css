@@ -1,0 +1,19 @@
+.warehouse-raw-nav > summary { cursor: pointer; }
+.warehouse-raw-nav > summary > span:first-of-type,
+.warehouse-raw-nav > a > span:first-of-type { flex: 1; min-width: 0; }
+.warehouse-raw-nav > summary .bi-chevron-down { margin-left: 0; }
+.warehouse-inbox-nav .warehouse-pending-count {
+    flex-shrink: 0;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+}
+.warehouse-inbox-nav .warehouse-pending-count[hidden] { display: none !important; }
+.warehouse-raw-nav > a { gap: 10px; }
+.warehouse-inbox-nav { display: flex; flex-direction: column; gap: 22px; }
+.warehouse-inbox-nav .nav-item > span:first-of-type { flex: 1; min-width: 0; }

@@ -7,7 +7,7 @@
         foreach (var filter in Model.Filters) values[filter.Key] = filter.Value;
         var url = Url.Page(Model.PageName, values);
         return url == null ? null : Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(
-            url, "pageNumber", number.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            url, Model.PageNumberParameter, number.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 }
 <div class="admin-pagination">

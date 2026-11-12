@@ -20,12 +20,13 @@ public static class Notifier
     }
 
     /// <summary>Lấy thông báo chưa đọc của người dùng và đánh dấu đã đọc.</summary>
-    public static async Task<List<AppNotification>> TakeUnreadAsync(ProductionManagementDbContext context, int userId)
+    public static async Task<List<AppNotification>> TakeUnreadAsync(ProductionManagementDbContext context, int userId, bool preserveWarehouseNavigationNotices = false)
     {
         if (userId <= 0) return new List<AppNotification>();
 
-        var items = await context.AppNotifications
-            .Where(n => n.UserId == userId && !n.IsRead)
+        var query = context.AppNotifications.Where(n => n.UserId == userId && !n.IsRead);
+        if (preserveWarehouseNavigationNotices) query = WarehouseNavigationNotices.ExcludeFrom(query);
+        var items = await query
             .OrderByDescending(n => n.CreatedAt)
             .Take(10)
             .ToListAsync();

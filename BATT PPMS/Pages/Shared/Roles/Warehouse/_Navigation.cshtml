@@ -1,12 +1,22 @@
-@model string
-@{ var tab = Context.Request.Query["tab"].ToString(); }
+@model BATT_PPMS.Helpers.WarehouseNavigationModel
+@{
+    var tab = Context.Request.Query["tab"].ToString();
+    var importsActive = Model.ActivePage == "Inventory" && tab != "finished";
+    var usageActive = Model.ActivePage == "MaterialUsage";
+}
+<div class="warehouse-inbox-nav" data-warehouse-inbox>
 <div class="owner-nav-section">
-    <div class="owner-nav-label">Vận hành kho</div>
-    <a class="nav-item @(Model == "Warehouse" && tab == "plans" ? "active" : "")" href="/Warehouse/Index?tab=plans"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Kế hoạch sản xuất trong ngày</span></a>
-    <a class="nav-item @(Model == "Warehouse" && tab != "plans" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Nhập kho thành phẩm</span></a>
+    <a class="nav-item @(Model.ActivePage == "Dashboard" ? "active" : "")" href="/Dashboard/Index"><i class="bi bi-grid" aria-hidden="true"></i><span>Tổng quan vận hành</span></a>
+    <a class="nav-item @(Model.ActivePage == "Warehouse" && tab == "plans" ? "active" : "")" href="/Warehouse/Index?tab=plans"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Lịch phân công lao động</span><span class="warehouse-pending-count" data-warehouse-count="plans" hidden="@(Model.Counts.Plans == 0)" aria-label="@Model.Counts.Plans thông báo chưa đọc">@Model.Counts.Plans</span></a>
+    <a class="nav-item @(Model.ActivePage == "Warehouse" && tab != "plans" ? "active" : "")" href="/Warehouse/Index?tab=receipts"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Nhập kho thành phẩm</span><span class="warehouse-pending-count" data-warehouse-count="finishedReceipts" hidden="@(Model.Counts.FinishedReceipts == 0)" aria-label="@Model.Counts.FinishedReceipts phiếu nhập thành phẩm chờ xử lý">@Model.Counts.FinishedReceipts</span></a>
 </div>
 <div class="owner-nav-section">
     <div class="owner-nav-label">Tồn kho</div>
-    <a class="nav-item @(Model == "Inventory" && tab != "finished" ? "active" : "")" href="/Inventory/Index?tab=raw"><i class="bi bi-box" aria-hidden="true"></i><span>Kho nguyên liệu</span></a>
-    <a class="nav-item @(Model == "Inventory" && tab == "finished" ? "active" : "")" href="/Inventory/Index?tab=finished"><i class="bi bi-stack" aria-hidden="true"></i><span>Kho thành phẩm</span></a>
+    <details class="owner-nav-details warehouse-raw-nav" open="@(importsActive || usageActive)">
+        <summary class="nav-item"><i class="bi bi-box" aria-hidden="true"></i><span>Kho nguyên liệu</span><span class="warehouse-pending-count" data-warehouse-count="total" hidden="@(Model.Counts.Total == 0)" aria-label="@Model.Counts.Total phiếu nguyên liệu chờ xử lý">@Model.Counts.Total</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
+        <a class="nav-item @(importsActive ? "active" : "")" href="/Inventory/Index?tab=raw"><i class="bi bi-box-arrow-in-down" aria-hidden="true"></i><span>Phiếu nhập kho nguyên liệu</span><span class="warehouse-pending-count" data-warehouse-count="imports" hidden="@(Model.Counts.Imports == 0)" aria-label="@Model.Counts.Imports phiếu nhập kho nguyên liệu chờ xử lý">@Model.Counts.Imports</span></a>
+        <a class="nav-item @(usageActive ? "active" : "")" href="/Warehouse/Consumption"><i class="bi bi-box-arrow-up" aria-hidden="true"></i><span>Phiếu tiêu hao nguyên liệu</span><span class="warehouse-pending-count" data-warehouse-count="consumption" hidden="@(Model.Counts.Consumption == 0)" aria-label="@Model.Counts.Consumption phiếu tiêu hao nguyên liệu chờ xử lý">@Model.Counts.Consumption</span></a>
+    </details>
+    <a class="nav-item @(Model.ActivePage == "Inventory" && tab == "finished" ? "active" : "")" href="/Inventory/Index?tab=finished"><i class="bi bi-stack" aria-hidden="true"></i><span>Kho thành phẩm</span><span class="warehouse-pending-count" data-warehouse-count="finishedStock" hidden="@(Model.Counts.FinishedStock == 0)" aria-label="@Model.Counts.FinishedStock thông báo kho thành phẩm chưa đọc">@Model.Counts.FinishedStock</span></a>
+</div>
 </div>

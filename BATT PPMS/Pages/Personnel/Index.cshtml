@@ -1,396 +1,192 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Personnel.IndexModel
+@using BATT_PPMS.Pages.Personnel
+@using System.Globalization
 @{
-    ViewData["Title"] = Model.IsStaffView ? "Kế hoạch sản xuất ngày hôm nay" : "Kế hoạch Sản xuất";
+    ViewData["Title"] = Model.IsStaffView ? "Lịch phân công lao động" : Model.Create ? "Tạo phân công lao động" : "Phân công lao động";
     ViewData["ActivePage"] = "Personnel";
-    if (Model.IsStaffView && Model.AllDates)
-        ViewData["Title"] = "Kế hoạch sản xuất";
-    else if (Model.IsStaffView && Model.DisplayDate is DateOnly displayDate && displayDate != Model.Today)
-        ViewData["Title"] = $"Kế hoạch sản xuất ngày {displayDate:dd/MM/yyyy}";
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/production-plan.css" asp-append-version="true" />
-}
-
-<div class="space-y-6 staff-screen">
-
-    <!-- Page Header -->
-    <div class="page-header" style="margin-bottom: 20px;">
-        <div>
-            <h1 class="page-title" style="font-size: 22px; font-weight: 800; color: #243d35; margin-bottom: 4px; letter-spacing: -0.3px;">
-                @if (Model.IsStaffView) { <i class="bi bi-calendar-week" aria-hidden="true"></i> }
-                @ViewData["Title"]
-            </h1>
-            @if (!Model.IsStaffView)
-            {
-            <p class="page-subtitle" style="font-size: 13px; color: #7a887f;">
-                Lập kế hoạch theo ca và phân công công nhân vận hành dây chuyền sản xuất
-            </p>
-            }
-        </div>
-        @if (Model.CanCreatePlan)
-        {
-            <div class="page-actions">
-                <button type="button" class="btn btn-primary" onclick="showModal('createPlanModal')" style="display: inline-flex; align-items: center; gap: 8px; border-radius: 12px; font-weight: 600; padding: 10px 18px; font-size: 13px;">
-                    <i class="bi bi-plus-lg"></i> Tạo kế hoạch
-                </button>
-            </div>
-        }
-        @if (Model.IsStaffView)
-        {
-        }
-    </div>
-
-    <!-- Alerts -->
-    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
-    {
-        <div class="alert alert-success" style="border-radius: 12px; margin-bottom: 18px;">
-            <i class="bi bi-check-circle-fill" style="margin-right: 8px;"></i> @Model.SuccessMessage
-        </div>
+    @if (Model.IsStaffView) {
+        <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/warehouse-plans.css" asp-append-version="true" />
+    } else {
+        <link rel="stylesheet" href="~/css/production-plan.css" asp-append-version="true" />
     }
-    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
-    {
-        <div class="alert alert-danger" style="border-radius: 12px; margin-bottom: 18px;">
-            <i class="bi bi-exclamation-triangle-fill" style="margin-right: 8px;"></i> @Model.ErrorMessage
-        </div>
-    }
-
-    @if (Model.IsStaffView)
-    {
-        @if (Model.ShowingLatestPlanDate)
-        {
-            <div class="staff-plan-date-notice" role="status"><i class="bi bi-info-circle" aria-hidden="true"></i> Hôm nay (@Model.Today.ToString("dd/MM/yyyy")) chưa có kế hoạch. Đang hiển thị ngày gần nhất: @Model.DisplayDate?.ToString("dd/MM/yyyy").</div>
-        }
-        <section class="day-plan-filter" aria-label="Tra cứu kế hoạch sản xuất">
-            <form method="get" class="day-plan-filter-form">
-                <div><label for="dayPlanDate">Ngày sản xuất</label><input id="dayPlanDate" type="date" name="PlanDate" value="@Model.DisplayDate?.ToString("yyyy-MM-dd")" class="form-control" /></div>
-                <div><label for="dayPlanShift">Ca làm việc</label><select id="dayPlanShift" name="ShiftFilter" class="form-select">
-                    <option value="">Tất cả ca</option>
-                    <option value="Ca 1" selected="@(Model.ShiftFilter == "Ca 1")">Ca 1 · 06:00 – 14:00</option>
-                    <option value="Ca 2" selected="@(Model.ShiftFilter == "Ca 2")">Ca 2 · 14:00 – 22:00</option>
-                    <option value="Ca 3" selected="@(Model.ShiftFilter == "Ca 3")">Ca 3 · 22:00 – 06:00</option>
-                </select></div>
-                <div><label for="dayPlanStatus">Trạng thái kế hoạch</label><select id="dayPlanStatus" name="StatusFilter" class="form-select">
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="Assigned" selected="@(Model.StatusFilter == "Assigned")">Chờ thực hiện</option>
-                    <option value="InProgress" selected="@(Model.StatusFilter == "InProgress")">Đang thực hiện</option>
-                    <option value="Completed" selected="@(Model.StatusFilter == "Completed")">Hoàn thành</option>
-                    <option value="Cancelled" selected="@(Model.StatusFilter == "Cancelled")">Đã hủy</option>
-                </select></div>
-                <div class="day-plan-keyword"><label for="dayPlanSearch">Tìm công việc hoặc nhân sự</label><input id="dayPlanSearch" type="search" name="SearchTerm" value="@Model.SearchTerm" placeholder="Công đoạn, công nhân, người phân công…" class="form-control" /></div>
-                <div class="day-plan-filter-actions">
-                    <label class="day-plan-all"><input type="checkbox" name="AllDates" value="true" checked="@Model.AllDates" /> Xem tất cả ngày</label>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
-                    <a class="btn btn-secondary" asp-page="/Personnel/Index" asp-route-PlanDate="@Model.Today.ToString("yyyy-MM-dd")">Hôm nay</a>
-                </div>
-            </form>
-        </section>
-        <div class="day-plan-results" role="status"><span><i class="bi bi-list-task" aria-hidden="true"></i> @Model.Plans.Count kế hoạch</span><span>Hiển thị phân công của toàn bộ nhân viên</span></div>
-    }
-    else
-    {
-    <!-- Filter Bar -->
-    <div class="card staff-filter" style="padding: 14px 18px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; margin-bottom: 20px;">
-        <form method="get" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
-            @if (Model.IsStaffView)
-            {
-            <div class="staff-plan-date-filter">
-            <div>
-                <label for="staffPlanDate">Ngày sản xuất</label>
-                <input id="staffPlanDate" type="date" name="PlanDate" value="@Model.DisplayDate?.ToString("yyyy-MM-dd")" class="form-control" />
-            </div>
-            <label class="staff-all-dates"><input type="checkbox" name="AllDates" value="true" checked="@Model.AllDates" /> Xem tất cả ngày</label>
-            <button type="submit" class="btn btn-primary"><i class="bi bi-search" aria-hidden="true"></i> Xem kế hoạch</button>
-            <a class="btn btn-secondary" asp-page="/Personnel/Index" asp-route-PlanDate="@Model.Today.ToString("yyyy-MM-dd")">Hôm nay</a>
-            </div>
-            }
-            <div class="search-wrapper" style="flex: 1; min-width: 260px; margin: 0; position: relative;">
-                <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #96a298;"></i>
-                <input type="text" name="SearchTerm" value="@Model.SearchTerm"
-                       class="form-control" style="padding-left: 36px; border-radius: 10px; font-size: 12px;"
-                       placeholder="Tìm mã kế hoạch, ngày, người tạo, công nhân..." />
-                @if (!string.IsNullOrEmpty(Model.SearchTerm))
-                {
-                    <a asp-page="/Personnel/Index" asp-route-PlanDate="@(Model.IsStaffView ? Model.DisplayDate?.ToString("yyyy-MM-dd") : null)" asp-route-AllDates="@(Model.IsStaffView ? Model.AllDates.ToString().ToLowerInvariant() : null)" aria-label="Xóa từ khóa tìm kiếm" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #96a298;">
-                        <i class="bi bi-x-circle-fill"></i>
-                    </a>
-                }
-            </div>
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                <select name="ShiftFilter" onchange="this.form.submit()" class="form-select" style="font-size: 12px; border-radius: 8px; padding: 6px 12px; width: auto; min-width: 150px;">
-                    <option value="" selected="@(string.IsNullOrEmpty(Model.ShiftFilter))">Tất cả các ca</option>
-                    <option value="Ca 1" selected="@(Model.ShiftFilter == "Ca 1")">Ca 1 (06:00 – 14:00)</option>
-                    <option value="Ca 2" selected="@(Model.ShiftFilter == "Ca 2")">Ca 2 (14:00 – 22:00)</option>
-                    <option value="Ca 3" selected="@(Model.ShiftFilter == "Ca 3")">Ca 3 (22:00 – 06:00)</option>
-                </select>
-                <select name="StatusFilter" onchange="this.form.submit()" class="form-select" style="font-size: 12px; border-radius: 8px; padding: 6px 12px; width: auto; min-width: 160px;">
-                    <option value="" selected="@(string.IsNullOrEmpty(Model.StatusFilter))">Tất cả trạng thái</option>
-                    <option value="Assigned" selected="@(Model.StatusFilter == "Assigned")">Chờ thực hiện</option>
-                    <option value="InProgress" selected="@(Model.StatusFilter == "InProgress")">Đang thực hiện</option>
-                    <option value="Completed" selected="@(Model.StatusFilter == "Completed")">Hoàn thành</option>
-                </select>
-            </div>
-        </form>
-    </div>
-    }
-
-    <!-- Plan Cards List -->
-    <div class="staff-plans" style="display: flex; flex-direction: column; gap: 16px;">
-        @if (!Model.Plans.Any())
-        {
-            <div class="card staff-empty" style="padding: 40px; text-align: center; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa;">
-                <i class="bi bi-calendar-x" style="font-size: 40px; color: #b1bdb0; display: block; margin-bottom: 10px;"></i>
-                <p style="font-size: 14px; font-weight: 700; color: #52675d; margin-bottom: 4px;">Không có kế hoạch phù hợp</p>
-                <p style="font-size: 12px; color: #96a298;">Kiểm tra ngày, ca hoặc điều kiện tìm kiếm. Kế hoạch được Quản lý sản xuất lập và phân công.</p>
-            </div>
-        }
-        @foreach (var plan in Model.Plans)
-        {
-            var statusColor = plan.Status switch {
-                "Completed"  => "#356e51",
-                "InProgress" => "#2f6153",
-                "Assigned"   => "#a17b35",
-                _            => "#7a887f"
-            };
-            var statusLabel = plan.Status switch {
-                "Completed"  => "Hoàn thành",
-                "InProgress" => "Đang thực hiện",
-                "Assigned"   => "Chờ thực hiện",
-                _            => plan.Status
-            };
-            var statusIcon = plan.Status switch {
-                "Completed"  => "bi-check-circle-fill",
-                "InProgress" => "bi-play-circle-fill",
-                "Assigned"   => "bi-clock",
-                _            => "bi-circle"
-            };
-            var statusBg = plan.Status switch {
-                "Completed"  => "#edf3e9",
-                "InProgress" => "#eef2e9",
-                "Assigned"   => "#faf5e5",
-                _            => "#f4f2ea"
-            };
-            var shiftTime = plan.Shift switch {
-                "Ca 1" => "06:00 – 14:00",
-                "Ca 2" => "14:00 – 22:00",
-                "Ca 3" => "22:00 – 06:00",
-                _      => ""
-            };
-
-            <!-- Plan Card (Matching BATT_PPMSss ProductionPlanView) -->
-            <div class="card staff-plan" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;">
-
-                <!-- Card Header -->
-                @if (Model.IsStaffView)
-                {
-                    <div class="staff-plan-heading staff-plan-heading--ordered">
-                        <dl class="staff-plan-facts">
-                            <div>
-                                <dt><i class="bi bi-calendar3" aria-hidden="true"></i> Ngày sản xuất</dt>
-                                <dd><time datetime="@plan.AssignmentDate.ToString("yyyy-MM-dd")">@plan.AssignmentDate.ToString("dd/MM/yyyy")</time></dd>
-                            </div>
-                            <div>
-                                <dt><i class="bi bi-clock" aria-hidden="true"></i> Ca làm việc</dt>
-                                <dd><span>@plan.Shift</span>@if (!string.IsNullOrEmpty(shiftTime)) { <small>@shiftTime</small> }</dd>
-                            </div>
-                            <div>
-                                <dt><i class="bi bi-person-gear" aria-hidden="true"></i> Người tạo</dt>
-                                <dd>@(plan.Assigner?.FullName ?? "—")</dd>
-                            </div>
-                        </dl>
-                    </div>
-                }
-                else
-                {
-                <div class="staff-plan-heading" style="padding: 16px 20px; border-bottom: 1px solid #efefe7; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                        <!-- Plan Code -->
-                        <span class="staff-plan-code" style="font-size: 13px; font-weight: 800; color: #123329; font-family: monospace; background: #e5eee7; padding: 6px 12px; border-radius: 8px; border: 1px solid #c7d8cc;">
-                            @plan.Code
-                        </span>
-                        <div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <h3 style="font-size: 14px; font-weight: 800; color: #243d35; margin: 0;">Viên nén gỗ</h3>
-                                <span style="font-size: 10.5px; font-weight: 600; background: #e2eee4; color: #356e51; border: 1px solid #c6dbc9; padding: 2px 8px; border-radius: 6px;">
-                                    Sản phẩm chuẩn
-                                </span>
-                            </div>
-                            <div class="staff-plan-meta" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #7a887f; margin-top: 4px;">
-                                <span><i class="bi bi-calendar3" style="color: #96a298; margin-right: 4px;"></i>Ngày: <strong>@plan.AssignmentDate.ToString("yyyy-MM-dd")</strong></span>
-                                <span>•</span>
-                                <span><i class="bi bi-clock" style="color: #96a298; margin-right: 4px;"></i><strong>@plan.Shift</strong> @(!string.IsNullOrEmpty(shiftTime) ? $"({shiftTime})" : "")</span>
-                                @if (plan.Assigner != null)
-                                {
-                                    <span>•</span>
-                                    <span><i class="bi bi-person-gear" style="color: #96a298; margin-right: 4px;"></i>Người tạo: <strong>@plan.Assigner.FullName</strong></span>
-                                }
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Plan status -->
-                    <div class="staff-plan-target" style="display: flex; align-items: center; gap: 16px;">
-                        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: @statusColor; background: @statusBg; padding: 6px 14px; border-radius: 20px; border: 1px solid @(statusColor)33;">
-                            <i class="bi @statusIcon" style="font-size: 12px;"></i>
-                            @statusLabel
-                        </span>
-                    </div>
-                </div>
-                }
-
-                <!-- Production assignments grouped by machine/stage -->
-                <div class="staff-plan-body" style="padding: 16px 20px;">
-                    @{
-                        var stageItems = Model.GetStageGroupsForPlan(plan.PlanId);
-                    }
-                    <div class="staff-stage-label" style="font-size: 11px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
-                        @if (Model.IsStaffView) { <text>Phân công máy và công nhân (@stageItems.Count công đoạn)</text> }
-                        else { <text>PHÂN CÔNG MÁY &amp; CÔNG NHÂN (@stageItems.Count CÔNG ĐOẠN)</text> }
-                    </div>
-
-                    @if (stageItems.Any())
-                    {
-                        @if (Model.IsStaffView)
-                        {
-                            <ol class="day-plan-stages">
-                            @foreach (var stage in stageItems)
-                            {
-                                <li class="day-plan-stage">
-                                    <div class="day-plan-task"><h3>@stage.StaffMachineName</h3></div>
-                                    <ul class="day-plan-workers" aria-label="Công nhân và trạng thái phân công">
-                                    @foreach (var worker in stage.Assignments)
-                                    {
-                                        var ownWork = Model.IsCurrentWorker(worker.StaffId);
-                                        var workerStatus = BATT_PPMS.Pages.Personnel.IndexModel.NormalizeAssignmentStatus(worker.Status);
-                                        <li class="@(ownWork ? "is-current-worker" : null)">
-                                            <span class="day-plan-worker-name"><i class="bi bi-person" aria-hidden="true"></i> @(worker.Staff?.FullName ?? "Tài khoản đã xóa") @if (ownWork) { <small>Bạn</small> }</span>
-                                            <span class="day-plan-worker-status" data-state="@workerStatus">@BATT_PPMS.Pages.Personnel.IndexModel.AssignmentStatusLabel(worker.Status)</span>
-                                        </li>
-                                    }
-                                    </ul>
-                                </li>
-                            }
-                            </ol>
-                        }
-                        else
-                        {
-                        <div class="staff-stages" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
-                            @foreach (var (stage, idx) in stageItems.Select((s, i) => (s, i + 1)))
-                            {
-                                var stageName = stage.TaskDescription ?? "Công đoạn sản xuất";
-                                <div class="staff-stage" style="background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 12px; padding: 12px 14px;">
-                                    <div style="font-size: 12px; font-weight: 700; color: #243d35; margin-bottom: 4px; line-height: 1.4;">
-                                        @stageName
-                                    </div>
-                                    <div style="font-size: 11.5px; color: #52675d; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e1e5da;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                                            <span style="color: #96a298;">Nhân sự:</span>
-                                            <span class="plan-assigned-workers">
-                                                @foreach (var worker in stage.Assignments)
-                                                {
-                                                    <span title="@worker.Staff?.Username">@(worker.Staff?.FullName ?? "Chưa phân công")</span>
-                                                }
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                        }
-                    }
-                </div>
-            </div>
-        }
-    </div>
-
-</div>
-
-<!-- CREATE PLAN MODAL (For Manager / Owner) -->
-@if (Model.CanCreatePlan)
-{
-    <div class="modal fade" id="createPlanModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-                <form method="post" asp-page-handler="CreatePlan">
-                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 18px 24px;">
-                        <h5 class="modal-title" style="font-size: 16px; font-weight: 800; color: #243d35;">
-                            <i class="bi bi-calendar-plus" style="color: #193f35; margin-right: 8px;"></i>Lập Kế hoạch Sản xuất
-                        </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-
-                    <div class="modal-body plan-create-body">
-                        <div class="plan-create-meta">
-                            <div>
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ngày sản xuất</label>
-                                <input type="date" asp-for="NewPlanDate" class="form-control" required style="border-radius: 8px; font-size: 13px;" />
-                            </div>
-                            <div>
-                                <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ca sản xuất</label>
-                                <select asp-for="NewPlanShift" class="form-select" style="border-radius: 8px; font-size: 13px;">
-                                    <option value="Ca 1">Ca 1 (06:00 – 14:00)</option>
-                                    <option value="Ca 2">Ca 2 (14:00 – 22:00)</option>
-                                    <option value="Ca 3">Ca 3 (22:00 – 06:00)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <section class="plan-stage-section" aria-labelledby="planStageHeading">
-                        <h3 id="planStageHeading" class="plan-section-title"><i class="bi bi-people" aria-hidden="true"></i> Phân công @Model.ProductionStages.Count công đoạn sản xuất</h3>
-                        <div class="plan-stage-list">
-                            @foreach (var stage in Model.ProductionStages)
-                            {
-                                <div class="plan-assignment-stage">
-                                    <div class="plan-stage-info">
-                                        <span class="plan-stage-name">@stage.Number. @stage.Name</span>
-                                    </div>
-                                    <div class="plan-stage-controls">
-                                        <details class="plan-staff-picker" data-staff-picker>
-                                            <summary aria-label="Chọn công nhân: @stage.Name"><span data-staff-caption>Chọn công nhân</span><span class="plan-staff-count" data-staff-count hidden></span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
-                                            <div class="plan-staff-options">
-                                                @foreach (var s in Model.AvailableStaff)
-                                                {
-                                                    <label class="plan-staff-option" for="stage@(stage.Number)-worker-@s.UserId">
-                                                        <input type="checkbox" id="stage@(stage.Number)-worker-@s.UserId" name="@stage.FieldName" value="@s.UserId" checked="@stage.StaffIds.Contains(s.UserId)" data-worker-name="@s.FullName" />
-                                                        <span>@s.FullName <small>@s.Username</small></span>
-                                                    </label>
-                                                }
-                                                @if (!Model.AvailableStaff.Any()) { <p>Chưa có công nhân đang hoạt động.</p> }
-                                            </div>
-                                        </details>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                        </section>
-                        <div>
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #52675d;">Ghi chú kế hoạch</label>
-                            <textarea asp-for="NewPlanNotes" class="form-control" rows="2" placeholder="Ghi chú kỹ thuật, lưu ý độ ẩm đầu vào..." style="border-radius: 8px; font-size: 12px;"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 14px 24px; display: flex; justify-content: flex-end; gap: 10px;">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
-                        <button type="submit" class="btn btn-primary" style="border-radius: 8px; font-size: 12px; font-weight: 700; background: #193f35; border-color: #193f35;">
-                            <i class="bi bi-check2-circle"></i> Xác nhận lập kế hoạch
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 }
 
 @section Scripts {
-<script src="~/js/production-plan.js" asp-append-version="true"></script>
-<script>
-    function showModal(id) {
-        var modalEl = document.getElementById(id);
-        if (modalEl) {
-            var bsModal = new bootstrap.Modal(modalEl);
-            bsModal.show();
+    @if (Model.Create && Model.CanCreatePlan) {
+        <script src="~/js/production-plan.js" asp-append-version="true"></script>
+    }
+}
+
+@if (Model.IsStaffView && Model.StaffSchedule is { } schedule) {
+    <div class="closeout">
+        <header class="closeout-header">
+            <h1><i class="bi bi-calendar-week" aria-hidden="true"></i> @ViewData["Title"]</h1>
+        </header>
+        @if (Model.ShowingLatestPlanDate) {
+            <div class="closeout-message" role="status">Hôm nay (@Model.Today.ToString("dd/MM/yyyy")) chưa có phân công. Đang hiển thị lịch ngày @Model.DisplayDate?.ToString("dd/MM/yyyy").</div>
+        }
+        <partial name="~/Pages/Shared/_ProductionSchedule.cshtml" model="schedule" />
+    </div>
+    return;
+}
+
+<div class="labor-page">
+    <header class="labor-header">
+        <div>
+            @if (Model.Create) {
+                <a class="labor-back" asp-page="./Index" asp-route-PlanDate="@Model.PlanDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i> Lịch phân công
+                </a>
+            }
+            <h1>@ViewData["Title"]</h1>
+        </div>
+        @if (Model.CanCreatePlan && !Model.Create) {
+            <a class="labor-button labor-primary" asp-page="./Index" asp-route-Create="true" asp-route-PlanDate="@Model.DisplayDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo phân công
+            </a>
+        }
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage)) {
+        <p class="labor-message" role="status"><i class="bi bi-check-circle" aria-hidden="true"></i> @Model.SuccessMessage</p>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage)) {
+        <p class="labor-message labor-message-error" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> @Model.ErrorMessage</p>
+    }
+
+    @if (Model.Create && Model.CanCreatePlan) {
+        <partial name="_CreateDayPlan" model="Model" />
+    } else if (Model.DisplayDate is { } day) {
+        var dateValue = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var vi = CultureInfo.GetCultureInfo("vi-VN");
+        <section class="labor-day" aria-labelledby="labor-day-title">
+            <header class="labor-day-head">
+                <div>
+                    <p>Ngày sản xuất</p>
+                    <h2 id="labor-day-title"><time datetime="@dateValue">@day.ToString("dd/MM/yyyy")</time></h2>
+                    <span>@vi.DateTimeFormat.GetDayName(day.DayOfWeek)@(day == Model.Today ? " (Hôm nay)" : "")</span>
+                </div>
+                <nav class="labor-day-nav" aria-label="Chuyển ngày sản xuất">
+                    @if (day != Model.Today) {
+                        <a class="labor-button" asp-page="./Index">Hôm nay</a>
+                    }
+                    @if (Model.PreviousDate is { } previous) {
+                        <a class="labor-button" asp-page="./Index" asp-route-PlanDate="@previous.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" aria-label="Ngày có phân công trước"><i class="bi bi-chevron-left" aria-hidden="true"></i> Ngày trước</a>
+                    }
+                    @if (Model.NextDate is { } next) {
+                        <a class="labor-button" asp-page="./Index" asp-route-PlanDate="@next.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" aria-label="Ngày có phân công sau">Ngày sau <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                    }
+                </nav>
+            </header>
+            <form method="get" asp-page="./Index" class="labor-filters">
+                <div>
+                    <label for="PlanDate">Xem ngày</label>
+                    <input id="PlanDate" name="PlanDate" type="date" value="@dateValue" required />
+                </div>
+                <div>
+                    <label asp-for="ShiftFilter">Ca sản xuất</label>
+                    <select asp-for="ShiftFilter">
+                        <option value="">Tất cả ca</option>
+                        @foreach (var shift in IndexModel.ProductionShifts) {
+                            <option value="@shift">@shift</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="StatusFilter">Trạng thái</label>
+                    <select asp-for="StatusFilter">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="Assigned">Chờ thực hiện</option>
+                        <option value="InProgress">Đang thực hiện</option>
+                        <option value="Completed">Hoàn thành</option>
+                        <option value="Cancelled">Đã hủy</option>
+                    </select>
+                </div>
+                <div class="labor-search">
+                    <label asp-for="SearchTerm">Tìm phân công</label>
+                    <input asp-for="SearchTerm" type="search" placeholder="Mã, nhân viên hoặc công đoạn" />
+                </div>
+                <button class="labor-button" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
+            </form>
+        </section>
+
+        @if (Model.Plans.Count > 1) {
+            <nav class="labor-shift-index" aria-label="Đến ca sản xuất">
+                @foreach (var plan in Model.Plans) {
+                    <a href="#labor-shift-@plan.PlanId">@(plan.Shift ?? "Chưa ghi nhận ca") <span>@IndexModel.ShiftHours(plan.Shift)</span></a>
+                }
+            </nav>
+        }
+
+        @if (Model.Plans.Count == 0) {
+            <div class="labor-empty" role="status">
+                <i class="bi bi-calendar-x" aria-hidden="true"></i>
+                <p>@(string.IsNullOrEmpty(Model.ShiftFilter) && string.IsNullOrEmpty(Model.SearchTerm) && string.IsNullOrEmpty(Model.StatusFilter)
+                    ? "Chưa có phân công cho ngày này." : "Không có phân công phù hợp với bộ lọc.")</p>
+            </div>
+        }
+        @foreach (var plan in Model.Plans) {
+            var projection = plan.Shift == null ? null : Model.ShiftPlans.GetValueOrDefault(plan.Shift);
+            var hours = IndexModel.ShiftHours(plan.Shift);
+            <section id="labor-shift-@plan.PlanId" class="labor-shift" aria-labelledby="labor-shift-title-@plan.PlanId">
+                <header class="labor-shift-head">
+                    <div class="labor-shift-name">
+                        <div>
+                            <h2 id="labor-shift-title-@plan.PlanId">@(plan.Shift ?? "Chưa ghi nhận ca")</h2>
+                            @if (hours.Length > 0) { <span><i class="bi bi-clock" aria-hidden="true"></i> @hours</span> }
+                        </div>
+                        <span class="labor-status" data-status="@plan.Status">@IndexModel.AssignmentStatusLabel(plan.Status)</span>
+                    </div>
+                    <dl class="labor-estimates">
+                        <div>
+                            <dt>Nguyên liệu tiêu thụ dự kiến</dt>
+                            <dd>@(projection is null ? "Chưa cập nhật" : projection.ExpectedMaterialKg.ToString("N2", vi) + " kg")</dd>
+                        </div>
+                        <div>
+                            <dt>Thành phẩm dự kiến</dt>
+                            <dd>@(projection is null ? "Chưa cập nhật" : projection.ExpectedFinishedKg.ToString("N2", vi) + " kg")</dd>
+                        </div>
+                    </dl>
+                </header>
+                <table class="labor-table" aria-labelledby="labor-shift-title-@plan.PlanId">
+                    <thead><tr><th scope="col">Công đoạn</th><th scope="col">Nhân viên</th><th scope="col">Người phân công</th></tr></thead>
+                    <tbody>
+                        @foreach (var stage in IndexModel.GetStageGroupsForPlan(plan)) {
+                            var assigners = stage.Assignments.Select(a => a.AssignedByNavigation?.FullName).Where(name => !string.IsNullOrWhiteSpace(name)).Distinct().ToList();
+                            <tr>
+                                <th scope="row">@stage.TaskDescription</th>
+                                <td><ul>@foreach (var worker in stage.Assignments) {
+                                    <li>@(worker.Staff?.FullName ?? "Tài khoản đã xóa")</li>
+                                }</ul></td>
+                                <td>@(assigners.Count > 0 ? string.Join(", ", assigners) : "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <footer class="labor-shift-foot">
+                    <span>@string.Join(", ", plan.Codes)</span>
+                    @if (!string.IsNullOrWhiteSpace(projection?.Note)) { <p>@projection.Note</p> }
+                </footer>
+            </section>
+        }
+
+        @if (Model.CanCreatePlan && Model.HasLegacyShifts) {
+            <details class="labor-legacy">
+                <summary>Cập nhật dự kiến nguyên liệu cho phân công cũ</summary>
+                <form method="post" asp-page-handler="SaveDailyMaterial" class="labor-legacy-form">
+                    <input asp-for="EstimateDate" type="hidden" />
+                    <div>
+                        <label asp-for="EstimateKg">Nguyên liệu dự kiến ngày @day.ToString("dd/MM/yyyy") (kg)</label>
+                        <input asp-for="EstimateKg" type="number" min="0.01" max="9999999999.99" step="0.01" required />
+                    </div>
+                    <button type="submit" class="labor-button">Lưu dự kiến ngày</button>
+                </form>
+            </details>
         }
     }
-</script>
-}
+</div>

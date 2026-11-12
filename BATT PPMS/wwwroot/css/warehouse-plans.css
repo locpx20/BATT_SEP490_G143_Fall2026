@@ -1,0 +1,73 @@
+.warehouse-plans {
+    --plan-row-alt: #f1f5ee;
+    --plan-row-hover: #e2eee4;
+    --plan-rule: #d3dfd3;
+    border-color: var(--plan-rule);
+}
+.warehouse-plans .closeout-section-head { align-items: center; justify-content: flex-start; gap: 16px 24px; background: #f8f9f4; border-bottom-color: var(--plan-rule); border-radius: 12px 12px 0 0; }
+.warehouse-plans .closeout-filter { flex: 0 1 auto; width: auto; max-width: none; flex-wrap: nowrap; }
+.warehouse-plans .plan-filter-label { white-space: nowrap; }
+.warehouse-plans .closeout-filter input[type=date] { width: 220px; min-width: 0; }
+.warehouse-plans .closeout-filter button { flex-shrink: 0; min-height: 54px; }
+.warehouse-plans .closeout-filter .closeout-button.secondary { background: var(--primary, #193f35); border-color: var(--primary, #193f35); color: #fffefa; }
+.warehouse-plans .closeout-filter .closeout-button.secondary:hover { background: var(--primary-dark, #123329); border-color: var(--primary-dark, #123329); }
+.warehouse-plans .closeout-records { padding: 0; }
+.warehouse-plans .warehouse-plan-shifts { display: flex; flex-flow: row nowrap; gap: 8px; padding: 16px 24px; overflow-x: auto; border-bottom: 1px solid var(--plan-rule); }
+.warehouse-plans .schedule-shift-nav { align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }
+.schedule-shift-links { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.schedule-date { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: #243d35; }
+.warehouse-plans-table.schedule-table { min-width: 900px; }
+.schedule-worker-line { display: flex; align-items: center; gap: 6px; min-height: 26px; }
+.schedule-worker-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.schedule-worker-self { flex-shrink: 0; display: inline-block; padding: 1px 6px; border-radius: 4px; background: #193f35; color: #fffefa; font-size: 12px; }
+.schedule-table td.schedule-shift-status { background: #f8f9f4; border-inline: 1px solid var(--plan-rule); border-bottom: 0; text-align: center; }
+.schedule-shift-state { display: inline-block; padding: 4px 8px; border-radius: 6px; background: #f3eddb; color: #78581d; font-size: 13px; font-weight: 600; }
+.schedule-shift-state[data-status="InProgress"] { background: #e5eee7; color: #30584b; }
+.schedule-shift-state[data-status="Completed"] { background: #dfece2; color: #28543f; }
+.schedule-shift-state[data-status="Cancelled"] { background: #faeeea; color: #94473e; }
+.warehouse-plans .plan-shift-link { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; min-width: 100px; min-height: 46px; padding: 10px 20px; border: 1px solid transparent; border-radius: 8px; white-space: nowrap; text-decoration: none; font-weight: 600; color: var(--primary, #193f35); background: transparent; }
+.warehouse-plans .plan-shift-link:hover { background: var(--plan-row-alt); border-color: var(--plan-rule); }
+.warehouse-plans .plan-shift-link.active { background: var(--primary, #193f35); border-color: var(--primary, #193f35); color: #fffefa; }
+.warehouse-plans .plan-shift-link:focus-visible { outline: 2px solid #b5974f; outline-offset: 2px; }
+.warehouse-plans-scroll { width: 100%; overflow-x: auto; }
+.warehouse-plans-scroll:focus-visible { outline: 2px solid #b5974f; outline-offset: -2px; }
+.warehouse-plan-group-head { padding: 18px 24px; border-bottom: 1px solid var(--plan-rule); }
+.warehouse-plan-group-head h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 24px; font-size: 18px; color: var(--primary, #193f35); }
+.warehouse-plan-group-head h2 > span { display: inline-flex; align-items: center; gap: 8px; }
+.warehouse-plan-group-head h2 .plan-group-date { font-size: 15px; font-weight: 500; color: #52675d; }
+.warehouse-plan-group-head:has(.schedule-shift-estimates) { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; }
+.schedule-shift-estimates { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 0; }
+.schedule-shift-estimates dt { font-size: 13px; }
+.schedule-shift-estimates dd { margin: 3px 0 0; color: var(--primary); font-weight: 700; }
+.warehouse-plan-group + .warehouse-plan-group { margin-top: 20px; border-top: 1px solid var(--plan-rule); }
+.warehouse-plans-table { width: 100%; min-width: 1000px; border-collapse: collapse; table-layout: fixed; font-size: 17px; line-height: 1.5; }
+.warehouse-plans-table .plan-col-index { width: 8%; }
+.warehouse-plans-table .plan-col-task { width: 42%; }
+.warehouse-plans-table .plan-col-staff,
+.warehouse-plans-table .plan-col-manager { width: 25%; }
+.warehouse-plans-table th { padding: 16px 18px; text-align: left; background: var(--primary-light, #e5eee7); color: var(--primary, #193f35); font-size: 15.5px; font-weight: 700; border-bottom: 1px solid var(--plan-rule); letter-spacing: 0.02em; }
+.warehouse-plans-table td { padding: 16px 18px; vertical-align: middle; color: var(--co-ink, #243d35); font-size: 16.5px; border-bottom: 1px solid var(--plan-rule); overflow-wrap: normal; word-break: normal; }
+.warehouse-plans-table td small { font-size: 13.5px; line-height: 1.4; display: block; }
+.warehouse-plans-table tbody tr:nth-child(odd) { background: var(--bg-card, #fffefa); }
+.warehouse-plans-table tbody tr:nth-child(even) { background: var(--plan-row-alt); }
+.warehouse-plans-table tbody tr:last-child td { border-bottom: 0; }
+.warehouse-plans-table tbody tr:hover { background: var(--plan-row-hover); }
+.warehouse-plans-table .plan-index { color: #52675d; font-size: 16.5px; }
+.warehouse-plans-table .plan-person { color: var(--primary, #193f35); font-weight: 600; font-size: 16.5px; }
+.warehouse-plans-table.schedule-table--staff { min-width: 840px; }
+.warehouse-plans-table.schedule-table--staff .plan-col-index { width: 7%; }
+.warehouse-plans-table.schedule-table--staff .plan-col-task { width: 24%; }
+.warehouse-plans-table.schedule-table--staff .plan-col-staff { width: 30%; }
+.warehouse-plans-table.schedule-table--staff .plan-col-manager { width: 22%; }
+.warehouse-plans-table.schedule-table--staff .plan-col-status { width: 17%; }
+.schedule-table--staff :is(th, td) { padding: 14px 16px; }
+.schedule-table--staff :is(th:first-child, th:last-child, .plan-index) { text-align: center; }
+.warehouse-plans .plan-empty { padding: 40px 20px; text-align: center; color: var(--co-muted); }
+@media (max-width: 600px) {
+    .warehouse-plans .closeout-filter { flex-basis: 100%; width: 100%; flex-wrap: wrap; }
+    .warehouse-plans .plan-filter-label { flex-basis: 100%; }
+    .warehouse-plans .closeout-filter input[type=date] { flex: 1; width: auto; }
+    .warehouse-plan-group-head { padding: 16px 20px; }
+    .warehouse-plans .warehouse-plan-shifts { padding: 12px 16px; }
+    .warehouse-plans .plan-shift-link { min-width: 88px; padding-inline: 14px; }
+}

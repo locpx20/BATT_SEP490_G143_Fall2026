@@ -1,194 +1,44 @@
 @model BATT_PPMS.Pages.Dashboard.IndexModel
-<!-- Operational Dashboard (Exact Match to media_1792995072357.png & BATT_PPMSss) -->
-    <div class="space-y-6">
-
-        <!-- Page Header -->
-        <div class="page-header" style="margin-bottom: 24px;">
-            <div>
-                <h1 class="page-title" style="font-size: 22px; font-weight: 800; color: #243d35; margin-bottom: 4px; letter-spacing: -0.3px;">
-                    Tổng quan Vận hành
-                </h1>
-                <p class="page-subtitle" style="font-size: 13px; color: #7a887f; margin: 0;">
-                    Dữ liệu sản xuất thời gian thực — CÔNG TY CỔ PHẦN NĂNG LƯỢNG TÁI TẠO BATT
-                </p>
-            </div>
-        </div>
-
-        <!-- 4 Top KPI Cards Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
-
-            <!-- Card 1: Tồn kho Nguyên liệu -->
-            <div class="card" style="padding: 20px 22px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <span style="font-size: 11.5px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Tồn kho Nguyên liệu</span>
-                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #e5eee7; color: #193f35; display: flex; align-items: center; justify-content: center; font-size: 18px;">
-                        <i class="bi bi-boxes"></i>
-                    </div>
-                </div>
-                <div style="margin-top: 14px;">
-                    <div style="font-size: 32px; font-weight: 800; color: #243d35; line-height: 1;">
-                        @Model.RawInventoryTons.ToString("0.0") <span style="font-size: 15px; font-weight: 600; color: #7a887f;">Tấn</span>
-                    </div>
-                    <div style="font-size: 12px; color: #7a887f; margin-top: 8px;">
-                        Mùn cưa, dăm bào trong bãi
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 2: Tồn kho Thành phẩm -->
-            <div class="card" style="padding: 20px 22px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <span style="font-size: 11.5px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Tồn kho Thành phẩm</span>
-                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #e2eee4; color: #356e51; display: flex; align-items: center; justify-content: center; font-size: 18px;">
-                        <i class="bi bi-box-seam"></i>
-                    </div>
-                </div>
-                <div style="margin-top: 14px;">
-                    <div style="font-size: 32px; font-weight: 800; color: #243d35; line-height: 1;">
-                        @Model.FinishedInventoryTons.ToString("0.0") <span style="font-size: 15px; font-weight: 600; color: #7a887f;">Tấn</span>
-                    </div>
-                    <div style="font-size: 12px; color: #7a887f; margin-top: 8px;">
-                        Kho A: @Model.FinishedInventoryWarehouseA_Tons.ToString("0.0")T • Kho B: @Model.FinishedInventoryWarehouseB_Tons.ToString("0.0")T
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card 3: Role Specific (Kế hoạch Đang chạy / Doanh thu Xuất hàng) -->
-<div class="card" style="padding: 20px 22px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-size: 11.5px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Doanh thu Xuất hàng</span>
-                        <div style="width: 38px; height: 38px; border-radius: 10px; background: #edf2eb; color: #3d6c5e; display: flex; align-items: center; justify-content: center; font-size: 18px;">
-                            <i class="bi bi-graph-up-arrow"></i>
-                        </div>
-                    </div>
-                    <div style="margin-top: 14px;">
-                        <div style="font-size: 32px; font-weight: 800; color: #243d35; line-height: 1;">
-                            @Model.RevenueMillionVnd.ToString("0.0") <span style="font-size: 15px; font-weight: 600; color: #7a887f;">Tr.đ</span>
-                        </div>
-                        <div style="font-size: 12px; color: #7a887f; margin-top: 8px;">
-                            Công nợ còn: @Model.RemainingDebtMillionVnd.ToString("0.0") Tr
-                        </div>
-                    </div>
-                </div>
-
-            <!-- Card 4: Sự cố Máy móc -->
-            <div class="card" style="padding: 20px 22px; border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <span style="font-size: 11.5px; font-weight: 700; color: #7a887f; text-transform: uppercase; letter-spacing: 0.5px;">Sự cố Máy móc</span>
-                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #faf0e9; color: #a55449; display: flex; align-items: center; justify-content: center; font-size: 18px;">
-                        <i class="bi bi-exclamation-triangle"></i>
-                    </div>
-                </div>
-                <div style="margin-top: 14px;">
-                    <div style="font-size: 32px; font-weight: 800; color: #243d35; line-height: 1;">
-                        @Model.ActiveFailuresCount <span style="font-size: 15px; font-weight: 600; color: #7a887f;">Máy</span>
-                    </div>
-                    <div style="font-size: 12px; color: #7a887f; margin-top: 8px;">
-                        Cần xử lý hoặc đang sửa
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2-Column Operational Grid Section (Matching media_1792995072357.png) -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;">
-
-            <!-- Left: Work Queue / Pending Approvals -->
-            <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; padding: 22px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px;">
-                    <div style="width: 28px; height: 28px; border-radius: 8px; background: #faf5e5; color: #a17b35; display: flex; align-items: center; justify-content: center; font-size: 15px;">
-                        <i class="bi bi-clock-history"></i>
-                    </div>
-                    <h2 style="font-size: 15px; font-weight: 700; color: #243d35; margin: 0;">
-                        Hồ sơ Cần xem xét & Phê duyệt
-                    </h2>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    @foreach (var task in Model.PendingTasks)
-                    {
-                        var bg = task.BadgeColor switch {
-                            "amber"   => "#faf5e5",
-                            "indigo"  => "#eef2e9",
-                            "emerald" => "#edf3e9",
-                            "rose"    => "#faf0e9",
-                            "sky"     => "#edf2eb",
-                            _         => "#f4f2ea"
-                        };
-                        var border = task.BadgeColor switch {
-                            "amber"   => "#e5d6a9",
-                            "indigo"  => "#c7d8cc",
-                            "emerald" => "#c6dbc9",
-                            "rose"    => "#e4c8bf",
-                            "sky"     => "#c7d8cc",
-                            _         => "#e1e5da"
-                        };
-                        var textCol = task.BadgeColor switch {
-                            "amber"   => "#7d602e",
-                            "indigo"  => "#254e43",
-                            "emerald" => "#28543f",
-                            "rose"    => "#88473f",
-                            "sky"     => "#31594c",
-                            _         => "#45594f"
-                        };
-
-                        <a href="@task.ActionUrl" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: @bg; border: 1px solid @border; transition: transform 0.15s ease, box-shadow 0.15s ease;">
-                            <div>
-                                <div style="font-size: 13px; font-weight: 700; color: @textCol; margin-bottom: 2px;">
-                                    @task.Title
-                                </div>
-                                <div style="font-size: 11.5px; color: #7a887f;">
-                                    @task.Description
-                                </div>
-                            </div>
-                            <span style="font-size: 12px; font-weight: 700; color: @textCol; white-space: nowrap; margin-left: 12px;">
-                                @task.ActionText
-                            </span>
-                        </a>
-                    }
-                </div>
-            </div>
-
-            <!-- Right: Real-time Physical Stock Movements -->
-            <div class="card" style="border-radius: 14px; border: 1px solid #e1e5da; background: #fffefa; padding: 22px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px;">
-                    <div style="width: 28px; height: 28px; border-radius: 8px; background: #eef2e9; color: #2f6153; display: flex; align-items: center; justify-content: center; font-size: 15px;">
-                        <i class="bi bi-activity"></i>
-                    </div>
-                    <h2 style="font-size: 15px; font-weight: 700; color: #243d35; margin: 0;">
-                        Giao dịch Kho Vật lý Gần nhất
-                    </h2>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 14px;">
-                    @foreach (var m in Model.RecentMovements)
-                    {
-                        var isEntry = m.Type == "IN";
-                        <div style="display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #efefe7; gap: 12px;">
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
-                                    <span style="font-size: 13px; font-weight: 700; color: @(isEntry ? "#356e51" : "#243d35");">
-                                        @(isEntry ? "Nhập kho (+)" : "Xuất kho (-)") @m.QuantityKg.ToString("N0") kg
-                                    </span>
-                                    <span style="font-size: 11px; font-weight: 700; font-family: monospace; background: #efefe7; color: #52675d; padding: 2px 6px; border-radius: 4px;">
-                                        @m.RefCode
-                                    </span>
-                                </div>
-                                <div style="font-size: 11.5px; color: #7a887f; margin-bottom: 2px;">
-                                    @m.Notes
-                                </div>
-                                <div style="font-size: 11px; color: #96a298; font-weight: 500;">
-                                    Thực hiện: @m.ConfirmedBy
-                                </div>
-                            </div>
-                            <span style="font-size: 11.5px; font-weight: 600; color: #96a298; font-family: monospace; white-space: nowrap;">
-                                @m.Time
-                            </span>
-                        </div>
-                    }
-                </div>
-            </div>
-
-        </div>
-
+@using System.Globalization
+@{
+    var overview = Model.WarehouseOverview!;
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+}
+<div class="warehouse-overview">
+    <header class="page-header"><h1 class="page-title"><i class="bi bi-grid" aria-hidden="true"></i> Tổng quan vận hành</h1></header>
+    <div class="wo-stock-grid">
+        <section class="wo-stock-card" aria-labelledby="rawStockTitle">
+            <header><h2 id="rawStockTitle">Tồn kho nguyên liệu</h2><i class="bi bi-box" aria-hidden="true"></i></header>
+            <div class="wo-stock-value"><strong>@overview.RawStockKg.ToString("N2",vi)</strong><span>kg</span></div>
+            <p>Tổng khối lượng nguyên liệu hiện có</p>
+        </section>
+        <section class="wo-stock-card" aria-labelledby="finishedStockTitle">
+            <header><h2 id="finishedStockTitle">Tồn kho thành phẩm</h2><i class="bi bi-stack" aria-hidden="true"></i></header>
+            <div class="wo-stock-value"><strong>@overview.FinishedStockKg.ToString("N2",vi)</strong><span>kg</span></div>
+            <p>@overview.FinishedLots.ToString("N0",vi) lô thành phẩm còn tồn</p>
+        </section>
     </div>
+    <section class="wo-history" aria-labelledby="warehouseHistoryTitle">
+        <header class="wo-history-head"><h2 id="warehouseHistoryTitle"><i class="bi bi-clock-history" aria-hidden="true"></i> Lịch sử nhập / xuất kho</h2></header>
+        <form method="get" class="wo-filters">
+            <div class="wo-filter"><label for="movementFrom">Từ ngày</label><input id="movementFrom" type="date" name="MovementFrom" value="@Model.MovementFrom?.ToString("yyyy-MM-dd")" /></div>
+            <div class="wo-filter"><label for="movementTo">Đến ngày</label><input id="movementTo" type="date" name="MovementTo" value="@Model.MovementTo?.ToString("yyyy-MM-dd")" /></div>
+            <div class="wo-filter"><label for="movementDirection">Giao dịch</label><select id="movementDirection" name="MovementDirection"><option value="">Tất cả</option><option value="in" selected="@(Model.MovementDirection=="in")">Nhập kho</option><option value="out" selected="@(Model.MovementDirection=="out")">Xuất kho</option></select></div>
+            <div class="wo-filter"><label for="movementGroup">Nhóm hàng</label><select id="movementGroup" name="MovementGroup"><option value="">Tất cả</option><option value="raw" selected="@(Model.MovementGroup=="raw")">Nguyên liệu</option><option value="finished" selected="@(Model.MovementGroup=="finished")">Thành phẩm</option></select></div>
+            <button class="btn btn-primary" type="submit"><i class="bi bi-funnel" aria-hidden="true"></i> Lọc lịch sử</button>
+        </form>
+        @if(Model.WarehouseFilterError!=null){<p class="wo-filter-error" role="alert">@Model.WarehouseFilterError</p>}
+        <div class="wo-table-scroll" role="region" aria-label="Lịch sử nhập xuất kho" tabindex="0">
+            <table class="wo-table" aria-labelledby="warehouseHistoryTitle">
+                <thead><tr><th scope="col">Thời gian</th><th scope="col">Giao dịch</th><th scope="col">Nhóm hàng</th><th scope="col">Mã phiếu / đơn</th><th scope="col">Nguyên liệu / Mã LOT</th><th scope="col" class="wo-quantity">Số lượng</th><th scope="col">Người xác nhận</th></tr></thead>
+                <tbody>
+                @foreach(var movement in overview.Movements){
+                    <tr><td><time datetime="@movement.OccurredAt.ToString("yyyy-MM-ddTHH:mm:ss")">@movement.OccurredAt.ToString("dd/MM/yyyy")<small>@movement.OccurredAt.ToString("HH:mm")</small></time></td><td><span class="wo-direction @(movement.Incoming?"in":"out")"><i class="bi @(movement.Incoming?"bi-arrow-down-left":"bi-arrow-up-right")" aria-hidden="true"></i> @(movement.Incoming?"Nhập kho":"Xuất kho")</span></td><td>@movement.Group</td><td class="wo-reference">@movement.Reference</td><td class="wo-item">@movement.Item</td><td class="wo-quantity"><strong>@movement.Quantity.ToString("N2",vi)</strong> @movement.Unit</td><td>@movement.Actor</td></tr>
+                }
+                @if(overview.Movements.Count==0){<tr><td colspan="7" class="wo-empty">Chưa có giao dịch nhập / xuất kho phù hợp.</td></tr>}
+                </tbody>
+            </table>
+        </div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(overview.Pagination,"/Dashboard/Index",new(){["MovementFrom"]=Model.MovementFrom?.ToString("yyyy-MM-dd"),["MovementTo"]=Model.MovementTo?.ToString("yyyy-MM-dd"),["MovementDirection"]=Model.MovementDirection,["MovementGroup"]=Model.MovementGroup})' />
+    </section>
+</div>

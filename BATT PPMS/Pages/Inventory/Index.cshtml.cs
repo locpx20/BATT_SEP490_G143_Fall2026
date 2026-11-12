@@ -3,6 +3,7 @@ using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace BATT_PPMS.Pages.Inventory
 {
@@ -84,10 +85,18 @@ namespace BATT_PPMS.Pages.Inventory
         public string? SearchTerm { get; set; }
 
         [BindProperty(SupportsGet = true)]
+        public DateOnly? ProductionDateFilter { get; set; }
+
+        public string? ProductionDateInput => ProductionDateFilter?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        public bool InvalidProductionDateFilter =>
+            ModelState.TryGetValue(nameof(ProductionDateFilter), out var state) && state.Errors.Count > 0;
+
+        [BindProperty(SupportsGet = true)]
         public int PageNumber { get; set; } = 1;
 
         [BindProperty(SupportsGet = true)]
         public string? StatusFilter { get; set; }
+
 
         [BindProperty(SupportsGet = true)]
         public int? SupplierFilter { get; set; }
@@ -141,6 +150,9 @@ namespace BATT_PPMS.Pages.Inventory
                 RoleConstants.PurchasingStaff);
             if (check != null) return check;
 
+            // Keep previously issued consumption-notification links working after the split.
+            if (IsWarehouseStaff && Request.Query.ContainsKey("UsageStatusFilter"))
+                return RedirectToPage("/Warehouse/Consumption", new { StatusFilter = Request.Query["UsageStatusFilter"].ToString(), pageNumber = Request.Query["usagePageNumber"].ToString() });
             if (Tab != "finished") Tab = "raw";
             var page = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
 
@@ -150,8 +162,10 @@ namespace BATT_PPMS.Pages.Inventory
                     .AsNoTracking()
                     .Include(x => x.CreatedByNavigation)
                     .Where(x => x.Status == "In Stock");
-                if (!string.IsNullOrWhiteSpace(SearchTerm))
-                    query = query.Where(x => x.BagNumber.Contains(SearchTerm.Trim()));
+                if (InvalidProductionDateFilter)
+                    query = query.Where(x => false);
+                else if (ProductionDateFilter is { } productionDate)
+                    query = query.Where(x => x.ProductionDate == productionDate);
                 Pagination = new(await query.CountAsync(), page);
                 Batches = await query
                     .OrderByDescending(x => x.ProductionDate)
@@ -159,6 +173,8 @@ namespace BATT_PPMS.Pages.Inventory
                     .Skip(Pagination.Offset)
                     .Take(PageWindow.Size)
                     .ToListAsync();
+                if (IsWarehouseStaff)
+                    await WarehouseNavigationNotices.OpenAsync(_context, CurrentUserId, WarehouseNavigationNotice.FinishedStock, HttpContext.RequestAborted);
                 return Page();
             }
 
@@ -171,6 +187,7 @@ namespace BATT_PPMS.Pages.Inventory
             Pagination = new(await matQuery.CountAsync(), page);
             Materials = await matQuery
                 .OrderBy(x => x.MaterialName)
+                .ThenBy(x => x.MaterialId)
                 .Skip(Pagination.Offset)
                 .Take(PageWindow.Size)
                 .ToListAsync();

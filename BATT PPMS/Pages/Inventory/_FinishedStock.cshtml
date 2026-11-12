@@ -1,0 +1,145 @@
+@model BATT_PPMS.Pages.Inventory.IndexModel
+@using BATT_PPMS.Helpers
+@using System.Globalization
+@{
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    string FormatKg(decimal? value) => value is { } kg ? $"{kg.ToString("N2", vi)} kg" : "—";
+    string FormatBags(decimal? value) => value is { } bags ? bags.ToString("#,0.##", vi) : "—";
+    var ungradedKg = Model.TotalFinishedStock.StockKg - Model.StockA.StockKg - Model.StockB.StockKg;
+    var warehouses = new[] {
+        (Grade: (string?)null, Title: "Tổng tồn thành phẩm", Total: Model.TotalFinishedStock, Description: (string?)null),
+        (Grade: (string?)"A", Title: "Kho A", Total: Model.StockA, Description: (string?)"Hàng chất lượng cao"),
+        (Grade: (string?)"B", Title: "Kho B", Total: Model.StockB, Description: (string?)"Hàng chất lượng thấp hơn")
+    };
+    var activeTitle = Model.StockGrade == null ? "Tất cả lô thành phẩm" : $"Lô thành phẩm Kho {Model.StockGrade}";
+}
+
+<div class="closeout finished-stock">
+    <header class="closeout-header">
+        <h1><i class="bi bi-boxes" aria-hidden="true"></i> Kho thành phẩm</h1>
+    </header>
+
+    <nav class="finished-stock-summary" aria-label="Tổng tồn theo kho">
+        @foreach (var warehouse in warehouses) {
+            var selected = warehouse.Grade == Model.StockGrade;
+            <a asp-page="/Inventory/Index" asp-route-Tab="finished" asp-route-StockGrade="@warehouse.Grade"
+               asp-route-ProductionDateFilter="@Model.ProductionDateInput"
+               class="stock-card stock-card--@(warehouse.Grade?.ToLowerInvariant() ?? "all")"
+               aria-current="@(selected ? "page" : null)">
+                <span class="stock-card-title">@warehouse.Title</span>
+                <strong>@warehouse.Total.StockKg.ToString("N2", vi) <small>kg</small></strong>
+                <span>@warehouse.Total.Lots.ToString("N0", vi) lô còn tồn@(warehouse.Description != null ? $" · {warehouse.Description}" : "")</span>
+                @if (warehouse.Grade == null && ungradedKg > 0) {
+                    <span>Chưa phân loại @FormatKg(ungradedKg)</span>
+                }
+            </a>
+        }
+    </nav>
+
+    <section class="closeout-register warehouse-plans" aria-label="@activeTitle">
+        <div class="closeout-section-head finished-stock-toolbar">
+            <h2>@activeTitle</h2>
+            <form method="get" asp-page="/Inventory/Index" class="closeout-filter finished-stock-filter">
+                <input type="hidden" name="Tab" value="finished" />
+                @if (Model.StockGrade != null) {
+                    <input type="hidden" name="StockGrade" value="@Model.StockGrade" />
+                }
+                <label class="plan-filter-label" for="inventoryProductionDate">Ngày sản xuất</label>
+                <input id="inventoryProductionDate" type="date" name="ProductionDateFilter" value="@Model.ProductionDateInput" />
+                <button class="closeout-button secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
+            </form>
+        </div>
+        <div class="warehouse-plans-scroll" role="region" aria-label="@activeTitle" tabindex="0">
+            <table class="warehouse-plans-table finished-stock-table">
+                <colgroup>
+                    <col class="stock-col-lot" />
+                    <col />
+                    <col />
+                    <col class="stock-col-quality" />
+                    <col />
+                    <col />
+                    <col class="stock-col-weight" />
+                    <col class="stock-col-weight" />
+                    <col class="stock-col-receiver" />
+                    <col class="stock-col-detail" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Mã lô</th>
+                        <th scope="col">Ngày sản xuất</th>
+                        <th scope="col">Vị trí trong kho</th>
+                        <th scope="col">Chất lượng</th>
+                        <th scope="col" class="stock-number">Tổng số bao</th>
+                        <th scope="col" class="stock-number">Số bao còn lại <small>Quy đổi theo kg</small></th>
+                        <th scope="col" class="stock-number">Khối lượng ban đầu</th>
+                        <th scope="col" class="stock-number">Khối lượng tồn</th>
+                        <th scope="col">Người nhập kho</th>
+                        <th scope="col">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var batch in Model.Batches) {
+                        <tr>
+                            <td><code title="@batch.Lot">@LotCode.ForListDisplay(batch.Lot)</code></td>
+                            <td>@batch.ProductionDate.ToString("dd/MM/yyyy")</td>
+                            <td>@batch.Location</td>
+                            <td><span class="stock-quality" data-grade="@batch.Grade">@batch.Quality</span></td>
+                            <td class="stock-number">@FormatBags(batch.TotalBags)</td>
+                            <td class="stock-number">@FormatBags(batch.RemainingBags)</td>
+                            <td class="stock-number">@FormatKg(batch.Receipt?.InitialKg)</td>
+                            <td class="stock-number stock-on-hand">@FormatKg(batch.StockKg)</td>
+                            <td>@batch.Receiver</td>
+                            <td>
+                                <button type="button" class="closeout-button secondary" data-stock-dialog="stock-lot-@batch.BatchId"
+                                        aria-haspopup="dialog" aria-label="Xem chi tiết lô @batch.Lot">
+                                    <i class="bi bi-eye" aria-hidden="true"></i> Chi tiết
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Batches.Count == 0) {
+                        <tr>
+                            <td colspan="10" class="plan-empty">
+                                @(Model.InvalidProductionDateFilter ? "Vui lòng chọn ngày sản xuất hợp lệ." : "Không có lô thành phẩm phù hợp.")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml"
+                 model='new AdminPaginationViewModel(Model.Pagination, "/Inventory/Index", new() { ["Tab"] = "finished", ["StockGrade"] = Model.StockGrade, ["ProductionDateFilter"] = Model.ProductionDateInput })' />
+    </section>
+
+    @foreach (var batch in Model.Batches) {
+        var id = $"stock-lot-{batch.BatchId}";
+        <dialog id="@id" class="finished-stock-dialog" aria-labelledby="@($"{id}-title")">
+            <header>
+                <h2 id="@($"{id}-title")">Chi tiết lô thành phẩm</h2>
+                <form method="dialog"><button type="submit" class="closeout-modal-close" aria-label="Đóng">×</button></form>
+            </header>
+            <div class="finished-stock-dialog-body">
+                <code class="stock-detail-lot">@batch.Lot</code>
+                <dl>
+                    <div><dt>Ngày sản xuất</dt><dd>@batch.ProductionDate.ToString("dd/MM/yyyy")</dd></div>
+                    <div><dt>Vị trí trong kho</dt><dd>@batch.Location</dd></div>
+                    <div><dt>Chất lượng QC</dt><dd>@batch.Quality</dd></div>
+                    <div><dt>Người nhập kho</dt><dd>@batch.Receiver</dd></div>
+                    <div><dt>Phiếu nhập kho</dt><dd>@(batch.Receipt is { } receipt ? $"NK-{receipt.ReceiptId:D4}" : "—")</dd></div>
+                    <div><dt>Thời điểm nhập</dt><dd>@(batch.Receipt?.ReceivedAt?.ToString("dd/MM/yyyy HH:mm") ?? "—")</dd></div>
+                    <div><dt>Tổng số bao</dt><dd>@FormatBags(batch.TotalBags)</dd></div>
+                    <div><dt>Số bao còn lại (quy đổi)</dt><dd>@FormatBags(batch.RemainingBags)</dd></div>
+                    <div><dt>Khối lượng ban đầu</dt><dd>@FormatKg(batch.Receipt?.InitialKg)</dd></div>
+                    <div><dt>Khối lượng tồn</dt><dd>@FormatKg(batch.StockKg)</dd></div>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(batch.Receipt?.Note)) {
+                    <p class="stock-detail-note"><strong>Ghi chú nhập kho</strong> @batch.Receipt.Note</p>
+                }
+                @if (Model.CanViewFinishedQcImage && batch.Receipt is { HasQcImage: true } evidence) {
+                    <a asp-page="/QC/Index" asp-page-handler="Image" asp-route-requestId="@evidence.QualityRequestId"
+                       class="closeout-button secondary" target="_blank" rel="noopener"><i class="bi bi-image" aria-hidden="true"></i> Xem ảnh QC</a>
+                }
+            </div>
+        </dialog>
+    }
+</div>

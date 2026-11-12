@@ -49,7 +49,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     public int? StaffReceiptStep => StaffView ? (StaffReceivedView ? 5 : 4) : null;
     public static IReadOnlyList<string> OpenReceiptStatuses { get; } = ["Pending", "Rejected"];
     public DateOnly Today => DateOnly.FromDateTime(ProductionFlow.Now);
-    public List<PersonnelAssignment> StaffAssignments { get; set; } = new();
+    public List<QcShiftOption> StaffAssignments { get; set; } = new();
 
     public static string FormatShift(string? shift) {
         if (string.IsNullOrWhiteSpace(shift)) return "Chưa ghi nhận ca";
@@ -98,14 +98,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
                 EffectiveStep = Step is >= 1 and <= 5 ? Step.Value : QualityRequestId > 0 ? 3 : 4;
 
             if (IsStaff && EffectiveStep == 1) {
-                StaffAssignments = await new ProductionFlow(db).AssignedShiftOptions(CurrentUserId);
-                var existingQc = await db.ProductionQualityRequests.AsNoTracking()
-                    .Where(x => x.Inspection.RequestedBy == CurrentUserId && (x.Inspection.Status != "Completed" || x.Inspection.Result == "Pass"))
-                    .Select(x => new { x.Assignment.AssignmentDate, x.Assignment.Shift })
-                    .ToListAsync();
-                StaffAssignments = StaffAssignments
-                    .Where(a => !existingQc.Any(q => q.AssignmentDate == a.AssignmentDate && q.Shift == a.Shift))
-                    .ToList();
+                StaffAssignments = await new ProductionFlow(db).QcShiftOptions(CurrentUserId);
             } else if (IsStaff && EffectiveStep is 2 or 3) {
                 var staffQcRequests = await new ProductionFlow(db).QualityQuery.AsNoTracking()
                     .Where(x => x.Inspection.RequestedBy == CurrentUserId && x.Assignment.StaffId == CurrentUserId && x.Assignment.Status != "Cancelled")
@@ -190,24 +183,24 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         Response.Headers["Cache-Control"] = "no-store";
         return new JsonResult(await WarehouseInboxSummary.ReadAsync(db, CurrentUserId, HttpContext.RequestAborted));
     }
-    private async Task<IActionResult> Act(Func<Task<int>> action, string success, string tab, int? step = null, DateOnly? qcDate = null, string? qcShift = null) {
+    private async Task<IActionResult> Act(Func<Task<int>> action, string success, string tab, int? step = null, DateOnly? qcDate = null, string? qcShift = null, int? failureStep = null) {
         if (!ModelState.IsValid) {
             ErrorMessage = "Dữ liệu nhập không hợp lệ. Vui lòng kiểm tra lại.";
-            return RedirectToPage(new { tab, step, qcDate, qcShift });
+            return RedirectToPage(new { tab, step = failureStep ?? step, qcDate, qcShift });
         }
         try { await action(); SuccessMessage = success; }
         catch (ProductionFlowException ex) {
             ErrorMessage = ex.Message;
-            return RedirectToPage(new { tab, step, qcDate, qcShift });
+            return RedirectToPage(new { tab, step = failureStep ?? step, qcDate, qcShift });
         }
         return RedirectToPage(new { tab, step, qcDate, qcShift });
     }
-    public async Task<IActionResult> OnPostRequestQcAsync(int assignmentId, int quantity, string? note) {
+    public async Task<IActionResult> OnPostRequestQcAsync(int assignmentId, int bags, string? note, string? exceptionReason) {
         var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
         var assignment = await db.PersonnelAssignments.AsNoTracking().FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         var targetDate = assignment?.AssignmentDate ?? Today;
-        return await Act(() => new ProductionFlow(db).RequestQc(CurrentUserId, assignmentId, quantity, note),
-            "Đã gửi yêu cầu kiểm tra chất lượng cho nhân viên QC.", "receipts", 2, targetDate, assignment?.Shift);
+        return await Act(() => new ProductionFlow(db).RequestQc(CurrentUserId, assignmentId, bags, note, exceptionReason),
+            "Đã gửi yêu cầu kiểm tra chất lượng cho nhân viên QC.", "receipts", 2, targetDate, assignment?.Shift, failureStep: 1);
     }
     public Task<IActionResult> OnPostRequestReceiptAsync(int requestId, string? note) {
         var check = RequireRole(RoleConstants.Staff); if (check != null) return Task.FromResult(check);

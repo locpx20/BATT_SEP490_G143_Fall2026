@@ -4,9 +4,41 @@ namespace BATT_PPMS.Helpers;
 
 public static class LotCode
 {
-    // Keep the 38-character LOT format used by main, with the production date.
-    public static string Create(DateOnly productionDate) =>
-        $"LOT-{productionDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture)}-{Guid.NewGuid():N}"[..38];
+    public static int? ShiftNumber(string? shift)
+    {
+        var name = shift?.Trim();
+        if (name?.StartsWith("Ca", StringComparison.OrdinalIgnoreCase) == true)
+            name = name[2..].Trim();
+        return int.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number is >= 1 and <= 3
+            ? number : null;
+    }
+
+    public static string ShiftPrefix(DateOnly productionDate, int shiftNumber) =>
+        FormattableString.Invariant($"LOT-{productionDate:yyMMdd}-C{shiftNumber}-");
+
+    public static int SequenceInShift(string lot, string prefix)
+    {
+        if (!lot.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return 0;
+        var suffix = lot.AsSpan(prefix.Length);
+        var separator = suffix.IndexOf('-');
+        return separator > 0 && int.TryParse(suffix[..separator], NumberStyles.None, CultureInfo.InvariantCulture, out var sequence)
+            ? sequence : 0;
+    }
+
+    public static string Create(string prefix, int sequence, int bags) =>
+        FormattableString.Invariant($"{prefix}{sequence}-{bags}");
+
+    public static int? BagCount(string? lot)
+    {
+        var parts = lot?.Split('-');
+        return parts is { Length: 5 } && parts[0] == "LOT"
+            && DateOnly.TryParseExact(parts[1], "yyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)
+            && parts[2] is "C1" or "C2" or "C3"
+            && int.TryParse(parts[3], NumberStyles.None, CultureInfo.InvariantCulture, out var sequence) && sequence > 0
+            && int.TryParse(parts[4], NumberStyles.None, CultureInfo.InvariantCulture, out var bags) && bags > 0
+            ? bags : null;
+    }
 
     public static string ForListDisplay(string code)
     {

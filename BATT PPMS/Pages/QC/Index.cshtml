@@ -18,7 +18,7 @@
     @if(Model.ErrorMessage!=null){<div class="closeout-message error" role="alert">@Model.ErrorMessage</div>}
     <partial name="_CloseoutNotifications" model="Model.Notices" />
     @if(Model.StaffView&&!Model.Legacy){
-        <details class="closeout-compose"><summary><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo yêu cầu kiểm tra<i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
+        <details class="closeout-compose" open="@(Model.ErrorMessage != null)"><summary><i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo yêu cầu kiểm tra<i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
             <form method="post" asp-page-handler="Request">
                 <div class="closeout-form-grid">
                     <div class="closeout-field">
@@ -26,14 +26,13 @@
                         <select id="qcAssignment" name="assignmentId" required>
                             <option value="">Chọn ngày và ca</option>
                             @foreach (var assignment in Model.Assignments) {
-                                <option value="@assignment.AssignmentId">@assignment.AssignmentDate.ToString("dd/MM/yyyy") · @(assignment.Shift ?? "Chưa ghi nhận ca")</option>
+                                <option value="@assignment.AssignmentId" data-requires-exception="@(assignment.RequiresException ? "true" : null)">
+                                    @assignment.AssignmentDate.ToString("dd/MM/yyyy") · @assignment.Shift@(assignment.RequiresException ? " · Lô tiếp theo" : "")
+                                </option>
                             }
                         </select>
                     </div>
-                    <div class="closeout-field">
-                        <label for="qcQuantity">Tổng sản lượng thành phẩm của ca (kg)</label>
-                        <input type="number" id="qcQuantity" name="quantity" min="1" max="2147483647" step="1" required />
-                    </div>
+                    <partial name="_QcBagFields" />
                     <div class="closeout-field">
                         <label for="qcNote">Ghi chú lô hàng</label>
                         <textarea name="note" id="qcNote" maxlength="5000" rows="3"></textarea>
@@ -68,7 +67,7 @@
                         <th scope="col">Mã lô</th>
                         <th scope="col">Ngày / Ca sản xuất</th>
                         <th scope="col">Người gửi / QC</th>
-                        <th scope="col" class="qc-quantity">Khối lượng (kg)</th>
+                        <th scope="col" class="qc-quantity">@(Model.StaffView ? "Sản lượng" : "Khối lượng (kg)")</th>
                         <th scope="col">Trạng thái</th>
                         <th scope="col">Kết quả</th>
                         <th scope="col">Thao tác</th>
@@ -88,7 +87,10 @@
                                 @(inspection.RequestedByNavigation?.FullName ?? "—")
                                 <small>@(inspection.InspectedByNavigation?.FullName ?? "Chưa có QC phụ trách")</small>
                             </td>
-                            <td class="qc-quantity">@((q.Receipt?.ExpectedQuantity ?? inspection.Batch.Quantity).ToString("N2"))</td>
+                            <td class="qc-quantity">
+                                @{ var quantity = q.Receipt?.ExpectedQuantity ?? inspection.Batch.Quantity; }
+                                @(Model.StaffView ? FinishedGoodsQuantity.ForStaff(quantity, lot) : quantity.ToString("N2"))
+                            </td>
                             <td><span class="closeout-status @statusClass">@ProductionFlow.Label(inspection.Status)</span></td>
                             <td>
                                 @if (inspection.Result != null) {
@@ -146,6 +148,9 @@
 </div>
 
 @section Scripts {
+    @if (Model.StaffView && !Model.Legacy) {
+        <script src="~/js/qc-request.js" asp-append-version="true"></script>
+    }
     @if (Model.ResultShifts.Count > 0 || Model.ResultError != null) {
         <script src="~/js/qc-result.js" asp-append-version="true"></script>
     }

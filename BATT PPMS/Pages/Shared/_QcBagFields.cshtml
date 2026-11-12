@@ -1,0 +1,16 @@
+@using BATT_PPMS.Helpers
+
+<div class="closeout-field">
+    <label for="qc-bag-count">Số bao thành phẩm</label>
+    <input id="qc-bag-count" name="bags" type="number" min="1" max="@FinishedGoodsQuantity.MaxBags" step="1" required
+           inputmode="numeric" data-kg-per-bag="@FinishedGoodsQuantity.KilogramsPerBag" aria-describedby="qc-bag-weight" />
+    <small id="qc-bag-weight">
+        1 bao = @FinishedGoodsQuantity.KilogramsPerBag kg
+        <output for="qc-bag-count" data-qc-bag-weight aria-live="polite"></output>
+    </small>
+</div>
+<div class="closeout-field" data-qc-exception hidden>
+    <label for="qc-exception-reason">Lý do tách lô</label>
+    <textarea id="qc-exception-reason" name="exceptionReason" rows="2" maxlength="1000" disabled
+              placeholder="Ví dụ: Dừng máy sửa chữa hoặc thay đổi cài đặt máy"></textarea>
+</div>

@@ -72,10 +72,10 @@ namespace BATT_PPMS.Pages.QC
 
             return Page();
         }
-        public async Task<IActionResult> OnPostRequestAsync(int assignmentId, int bags, string? note, string? exceptionReason) {
+        public async Task<IActionResult> OnPostRequestAsync(int assignmentId, int? bags, string? note, bool hasShiftIncident, string? exceptionReason) {
             var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
             if (!ModelState.IsValid) { ErrorMessage = "Kiểm tra lại ca và số bao thành phẩm."; return RedirectToPage(); }
-            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, bags, note, exceptionReason); SuccessMessage = "Đã gửi yêu cầu tới nhân viên QC để tiếp nhận và kiểm tra chất lượng."; }
+            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, bags, note, hasShiftIncident, exceptionReason); SuccessMessage = "Đã gửi yêu cầu tới nhân viên QC để tiếp nhận và kiểm tra chất lượng."; }
             catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
         }

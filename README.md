@@ -6,7 +6,7 @@ Với database đang có dữ liệu, chạy `Add_MaintenanceRequest_Workflow.sq
 
 ## Báo cáo cuối ca: hai luồng độc lập
 
-Staff nhập số bao thành phẩm khi gửi QC. Hệ thống quy đổi 800 kg mỗi bao và dùng cột khối lượng hiện có cho tồn kho, báo cáo và giao dịch. Mã lô mới có dạng `LOT-yyMMdd-C<ca>-<số thứ tự>-<số bao>`, ví dụ `LOT-261112-C1-1-18`. Lô đầu mỗi ngày và ca có số thứ tự 1. Khi phát sinh lô tiếp theo trong ca, Staff ghi lý do tách lô để hệ thống cấp số 2, 3… QC và Thủ kho dùng cùng mã đã cấp. Số bao cuối mã ghi nhận số bao lúc gửi QC. Các mã đã lưu trước đây vẫn dùng để tra cứu lịch sử.
+Staff nhập tổng số bao thành phẩm của ca khi gửi QC. Hệ thống quy đổi 800 kg mỗi bao và dùng cột khối lượng hiện có cho tồn kho, báo cáo và giao dịch. Mỗi ca ghi nhận một lô tổng. Ví dụ Ca 1 ngày 12/11/2026 sản xuất 18 bao dùng mã `LOT-261112-C1-1-18`. Nếu ca có phát sinh sự cố, Staff ghi lý do và hệ thống cấp `LOT-261112-C1-2-18` cho cùng tổng 18 bao. QC và Thủ kho dùng mã đã cấp, kể cả khi kiểm tra lại. Các mã đã lưu trước đây vẫn dùng để tra cứu lịch sử.
 
 Với database đang có dữ liệu, chạy lần lượt các script còn thiếu theo thứ tự `Add_Production_QC_Warehouse_Workflow.sql`, `Add_ShiftMaterialUsage.sql`, `Add_MaterialUsageReview.sql`, `Add_QC_ResultImage.sql`, `Add_QC_ResultDetails.sql` và `Add_DailyMaterialPlan.sql`. Sau đó chạy bản mới của `Add_ShiftProductionPlan.sql` để bổ sung trạng thái ca nghỉ, kể cả khi đã chạy bản trước. Script giữ các phân công và phiếu QC đã lưu. Khởi động lại ứng dụng sau khi cập nhật.
 

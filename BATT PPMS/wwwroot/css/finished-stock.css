@@ -59,18 +59,47 @@
 }
 
 .finished-stock .finished-stock-toolbar {
+    container-type: inline-size;
     justify-content: space-between;
     flex-wrap: wrap;
+    gap: 12px 24px;
+    padding: 16px 24px;
 }
 
 .finished-stock .finished-stock-filter {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+    display: grid;
+    flex: 0 1 auto;
+    width: max-content;
+    max-width: 100%;
+    grid-template-columns: max-content minmax(0, 210px) max-content;
+    align-items: center;
     gap: 10px;
 }
 
 .finished-stock .finished-stock-filter input[type="date"] {
-    width: min(100%, 210px);
+    width: 100%;
+}
+
+.finished-stock-filter button {
+    white-space: nowrap;
+}
+
+@container (max-width: 450px) {
+    .finished-stock .finished-stock-filter {
+        width: 100%;
+        grid-template-columns: minmax(0, 1fr) max-content;
+        row-gap: 6px;
+    }
+
+    .finished-stock-filter label {
+        grid-column: 1 / -1;
+    }
+}
+
+@container (max-width: 245px) {
+    .finished-stock .finished-stock-filter {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .finished-stock .finished-stock-table {
@@ -126,8 +155,13 @@
 }
 
 .finished-stock-dialog {
+    position: fixed;
+    inset: 0;
     width: min(680px, calc(100% - 32px));
+    height: fit-content;
     max-height: calc(100dvh - 32px);
+    margin: auto;
+    overflow: auto;
     padding: 0;
     color: var(--co-ink);
     background: var(--co-paper);

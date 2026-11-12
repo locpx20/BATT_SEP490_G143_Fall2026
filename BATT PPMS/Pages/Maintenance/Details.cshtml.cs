@@ -195,6 +195,9 @@ namespace BATT_PPMS.Pages.Maintenance
             request.ReviewedAt = now;
             request.AssignedTo = null;
 
+            // Yêu cầu bị trả về: máy không còn bị khóa (sẽ khóa lại nếu Staff gửi lại)
+            await MachineStatusGuard.ReleaseAsync(_context, request.BrokenReport.MachineId, request.RequestId);
+
             AddLog(request, RepairAction.Rejected, RepairStatus.Pending, RepairStatus.Rejected, cleanReason, now);
             await _context.SaveChangesAsync();
 
@@ -345,6 +348,9 @@ namespace BATT_PPMS.Pages.Maintenance
             request.CompletionNote = cleanNote;
             request.BrokenReport.Status = StatusConstants.Fixed;
 
+            // Sửa xong: mở khóa, máy trở lại Đang hoạt động
+            await MachineStatusGuard.ReleaseAsync(_context, request.BrokenReport.MachineId, request.RequestId);
+
             AddLog(request, RepairAction.Completed, RepairStatus.InProgress, RepairStatus.Completed, cleanNote, now);
             await _context.SaveChangesAsync();
 
@@ -371,6 +377,7 @@ namespace BATT_PPMS.Pages.Maintenance
             if (reasonError != null) return Fail(id, reasonError);
 
             request.Status = RepairStatus.Cancelled;
+            await MachineStatusGuard.ReleaseAsync(_context, request.BrokenReport.MachineId, request.RequestId);
 
             AddLog(request, RepairAction.Cancelled, current, RepairStatus.Cancelled, InputValidator.Clean(reason), DateTime.Now);
             await _context.SaveChangesAsync();

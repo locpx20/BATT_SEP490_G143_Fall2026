@@ -1,0 +1,136 @@
+@model BATT_PPMS.Helpers.ProductionScheduleViewModel
+@using BATT_PPMS.Helpers
+@{
+    var showShiftStatus = Model.CurrentWorkerId.HasValue;
+    var allShiftFilters = new Dictionary<string, string>(Model.Filters) { ["AllPlanShifts"] = "true" };
+    if (Model.DateInput is { } dateInput) {
+        allShiftFilters["PlanDate"] = dateInput;
+    }
+    var pagingFilters = allShiftFilters.ToDictionary(filter => filter.Key, filter => (string?)filter.Value);
+    pagingFilters["AllPlanShifts"] = "false";
+}
+<section class="closeout-register warehouse-plans">
+    <div class="closeout-section-head">
+        <form method="get" asp-page="@Model.PageName" class="closeout-filter">
+            @foreach (var filter in Model.Filters.Where(filter => filter.Key != "AllDates")) {
+                <input type="hidden" name="@filter.Key" value="@filter.Value" />
+            }
+            <input type="hidden" name="AllPlanShifts" value="@(Model.AllShifts ? "true" : "false")" />
+            <label class="plan-filter-label" for="schedulePlanDate">Ngày sản xuất</label>
+            <input id="schedulePlanDate" type="date" name="PlanDate" value="@Model.DateInput" required />
+            <button class="closeout-button secondary" type="submit">Tìm kiếm</button>
+        </form>
+    </div>
+
+    @if (Model.Shifts.Count > 0) {
+        <nav class="warehouse-plan-shifts schedule-shift-nav" aria-label="Chọn ca sản xuất">
+            <div class="schedule-shift-links">
+                <a class="plan-shift-link @(Model.AllShifts ? "active" : "")" asp-page="@Model.PageName" asp-all-route-data="@allShiftFilters" aria-current="@(Model.AllShifts ? "page" : null)">Tất cả ca</a>
+                @for (var index = 0; index < Model.Shifts.Count; index++) {
+                    var active = !Model.AllShifts && Model.Pagination.CurrentPage == index + 1;
+                    var shiftFilters = new Dictionary<string, string>(allShiftFilters) {
+                        ["AllPlanShifts"] = "false",
+                        ["pageNumber"] = (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    };
+                    <a class="plan-shift-link @(active ? "active" : "")" asp-page="@Model.PageName" asp-all-route-data="@shiftFilters" aria-current="@(active ? "page" : null)">
+                        <i class="bi bi-clock" aria-hidden="true"></i> @(string.IsNullOrWhiteSpace(Model.Shifts[index]) ? "Chưa ghi nhận ca" : Model.Shifts[index])
+                    </a>
+                }
+            </div>
+            @if (Model.DisplayDate is { } date) {
+                <span class="schedule-date"><i class="bi bi-calendar3" aria-hidden="true"></i> Ngày @date.ToString("dd/MM/yyyy")</span>
+            }
+        </nav>
+    }
+
+    @foreach (var shift in Model.Assignments.GroupBy(a => new { a.AssignmentDate, a.Shift })) {
+        var position = 0;
+        var shiftName = string.IsNullOrWhiteSpace(shift.Key.Shift) ? "Chưa ghi nhận ca" : shift.Key.Shift;
+        var dateLabel = shift.Key.AssignmentDate.ToString("dd/MM/yyyy");
+        var tableLabel = $"Bảng phân công {shiftName} ngày {dateLabel}";
+        var tasks = shift.GroupBy(a => a.TaskDescription?.Trim() ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList();
+        var shiftStatus = Model.ShiftStatuses?.GetValueOrDefault((shift.Key.AssignmentDate, shift.Key.Shift)) ?? "Assigned";
+        var projection = shift.Key.Shift == null ? null : Model.ShiftPlans?.GetValueOrDefault(shift.Key.Shift);
+        <section class="warehouse-plan-group" aria-label="@tableLabel">
+            @if (Model.AllShifts || Model.DisplayDate is null || projection != null) {
+                <header class="warehouse-plan-group-head">
+                    <h2>
+                        <span><i class="bi bi-clock" aria-hidden="true"></i> @shiftName</span>
+                        @if (Model.DisplayDate is null) { <span class="plan-group-date">Ngày @dateLabel</span> }
+                    </h2>
+                    @if (projection != null) {
+                        <dl class="schedule-shift-estimates">
+                            <div><dt>Nguyên liệu tiêu thụ dự kiến</dt><dd>@projection.ExpectedMaterialKg.ToString("N2") kg</dd></div>
+                            <div><dt>Thành phẩm dự kiến</dt><dd>@projection.ExpectedFinishedKg.ToString("N2") kg</dd></div>
+                        </dl>
+                    }
+                </header>
+            }
+            <div class="warehouse-plans-scroll" role="region" aria-label="@tableLabel" tabindex="0">
+                <table class="warehouse-plans-table schedule-table @(showShiftStatus ? "schedule-table--staff" : null)" aria-label="@tableLabel">
+                    <colgroup>
+                        <col class="plan-col-index" />
+                        <col class="plan-col-task" />
+                        <col class="plan-col-staff" />
+                        <col class="plan-col-manager" />
+                        @if (showShiftStatus) { <col class="plan-col-status" /> }
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th scope="col">STT</th>
+                            <th scope="col">@(showShiftStatus ? "Máy móc" : "Công việc / Máy móc")</th>
+                            <th scope="col">Nhân viên</th>
+                            <th scope="col">Người phân công</th>
+                            @if (showShiftStatus) { <th scope="col">Trạng thái</th> }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in tasks) {
+                            position++;
+                            var taskName = task.Key.Length == 0 ? "Chưa có mô tả" : task.Key;
+                            if (showShiftStatus) {
+                                taskName = BATT_PPMS.Pages.Personnel.IndexModel.StaffMachineName(taskName);
+                            }
+                            var workers = task.GroupBy(a => a.StaffId).Select(group => group.First()).ToList();
+                            var assigners = task.GroupBy(a => a.AssignedBy)
+                                .Select(group => group.First().AssignedByNavigation?.FullName ?? "Tài khoản đã xóa");
+                            <tr>
+                                <td class="plan-index">@position</td>
+                                <td>@taskName</td>
+                                <td class="plan-person">
+                                    @foreach (var worker in workers) {
+                                        var workerName = worker.Staff?.FullName ?? "Tài khoản đã xóa";
+                                        <div class="@(showShiftStatus ? "schedule-worker-line" : null)">
+                                            @if (showShiftStatus) {
+                                                <span class="schedule-worker-name" title="@workerName">@workerName</span>
+                                            } else {
+                                                @workerName
+                                            }
+                                            @if (Model.CurrentWorkerId is { } workerId && worker.StaffId == workerId) {
+                                                <span class="schedule-worker-self">Bạn</span>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                                <td>@string.Join(", ", assigners)</td>
+                                @if (showShiftStatus && position == 1) {
+                                    <td rowspan="@tasks.Count" class="schedule-shift-status">
+                                        <span class="schedule-shift-state" data-status="@shiftStatus">@BATT_PPMS.Pages.Personnel.IndexModel.AssignmentStatusLabel(shiftStatus)</span>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+    @if (Model.InvalidDate) {
+        <div class="plan-empty" role="alert">Vui lòng chọn ngày sản xuất hợp lệ.</div>
+    } else if (Model.Assignments.Count == 0) {
+        <div class="plan-empty" role="status">@(Model.DisplayDate is { } emptyDate ? $"Chưa có phân công lao động ngày {emptyDate:dd/MM/yyyy}." : "Chưa có phân công lao động phù hợp.")</div>
+    }
+    @if (!Model.AllShifts && !Model.InvalidDate) {
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml" model="new AdminPaginationViewModel(Model.Pagination, Model.PageName, pagingFilters)" />
+    }
+</section>

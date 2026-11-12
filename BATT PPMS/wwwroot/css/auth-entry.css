@@ -57,3 +57,33 @@ body.auth-entry {
     .auth-entry .form-control { min-height: 54px; padding: 14px 16px; font-size: 16px; }
     .auth-entry .btn-login { min-height: 52px; font-size: 16px; }
 }
+
+.auth-entry--login .login-wrapper { max-width: 700px; }
+.auth-entry--login .login-card { min-height: 0; padding: 50px; }
+.auth-entry--login form,
+.auth-entry--login .login-logo { display: flex; flex-direction: column; }
+.auth-entry--login .login-logo { align-items: center; margin-bottom: 24px; }
+.auth-entry--login .login-brand-mark { width: 70px; height: 70px; margin-bottom: 14px; border-radius: 13px; font-size: 18px; }
+.auth-entry--login .auth-brand-name { margin-bottom: 16px; font-size: 15px; }
+.auth-entry--login .login-logo h1 { font-size: 30px; }
+.auth-entry--login .form-group { margin-bottom: 18px; }
+.auth-entry--login .form-group label,
+.auth-entry--login .form-link-subtle { font-size: 16px; }
+.auth-entry--login .form-group > label { margin-bottom: 8px; }
+.auth-entry--login .form-control,
+.auth-entry--login .btn-login { min-height: 54px; padding: 12px 16px; font-size: 16px; }
+.auth-entry--login .btn-login { margin-top: 15px; }
+
+@media (min-width: 641px) and (max-height: 820px) {
+    .auth-entry--login .login-logo { margin-bottom: 18px; }
+    .auth-entry--login .login-brand-mark,
+    .auth-entry--login .auth-brand-name { margin-bottom: 10px; }
+    .auth-entry--login .form-group { margin-bottom: 14px; }
+}
+@media (max-width: 640px) {
+    .auth-entry--login .login-card { padding: 20px; }
+    .auth-entry--login .login-brand-mark { width: 60px; height: 60px; }
+    .auth-entry--login .login-logo h1 { font-size: 26px; }
+    .auth-entry--login .form-group label,
+    .auth-entry--login .form-link-subtle { font-size: 14px; }
+}

@@ -24,7 +24,6 @@ namespace BATT_PPMS.Pages.Maintenance
 
         [BindProperty] public int MachineId { get; set; }
         [BindProperty] public string Title { get; set; } = string.Empty;
-        [BindProperty] public string Location { get; set; } = string.Empty;
         [BindProperty] public string? Description { get; set; }
         [BindProperty] public string Severity { get; set; } = "Medium";
         [BindProperty] public bool MachineStopped { get; set; }
@@ -53,7 +52,6 @@ namespace BATT_PPMS.Pages.Maintenance
 
                 MachineId = request!.BrokenReport.MachineId;
                 Title = IndexModel.DisplayTitle(request.Title, request.Description);
-                Location = request.Location ?? string.Empty;
                 Description = NoteTags.Plain(request.Description);
                 Severity = request.Priority ?? "Medium";
                 MachineStopped = request.MachineStopped;
@@ -85,7 +83,6 @@ namespace BATT_PPMS.Pages.Maintenance
 
             var error = InputValidator.First(
                 InputValidator.Text(Title, "Tiêu đề / hiện tượng", 150, required: true),
-                InputValidator.Text(Location, "Vị trí máy", 200, required: true),
                 InputValidator.Text(Description, "Mô tả chi tiết", 2000),
                 InputValidator.Status(Severity, RepairStatus.PriorityLevels, "Mức độ nghiêm trọng"));
             if (error == null && MachineId <= 0)
@@ -103,7 +100,8 @@ namespace BATT_PPMS.Pages.Maintenance
 
             var now = DateTime.Now;
             var title = Title.Trim();
-            var location = Location.Trim();
+            // Khu vực lấy từ danh mục máy, không cho nhập tay
+            var location = string.IsNullOrWhiteSpace(machine!.Area) ? "Chưa xác định khu vực" : machine.Area.Trim();
             var detail = InputValidator.Clean(Description);
             var reportText = detail == null ? title : $"{title} — {detail}";
 
@@ -141,6 +139,13 @@ namespace BATT_PPMS.Pages.Maintenance
                 });
 
                 _context.MaintenanceRequests.Add(created);
+
+                // Báo máy đã dừng: đổi trạng thái máy sang Ngừng hoạt động và khóa tới khi sửa xong
+                if (MachineStopped)
+                {
+                    var tracked = await _context.Machines.FindAsync(machine.MachineId);
+                    if (tracked != null) MachineStatusGuard.MarkDown(tracked);
+                }
                 await _context.SaveChangesAsync();
 
                 TempData["SuccessMessage"] = $"Đã gửi yêu cầu sửa chữa REQ-{created.RequestId:D4} cho '{machine.MachineCode} – {machine.MachineName}'. Đang chờ Quản lý duyệt.";
@@ -148,6 +153,7 @@ namespace BATT_PPMS.Pages.Maintenance
             }
 
             // Chỉnh sửa và gửi lại yêu cầu bị từ chối
+            var oldMachineId = request.BrokenReport.MachineId;
             request.BrokenReport.MachineId = machine!.MachineId;
             request.BrokenReport.Description = reportText;
             request.BrokenReport.Severity = Severity;
@@ -159,6 +165,19 @@ namespace BATT_PPMS.Pages.Maintenance
             request.Description = detail;
             request.Priority = Severity;
             request.Status = RepairStatus.Pending;
+
+            // Đồng bộ khóa trạng thái máy (máy cũ nếu đổi máy, máy mới nếu báo dừng)
+            if (oldMachineId != machine.MachineId)
+                await MachineStatusGuard.ReleaseAsync(_context, oldMachineId, request.RequestId);
+            if (MachineStopped)
+            {
+                var tracked = await _context.Machines.FindAsync(machine.MachineId);
+                if (tracked != null) MachineStatusGuard.MarkDown(tracked);
+            }
+            else
+            {
+                await MachineStatusGuard.ReleaseAsync(_context, machine.MachineId, request.RequestId);
+            }
 
             request.Logs.Add(new MaintenanceRequestLog
             {

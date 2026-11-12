@@ -13,7 +13,10 @@ namespace BATT_PPMS.Pages.Machines
         public string MachineName { get; set; } = string.Empty;
         public string ProcessName { get; set; } = string.Empty;
         public string? Brand { get; set; }
+        public string? Area { get; set; }
         public string Status { get; set; } = "Active";
+        // Có báo cáo ngừng hoạt động chưa sửa xong: không được đổi trạng thái
+        public bool StatusLocked { get; set; }
         // Thống kê liên quan
         public int ActiveIncidents { get; set; }      // Sự cố đang chờ / đang xử lý
         public int TotalIncidents { get; set; }       // Tổng sự cố
@@ -57,6 +60,7 @@ namespace BATT_PPMS.Pages.Machines
         [BindProperty] public string NewMachineName { get; set; } = string.Empty;
         [BindProperty] public string NewProcessName { get; set; } = string.Empty;
         [BindProperty] public string? NewBrand { get; set; }
+        [BindProperty] public string NewArea { get; set; } = string.Empty;
         [BindProperty] public string NewStatus { get; set; } = "Active";
 
         [TempData] public string? SuccessMessage { get; set; }
@@ -95,6 +99,8 @@ namespace BATT_PPMS.Pages.Machines
 
         private async Task LoadDataAsync()
         {
+            var lockedIds = await MachineStatusGuard.LockedMachineIdsAsync(_context);
+
             // Lấy toàn bộ máy kèm báo cáo sự cố
             var machines = await _context.Machines
                 .Include(m => m.BrokenEquipmentReports)
@@ -119,7 +125,9 @@ namespace BATT_PPMS.Pages.Machines
                     .OrderByDescending(r => r.ReportDate)
                     .FirstOrDefault()?.ReportDate;
 
-                string status = NormalizeMachineStatus(m.Status);
+                var locked = lockedIds.Contains(m.MachineId);
+                // Máy đang bị khóa luôn hiển thị Ngừng hoạt động
+                string status = locked ? MachineStatusGuard.Down : NormalizeMachineStatus(m.Status);
 
                 return new MachineCardViewModel
                 {
@@ -128,7 +136,9 @@ namespace BATT_PPMS.Pages.Machines
                     MachineName = m.MachineName,
                     ProcessName = m.ProcessName,
                     Brand = m.Brand,
+                    Area = m.Area,
                     Status = status,
+                    StatusLocked = locked,
                     ActiveIncidents = activeIncidents,
                     TotalIncidents = totalIncidents,
                     LastIncidentDate = lastIncident
@@ -149,6 +159,7 @@ namespace BATT_PPMS.Pages.Machines
                     m.MachineCode.ToLowerInvariant().Contains(term) ||
                     m.MachineName.ToLowerInvariant().Contains(term) ||
                     m.ProcessName.ToLowerInvariant().Contains(term) ||
+                    (m.Area != null && m.Area.ToLowerInvariant().Contains(term)) ||
                     (m.Brand != null && m.Brand.ToLowerInvariant().Contains(term))
                 ).ToList();
             }
@@ -174,9 +185,10 @@ namespace BATT_PPMS.Pages.Machines
 
             if (string.IsNullOrWhiteSpace(NewMachineCode) ||
                 string.IsNullOrWhiteSpace(NewMachineName) ||
-                string.IsNullOrWhiteSpace(NewProcessName))
+                string.IsNullOrWhiteSpace(NewProcessName) ||
+                string.IsNullOrWhiteSpace(NewArea))
             {
-                ErrorMessage = "Vui lòng nhập đầy đủ Mã máy, Tên máy và Công đoạn.";
+                ErrorMessage = "Vui lòng nhập đầy đủ Mã máy, Tên máy, Công đoạn và Khu vực.";
                 return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 
@@ -194,6 +206,7 @@ namespace BATT_PPMS.Pages.Machines
                 MachineName = NewMachineName.Trim(),
                 ProcessName = NewProcessName.Trim(),
                 Brand = string.IsNullOrWhiteSpace(NewBrand) ? null : NewBrand.Trim(),
+                Area = NewArea.Trim(),
                 Status = NormalizeMachineStatus(NewStatus),
                 CreatedBy = CurrentUserId
             };
@@ -219,9 +232,10 @@ namespace BATT_PPMS.Pages.Machines
             }
 
             if (string.IsNullOrWhiteSpace(NewMachineName) ||
-                string.IsNullOrWhiteSpace(NewProcessName))
+                string.IsNullOrWhiteSpace(NewProcessName) ||
+                string.IsNullOrWhiteSpace(NewArea))
             {
-                ErrorMessage = "Vui lòng nhập đầy đủ Tên máy và Công đoạn.";
+                ErrorMessage = "Vui lòng nhập đầy đủ Tên máy, Công đoạn và Khu vực.";
                 return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 
@@ -243,11 +257,18 @@ namespace BATT_PPMS.Pages.Machines
             machine.MachineName = NewMachineName.Trim();
             machine.ProcessName = NewProcessName.Trim();
             machine.Brand = string.IsNullOrWhiteSpace(NewBrand) ? null : NewBrand.Trim();
-            machine.Status = NormalizeMachineStatus(NewStatus);
+            machine.Area = NewArea.Trim();
+
+            // Máy đang có báo cáo ngừng hoạt động chưa sửa xong: giữ nguyên trạng thái
+            var locked = await MachineStatusGuard.IsLockedAsync(_context, machine.MachineId);
+            if (!locked)
+                machine.Status = NormalizeMachineStatus(NewStatus);
 
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã cập nhật thông tin thiết bị '{machine.MachineName}'.";
+            SuccessMessage = locked
+                ? $"Đã cập nhật thông tin thiết bị '{machine.MachineName}'. Trạng thái giữ nguyên 'Ngừng hoạt động' vì còn báo cáo sự cố chưa sửa xong."
+                : $"Đã cập nhật thông tin thiết bị '{machine.MachineName}'.";
             return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
         }
 
@@ -261,6 +282,12 @@ namespace BATT_PPMS.Pages.Machines
             if (machine == null)
             {
                 ErrorMessage = "Không tìm thấy thiết bị cần đổi trạng thái.";
+                return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
+            }
+
+            if (await MachineStatusGuard.IsLockedAsync(_context, machineId))
+            {
+                ErrorMessage = $"Máy '{machine.MachineName}' ({machine.MachineCode}) đang ngừng hoạt động do báo cáo sự cố. Chỉ đổi được trạng thái sau khi sửa chữa hoàn thành.";
                 return RedirectToPage(new { SearchTerm, ProcessFilter, StatusFilter });
             }
 

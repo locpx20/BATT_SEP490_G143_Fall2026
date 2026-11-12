@@ -1,7 +1,7 @@
 @page
 @model BATT_PPMS.Pages.Dashboard.IndexModel
 @{
-    ViewData["Title"] = Model.IsAdminRole ? "Tổng quan vận hành" : "Tổng quan Điều hành";
+    ViewData["Title"] = Model.IsAdminRole || HttpContext.Session.GetString("RoleName") == "Warehouse Staff" ? "Tổng quan vận hành" : "Tổng quan Điều hành";
     ViewData["ActivePage"] = "Dashboard";
     if (Model.IsAdminRole)
     {
@@ -10,6 +10,10 @@
 }
 
 @section Styles {
+    @if (HttpContext.Session.GetString("RoleName") == "Warehouse Staff")
+    {
+        <link rel="stylesheet" href="~/css/warehouse-overview.css" asp-append-version="true" />
+    }
     @if (Model.IsAdminRole)
     {
         <link rel="stylesheet" href="~/css/admin-overview.css" asp-append-version="true" />

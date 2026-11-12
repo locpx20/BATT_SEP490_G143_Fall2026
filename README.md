@@ -4,17 +4,48 @@
 
 Với database đang có dữ liệu, chạy `Add_MaintenanceRequest_Workflow.sql` trước, rồi chạy `Add_MaintenanceMaterialFlow.sql` trên database ứng dụng đang sử dụng. Hai script bổ sung các cột bảo trì, nhật ký và thông báo còn thiếu, có thể chạy lại. Không cần chạy lại file tạo database nền. Nếu gặp `Invalid column name` với `due_date`, `location`, `machine_stopped`, `rejection_reason` hoặc `title`, database chưa được cập nhật phần cấu trúc bảo trì.
 
-## Luồng sản xuất, QC và nhập kho
+## Báo cáo cuối ca: hai luồng độc lập
 
-Với database đã có dữ liệu, chạy `Add_Production_QC_Warehouse_Workflow.sql`, sau đó `Add_ShiftMaterialUsage.sql` trên SQL Server của dự án rồi khởi động lại ứng dụng. Các script chạy lại được và không xóa dữ liệu cũ. Không chạy lại script tạo database nền để cập nhật luồng này. Bảng yêu cầu cấp nguyên liệu cũ chỉ được giữ để bảo toàn lịch sử; chức năng yêu cầu/cấp nguyên liệu đã được bỏ khỏi giao diện và các POST handler.
+Mã lô thành phẩm dùng chung định dạng của main: `LOT-yyyyMMdd-<25 ký tự hex ngẫu nhiên>` (38 ký tự), lấy ngày sản xuất của phân công. Mã được tạo một lần khi Staff gửi yêu cầu QC, lưu tại `FinishedGoodBatch.bag_number`; QC, yêu cầu nhập kho, tồn kho, đơn hàng và thông báo đọc lại cùng mã này. Dashboard hiển thị mã từ phiếu nhập thành phẩm thực tế, không dùng mã LOT mẫu. Dữ liệu mẫu mới cũng theo định dạng này; các mã đã lưu trước đây được giữ để tra cứu lịch sử. Không cần chạy lại database hay dữ liệu mẫu để áp dụng thay đổi mã cho lô mới.
 
-1. Manager lập kế hoạch, phân công. Staff và Thủ kho xem lịch sản xuất.
-2. Không có yêu cầu cấp nguyên liệu trước sản xuất. Staff khai báo từng nguyên liệu và lượng thực tế đã dùng trong báo cáo cuối ca. Chỉ khi Manager duyệt, hệ thống tạo phiếu ghi nhận tiêu hao và trừ tồn trong cùng giao dịch. Từ chối, gửi lại hoặc sửa báo cáo chưa duyệt không làm thay đổi tồn kho. Duyệt lặp bị chặn.
-3. Staff gửi yêu cầu kiểm tra lô từ mục Báo cáo cuối ca → Yêu cầu và kết quả QC.
-4. QC tiếp nhận, kiểm tra và trả kết quả đạt/không đạt kèm kết luận. Manager và Owner được xem kết quả.
-5. Khi đã có kết quả QC, Staff lập báo cáo cuối ca cho đúng lô, ngày, ca, sản lượng đã kiểm tra. Một yêu cầu QC chỉ gắn một báo cáo. Manager duyệt hoặc từ chối; Owner chỉ xem.
-6. Staff chỉ yêu cầu nhập thành phẩm khi QC đạt và báo cáo đã được duyệt. Lô không đạt vẫn được ghi nhận trong báo cáo, nhưng không được yêu cầu nhập kho.
-7. Thủ kho đối chiếu và lập phiếu nhập hoặc trả lý do từ chối. Staff nhập nội dung điều chỉnh rồi gửi lại yêu cầu bị từ chối; không được tự đổi lô hoặc sản lượng đã được QC kiểm tra và Manager duyệt. Lô chỉ được tính tồn sau khi Thủ kho xác nhận nhập.
-8. Giữ nhánh đã chốt theo sơ đồ: có chênh lệch → Manager xem thông tin; không chênh lệch → Staff xác nhận phiếu → Manager xem thông tin.
+Database đã có dữ liệu: chạy lần lượt các script bổ sung chưa chạy: `Add_Production_QC_Warehouse_Workflow.sql`, `Add_ShiftMaterialUsage.sql`, `Add_MaterialUsageReview.sql`, `Add_QC_ResultImage.sql`, `Add_DailyMaterialPlan.sql`, `Add_ShiftProductionPlan.sql`, rồi khởi động lại ứng dụng. Các script chạy lại được, giữ dữ liệu lịch sử. Không chạy lại database nền để cập nhật.
 
-Phiếu QC cũ vẫn có mục tra cứu riêng. Báo cáo cũ chưa có liên kết QC cần được Staff bổ sung một kết quả QC hợp lệ khi chỉnh sửa trước khi Manager phê duyệt. Báo cáo cũ đã duyệt được giữ nguyên.
+Menu Staff “Báo cáo cuối ca làm việc” có hai mục:
+
+1. **Nguyên liệu tiêu thụ trong ca làm việc**: Staff chọn phân công đã đến ngày sản xuất, nhập một khối lượng nguyên liệu thực tế đã dùng theo kg, gửi Thủ kho. Không cần QC hoặc Manager duyệt. Thủ kho từ chối phải nhập lý do; Staff sửa và gửi lại. Thủ kho đồng ý mới tạo phiếu tiêu hao và trừ tồn trong cùng giao dịch. Các dòng kho cùng tên nguyên liệu, đơn vị kg được tính tổng; khi duyệt, hệ thống trừ lần lượt theo mã nguyên liệu tăng dần và giữ liên kết phiếu xuất ở từng dòng. Một Staff chỉ khai báo một lần mỗi ngày/ca; phiếu đã duyệt không được sửa và không trừ tồn lần nữa.
+2. **Yêu cầu nhập kho thành phẩm**: Staff yêu cầu QC kiểm tra lô → QC tiếp nhận → nhập kết quả và ảnh bắt buộc → Staff gửi yêu cầu nhập kho cho Thủ kho khi QC đạt. Thủ kho có thể từ chối kèm lý do để Staff sửa ghi chú, gửi lại. Khi đồng ý, Thủ kho ghi số lượng thực nhập và lập phiếu; chỉ lúc này lô mới có trạng thái In Stock. QC không đạt không được yêu cầu nhập thành phẩm. Không phụ thuộc khai báo tiêu hao hoặc Manager duyệt.
+
+Giữ đúng nhánh sơ đồ đã chốt: có chênh lệch → thông báo Manager; không chênh lệch → Staff xác nhận phiếu → thông báo Manager. Ghi chú đối chiếu bắt buộc khi chênh lệch. Tồn kho được ghi nhận một lần, Manager chỉ theo dõi.
+
+Ảnh kết quả QC bắt buộc với kết quả mới, hỗ trợ JPG/PNG/WebP tối đa 5 MB, lưu trong database. Endpoint xem ảnh kiểm tra quyền theo role; Staff chỉ xem ảnh yêu cầu của mình. Kết quả QC cũ chưa có ảnh vẫn được giữ để tra cứu.
+
+Giao diện báo cáo cũ được thay bằng màn hình tiêu hao, phiếu nhập và QC mới. `/ShiftReports/Index` chuyển tới mục tiêu hao để giữ các liên kết cũ hoạt động. Dữ liệu cũ, phiếu xuất đã ghi nhận và phiếu nhập đã có được giữ nguyên.
+
+### Dự kiến nguyên liệu và phiếu chờ Thủ kho
+
+Trong **Phân công lao động**, Manager chọn một ngày và các ca cần làm việc. Mỗi ca có nguyên liệu tiêu thụ dự kiến, thành phẩm dự kiến và danh sách công nhân theo công đoạn. Các ca trong phiếu được lưu cùng nhau và Thủ kho nhận thông báo. Với các ca cũ, mục **Cập nhật dự kiến nguyên liệu cho phân công cũ** vẫn dùng số dự kiến theo ngày.
+
+Staff gửi hoặc sửa/gửi lại phiếu tiêu hao sẽ thông báo tới các tài khoản Thủ kho đang hoạt động. Menu **Kho nguyên liệu** của Thủ kho có hai mục riêng: **Phiếu nhập kho nguyên liệu** và **Phiếu tiêu hao nguyên liệu**. Mỗi mục đếm số phiếu đang cần Thủ kho xử lý; không đếm số thông báo chưa đọc. Phiếu nhập tính các trạng thái Pending, WaitWarehouse, ImportRejected (và dữ liệu cũ chưa có trạng thái); tiêu hao tính Pending. Đã xử lý thì số giảm, gửi lại thì số tăng. Các số hiện trên mọi trang của Thủ kho, tự cập nhật sau tối đa 30 giây khi trang đang mở, đồng thời cập nhật khi quay lại cửa sổ. Số 0 được ẩn. Mục cha hiển thị tổng hai số. Mục tiêu hao có đối chiếu dự kiến và mặc định hiển thị phiếu chờ trên tất cả các ngày. Trang Kế hoạch trong ngày chỉ hiển thị các phân công đúng ngày chọn, không phải nơi nhận phiếu Staff.
+
+Thủ kho đối chiếu phiếu tiêu hao với dự kiến của đúng ca và ngày. Phiếu của các ca cũ dùng số dự kiến theo ngày. Khi duyệt, hệ thống trừ khối lượng thực dùng theo tồn thực tế. Khi từ chối, Thủ kho ghi lý do để Staff sửa và gửi lại. Phiếu nhập thành phẩm sau QC được xử lý ở mục Nhập kho thành phẩm.
+
+Phiếu nhập kho nguyên liệu và tồn kho giữ tại `/Inventory/Index?tab=raw`; phiếu tiêu hao mở riêng tại `/Warehouse/Consumption`. Giữ nguyên form lập PNK và luồng IR → Thủ kho lập phiếu → Manager duyệt nhập kho. Liên kết thông báo tiêu hao cũ có `UsageStatusFilter` được chuyển tới đúng trang tiêu hao. Staff tiếp tục dùng màn hình tiêu hao hiện có.
+
+### Số đếm trên toàn bộ menu Thủ kho
+
+- **Kế hoạch sản xuất trong ngày**: số thông báo kế hoạch chưa đọc của chính tài khoản Thủ kho. Mở mục kế hoạch thì đánh dấu đã đọc nhóm này.
+- **Nhập kho thành phẩm**: số yêu cầu đang Pending, giảm khi Thủ kho nhận hoặc từ chối; Staff gửi lại thì tăng.
+- **Kho nguyên liệu**: giữ nguyên tổng hai loại phiếu nhập nguyên liệu và tiêu hao đang chờ xử lý.
+- **Kho thành phẩm**: số thông báo cập nhật kho chưa đọc của chính tài khoản. Khi Thủ kho nhập thành phẩm, hệ thống gửi thông báo cho các tài khoản Thủ kho đang hoạt động; mở Kho thành phẩm thì đánh dấu đã đọc nhóm này.
+
+Mở mục khác không đánh dấu hai nhóm thông báo chỉ xem này là đã đọc; đọc của một tài khoản không ảnh hưởng tài khoản khác. Các số không có nền/khung, ẩn khi bằng 0 và tự cập nhật khi quay lại cửa sổ hoặc mỗi 30 giây. Không đổi biểu mẫu hay luồng phê duyệt hiện có, không cần thêm migration.
+
+### Tổng quan vận hành của Thủ kho
+
+Đăng nhập Thủ kho mở trang Tổng quan vận hành. Số tồn nguyên liệu cộng các dòng có đơn vị kg; số tồn thành phẩm lấy các lô In Stock, số lô chỉ tính lô còn khối lượng. Lịch sử nhập/xuất lấy phiếu nhập nguyên liệu Approved (thời điểm duyệt nếu có), xuất nguyên liệu đã ghi nhận, phiếu nhập thành phẩm đã nhận thực tế và chi tiết đơn hàng có giao hàng In Transit/Delivered. Một chi tiết đơn xuất chỉ xuất hiện một lần, theo lần giao đã ghi nhận đầu tiên, kể cả đơn có nhiều bản ghi giao hàng; không giả định chia khối lượng theo xe vì schema chưa phân bổ chi tiết theo xe. Không lấy phiếu mua/chứng từ đang chờ hoặc giao hàng Prepared làm lịch sử xuất kho. Dữ liệu tồn và lịch sử được đọc từ các bảng gốc, không tạo dữ liệu mẫu hoặc trừ/cộng lại tồn kho khi xem.
+
+Lịch sử có lọc khoảng ngày, nhập/xuất, nhóm nguyên liệu/thành phẩm và phân trang 10 dòng, mới nhất trước. Trang Kế hoạch sản xuất của Thủ kho chỉ hiển thị bảng phân công, lọc ngày và phân trang; không có nút duyệt nghiệp vụ ở trang này. Không thay đổi các luồng tạo, duyệt, từ chối hay nhập/xuất hiện có.
+
+### Tra cứu ca sản xuất của Thủ kho
+
+Mở mục Kế hoạch sản xuất tự hiển thị kế hoạch hôm nay, còn ô tìm ngày để trống. Thủ kho chọn ngày khác rồi bấm Tìm kiếm; kết quả chỉ lấy phân công đúng ngày đó. Mỗi trang hiển thị trọn một ca, gồm tất cả công việc và nhân viên của ca, không chia ca theo giới hạn 10 dòng. Mỗi bảng đặt ca và ngày ở đầu bên trái, các cột chỉ gồm STT, công việc/máy móc, nhân viên, người phân công; STT bắt đầu từ 1 trong mỗi ca. Các nút chọn ca xếp thành một hàng ngang phía trên bảng, ca đang xem có màu xanh; bấm trực tiếp để chuyển ca của ngày đang xem, tìm ngày khác quay về ca đầu tiên. Ngày không có dữ liệu báo trống; ngày thiếu/sai không tự lấy dữ liệu hôm nay. Trang này chỉ xem, không thay đổi phân công hay tồn kho. Các danh sách khác giữ phân trang 10 dòng.

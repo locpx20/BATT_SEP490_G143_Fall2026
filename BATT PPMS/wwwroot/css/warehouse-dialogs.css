@@ -1,0 +1,143 @@
+.warehouse-dialog {
+    --dialog-ink: #243d35;
+    --dialog-muted: #52675d;
+    --dialog-rule: #d7dfd3;
+    --dialog-gutter: 16px;
+    background: rgba(25, 63, 53, .55);
+    backdrop-filter: blur(4px);
+    padding: var(--dialog-gutter);
+}
+
+.warehouse-dialog.modal-overlay:not(.show) { visibility: hidden; }
+
+.warehouse-dialog > :is(.modal-box, .pm-dialog) {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 720px;
+    max-height: calc(100dvh - 2 * var(--dialog-gutter));
+    overflow: hidden;
+    border: 1px solid var(--dialog-rule);
+    border-radius: 16px;
+    background: #fffefa;
+    color: var(--dialog-ink);
+    box-shadow: 0 20px 40px #193f3533;
+}
+
+.warehouse-dialog .modal-box > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+}
+
+.warehouse-dialog :is(.modal-header, .pm-head, .modal-footer, .pm-foot) {
+    flex-shrink: 0;
+    gap: 12px;
+    padding: 16px 24px;
+    border-color: var(--dialog-rule);
+}
+
+.warehouse-dialog :is(.modal-title, .pm-title) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: var(--dialog-ink);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.warehouse-dialog .wh-dialog-title--danger { color: #94473e; }
+.warehouse-dialog .pm-title { flex-wrap: wrap; overflow-wrap: anywhere; }
+.warehouse-dialog :is(.modal-close, .pm-close) { flex: 0 0 40px; width: 40px; height: 40px; font-size: 18px; color: var(--dialog-muted); }
+.warehouse-dialog :is(.modal-close, .pm-close):hover { background: #e5eee7; color: var(--dialog-ink); }
+
+.warehouse-dialog :is(.modal-body, .pm-body) {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 20px 24px;
+}
+
+.warehouse-dialog :is(.modal-footer, .pm-foot) { flex-wrap: wrap; align-items: center; background: #f4f2ea; }
+
+.warehouse-dialog :is(.wh-detail-summary, .wh-detail-grid) { display: grid; gap: 12px; }
+.warehouse-dialog .wh-detail-summary {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+    padding: 14px 16px;
+    border: 1px solid var(--dialog-rule);
+    border-radius: 10px;
+    background: #eaf0e9;
+}
+.warehouse-dialog .wh-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.warehouse-dialog :is(.wh-detail-summary, .wh-detail-grid) > * { min-width: 0; overflow-wrap: anywhere; }
+.warehouse-dialog .wh-detail-field { padding: 12px 14px; border: 1px solid var(--dialog-rule); border-radius: 8px; background: #f8f9f4; }
+.warehouse-dialog .wh-dialog-label { display: block; margin: 0 0 4px; color: var(--dialog-muted); font-size: 14px; font-weight: 600; }
+.warehouse-dialog :is(.val, .wh-dialog-value) { color: var(--dialog-ink); font-size: 16px; font-weight: 600; line-height: 1.45; }
+.warehouse-dialog .wh-dialog-code { display: inline-block; padding: 2px 7px; border-radius: 4px; background: #dfece2; color: #193f35; font-size: 15px; font-weight: 700; }
+.warehouse-dialog .wh-dialog-caption { display: block; margin-top: 4px; color: var(--dialog-muted); font-size: 13px; font-weight: 400; }
+.warehouse-dialog .wh-dialog-message { margin: 0; font-size: 15px; line-height: 1.55; }
+.warehouse-dialog .wh-note-block { padding: 10px 14px; border: 1px solid var(--dialog-rule); border-radius: 8px; background: #f4f2ea; font-size: 15px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.warehouse-dialog .wh-note-block.warning { background: #fcf7e6; color: #78581d; }
+.warehouse-dialog .wh-note-block.danger { background: #faeeea; color: #94473e; }
+.warehouse-dialog .wh-dialog-image {
+    display: block;
+    width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+    border: 1px solid var(--dialog-rule);
+    border-radius: 8px;
+}
+
+.warehouse-dialog .wh-dialog-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 1px solid #a9b9ad;
+    border-radius: 8px;
+    background: #fffefa;
+    color: var(--dialog-ink);
+    font: inherit;
+}
+.warehouse-dialog textarea.wh-dialog-input { resize: vertical; }
+.warehouse-dialog :is(button, input, textarea, a):focus-visible { outline: 2px solid #356e51; outline-offset: 2px; }
+
+.warehouse-dialog .wh-dialog-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 9px 16px;
+    border: 1px solid #afbeb1;
+    border-radius: 8px;
+    background: #fffefa;
+    color: var(--dialog-ink);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+.warehouse-dialog .wh-dialog-button:hover { background: #e5eee7; }
+.warehouse-dialog .wh-dialog-button--primary { border-color: #193f35; background: #193f35; color: #fffefa; }
+.warehouse-dialog .wh-dialog-button--primary:hover { background: #123329; }
+.warehouse-dialog .wh-dialog-button--danger { border-color: #94473e; background: #94473e; color: #fffefa; }
+.warehouse-dialog .wh-dialog-button--danger:hover { background: #7c3932; }
+
+@media (max-width: 560px) {
+    .warehouse-dialog { --dialog-gutter: 10px; }
+    .warehouse-dialog :is(.modal-header, .pm-head, .modal-body, .pm-body, .modal-footer, .pm-foot) { padding: 14px 16px; }
+    .warehouse-dialog :is(.modal-title, .pm-title) { font-size: 18px; }
+    .warehouse-dialog .wh-detail-grid { grid-template-columns: minmax(0, 1fr); }
+}

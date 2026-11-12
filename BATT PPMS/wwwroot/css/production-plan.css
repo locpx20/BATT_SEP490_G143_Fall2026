@@ -1,39 +1,210 @@
-.plan-staff-picker { flex: 1; min-width: 0; width: 100%; font-family: var(--font); }
-.plan-create-body { display: flex; flex-direction: column; gap: 28px; }
-.plan-create-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-.plan-create-meta > div { min-width: 0; }
-.plan-stage-section { min-width: 0; }
-.plan-section-title { display: flex; align-items: center; gap: 10px; max-width: none; margin: 0 0 20px; color: var(--text-primary); font-family: var(--font); font-size: 20px; font-weight: 650; line-height: 1.45; letter-spacing: 0; text-transform: none; }
-.plan-section-title > i { flex-shrink: 0; color: var(--primary); }
-.plan-stage-list { display: flex; flex-direction: column; gap: 16px; }
-.plan-assignment-stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 24px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-page); }
-.plan-stage-info { min-width: 0; min-height: 54px; display: flex; align-items: center; }
-.plan-stage-name { display: block; color: var(--text-primary); font-size: 16px; font-weight: 600; line-height: 1.5; }
-.plan-stage-controls { min-width: 0; }
-.plan-staff-picker > summary { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--text-primary); font-size: 16px; cursor: pointer; list-style: none; }
+/* Phân công lao động dùng bảng màu và kiểu chữ của BATT PPMS. */
+.labor-page {
+    --labor-muted: var(--primary);
+    --labor-ink-on-green: var(--sidebar-text-active);
+    max-width: 1260px;
+    min-width: 0;
+    margin-inline: auto;
+    color: var(--text-primary);
+}
+
+.labor-header,
+.labor-day-head,
+.labor-shift-head,
+.labor-shift-name,
+.labor-form-shift > header,
+.labor-form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.labor-header { margin-bottom: 24px; }
+.labor-header h1 { margin: 0; font-size: clamp(26px, 3.3vw, 38px); line-height: 1.15; overflow-wrap: break-word; }
+.labor-back { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--primary); font-weight: 600; }
+.labor-back:hover { text-decoration: underline; }
+
+.labor-button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--primary);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    text-decoration: none;
+    white-space: normal;
+    cursor: pointer;
+}
+.labor-button:hover { background: var(--primary-light); color: var(--primary); }
+.labor-button.labor-primary { border-color: var(--primary); background: var(--primary); color: var(--labor-ink-on-green); }
+.labor-button.labor-primary:hover { background: var(--primary-dark); }
+.labor-button:disabled { opacity: .5; cursor: not-allowed; }
+
+.labor-page :is(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+.labor-day,
+.labor-shift,
+.labor-empty,
+.labor-form-date,
+.labor-form-shift,
+.labor-legacy {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+}
+
+.labor-day-head { padding: clamp(18px, 3vw, 30px); border-radius: 11px 11px 0 0; background: var(--primary-light); }
+.labor-day-head p { margin: 0 0 4px; font-size: 14px; font-weight: 650; }
+.labor-day-head h2 { margin: 0 0 4px; font-size: clamp(30px, 5vw, 46px); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.labor-day-head span { color: var(--labor-muted); font-size: 14px; }
+.labor-day-nav { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.labor-filters {
+    display: grid;
+    grid-template-columns: minmax(138px, .9fr) minmax(105px, .7fr) minmax(150px, 1fr) minmax(175px, 1.5fr) auto;
+    align-items: end;
+    gap: 12px;
+    padding: 18px clamp(16px, 3vw, 30px);
+}
+.labor-page label { display: block; margin-bottom: 6px; color: var(--text-primary); font-size: 14px; font-weight: 650; }
+.labor-page :is(input:not([type="checkbox"], [type="hidden"]), select, textarea) {
+    display: block;
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 15px;
+}
+.labor-page textarea { resize: vertical; }
+.labor-page input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 auto; margin: 0; accent-color: var(--primary); }
+
+.labor-shift-index { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.labor-shift-index a {
+    display: inline-flex;
+    gap: 8px;
+    align-items: baseline;
+    padding: 7px 11px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-card);
+    color: var(--primary);
+    font-weight: 700;
+}
+.labor-shift-index a:hover { background: var(--primary-light); }
+.labor-shift-index span { font-size: 13px; font-weight: 500; }
+
+.labor-shift { margin-top: 18px; scroll-margin-top: 20px; }
+.labor-shift-head { gap: 20px; padding: 20px clamp(16px, 3vw, 30px); }
+.labor-shift-name { justify-content: flex-start; }
+.labor-shift-name h2,
+.labor-form-shift h2 { margin: 0 0 3px; font-size: 24px; font-weight: 700; line-height: 1.15; }
+.labor-shift-name div > span,
+.labor-form-shift header div > span { color: var(--labor-muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.labor-status { padding: 5px 9px; border-radius: 6px; background: var(--bg-page); font-size: 13px; font-weight: 650; }
+.labor-status[data-status="Completed"],
+.labor-status[data-status="InProgress"] { background: var(--primary-light); }
+.labor-status[data-status="Cancelled"] { color: var(--danger); }
+.labor-estimates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.labor-estimates > div { padding-inline-start: 14px; border-inline-start: 2px solid var(--border); }
+.labor-estimates dt { font-size: 13px; }
+.labor-estimates dd { margin: 3px 0 0; color: var(--primary); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.labor-table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
+.labor-table :is(th, td) { padding: 12px clamp(10px, 2.2vw, 30px); border-top: 1px solid var(--border); vertical-align: top; overflow-wrap: anywhere; }
+.labor-table thead { background: var(--primary-light); font-size: 14px; }
+.labor-table thead th:nth-child(3) { width: 25%; }
+.labor-table tbody th { font-weight: 600; }
+.labor-table ul { padding: 0; margin: 0; list-style: none; }
+.labor-table li + li { margin-top: 3px; }
+.labor-shift-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 12px clamp(16px, 3vw, 30px); border-top: 1px solid var(--border); font-size: 13px; }
+.labor-shift-foot p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.labor-empty { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 44px 18px; margin-top: 18px; }
+.labor-empty p { margin: 0; }
+.labor-message { display: flex; align-items: baseline; gap: 8px; padding: 12px 16px; margin: 0 0 16px; border-radius: 8px; background: var(--primary-light); }
+.labor-message-error { border: 1px solid var(--danger); background: var(--bg-card); color: var(--danger); }
+.labor-legacy { margin-top: 18px; padding: 14px 18px; }
+.labor-legacy summary { font-size: 14px; font-weight: 650; cursor: pointer; }
+.labor-legacy-form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding-top: 16px; }
+
+.labor-form { display: grid; gap: 16px; }
+.labor-form-date { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px 24px; padding: 18px 22px; }
+.labor-form-date .labor-shift-index { margin: 0; }
+.labor-form-shift h2 { scroll-margin-top: 20px; }
+.labor-form-shift > header { padding: 16px 22px; border-radius: 11px; }
+.labor-form-shift:has(.labor-shift-toggle:checked) > header {
+    border-radius: 11px 11px 0 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--primary-light);
+}
+.labor-form-shift .labor-shift-choice { display: inline-flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; }
+.labor-form-fields { display: grid; gap: 20px; min-inline-size: 0; margin: 0; padding: 18px 22px; border: 0; }
+.labor-form-shift:has(.labor-shift-toggle:not(:checked)) > .labor-form-fields { display: none; }
+.labor-form-quantities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.labor-form-quantities > div { display: flex; flex-direction: column; justify-content: flex-end; }
+.labor-form-stages { border-block: 1px solid var(--border); }
+.labor-stage-row { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: start; gap: 12px; padding: 9px 0; }
+.labor-stage-row + .labor-stage-row { border-top: 1px solid var(--border); }
+.labor-stage-row > strong { padding-top: 11px; font-weight: 650; }
+.labor-form-footer { justify-content: flex-end; padding-bottom: 12px; }
+
+.plan-staff-picker { min-width: 0; }
+.plan-staff-picker > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    font-size: 15px;
+    cursor: pointer;
+    list-style: none;
+}
 .plan-staff-picker > summary::-webkit-details-marker { display: none; }
-.plan-staff-picker > summary [data-staff-caption] { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.plan-staff-picker > summary > i { flex-shrink: 0; color: var(--primary); font-size: 12px; }
+.plan-staff-picker > summary [data-staff-caption] { flex: 1; min-width: 0; overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
 .plan-staff-picker[open] > summary { border-color: var(--primary); }
 .plan-staff-picker[open] > summary > i { transform: rotate(180deg); }
-.plan-staff-count { flex-shrink: 0; padding: 2px 8px; border-radius: 5px; background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 600; }
-.plan-staff-count[hidden] { display: none; }
-.plan-staff-options { max-height: 240px; margin-top: 8px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); }
-.manager-workspace .modal .plan-staff-option, .plan-staff-option { display: flex !important; align-items: center; gap: 12px; min-height: 48px; padding: 10px 12px; margin: 0 !important; color: var(--text-primary); font-size: 15px; cursor: pointer; }
-.plan-staff-option > input { width: 20px; height: 20px; margin: 0; flex-shrink: 0; accent-color: var(--primary); }
-.plan-staff-option > span { min-width: 0; overflow-wrap: break-word; }
-.plan-staff-option small { display: block; font-size: 13px; color: var(--text-secondary); font-weight: 400; }
-.plan-staff-option:has(input:checked) { background: var(--primary-light); }
-.plan-staff-options > p { padding: 12px; color: var(--text-secondary); }
-.plan-staff-picker summary:hover, .plan-staff-option:hover { background: var(--primary-light); }
-.plan-staff-picker :is(summary, input):focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
-.plan-assigned-workers { display: flex; flex-wrap: wrap; gap: 6px 12px; min-width: 0; }
-.plan-assigned-workers > span { color: var(--text-primary); font-weight: 600; overflow-wrap: break-word; }
-@media (max-width: 600px) {
-    .plan-staff-picker { flex-basis: 100%; }
-    .plan-create-meta, .plan-assignment-stage { grid-template-columns: minmax(0, 1fr); }
-    .plan-create-meta { gap: 20px; }
-    .plan-assignment-stage { gap: 14px; padding: 16px; }
-    .plan-stage-info { padding: 0; }
-    .plan-section-title { align-items: flex-start; font-size: 19px; }
+.plan-staff-count { flex: 0 0 auto; padding: 1px 7px; border-radius: 5px; background: var(--primary-light); color: var(--primary); font-size: 13px; }
+.plan-staff-options { max-height: 220px; margin-top: 6px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+.labor-page .plan-staff-option { display: flex; align-items: center; gap: 10px; padding: 9px 12px; min-height: 44px; margin: 0; font-weight: 500; cursor: pointer; }
+.plan-staff-option > span { min-width: 0; overflow-wrap: anywhere; }
+.plan-staff-option small { display: block; font-size: 12px; }
+.plan-staff-option:has(input:checked), .plan-staff-option:hover, .plan-staff-picker summary:hover { background: var(--primary-light); }
+.plan-staff-options > p { margin: 0; padding: 12px; }
+
+@media (max-width: 1150px) {
+    .labor-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .labor-search { grid-column: span 2; }
+}
+@media (max-width: 620px) {
+    .labor-header { margin-bottom: 16px; }
+    .labor-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .labor-search { grid-column: auto; }
+    .labor-estimates { width: 100%; }
+    .labor-form-date, .labor-form-shift > header, .labor-form-fields { padding: 14px; }
+    .labor-form-quantities, .labor-stage-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .labor-stage-row > strong { padding-top: 0; }
+    .labor-table { font-size: 13px; }
+}
+@media (max-width: 380px) {
+    .labor-filters { grid-template-columns: minmax(0, 1fr); }
 }

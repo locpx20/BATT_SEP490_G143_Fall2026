@@ -4,6 +4,8 @@ namespace BATT_PPMS.Models;
 
 public class ProductionQualityRequest
 {
+    public byte[]? ResultImage { get; set; }
+    public string? ResultImageType { get; set; }
     public int RequestId { get; set; }
     public int AssignmentId { get; set; }
     public int InspectionId { get; set; }
@@ -58,13 +60,38 @@ public class ProductionMaterialRequest
 
 public partial class ProductionManagementDbContext
 {
+    public DbSet<DailyMaterialPlan> DailyMaterialPlans => Set<DailyMaterialPlan>();
+    public DbSet<ShiftProductionPlan> ShiftProductionPlans => Set<ShiftProductionPlan>();
     public DbSet<ShiftMaterialUsage> ShiftMaterialUsages => Set<ShiftMaterialUsage>();
+    public DbSet<MaterialUsageReview> MaterialUsageReviews => Set<MaterialUsageReview>();
     public DbSet<ProductionQualityRequest> ProductionQualityRequests => Set<ProductionQualityRequest>();
     public DbSet<FinishedGoodsReceipt> FinishedGoodsReceipts => Set<FinishedGoodsReceipt>();
     public DbSet<ProductionMaterialRequest> ProductionMaterialRequests => Set<ProductionMaterialRequest>();
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<DailyMaterialPlan>(e=>{
+            e.ToTable("DailyMaterialPlan");e.HasKey(x=>x.PlanDate);
+            e.Property(x=>x.ExpectedKg).HasPrecision(12,2);
+            e.HasOne(x=>x.Planner).WithMany().HasForeignKey(x=>x.UpdatedBy).OnDelete(DeleteBehavior.NoAction);
+        });
+        modelBuilder.Entity<ShiftProductionPlan>(e =>
+        {
+            e.ToTable("ShiftProductionPlan");
+            e.HasKey(x => new { x.PlanDate, x.Shift });
+            e.Property(x => x.Shift).HasMaxLength(50);
+            e.Property(x => x.ExpectedMaterialKg).HasPrecision(12, 2);
+            e.Property(x => x.ExpectedFinishedKg).HasPrecision(12, 2);
+            e.Property(x => x.Note).HasMaxLength(1000);
+        });
+        modelBuilder.Entity<MaterialUsageReview>(e => {
+            e.ToTable("MaterialUsageReview"); e.HasKey(x => x.ReportId);
+            e.Property(x => x.ReportId).ValueGeneratedNever();
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.Property(x => x.RejectionReason).HasMaxLength(1000);
+            e.HasOne(x => x.Report).WithOne().HasForeignKey<MaterialUsageReview>(x => x.ReportId).OnDelete(DeleteBehavior.NoAction);
+            e.HasOne(x => x.Reviewer).WithMany().HasForeignKey(x => x.ReviewedBy).OnDelete(DeleteBehavior.NoAction);
+        });
         modelBuilder.Entity<ShiftMaterialUsage>(e => {
             e.ToTable("ShiftMaterialUsage"); e.HasKey(x => x.UsageId);
             e.HasIndex(x => new { x.ReportId, x.MaterialId }).IsUnique();
@@ -75,6 +102,7 @@ public partial class ProductionManagementDbContext
         });
         modelBuilder.Entity<ProductionQualityRequest>(e => {
             e.ToTable("ProductionQualityRequest"); e.HasKey(x => x.RequestId);
+            e.Property(x => x.ResultImageType).HasMaxLength(30);
             e.HasIndex(x => x.InspectionId).IsUnique();
             e.HasIndex(x => x.ReportId).IsUnique().HasFilter("[ReportId] IS NOT NULL");
             e.HasOne(x => x.Assignment).WithMany().HasForeignKey(x => x.AssignmentId).OnDelete(DeleteBehavior.NoAction);

@@ -4,16 +4,19 @@ public sealed class PageWindow
 {
     public const int Size = 10;
     public int TotalCount { get; }
+    public int PageSize { get; }
     public int TotalPages { get; }
     public int CurrentPage { get; }
-    public int Offset => (CurrentPage - 1) * Size;
+    public int Offset => (CurrentPage - 1) * PageSize;
     public int FirstItem => TotalCount == 0 ? 0 : Offset + 1;
-    public int LastItem => Offset + Math.Min(Size, TotalCount - Offset);
+    public int LastItem => Offset + Math.Min(PageSize, TotalCount - Offset);
 
-    public PageWindow(int totalCount, int requestedPage)
+    public PageWindow(int totalCount, int requestedPage, int pageSize = Size)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize);
+        PageSize = pageSize;
         TotalCount = Math.Max(0, totalCount);
-        TotalPages = Math.Max(1, (int)Math.Ceiling(TotalCount / (double)Size));
+        TotalPages = Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
         CurrentPage = Math.Clamp(requestedPage, 1, TotalPages);
     }
 
@@ -27,4 +30,4 @@ public sealed class PageWindow
 }
 
 public record AdminPaginationViewModel(PageWindow Window, string PageName,
-    Dictionary<string, string?> Filters);
+    Dictionary<string, string?> Filters, string PageNumberParameter = "pageNumber");

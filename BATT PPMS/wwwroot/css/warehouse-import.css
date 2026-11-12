@@ -1,0 +1,36 @@
+/* Keep the IR-guided receipt form inside its own dialog at every viewport size. */
+#createImportModal .pm-dialog {
+    max-width: 960px;
+    max-height: calc(100dvh - 32px);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+#createImportModal .pm-dialog > form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+#createImportModal .pm-head,
+#createImportModal .pm-foot { flex-shrink: 0; }
+#createImportModal .pm-title { min-width: 0; overflow-wrap: anywhere; }
+#createImportModal .pm-close { flex-shrink: 0; }
+#createImportModal .pm-body { min-height: 0; overflow-y: auto; }
+#createImportModal .pm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#createImportModal .pm-grid > * { min-width: 0; }
+#createImportModal .pm-input,
+#createImportModal .batt-select { min-width: 0; max-width: 100%; }
+#createImportModal .pm-label,
+#createImportModal .pm-hint { overflow-wrap: anywhere; }
+#createImportModal img { max-width: 100%; height: auto; }
+#createImportModal .pm-foot { flex-wrap: wrap; }
+#createImportModal .pm-foot button { max-width: 100%; white-space: normal; }
+@media (max-width: 640px) {
+    #createImportModal .pm-grid { grid-template-columns: minmax(0, 1fr); }
+    #createImportModal .pm-head,
+    #createImportModal .pm-body,
+    #createImportModal .pm-foot { padding: 16px; }
+    #createImportModal .pm-foot .pm-btn-primary { flex: 1 1 240px; }
+}

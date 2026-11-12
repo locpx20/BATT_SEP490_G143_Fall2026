@@ -1,45 +1,1651 @@
 @page
 @model BATT_PPMS.Pages.Warehouse.IndexModel
+@using BATT_PPMS.Helpers
 @using BATT_PPMS.Services
-@{ ViewData["Title"] = Model.Tab == "plans" ? "Kế hoạch sản xuất trong ngày" : "Nhập kho thành phẩm"; ViewData["ActivePage"] = "Warehouse"; }
-@section Styles { <link rel="stylesheet" href="~/css/production-flow.css" asp-append-version="true" /> }
-<div class="flow-screen warehouse-flow">
-    <header class="page-header"><h1 class="page-title"><i class="bi bi-box-seam" aria-hidden="true"></i> @ViewData["Title"]</h1>@if(Model.StaffView) { <a class="btn btn-secondary" asp-page="/ShiftReports/Index">Báo cáo cuối ca</a> }</header>
-    @if (Model.SuccessMessage != null) { <div class="alert alert-success" role="status">@Model.SuccessMessage</div> }
-    @if (Model.ErrorMessage != null) { <div class="alert alert-danger" role="alert">@Model.ErrorMessage</div> }
-    <section class="flow-card">
-        <form method="get" class="flow-filters"><input type="hidden" name="Tab" value="@Model.Tab" />
-        @if(Model.Tab == "plans") { <div class="flow-field"><label for="warehousePlanDate">Ngày sản xuất</label><input type="date" id="warehousePlanDate" name="PlanDate" value="@Model.PlanDate.ToString("yyyy-MM-dd")" class="form-control" /></div> }
-        else {
-            <div class="flow-field"><label for="warehouseSearch">Tìm lô hàng, người yêu cầu</label><input id="warehouseSearch" type="search" name="SearchTerm" value="@Model.SearchTerm" class="form-control" /></div>
-            <div class="flow-field"><label for="warehouseStatus">Trạng thái</label><select id="warehouseStatus" name="StatusFilter" class="form-select"><option value="">Tất cả</option>@foreach(var s in new[] { "Pending", "Rejected", "AwaitingStaffConfirmation", "Received" }) { <option value="@s" selected="@(Model.StatusFilter == s)">@ProductionFlow.Label(s)</option> }</select></div>
+@{
+    ViewData["Title"] = Model.Tab == "plans" ? "Lịch phân công lao động" : "Yêu cầu nhập kho thành phẩm";
+    ViewData["ActivePage"] = "Warehouse";
+    var warehousePlans = Model.Tab == "plans" && Model.CanReceive;
+    var isReceiptTab = Model.Tab != "plans";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/warehouse-dialogs.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
+    @if (warehousePlans || !Model.StaffView) {
+        <link rel="stylesheet" href="~/css/warehouse-plans.css" asp-append-version="true" />
+    }
+    @if (!Model.StaffView) {
+        <link rel="stylesheet" href="~/css/consumption-slip.css" asp-append-version="true" />
+    }
+    <style>
+        .warehouse-table-records {
+            padding: 0 !important;
         }
-        <button class="btn btn-primary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button></form>
-        <div class="flow-table-wrap"><table class="flow-table">
-        @if (Model.Tab == "plans") {
-            <thead><tr><th>Ngày / Ca</th><th>Công việc</th><th>Công nhân</th><th>Người phân công</th></tr></thead><tbody>
-            @foreach(var a in Model.Plans) { <tr><td data-label="Ngày / Ca">@a.AssignmentDate.ToString("dd/MM/yyyy")<small>@a.Shift</small></td><td data-label="Công việc">@a.TaskDescription</td><td data-label="Công nhân">@(a.Staff?.FullName ?? "Tài khoản đã xóa")</td><td data-label="Người phân công">@(a.AssignedByNavigation?.FullName ?? "Tài khoản đã xóa")</td></tr> }
-            @if(Model.Plans.Count == 0) { <tr><td colspan="4" class="flow-empty">Chưa có phân công vào ngày này.</td></tr> }</tbody>
-        } else {
-            <thead><tr><th>Phiếu / Lô hàng</th><th>Ngày / Ca</th><th>Người yêu cầu</th><th>Đối chiếu khối lượng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-            @foreach(var r in Model.Receipts) { <tr>
-                <td data-label="Phiếu / Lô hàng"><strong>NK-@r.ReceiptId.ToString("D4")</strong><small>@r.QualityRequest.Inspection.Batch.BagNumber</small><small>QC: @ProductionFlow.Label(r.QualityRequest.Inspection.Result) · RP-@r.QualityRequest.ReportId?.ToString("D4")</small></td>
-                <td data-label="Ngày / Ca">@r.QualityRequest.Assignment.AssignmentDate.ToString("dd/MM/yyyy")<small>@r.QualityRequest.Assignment.Shift</small></td>
-                <td data-label="Người yêu cầu">@(r.Requester?.FullName ?? "Tài khoản đã xóa")<small>@r.RequestedAt.ToString("HH:mm dd/MM/yyyy")</small>@if(!string.IsNullOrWhiteSpace(r.RequestNote)) { <p class="flow-note">Nội dung yêu cầu: @r.RequestNote</p> }</td>
-                <td data-label="Đối chiếu khối lượng">Yêu cầu: @r.ExpectedQuantity.ToString("N2") kg<small>Thực nhập: @(r.ActualQuantity.HasValue ? r.ActualQuantity.Value.ToString("N2") + " kg" : "Chưa nhập")</small>@if(r.DiscrepancyNote != null) { <p class="flow-note">@r.DiscrepancyNote</p> }</td>
-                <td data-label="Trạng thái"><span class="flow-state">@ProductionFlow.Label(r.Status)</span>@if(r.RejectionReason != null) { <p class="flow-note">Lý do trả lại: @r.RejectionReason</p> }<small>Thủ kho: @(r.Receiver?.FullName ?? "Chưa xử lý")</small>@if(r.ReceivedAt.HasValue) { <small>Nhập lúc @r.ReceivedAt.Value.ToString("HH:mm dd/MM/yyyy")</small> }</td>
-                <td data-label="Thao tác"><div class="flow-row-actions">
-                    @if(Model.CanReceive && r.Status == "Pending") {
-                        <details class="flow-action"><summary>Duyệt và lập phiếu nhập</summary><form method="post" asp-page-handler="Receive" class="flow-form flow-form-compact"><input type="hidden" name="receiptId" value="@r.ReceiptId" /><div class="flow-field"><label for="receivedQty-@r.ReceiptId">Khối lượng thực nhập (kg)</label><input id="receivedQty-@r.ReceiptId" type="number" name="actualQuantity" value="@r.ExpectedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" min="0.01" step="0.01" required class="form-control" /></div><div class="flow-field"><label for="receivedNote-@r.ReceiptId">Ghi chú đối chiếu (bắt buộc nếu chênh lệch)</label><textarea id="receivedNote-@r.ReceiptId" name="note" class="form-control" maxlength="2000"></textarea></div><button type="submit" class="btn btn-primary">Xác nhận nhập kho</button></form></details>
-                        <details class="flow-action"><summary>Từ chối yêu cầu</summary><form method="post" asp-page-handler="Reject" class="flow-form flow-form-compact"><input type="hidden" name="receiptId" value="@r.ReceiptId" /><div class="flow-field"><label for="receiptReason-@r.ReceiptId">Lý do từ chối</label><textarea id="receiptReason-@r.ReceiptId" name="reason" class="form-control" required maxlength="1000"></textarea></div><button type="submit" class="btn btn-secondary">Trả lại cho Staff</button></form></details>
+        .warehouse-plans-table td {
+            vertical-align: middle !important;
+            font-size: 16.5px;
+        }
+        .wh-receipt-code {
+            display: inline-flex;
+            align-items: center;
+            background: #faf4e8;
+            border: 1px solid #ecdcc0;
+            border-left: 3px solid #c88a2e;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 15px;
+            font-weight: 700;
+            color: #6d4d12;
+            letter-spacing: 0.02em;
+        }
+        .qc-img-badge {
+            font-size: 13px;
+            color: #2f6153;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #eef2e9;
+            border: 1px solid #c7d8cc;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+            transition: all 0.15s ease;
+            font-weight: 600;
+        }
+        .qc-img-badge:hover {
+            background: #dde8de;
+            color: #193f35;
+        }
+        .badge-awaiting {
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+            font-size: 13px !important;
+            padding: 5px 12px !important;
+            border-radius: 6px !important;
+            white-space: nowrap !important;
+        }
+        .badge-warning-subtle {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            font-size: 12px !important;
+            padding: 3px 8px !important;
+            margin-top: 2px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            border-radius: 4px;
+            white-space: nowrap !important;
+        }
+        .btn-wh-action {
+            border-radius: 7px;
+            font-size: 13.5px !important;
+            font-weight: 600;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 6px !important;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            line-height: 1.3 !important;
+            text-decoration: none;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+        .btn-wh-receive {
+            background: #193f35;
+            color: #fffefa;
+            border: 1px solid #193f35;
+            padding: 7px 14px !important;
+            white-space: nowrap !important;
+        }
+        .btn-wh-receive:hover {
+            background: #123329;
+            border-color: #123329;
+            color: #fffefa;
+        }
+        .btn-wh-reject {
+            background: #faf0e9;
+            color: #a55449;
+            border: 1px solid #e4c8bf;
+            padding: 7px 14px !important;
+            white-space: nowrap !important;
+        }
+        .btn-wh-reject:hover {
+            background: #f5dfd6;
+            color: #883f36;
+            border-color: #d8b2a5;
+        }
+        .btn-wh-detail {
+            background: #eef2e9;
+            color: #2f6153;
+            border: 1px solid #c7d8cc;
+            width: 36px !important;
+            height: 34px !important;
+            min-width: 36px !important;
+            justify-content: center !important;
+            font-size: 16px !important;
+            padding: 0 !important;
+            white-space: nowrap !important;
+        }
+        .btn-wh-detail:hover {
+            background: #e1ebe2;
+            color: #254e43;
+            border-color: #a6beb2;
+        }
+
+        /* ===== STAFF STEP-BY-STEP WORKFLOW ===== */
+        .staff-flow-wrapper {
+            max-width: 1300px;
+        }
+        .staff-flow-stepper {
+            display: flex;
+            align-items: stretch;
+            gap: 8px;
+            background: #fffefa;
+            border: 1px solid #d7dfd3;
+            border-radius: 12px;
+            padding: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+        .staff-step-item {
+            flex: 1 1 0;
+            min-width: 170px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #243d35;
+            background: transparent;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .staff-step-item:hover {
+            background: #f4f2ea;
+            border-color: #d7dfd3;
+            color: #193f35;
+        }
+        .staff-step-item.completed {
+            background: #eef5f1;
+            color: #28543f;
+            border-color: #c7decb;
+        }
+        .staff-step-item.completed .step-num {
+            background: #28543f;
+            color: #fffefa;
+            border-color: #1a4530;
+            font-size: 11px;
+        }
+        .staff-step-item.active {
+            background: #193f35;
+            color: #fffefa;
+            border-color: #193f35;
+            box-shadow: 0 2px 8px rgba(25, 63, 53, 0.2);
+        }
+        .staff-step-item.active .step-num {
+            background: rgba(255, 255, 255, 0.25);
+            color: #fffefa;
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .staff-step-item.active .step-desc {
+            color: rgba(255, 255, 255, 0.85);
+        }
+        .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #eef2e9;
+            border: 1px solid #c7d8cc;
+            color: #193f35;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13.5px;
+            flex-shrink: 0;
+        }
+        .step-body {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+        }
+        .step-title {
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .step-desc {
+            font-size: 11.5px;
+            color: #7a887f;
+            line-height: 1.2;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .step-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11.5px;
+            font-weight: 700;
+            background: #eef2e9;
+            color: #243d35;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .staff-step-item.active .step-badge {
+            background: rgba(255, 255, 255, 0.25);
+            color: #fffefa;
+        }
+        .step-badge--success { background: #e2eee4; color: #28543f; }
+        .step-badge--warning { background: #fef3c7; color: #92400e; }
+        .step-badge--danger { background: #faf0e9; color: #a55449; }
+        .step-badge--action { background: #e0f2fe; color: #0369a1; }
+        .step-separator {
+            display: flex;
+            align-items: center;
+            color: #b0beb5;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        .staff-stage-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 22px;
+            border: 1px solid;
+            font-size: 14.5px;
+            line-height: 1.5;
+        }
+        .staff-stage-banner strong {
+            display: block;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        .staff-stage-banner p {
+            margin: 0;
+            opacity: 0.95;
+        }
+        .staff-stage-banner .banner-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+            line-height: 1;
+            margin-top: 2px;
+        }
+        .staff-stage-banner--primary {
+            background: #eef5f1;
+            border-color: #c7decb;
+            color: #193f35;
+        }
+        .staff-stage-banner--warning {
+            background: #fffbeb;
+            border-color: #fde68a;
+            color: #854d0e;
+        }
+        .staff-stage-banner--success {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+        .staff-stage-banner--info {
+            background: #f0f9ff;
+            border-color: #bae6fd;
+            color: #0369a1;
+        }
+        .staff-step-card {
+            background: #fffefa;
+            border: 1px solid #d7dfd3;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+        }
+        .staff-step-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #e5eee7;
+        }
+        .staff-step-card-head h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #193f35;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .staff-empty-state {
+            text-align: center;
+            padding: 44px 20px;
+            color: #52675d;
+        }
+        .staff-empty-state h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #243d35;
+            margin: 12px 0 6px;
+        }
+        .staff-empty-state p {
+            font-size: 14px;
+            color: #7a887f;
+            margin-bottom: 18px;
+        }
+        .step-nav-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid #e5eee7;
+        }
+    </style>
+}
+
+<div class="closeout">
+    <!-- Header -->
+    <header class="closeout-header">
+        <div>
+            <h1>
+                <i class="bi @(Model.Tab == "plans" ? "bi-calendar-week" : "bi-box-arrow-in-down")" aria-hidden="true"></i>
+                @ViewData["Title"]
+            </h1>
+        </div>
+    </header>
+
+    <partial name="_CloseoutNotifications" model="Model.Notices" />
+
+    @if (Model.SuccessMessage != null) {
+        <div class="closeout-message success" role="status">
+            <i class="bi bi-check-circle-fill" style="margin-right: 6px;"></i> @Model.SuccessMessage
+        </div>
+    }
+    @if (Model.ErrorMessage != null) {
+        <div class="closeout-message error" role="alert">
+            <i class="bi bi-exclamation-triangle-fill" style="margin-right: 6px;"></i> @Model.ErrorMessage
+        </div>
+    }
+
+
+    @if (Model.Tab == "plans" && !Model.CanReceive) {
+        <section class="daily-material-summary">
+            <header>
+                <h2>Nguyên liệu dự kiến ngày @Model.PlanDate.ToString("dd/MM/yyyy")</h2>
+                <a class="closeout-button primary" asp-page="/Warehouse/Consumption" asp-route-StatusFilter="Pending">Duyệt phiếu Staff gửi</a>
+            </header>
+            <dl>
+                <div>
+                    <dt>@(Model.ShiftPlans.Count > 0 ? "Tổng dự kiến các ca đã lập" : "Khối lượng dự kiến sử dụng")</dt>
+                    <dd>@(Model.ShiftPlans.Count > 0 ? Model.ShiftPlans.Values.Sum(plan => plan.ExpectedMaterialKg).ToString("N2") + " kg"
+                        : Model.DailyPlan == null ? "Manager chưa cập nhật" : Model.DailyPlan.ExpectedKg.ToString("N2") + " kg")</dd>
+                </div>
+                <div>
+                    <dt>Tồn nguyên liệu hiện tại</dt>
+                    <dd>@Model.AvailableStockKg.ToString("N2") kg</dd>
+                </div>
+            </dl>
+        </section>
+    }
+
+    @if (warehousePlans) {
+        var schedule = new ProductionScheduleViewModel("/Warehouse/Index", new() { ["Tab"] = "plans" },
+            Model.PlanDate, Model.PlanDateInput, Model.AllPlanShifts, Model.PlanShifts, Model.Plans, Model.Pagination, Model.PlanDateInvalid,
+            ShiftPlans: Model.ShiftPlans);
+        <partial name="~/Pages/Shared/_ProductionSchedule.cshtml" model="schedule" />
+    } else if (Model.StaffView) {
+        @* ===== QUY TRÌNH 5 BƯỚC DÀNH CHO NHÂN VIÊN SẢN XUẤT (STAFF) ===== *@
+        <div class="staff-flow-wrapper" style="margin-top: 18px;">
+            <!-- THANH TIẾN TRÌNH (STEPPER) -->
+            <nav class="staff-flow-stepper" aria-label="Các bước quy trình nhập kho">
+                <!-- Bước 1: Gửi QC -->
+                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="1"
+                   class="staff-step-item @(Model.EffectiveStep == 1 ? "active" : (Model.EffectiveStep > 1 ? "completed" : ""))"
+                   aria-current="@(Model.EffectiveStep == 1 ? "step" : null)">
+                    <span class="step-num">@(Model.EffectiveStep > 1 ? "✓" : "1")</span>
+                    <div class="step-body">
+                        <span class="step-title">1. Gửi QC</span>
+                    </div>
+                    @if (Model.Step1Count > 0) {
+                        <span class="step-badge @(Model.EffectiveStep == 1 ? "" : "step-badge--action")">@Model.Step1Count</span>
                     }
-                    @if(Model.StaffView && r.Status == "Rejected") { <details class="flow-action"><summary>Sửa và gửi lại yêu cầu</summary><form method="post" asp-page-handler="RequestReceipt" class="flow-form flow-form-compact"><input type="hidden" name="requestId" value="@r.QualityRequestId" /><div class="flow-field"><label for="receiptRevision-@r.ReceiptId">Nội dung điều chỉnh theo lý do từ chối</label><textarea id="receiptRevision-@r.ReceiptId" name="note" class="form-control" maxlength="2000" required>@r.RequestNote</textarea><small>Lô hàng và sản lượng giữ theo kết quả QC, báo cáo đã duyệt.</small></div><button type="submit" class="btn btn-primary">Gửi lại cho Thủ kho</button></form></details> }
-                    @if(Model.StaffView && r.Status == "AwaitingStaffConfirmation") { <form method="post" asp-page-handler="Confirm"><input type="hidden" name="receiptId" value="@r.ReceiptId" /><button type="submit" class="btn btn-primary">Xác nhận phiếu nhập</button></form> }
-                </div></td>
-            </tr> }
-            @if(Model.Receipts.Count == 0) { <tr><td colspan="6" class="flow-empty">Không có yêu cầu nhập kho phù hợp.</td></tr> }</tbody>
-        }
-        </table></div>
-        <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/Warehouse/Index", new() { ["Tab"] = Model.Tab, ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter, ["PlanDate"] = Model.PlanDate.ToString("yyyy-MM-dd") })' />
+                </a>
+
+                <div class="step-separator"><i class="bi bi-chevron-right"></i></div>
+
+                <!-- Bước 2: QC kiểm tra -->
+                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2"
+                   class="staff-step-item @(Model.EffectiveStep == 2 ? "active" : (Model.EffectiveStep > 2 ? "completed" : ""))"
+                   aria-current="@(Model.EffectiveStep == 2 ? "step" : null)">
+                    <span class="step-num">@(Model.EffectiveStep > 2 ? "✓" : "2")</span>
+                    <div class="step-body">
+                        <span class="step-title">2. QC kiểm tra</span>
+                    </div>
+                    @if (Model.Step2Count > 0) {
+                        <span class="step-badge @(Model.EffectiveStep == 2 ? "" : "step-badge--warning")">@Model.Step2Count</span>
+                    }
+                </a>
+
+                <div class="step-separator"><i class="bi bi-chevron-right"></i></div>
+
+                <!-- Bước 3: Yêu cầu nhập kho -->
+                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="3"
+                   class="staff-step-item @(Model.EffectiveStep == 3 ? "active" : (Model.EffectiveStep > 3 ? "completed" : ""))"
+                   aria-current="@(Model.EffectiveStep == 3 ? "step" : null)">
+                    <span class="step-num">@(Model.EffectiveStep > 3 ? "✓" : "3")</span>
+                    <div class="step-body">
+                        <span class="step-title">3. Yêu cầu nhập kho</span>
+                    </div>
+                    @if (Model.Step3Count > 0) {
+                        <span class="step-badge @(Model.EffectiveStep == 3 ? "" : "step-badge--success")">@Model.Step3Count đạt</span>
+                    }
+                </a>
+
+                <div class="step-separator"><i class="bi bi-chevron-right"></i></div>
+
+                <!-- Bước 4: Chờ Thủ kho duyệt -->
+                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="4"
+                   class="staff-step-item @(Model.EffectiveStep == 4 ? "active" : (Model.EffectiveStep > 4 ? "completed" : ""))"
+                   aria-current="@(Model.EffectiveStep == 4 ? "step" : null)">
+                    <span class="step-num">@(Model.EffectiveStep > 4 ? "✓" : "4")</span>
+                    <div class="step-body">
+                        <span class="step-title">4. Chờ duyệt</span>
+                    </div>
+                    @if (Model.Step4Count > 0) {
+                        <span class="step-badge @(Model.EffectiveStep == 4 ? "" : "step-badge--warning")">@Model.Step4Count</span>
+                    }
+                </a>
+
+                <div class="step-separator"><i class="bi bi-chevron-right"></i></div>
+
+                <!-- Bước 5: Đối chiếu & Hoàn tất -->
+                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="5"
+                   class="staff-step-item @(Model.EffectiveStep == 5 ? "active" : "")"
+                   aria-current="@(Model.EffectiveStep == 5 ? "step" : null)">
+                    <span class="step-num">5</span>
+                    <div class="step-body">
+                        <span class="step-title">5. Đối chiếu &amp; Hoàn tất</span>
+                    </div>
+                    @if (Model.Step5Count > 0) {
+                        <span class="step-badge @(Model.EffectiveStep == 5 ? "" : "step-badge--danger")">@Model.Step5Count cần đối chiếu</span>
+                    }
+                </a>
+            </nav>
+
+
+            <!-- NỘI DUNG THEO BƯỚC HIỆN TẠI -->
+            @if (Model.EffectiveStep == 1) {
+                <section class="staff-step-card" aria-label="Gửi yêu cầu QC">
+                    <div class="staff-step-card-head">
+                        <h2><i class="bi bi-file-earmark-plus"></i> Tạo yêu cầu kiểm tra chất lượng (QC)</h2>
+                    </div>
+
+                    @if (Model.StaffAssignments.Count == 0) {
+                        <div class="staff-empty-state">
+                            <i class="bi bi-check2-circle" style="font-size: 42px; color: #28543f;"></i>
+                            <h3>Bạn đã gửi yêu cầu QC cho tất cả các ca được phân công</h3>
+                            <p>Hiện không còn ca sản xuất nào chưa gửi kiểm tra chất lượng. Bạn có thể sang Bước 2 để theo dõi kết quả kiểm định của QC.</p>
+                            <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2" class="closeout-button primary">
+                                <i class="bi bi-arrow-right"></i> Xem kết quả QC tại Bước 2
+                            </a>
+                        </div>
+                    } else {
+                        var distinctDates = Model.StaffAssignments.Select(a => a.AssignmentDate).Distinct().OrderBy(d => d).ToList();
+                        var hasFuture = distinctDates.Any(d => d > Model.Today);
+                        <form method="post" asp-page-handler="RequestQc" class="closeout-form" style="max-width: 680px; margin: 0 auto;">
+                            @Html.AntiForgeryToken()
+
+                            @* --- NGÀY LÀM VIỆC --- *@
+                            <div style="margin-bottom: 20px;">
+                                <label style="display: block; font-weight: 700; margin-bottom: 8px; color: #193f35; font-size: 15px;">
+                                    Ngày làm việc <span style="color: #a55449;">*</span>
+                                </label>
+                                @if (!hasFuture) {
+                                    <div style="font-weight: 600; font-size: 15px; color: #243d35; padding: 10px 14px; background: #f4f2ea; border: 1px solid #e1e5da; border-radius: 8px; display: flex; align-items: center; gap: 8px;">
+                                        <i class="bi bi-calendar3" style="color: #52675d;" aria-hidden="true"></i>@Model.Today.ToString("dd/MM/yyyy")
+                                    </div>
+                                } else {
+                                    <select id="qcEntryDate" class="wh-dialog-input" style="width: 100%; height: 46px; font-size: 15px;" onchange="onQcDateSelectionChange(this.value)">
+                                        @if (!distinctDates.Contains(Model.Today)) {
+                                            <option value="@Model.Today.ToString("yyyy-MM-dd")">Hôm nay - @Model.Today.ToString("dd/MM/yyyy")</option>
+                                        }
+                                        @foreach (var d in distinctDates) {
+                                            var isToday = d == Model.Today;
+                                            var label = isToday ? $"Hôm nay - {d:dd/MM/yyyy}" : $"Ngày {d:dd/MM/yyyy}";
+                                            <option value="@d.ToString("yyyy-MM-dd")" selected="@isToday">@label</option>
+                                        }
+                                    </select>
+                                }
+                            </div>
+
+                            @* --- CA SẢN XUẤT --- *@
+                            <div style="margin-bottom: 20px;">
+                                <label for="step1AssignmentId" style="display: block; font-weight: 700; margin-bottom: 8px; color: #193f35; font-size: 15px;">
+                                    Ca làm việc <span style="color: #a55449;">*</span>
+                                </label>
+                                <select name="assignmentId" id="step1AssignmentId" required class="wh-dialog-input" style="width: 100%; height: 46px; font-size: 15px;">
+                                    <option value="">Chọn ca làm việc</option>
+                                    @foreach (var a in Model.StaffAssignments) {
+                                        <option value="@a.AssignmentId" data-date="@a.AssignmentDate.ToString("yyyy-MM-dd")">
+                                            @IndexModel.FormatShift(a.Shift)@(hasFuture && a.AssignmentDate > Model.Today ? $" (Ngày {a.AssignmentDate:dd/MM})" : "")
+                                        </option>
+                                    }
+                                </select>
+                                <small style="display: block; margin-top: 6px; color: #7a887f;">Chỉ hiển thị các ca chưa gửi yêu cầu kiểm tra QC.</small>
+                            </div>
+
+                            <div style="margin-bottom: 20px;">
+                                <label for="step1Quantity" style="display: block; font-weight: 700; margin-bottom: 8px; color: #193f35; font-size: 15px;">
+                                    Tổng sản lượng thực tế ca sản xuất (kg) <span style="color: #a55449;">*</span>
+                                </label>
+                                <input id="step1Quantity" type="number" name="quantity" min="1" max="99999999" step="1" required
+                                       class="wh-dialog-input" style="width: 100%; height: 46px; font-size: 16px; font-weight: 600;" placeholder="Nhập khối lượng thành phẩm (kg)..." />
+                            </div>
+
+                            <div style="margin-bottom: 24px;">
+                                <label for="step1Note" style="display: block; font-weight: 700; margin-bottom: 8px; color: #193f35; font-size: 15px;">
+                                    Ghi chú ca làm việc (tùy chọn)
+                                </label>
+                                <textarea id="step1Note" name="note" maxlength="2000" rows="3" class="wh-dialog-input" style="width: 100%; height: auto;" placeholder="Nhập tình hình máy móc, quy cách đóng bao, lưu ý đặc biệt..."></textarea>
+                            </div>
+
+                            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                                <button type="submit" class="closeout-button primary" style="padding: 12px 28px; font-size: 15.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;">
+                                    <i class="bi bi-send-fill"></i> Gửi yêu cầu kiểm tra QC
+                                </button>
+                            </div>
+                        </form>
+                        <script>
+                            function onQcDateSelectionChange(selectedDate) {
+                                const shiftSelect = document.getElementById('step1AssignmentId');
+                                if (!shiftSelect) return;
+                                Array.from(shiftSelect.options).forEach((opt, idx) => {
+                                    if (idx === 0) return;
+                                    const optDate = opt.getAttribute('data-date');
+                                    const match = !optDate || optDate === selectedDate;
+                                    opt.hidden = !match;
+                                    opt.disabled = !match;
+                                });
+                                shiftSelect.value = '';
+                            }
+                            document.addEventListener('DOMContentLoaded', function () {
+                                const dateSelect = document.getElementById('qcEntryDate');
+                                if (dateSelect) {
+                                    onQcDateSelectionChange(dateSelect.value);
+                                } else {
+                                    onQcDateSelectionChange('@Model.Today.ToString("yyyy-MM-dd")');
+                                }
+                            });
+                        </script>
+                    }
+                </section>
+            } else if (Model.EffectiveStep == 2) {
+                <section class="staff-step-card" aria-label="Theo dõi QC">
+                    <div class="staff-step-card-head" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+                        <h2 style="margin: 0;"><i class="bi bi-clipboard2-pulse"></i> Danh sách yêu cầu kiểm tra chất lượng (QC)</h2>
+
+                        <!-- BỘ LỌC TÌM KIẾM THEO NGÀY VÀ THEO CA (TRÊN CÙNG DÒNG, GÓC BÊN PHẢI) -->
+                        <form method="get" asp-page="/Warehouse/Index" class="closeout-filter" style="margin: 0; display: inline-flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                            <input type="hidden" name="Tab" value="receipts" />
+                            <input type="hidden" name="Step" value="2" />
+
+                            <div class="usage-filter-field" style="margin: 0;">
+                                <label class="plan-filter-label" for="qcDateInput" style="font-size: 12px; margin-bottom: 3px; display: block; font-weight: 600; color: #52675d;">Ngày sản xuất</label>
+                                <input id="qcDateInput" type="date" name="QcDate" value="@Model.SelectedQcDate.ToString("yyyy-MM-dd")" class="wh-dialog-input" style="height: 38px; font-size: 14px; padding: 4px 10px;" />
+                            </div>
+
+                            <div class="usage-filter-field" style="margin: 0;">
+                                <label class="plan-filter-label" for="qcShiftSelect" style="font-size: 12px; margin-bottom: 3px; display: block; font-weight: 600; color: #52675d;">Ca làm việc</label>
+                                <select id="qcShiftSelect" name="QcShift" class="wh-dialog-input" style="height: 38px; min-width: 120px; font-size: 14px; padding: 4px 10px;">
+                                    <option value="">Tất cả ca</option>
+                                    @foreach (var shift in new[] { "Ca 1", "Ca 2", "Ca 3" }) {
+                                        <option value="@shift" selected="@(string.Equals(Model.QcShift, shift, StringComparison.OrdinalIgnoreCase))">@shift</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <button class="closeout-button secondary" type="submit" style="height: 38px; padding: 0 16px; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="bi bi-search"></i> Tìm kiếm
+                            </button>
+
+                            @if (Model.QcDate.HasValue && Model.QcDate.Value != Model.Today || !string.IsNullOrWhiteSpace(Model.QcShift)) {
+                                <a class="plan-shift-link" asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2" style="height: 38px; display: inline-flex; align-items: center; padding: 0 12px; font-size: 13px; border: 1px solid var(--plan-rule); border-radius: 8px;">
+                                    Về hôm nay
+                                </a>
+                            }
+                        </form>
+                    </div>
+
+                    <!-- THANH CHỌN CA NHANH & NGÀY ĐANG XEM -->
+                    <nav class="warehouse-plan-shifts" aria-label="Chọn ca sản xuất" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; margin-bottom: 18px;">
+                        <div style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            @{
+                                var allShiftActive = string.IsNullOrWhiteSpace(Model.QcShift);
+                            }
+                            <a class="plan-shift-link @(allShiftActive ? "active" : "")"
+                               asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2" asp-route-QcDate="@Model.SelectedQcDate.ToString("yyyy-MM-dd")">
+                                Tất cả ca
+                            </a>
+                            @foreach (var s in Model.QcShiftsForDate) {
+                                var active = string.Equals(Model.QcShift, s, StringComparison.OrdinalIgnoreCase);
+                                <a class="plan-shift-link @(active ? "active" : "")"
+                                   asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2" asp-route-QcDate="@Model.SelectedQcDate.ToString("yyyy-MM-dd")" asp-route-QcShift="@s">
+                                    <i class="bi bi-clock"></i> @IndexModel.FormatShift(s)
+                                </a>
+                            }
+                        </div>
+                        <span class="plan-group-date" style="margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: #243d35;">
+                            <i class="bi bi-calendar3" aria-hidden="true" style="color: #52675d;"></i> Ngày @Model.SelectedQcDate.ToString("dd/MM/yyyy")
+                            @if (Model.SelectedQcDate == Model.Today) {
+                                <span style="font-size: 13px; color: #28543f; font-weight: 500;">(Hôm nay)</span>
+                            }
+                        </span>
+                    </nav>
+
+                    @if (Model.FilteredQcRequests.Count == 0) {
+                        <div class="staff-empty-state">
+                            <i class="bi bi-clipboard-x" style="font-size: 42px; color: #96a298;"></i>
+                            @if (Model.SelectedQcDate == Model.Today && string.IsNullOrWhiteSpace(Model.QcShift)) {
+                                <h3>Chưa có ca nào được gửi kiểm tra QC trong ngày hôm nay</h3>
+                                <p>Hãy bắt đầu bằng cách gửi yêu cầu kiểm tra cho ca sản xuất tại Bước 1.</p>
+                                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="1" class="closeout-button primary">
+                                    <i class="bi bi-arrow-left"></i> Đến Bước 1: Gửi yêu cầu QC
+                                </a>
+                            } else {
+                                <h3>Không tìm thấy yêu cầu kiểm tra QC nào</h3>
+                                <p>Không có ca nào phù hợp với bộ lọc Ngày @Model.SelectedQcDate.ToString("dd/MM/yyyy") @(!string.IsNullOrWhiteSpace(Model.QcShift) ? $"· {IndexModel.FormatShift(Model.QcShift)}" : "").</p>
+                                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2" class="closeout-button secondary">
+                                    <i class="bi bi-arrow-clockwise"></i> Quay lại hôm nay
+                                </a>
+                            }
+                        </div>
+                    } else {
+                        <div class="warehouse-plans-scroll" role="region" aria-label="Danh sách yêu cầu QC" tabindex="0">
+                            <table class="warehouse-plans-table" style="min-width: 900px;">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="width: 14%;">Mã yêu cầu</th>
+                                        <th scope="col" style="width: 22%;">Ca · Ngày sản xuất</th>
+                                        <th scope="col" style="width: 16%; text-align: right;">Sản lượng (kg)</th>
+                                        <th scope="col" style="width: 18%; text-align: center;">Trạng thái QC</th>
+                                        <th scope="col" style="width: 15%;">Biên bản QC</th>
+                                        <th scope="col" style="width: 15%; text-align: center;">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var q in Model.FilteredQcRequests) {
+                                        var isPass = q.Inspection?.Status == "Completed" && q.Inspection?.Result == "Pass";
+                                        var isFail = q.Inspection?.Status == "Completed" && q.Inspection?.Result == "Fail";
+                                        var hasReceipt = q.Receipt != null;
+                                        <tr>
+                                            <td class="plan-index" style="font-family: monospace; font-weight: 700; font-size: 15px;">
+                                                #QC-@q.RequestId.ToString("D4")
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600; color: #193f35;">
+                                                    <i class="bi bi-clock"></i> @IndexModel.FormatShift(q.Assignment.Shift)
+                                                </div>
+                                                <small style="color: #52675d;">Ngày @q.Assignment.AssignmentDate.ToString("dd/MM/yyyy")</small>
+                                            </td>
+                                            <td style="text-align: right; font-weight: 600; font-size: 15.5px;">
+                                                @(q.Inspection?.Batch != null ? q.Inspection.Batch.Quantity.ToString("N2") : "0.00") kg
+                                            </td>
+                                            <td style="text-align: center;">
+                                                @if (isPass) {
+                                                    <span class="badge badge-approved" style="font-size: 13px; padding: 6px 12px;">
+                                                        <i class="bi bi-check-circle-fill"></i> ĐẠT CHẤT LƯỢNG
+                                                    </span>
+                                                } else if (isFail) {
+                                                    <span class="badge badge-rejected" style="font-size: 13px; padding: 6px 12px;">
+                                                        <i class="bi bi-x-circle-fill"></i> KHÔNG ĐẠT
+                                                    </span>
+                                                } else {
+                                                    <span class="badge badge-pending" style="font-size: 13px; padding: 6px 12px;">
+                                                        <i class="bi bi-hourglass-split"></i> Đang chờ QC
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (q.ResultImage != null) {
+                                                    <a href="@Url.Page("/QC/Index", "Image", new { requestId = q.RequestId })" target="_blank" rel="noopener"
+                                                       class="qc-img-badge" title="Xem biên bản kiểm tra">
+                                                        <i class="bi bi-image"></i> Xem biên bản
+                                                    </a>
+                                                } else {
+                                                    <span style="color: #96a298; font-size: 13px;">Chưa có ảnh</span>
+                                                }
+                                                @if (q.Inspection?.Batch?.BagNumber != null) {
+                                                    <div style="font-family: monospace; font-size: 12px; color: #52675d; margin-top: 3px;">
+                                                        Lô: @LotCode.ForListDisplay(q.Inspection.Batch.BagNumber)
+                                                    </div>
+                                                }
+                                            </td>
+                                            <td style="text-align: center;">
+                                                @if (isPass && !hasReceipt) {
+                                                    <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="3" class="closeout-button primary" style="padding: 6px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 4px;">
+                                                        Lập phiếu <i class="bi bi-arrow-right"></i>
+                                                    </a>
+                                                } else if (hasReceipt) {
+                                                    <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="4" style="color: #28543f; font-weight: 600; font-size: 13px; text-decoration: none;">
+                                                        <i class="bi bi-box-seam"></i> Xem ở B4
+                                                    </a>
+                                                } else {
+                                                    <span style="color: #7a887f; font-size: 13px;">Đang xử lý</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <div class="step-nav-buttons">
+                        <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="1" class="closeout-button secondary">
+                            <i class="bi bi-arrow-left"></i> Quay lại Bước 1
+                        </a>
+                        <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="3" class="closeout-button primary">
+                            Tiếp tục Bước 3: Yêu cầu nhập kho <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </section>
+            } else if (Model.EffectiveStep == 3) {
+                <section class="staff-step-card" aria-label="Lập yêu cầu nhập kho">
+                    <div class="staff-step-card-head">
+                        <h2><i class="bi bi-box-arrow-in-down"></i> Lập yêu cầu nhập kho thành phẩm (Gửi Thủ kho)</h2>
+                    </div>
+
+                    @if (Model.ReadyQc.Count == 0) {
+                        <div class="staff-empty-state">
+                            <i class="bi bi-inbox" style="font-size: 42px; color: #96a298;"></i>
+                            <h3>Hiện chưa có lô thành phẩm nào vừa QC ĐẠT chờ nhập kho</h3>
+                            <p>Khi nhân viên QC kiểm tra và đánh giá ĐẠT, các lô thành phẩm sẽ hiển thị tại đây để bạn gửi cho Thủ kho.</p>
+                            <div style="display: flex; justify-content: center; gap: 12px;">
+                                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2" class="closeout-button secondary">
+                                    <i class="bi bi-hourglass-split"></i> Xem tiến độ tại Bước 2
+                                </a>
+                                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="4" class="closeout-button primary">
+                                    Xem các phiếu đã gửi tại Bước 4 <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    } else {
+                        <p style="color: #52675d; margin-bottom: 20px;">
+                            Dưới đây là các lô sản phẩm đã có kết quả kiểm tra chất lượng <strong>ĐẠT</strong>. Vui lòng gửi yêu cầu để Thủ kho tiến hành kiểm đếm và nhận hàng vào kho.
+                        </p>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 18px;">
+                            @foreach (var r in Model.ReadyQc) {
+                                var passQty = r.Inspection?.Batch?.Quantity ?? 0;
+                                <div style="background: #f7faf8; border: 1.5px solid #c7decb; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                            <span class="badge badge-approved" style="font-size: 13px;">
+                                                <i class="bi bi-check-circle-fill"></i> QC Đạt chất lượng
+                                            </span>
+                                            <span style="font-family: monospace; font-size: 13px; color: #52675d;">
+                                                #QC-@r.RequestId.ToString("D4")
+                                            </span>
+                                        </div>
+
+                                        <div style="margin-bottom: 14px;">
+                                            <div style="font-size: 12.5px; color: #7a887f; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Lô thành phẩm</div>
+                                            <div style="font-family: monospace; font-size: 18px; font-weight: 700; color: #193f35; word-break: break-all;">
+                                                @(r.Inspection?.Batch?.BagNumber ?? "-")
+                                            </div>
+                                        </div>
+
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; background: #fffefa; border: 1px solid #e2eee4; border-radius: 8px; margin-bottom: 16px;">
+                                            <div>
+                                                <span style="font-size: 12.5px; color: #7a887f; display: block;">Ca · Ngày</span>
+                                                <strong style="font-size: 14px; color: #243d35;">@IndexModel.FormatShift(r.Assignment.Shift)</strong>
+                                                <div style="font-size: 12px; color: #7a887f;">@r.Assignment.AssignmentDate.ToString("dd/MM/yyyy")</div>
+                                            </div>
+                                            <div>
+                                                <span style="font-size: 12.5px; color: #7a887f; display: block;">Khối lượng QC</span>
+                                                <strong style="font-size: 16px; color: #193f35;">@passQty.ToString("N2") kg</strong>
+                                            </div>
+                                        </div>
+
+                                        @if (r.ResultImage != null) {
+                                            <div style="margin-bottom: 16px;">
+                                                <a href="@Url.Page("/QC/Index", "Image", new { requestId = r.RequestId })" target="_blank" rel="noopener"
+                                                   class="qc-img-badge" style="font-size: 13px; padding: 6px 12px; display: inline-flex;">
+                                                    <i class="bi bi-image"></i> Xem ảnh biên bản nghiệm thu QC
+                                                </a>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <form method="post" asp-page-handler="RequestReceipt" style="margin-top: 10px; border-top: 1px dashed #c7decb; padding-top: 14px;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="requestId" value="@r.RequestId" />
+                                        <label for="note-@r.RequestId" style="display: block; font-size: 13.5px; font-weight: 600; color: #243d35; margin-bottom: 6px;">
+                                            Ghi chú gửi Thủ kho (nếu có)
+                                        </label>
+                                        <textarea id="note-@r.RequestId" name="note" rows="2" maxlength="2000" class="wh-dialog-input" style="width: 100%; height: auto; font-size: 13.5px; margin-bottom: 12px;" placeholder="Ví dụ: Đã sắp xếp sẵn ở cửa phân xưởng 1..."></textarea>
+                                        <button type="submit" class="closeout-button primary" style="width: 100%; justify-content: center; padding: 10px 16px; font-size: 14.5px; font-weight: 700;">
+                                            <i class="bi bi-send-check"></i> Gửi yêu cầu nhập kho tới Thủ kho
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="step-nav-buttons">
+                        <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="2" class="closeout-button secondary">
+                            <i class="bi bi-arrow-left"></i> Quay lại Bước 2: Theo dõi QC
+                        </a>
+                        <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="4" class="closeout-button primary">
+                            Tiếp tục Bước 4: Chờ Thủ kho duyệt <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </section>
+            } else if (Model.EffectiveStep == 4) {
+                var pendingReceipts = Model.StaffAllReceipts.Where(x => x.Status == "Pending").ToList();
+                var rejectedReceipts = Model.StaffAllReceipts.Where(x => x.Status == "Rejected").ToList();
+
+                <section class="staff-step-card" aria-label="Chờ Thủ kho duyệt">
+                    <div class="staff-step-card-head">
+                        <h2><i class="bi bi-clock-history"></i> Theo dõi phiếu chờ Thủ kho duyệt &amp; Xử lý từ chối</h2>
+                    </div>
+
+                    @if (rejectedReceipts.Count > 0) {
+                        <div style="margin-bottom: 28px;">
+                            <h3 style="font-size: 16px; font-weight: 700; color: #991b1b; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Phiếu bị Thủ kho từ chối (@rejectedReceipts.Count)
+                            </h3>
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                @foreach (var r in rejectedReceipts) {
+                                    <article style="background: #fdf2f2; border: 1.5px solid #f87171; border-radius: 10px; padding: 18px 22px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                                            <div>
+                                                <span style="font-family: monospace; font-weight: 700; font-size: 16px; color: #991b1b;">
+                                                    NK-@r.ReceiptId.ToString("D4")
+                                                </span>
+                                                <span style="margin: 0 8px; color: #d1d5db;">|</span>
+                                                <span style="font-weight: 600; color: #1f2937;">@IndexModel.FormatShift(r.QualityRequest.Assignment.Shift) · Ngày @r.QualityRequest.Assignment.AssignmentDate.ToString("dd/MM/yyyy")</span>
+                                            </div>
+                                            <span class="badge badge-rejected" style="font-size: 13px;">Đã bị từ chối</span>
+                                        </div>
+
+                                        <div style="margin-bottom: 12px; font-size: 14.5px;">
+                                            <strong>Lô thành phẩm:</strong> <span style="font-family: monospace; font-weight: 600;">@LotCode.ForListDisplay(r.QualityRequest.Inspection?.Batch?.BagNumber ?? "")</span> ·
+                                            <strong>Khối lượng đề nghị:</strong> <span style="font-weight: 700;">@r.ExpectedQuantity.ToString("N2") kg</span>
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(r.RejectionReason)) {
+                                            <div style="background: #fff; border-left: 4px solid #ef4444; padding: 10px 14px; border-radius: 4px; margin-bottom: 14px; color: #7f1d1d; font-size: 14px;">
+                                                <strong>Lý do từ chối từ Thủ kho:</strong> @r.RejectionReason
+                                            </div>
+                                        }
+
+                                        <details class="closeout-inline" style="background: #fff; padding: 14px; border-radius: 8px; border: 1px solid #fca5a5;">
+                                            <summary class="closeout-button primary" style="background: #b91c1c; border-color: #991b1b;">
+                                                <i class="bi bi-pencil-square"></i> Cập nhật nội dung và gửi lại Thủ kho
+                                            </summary>
+                                            <form method="post" asp-page-handler="RequestReceipt" style="margin-top: 14px;">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="requestId" value="@r.QualityRequestId" />
+                                                <label for="revise-@r.ReceiptId" style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px;">Giải trình / Nội dung điều chỉnh</label>
+                                                <textarea id="revise-@r.ReceiptId" name="note" maxlength="2000" required rows="3" class="wh-dialog-input" style="width: 100%; height: auto; margin-bottom: 8px;">@r.RequestNote</textarea>
+                                                <small style="display: block; color: #6b7280; margin-bottom: 12px;">Khối lượng và thông tin lô thành phẩm được giữ nguyên theo kết quả QC đạt.</small>
+                                                <button class="closeout-button primary" type="submit" style="display: inline-flex; align-items: center; gap: 6px;">
+                                                    <i class="bi bi-arrow-repeat"></i> Gửi lại yêu cầu nhập kho
+                                                </button>
+                                            </form>
+                                        </details>
+                                    </article>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <h3 style="font-size: 16px; font-weight: 700; color: #193f35; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="bi bi-hourglass-top"></i> Phiếu đang chờ Thủ kho duyệt (@pendingReceipts.Count)
+                    </h3>
+
+                    @if (pendingReceipts.Count == 0 && rejectedReceipts.Count == 0) {
+                        <div class="staff-empty-state">
+                            <i class="bi bi-check-circle" style="font-size: 42px; color: #28543f;"></i>
+                            <h3>Không có phiếu nào đang chờ duyệt</h3>
+                            <p>Tất cả các phiếu gửi Thủ kho đã được xử lý hoặc bạn chưa lập phiếu mới.</p>
+                            <div style="display: flex; justify-content: center; gap: 12px;">
+                                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="3" class="closeout-button secondary">
+                                    <i class="bi bi-arrow-left"></i> Về Bước 3 lập phiếu
+                                </a>
+                                <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="5" class="closeout-button primary">
+                                    Xem lịch sử và đối chiếu tại Bước 5 <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    } else if (pendingReceipts.Count > 0) {
+                        <div class="warehouse-plans-scroll" role="region" aria-label="Danh sách phiếu chờ duyệt" tabindex="0">
+                            <table class="warehouse-plans-table" style="min-width: 850px;">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="width: 14%;">Mã phiếu</th>
+                                        <th scope="col" style="width: 22%;">Lô thành phẩm</th>
+                                        <th scope="col" style="width: 20%;">Ca · Ngày sản xuất</th>
+                                        <th scope="col" style="width: 16%; text-align: right;">KL Đề nghị</th>
+                                        <th scope="col" style="width: 16%; text-align: center;">Trạng thái</th>
+                                        <th scope="col" style="width: 12%;">Ghi chú</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in pendingReceipts) {
+                                        <tr>
+                                            <td class="plan-index" style="font-family: monospace; font-weight: 700; font-size: 15px;">
+                                                NK-@r.ReceiptId.ToString("D4")
+                                            </td>
+                                            <td>
+                                                <div style="font-family: monospace; font-weight: 700; color: #193f35; font-size: 15px;">
+                                                    @LotCode.ForListDisplay(r.QualityRequest.Inspection.Batch.BagNumber)
+                                                </div>
+                                                <small style="color: #7a887f;">Gửi lúc @r.RequestedAt.ToString("HH:mm dd/MM/yyyy")</small>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600; color: #243d35;">@IndexModel.FormatShift(r.QualityRequest.Assignment.Shift)</div>
+                                                <small style="color: #52675d;">Ngày @r.QualityRequest.Assignment.AssignmentDate.ToString("dd/MM/yyyy")</small>
+                                            </td>
+                                            <td style="text-align: right; font-weight: 700; font-size: 16px; color: #193f35;">
+                                                @r.ExpectedQuantity.ToString("N2") kg
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <span class="badge badge-pending" style="font-size: 13px; padding: 6px 12px;">
+                                                    <i class="bi bi-clock-fill"></i> Chờ Thủ kho duyệt
+                                                </span>
+                                            </td>
+                                            <td style="font-size: 13.5px; color: #52675d;">
+                                                @(string.IsNullOrWhiteSpace(r.RequestNote) ? "Không có" : r.RequestNote)
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <div class="step-nav-buttons">
+                        <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="3" class="closeout-button secondary">
+                            <i class="bi bi-arrow-left"></i> Quay lại Bước 3
+                        </a>
+                        <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="5" class="closeout-button primary">
+                            Tiếp tục Bước 5: Đối chiếu &amp; Hoàn tất <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </section>
+            } else if (Model.EffectiveStep == 5) {
+                var awaitingReceipts = Model.StaffAllReceipts.Where(x => x.Status == "AwaitingStaffConfirmation").ToList();
+                var completedReceipts = Model.StaffAllReceipts.Where(x => x.Status == "Received").ToList();
+
+                <section class="staff-step-card" aria-label="Đối chiếu và hoàn tất">
+                    <div class="staff-step-card-head">
+                        <h2><i class="bi bi-check2-all"></i> Đối chiếu số lượng &amp; Lịch sử hoàn tất nhập kho</h2>
+                    </div>
+
+                    @if (awaitingReceipts.Count > 0) {
+                        <div style="margin-bottom: 30px;">
+                            <h3 style="font-size: 16px; font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Phiếu cần nhân viên xác nhận đối chiếu chênh lệch (@awaitingReceipts.Count)
+                            </h3>
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                @foreach (var r in awaitingReceipts) {
+                                    var diff = (r.ActualQuantity ?? 0) - r.ExpectedQuantity;
+                                    <article style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; padding: 20px 24px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                            <div>
+                                                <span style="font-family: monospace; font-weight: 700; font-size: 16px; color: #92400e;">
+                                                    NK-@r.ReceiptId.ToString("D4")
+                                                </span>
+                                                <span style="margin: 0 8px; color: #d1d5db;">|</span>
+                                                <span style="font-weight: 600; color: #1f2937;">@IndexModel.FormatShift(r.QualityRequest.Assignment.Shift) · Ngày @r.QualityRequest.Assignment.AssignmentDate.ToString("dd/MM/yyyy")</span>
+                                                <span style="margin: 0 8px; color: #d1d5db;">|</span>
+                                                <span style="font-family: monospace; font-weight: 600;">Lô: @r.QualityRequest.Inspection.Batch.BagNumber</span>
+                                            </div>
+                                            <span class="badge badge-awaiting" style="font-size: 13px;">Chờ đối chiếu</span>
+                                        </div>
+
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; background: #fff; padding: 14px; border-radius: 8px; border: 1px solid #fef3c7; margin-bottom: 14px;">
+                                            <div>
+                                                <span style="font-size: 12.5px; color: #7a887f; display: block;">Khối lượng đề nghị</span>
+                                                <strong style="font-size: 16px; color: #243d35;">@r.ExpectedQuantity.ToString("N2") kg</strong>
+                                            </div>
+                                            <div>
+                                                <span style="font-size: 12.5px; color: #7a887f; display: block;">Khối lượng thực nhập</span>
+                                                <strong style="font-size: 16px; color: #193f35;">@(r.ActualQuantity.HasValue ? r.ActualQuantity.Value.ToString("N2") + " kg" : "Chưa có")</strong>
+                                            </div>
+                                            <div>
+                                                <span style="font-size: 12.5px; color: #7a887f; display: block;">Chênh lệch</span>
+                                                <strong style="font-size: 16px; color: @(diff < 0 ? "#b91c1c" : "#15803d");">
+                                                    @(diff > 0 ? "+" : "")@diff.ToString("N2") kg
+                                                </strong>
+                                            </div>
+                                            <div>
+                                                <span style="font-size: 12.5px; color: #7a887f; display: block;">Thủ kho tiếp nhận</span>
+                                                <strong style="font-size: 14px; color: #243d35;">@(r.Receiver?.FullName ?? "Thủ kho")</strong>
+                                            </div>
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(r.DiscrepancyNote)) {
+                                            <div style="background: #fff; border-left: 4px solid #f59e0b; padding: 10px 14px; border-radius: 4px; margin-bottom: 16px; color: #78350f; font-size: 14px;">
+                                                <strong>Ghi chú đối chiếu từ Thủ kho:</strong> @r.DiscrepancyNote
+                                            </div>
+                                        }
+
+                                        <form method="post" asp-page-handler="Confirm" style="display: flex; justify-content: flex-end;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="receiptId" value="@r.ReceiptId" />
+                                            <button class="closeout-button primary" type="submit" style="padding: 10px 22px; font-size: 14.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                                                <i class="bi bi-check-circle-fill"></i> Xác nhận đối chiếu phiếu nhập kho
+                                            </button>
+                                        </form>
+                                    </article>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <h3 style="font-size: 16px; font-weight: 700; color: #193f35; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <i class="bi bi-archive"></i> Lịch sử các lô đã nhập kho hoàn tất (@completedReceipts.Count)
+                    </h3>
+
+                    @if (completedReceipts.Count == 0 && awaitingReceipts.Count == 0) {
+                        <div class="staff-empty-state">
+                            <i class="bi bi-box-seam" style="font-size: 42px; color: #96a298;"></i>
+                            <h3>Chưa có lô thành phẩm nào hoàn tất nhập kho</h3>
+                            <p>Sau khi Thủ kho duyệt và hoàn tất đối chiếu, các phiếu đã nhập kho sẽ được lưu trữ tại đây.</p>
+                        </div>
+                    } else if (completedReceipts.Count > 0) {
+                        <div class="warehouse-plans-scroll" role="region" aria-label="Lịch sử nhập kho" tabindex="0">
+                            <table class="warehouse-plans-table" style="min-width: 950px;">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="width: 13%;">Mã phiếu</th>
+                                        <th scope="col" style="width: 22%;">Lô thành phẩm</th>
+                                        <th scope="col" style="width: 17%;">Ca · Ngày sản xuất</th>
+                                        <th scope="col" style="width: 15%; text-align: right;">KL Thực nhập</th>
+                                        <th scope="col" style="width: 18%;">Thủ kho nhận</th>
+                                        <th scope="col" style="width: 15%; text-align: center;">Trạng thái</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in completedReceipts) {
+                                        <tr>
+                                            <td class="plan-index" style="font-family: monospace; font-weight: 700; font-size: 15px;">
+                                                NK-@r.ReceiptId.ToString("D4")
+                                            </td>
+                                            <td>
+                                                <div style="font-family: monospace; font-weight: 700; color: #193f35; font-size: 15px;">
+                                                    @LotCode.ForListDisplay(r.QualityRequest.Inspection.Batch.BagNumber)
+                                                </div>
+                                                @if (r.QualityRequest.ResultImage != null) {
+                                                    <a href="@Url.Page("/QC/Index", "Image", new { requestId = r.QualityRequestId })" target="_blank" rel="noopener"
+                                                       class="qc-img-badge" title="Xem ảnh biên bản QC">
+                                                        <i class="bi bi-image"></i> Ảnh QC đạt
+                                                    </a>
+                                                }
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600; color: #243d35;">@IndexModel.FormatShift(r.QualityRequest.Assignment.Shift)</div>
+                                                <small style="color: #52675d;">Ngày @r.QualityRequest.Assignment.AssignmentDate.ToString("dd/MM/yyyy")</small>
+                                            </td>
+                                            <td style="text-align: right; font-weight: 700; font-size: 16px; color: #193f35;">
+                                                @(r.ActualQuantity.HasValue ? r.ActualQuantity.Value.ToString("N2") + " kg" : "-")
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600; font-size: 14.5px; color: #243d35;">@(r.Receiver?.FullName ?? "Thủ kho")</div>
+                                                <small style="color: #7a887f;">@(r.ReceivedAt?.ToString("HH:mm dd/MM/yyyy") ?? "")</small>
+                                            </td>
+                                            <td style="text-align: center;">
+                                                <span class="badge badge-approved" style="font-size: 13px; padding: 6px 12px;">
+                                                    <i class="bi bi-check-circle-fill"></i> Đã nhập kho
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <div class="step-nav-buttons">
+                        <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="4" class="closeout-button secondary">
+                            <i class="bi bi-arrow-left"></i> Quay lại Bước 4
+                        </a>
+                        <a asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-Step="1" class="closeout-button secondary">
+                            <i class="bi bi-plus-circle"></i> Bắt đầu lô mới (Bước 1)
+                        </a>
+                    </div>
+                </section>
+            }
+        </div>
+    } else {
+    <section class="closeout-register warehouse-plans usage-register">
+        <div class="closeout-section-head @(isReceiptTab ? "usage-register-head--staff" : "")">
+            <form method="get" asp-page="/Warehouse/Index" class="closeout-filter" style="margin-left:0;">
+                <input type="hidden" name="Tab" value="@Model.Tab" />
+                @if (Model.Tab == "plans") {
+                    <input id="warehousePlanDate" type="date" aria-label="Ngày sản xuất" name="PlanDate" value="@Model.PlanDateInput" />
+                    <button class="closeout-button secondary" type="submit">Tìm kiếm</button>
+                } else {
+                    <div class="usage-filter-field">
+                        <label class="plan-filter-label" for="warehouseReceiptDate">Ngày sản xuất</label>
+                        <input id="warehouseReceiptDate" type="date" aria-label="Ngày sản xuất" name="ReceiptDate" value="@Model.ReceiptDateInput" />
+                    </div>
+                    <div class="usage-filter-field">
+                        <label class="plan-filter-label" for="warehouseStatus">Trạng thái</label>
+                        <select id="warehouseStatus" aria-label="Trạng thái phiếu" name="StatusFilter" onchange="this.form.submit()" style="min-width: 180px;">
+                            <option value="">Tất cả trạng thái</option>
+                            @foreach (var status in new[] { "Pending", "Rejected", "AwaitingStaffConfirmation", "Received" }) {
+                                <option value="@status" selected="@(status == Model.StatusFilter)">@ProductionFlow.Label(status)</option>
+                            }
+                        </select>
+                    </div>
+                    <button class="closeout-button secondary" type="submit">Tìm kiếm</button>
+                    @if (isReceiptTab && (!string.IsNullOrWhiteSpace(Model.StatusFilter) || Model.ReceiptDate.HasValue || !string.IsNullOrWhiteSpace(Model.ShiftFilter))) {
+                        <a class="plan-shift-link" href="/Warehouse/Index?Tab=receipts" style="padding: 10px 16px; border: 1px solid var(--plan-rule); border-radius: 8px;">Đặt lại</a>
+                    }
+                }
+            </form>
+        </div>
+
+        <div class="closeout-records @(isReceiptTab ? "warehouse-table-records" : "")">
+            @if (Model.Tab == "plans") {
+                    @foreach (var a in Model.Plans) {
+                        <article class="closeout-record">
+                            <header>
+                                <div>
+                                    <h3><span><i class="bi bi-clock" aria-hidden="true"></i> @(string.IsNullOrWhiteSpace(a.Shift) ? "Chưa ghi nhận ca" : a.Shift)</span> · <span><i class="bi bi-calendar3" aria-hidden="true"></i> Ngày @a.AssignmentDate.ToString("dd/MM/yyyy")</span></h3>
+                                    <p>@a.TaskDescription</p>
+                                </div>
+                            </header>
+                            <div class="closeout-facts">
+                                <div><span>Nhân viên</span><strong>@(a.Staff?.FullName ?? "Tài khoản đã xóa")</strong></div>
+                                <div><span>Người phân công</span><strong>@(a.AssignedByNavigation?.FullName ?? "Tài khoản đã xóa")</strong></div>
+                            </div>
+                        </article>
+                    }
+                    @if (Model.Plans.Count == 0) {
+                        <div class="closeout-empty"><h3>Chưa có phân công trong ngày</h3></div>
+                    }
+            } else {
+                    <!-- SHIFT & DATE NAVIGATION FOR RECEIPTS -->
+                    <nav class="warehouse-plan-shifts" aria-label="Chọn ca sản xuất" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px;">
+                        <div style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            @{ var allActive = string.IsNullOrWhiteSpace(Model.ShiftFilter); }
+                            <a class="plan-shift-link @(allActive ? "active" : "")" asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-ReceiptDate="@Model.ReceiptNavigationDate" asp-route-StatusFilter="@Model.StatusFilter" aria-current="@(allActive ? "page" : null)">
+                                Tất cả ca
+                            </a>
+                            @foreach (var shift in Model.ReceiptShifts) {
+                                var active = string.Equals(Model.ShiftFilter, shift, StringComparison.OrdinalIgnoreCase);
+                                <a class="plan-shift-link @(active ? "active" : "")" asp-page="/Warehouse/Index" asp-route-Tab="receipts" asp-route-ReceiptDate="@Model.ReceiptNavigationDate" asp-route-StatusFilter="@Model.StatusFilter" asp-route-ShiftFilter="@shift" aria-current="@(active ? "page" : null)">
+                                    <i class="bi bi-clock" aria-hidden="true"></i> @shift
+                                </a>
+                            }
+                        </div>
+                        <span class="plan-group-date" style="margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; color: #243d35;">
+                            <i class="bi bi-calendar3" aria-hidden="true" style="color: #52675d;"></i> Ngày @Model.SelectedReceiptDate.ToString("dd/MM/yyyy")
+                        </span>
+                    </nav>
+
+                    <!-- TABLE VIEW FOR WAREHOUSE ROLE & MANAGEMENT (ĐỒNG BỘ HOÀN TOÀN GIỐNG FORM BẢNG KẾ HOẠCH SẢN XUẤT) -->
+                    <section class="warehouse-plan-group" aria-label="Bảng yêu cầu nhập kho thành phẩm">
+                        <div class="warehouse-plans-scroll" role="region" aria-label="Bảng yêu cầu nhập kho thành phẩm" tabindex="0">
+                            <table class="warehouse-plans-table" aria-label="Bảng yêu cầu nhập kho thành phẩm" style="min-width: 1180px;">
+                                <colgroup>
+                                    <col style="width: 11%;" />
+                                    <col style="width: 16%;" />
+                                    <col style="width: 18%;" />
+                                    <col style="width: 13%;" />
+                                    <col style="width: 13%;" />
+                                    <col style="width: 12%;" />
+                                    <col style="width: 17%;" />
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Mã phiếu</th>
+                                        <th scope="col">Lô thành phẩm</th>
+                                        <th scope="col">Người gửi</th>
+                                        <th scope="col" style="text-align: right;">KL Đề nghị</th>
+                                        <th scope="col" style="text-align: right;">KL Thực nhập</th>
+                                        <th scope="col" style="text-align: center;">Trạng thái</th>
+                                        <th scope="col" style="text-align: center;">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.Receipts.Count == 0) {
+                                        <tr>
+                                            <td colspan="7" class="plan-empty" style="padding: 50px 20px; text-align: center;">
+                                                <i class="bi bi-box-seam" style="font-size: 32px; display: block; margin-bottom: 8px; color: #96a298;" aria-hidden="true"></i>
+                                                <div style="font-size: 16px; font-weight: 700; color: #243d35;">Chưa có phiếu nhập thành phẩm nào</div>
+                                                <div style="font-size: 14px; color: #7a887f; margin-top: 4px;">Các yêu cầu gửi Thủ kho sẽ hiển thị tại đây khi có lô QC đạt.</div>
+                                            </td>
+                                        </tr>
+                                    }
+                                    @foreach (var r in Model.Receipts) {
+                                        var isPending = r.Status == "Pending";
+                                        var isReceived = r.Status == "Received";
+                                        var isRejected = r.Status == "Rejected";
+                                        var isAwaiting = r.Status == "AwaitingStaffConfirmation";
+                                        <tr>
+                                            <!-- Mã phiếu -->
+                                            <td class="plan-index" style="font-family: monospace; font-weight: 700; font-size: 15.5px;">
+                                                NK-@r.ReceiptId.ToString("D4")
+                                            </td>
+
+                                            <!-- Lô thành phẩm (QC) -->
+                                            <td>
+                                                <div style="font-weight: 700; font-family: monospace; color: #243d35; font-size: 15.5px; overflow-wrap: anywhere;">
+                                                    @LotCode.ForListDisplay(r.QualityRequest.Inspection.Batch.BagNumber)
+                                                </div>
+                                                @if (r.QualityRequest.ResultImage != null) {
+                                                    <a href="@Url.Page("/QC/Index", "Image", new { requestId = r.QualityRequestId })" target="_blank" rel="noopener"
+                                                       class="qc-img-badge" title="Xem ảnh biên bản kiểm tra QC đạt">
+                                                        <i class="bi bi-image"></i> Ảnh QC đạt
+                                                    </a>
+                                                }
+                                            </td>
+
+                                            <!-- Người gửi yêu cầu -->
+                                            <td>
+                                                <div class="plan-person" style="font-size: 16px;">@(r.Requester?.FullName ?? "Tài khoản đã xóa")</div>
+                                                <small style="color: #96a298; font-size: 13px;">@r.RequestedAt.ToString("HH:mm dd/MM/yyyy")</small>
+                                            </td>
+
+                                            <!-- KL Đề nghị -->
+                                            <td style="text-align: right; font-weight: 600; color: #243d35; font-size: 16.5px;">
+                                                @r.ExpectedQuantity.ToString("N2") kg
+                                            </td>
+
+                                            <!-- KL Thực nhập -->
+                                            <td style="text-align: right;">
+                                                @if (r.ActualQuantity.HasValue) {
+                                                    <div style="font-weight: 700; color: #193f35; font-size: 16.5px;">@r.ActualQuantity.Value.ToString("N2") kg</div>
+                                                } else {
+                                                    <span style="color: #96a298; font-style: italic; font-size: 14px;">Chưa nhập</span>
+                                                }
+                                            </td>
+
+                                            <!-- Trạng thái -->
+                                            <td style="text-align: center;">
+                                                @if (isPending) {
+                                                    <span class="badge badge-pending">
+                                                        <i class="bi bi-clock-fill" style="font-size: 8px; margin-right: 4px;"></i> Chờ duyệt
+                                                    </span>
+                                                } else if (isReceived) {
+                                                    <span class="badge badge-approved">
+                                                        <i class="bi bi-check-circle-fill" style="font-size: 8px; margin-right: 4px;"></i> Đã nhập kho
+                                                    </span>
+                                                } else if (isRejected) {
+                                                    <span class="badge badge-rejected">
+                                                        <i class="bi bi-x-circle-fill" style="font-size: 8px; margin-right: 4px;"></i> Đã từ chối
+                                                    </span>
+                                                } else if (isAwaiting) {
+                                                    <span class="badge badge-awaiting">
+                                                        <i class="bi bi-hourglass-split" style="font-size: 8px; margin-right: 4px;"></i> Chờ xác nhận
+                                                    </span>
+                                                } else {
+                                                    <span class="badge badge-inactive">
+                                                        @ProductionFlow.Label(r.Status)
+                                                    </span>
+                                                }
+                                            </td>
+
+                                            <!-- Thao tác -->
+                                            <td style="text-align: center; white-space: nowrap;">
+                                                <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap;">
+                                                    @if (Model.CanReceive && isPending) {
+                                                        <button type="button" class="btn-wh-action btn-wh-receive"
+                                                                onclick="openReceiveModal(@r.ReceiptId, 'NK-@r.ReceiptId.ToString("D4")', '@r.ExpectedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)', '@r.QualityRequest.Inspection.Batch.BagNumber')"
+                                                                title="Duyệt và lập phiếu nhập kho">
+                                                            <i class="bi bi-check-lg"></i> Duyệt
+                                                        </button>
+                                                        <button type="button" class="btn-wh-action btn-wh-reject"
+                                                                onclick="openRejectModal(@r.ReceiptId, 'NK-@r.ReceiptId.ToString("D4")')"
+                                                                title="Từ chối yêu cầu nhập kho">
+                                                            <i class="bi bi-x-lg"></i> Từ chối
+                                                        </button>
+                                                    }
+                                                    <button type="button" class="btn-wh-action btn-wh-detail"
+                                                            data-code="NK-@r.ReceiptId.ToString("D4")"
+                                                            data-status="@r.Status"
+                                                            data-status-label="@ProductionFlow.Label(r.Status)"
+                                                            data-date-shift="@(r.QualityRequest.Assignment.Shift) · Ngày @r.QualityRequest.Assignment.AssignmentDate.ToString("dd/MM/yyyy")"
+                                                            data-lot="@r.QualityRequest.Inspection.Batch.BagNumber"
+                                                            data-requester="@(r.Requester?.FullName ?? "Tài khoản đã xóa")"
+                                                            data-req-time="@r.RequestedAt.ToString("HH:mm dd/MM/yyyy")"
+                                                            data-exp-qty="@r.ExpectedQuantity.ToString("N2") kg"
+                                                            data-act-qty="@(r.ActualQuantity.HasValue ? r.ActualQuantity.Value.ToString("N2") + " kg" : "Chưa nhập")"
+                                                            data-receiver="@(r.Receiver?.FullName ?? "")"
+                                                            data-rec-time="@(r.ReceivedAt?.ToString("HH:mm dd/MM/yyyy") ?? "")"
+                                                            data-req-note="@r.RequestNote"
+                                                            data-disc-note="@r.DiscrepancyNote"
+                                                            data-rej-reason="@r.RejectionReason"
+                                                            data-qc-img-url="@(r.QualityRequest.ResultImage != null ? Url.Page("/QC/Index", "Image", new { requestId = r.QualityRequestId }) : "")"
+                                                            onclick="openDetailModal(this)"
+                                                            title="Xem chi tiết phiếu nhập">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+            }
+        </div>
+
+        <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/Warehouse/Index", new() { ["Tab"] = Model.Tab, ["StatusFilter"] = Model.StatusFilter, ["PlanDate"] = Model.PlanDate.ToString("yyyy-MM-dd"), ["ReceiptDate"] = Model.ReceiptNavigationDate, ["ShiftFilter"] = Model.ShiftFilter })' />
     </section>
+    }
 </div>
+
+<!-- ===== MODAL 1: DUYỆT & LẬP PHIẾU NHẬP KHO ===== -->
+<div class="modal-overlay warehouse-dialog" id="receiveModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="receiveModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="receiveModalTitle">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i> Duyệt &amp; Lập Phiếu Nhập Kho
+            </h3>
+            <button class="modal-close" aria-label="Đóng" onclick="hideModal('receiveModal')" type="button">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form method="post" asp-page-handler="Receive">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="receiptId" id="receiveReceiptId" />
+            <div class="modal-body">
+                <div class="wh-detail-summary">
+                    <div>
+                        <span class="wh-dialog-label">Mã phiếu</span>
+                        <code id="receiveDisplayCode" class="wh-dialog-code"></code>
+                    </div>
+                    <div>
+                        <span class="wh-dialog-label">Lô thành phẩm</span>
+                        <div class="wh-dialog-value" id="receiveDisplayLot" style="font-family: monospace;"></div>
+                    </div>
+                    <div>
+                        <span class="wh-dialog-label">KL Đề nghị</span>
+                        <div class="wh-dialog-value" id="receiveDisplayExpQty"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="receiveActualQty" class="wh-dialog-label">
+                        Khối lượng thực nhập (kg) <span style="color: #a55449;">*</span>
+                    </label>
+                    <input type="number" name="actualQuantity" id="receiveActualQty" min="0.01" max="9999999999.99" step="0.01" required
+                           class="wh-dialog-input" />
+                    <small class="wh-dialog-caption">
+                        Mặc định theo khối lượng đề nghị từ QC. Có thể điều chỉnh theo cân thực tế tại kho.
+                    </small>
+                </div>
+
+                <div>
+                    <label for="receiveNote" class="wh-dialog-label">
+                        Ghi chú đối chiếu (nếu có)
+                    </label>
+                    <textarea name="note" id="receiveNote" rows="3" maxlength="2000" class="wh-dialog-input"
+                              placeholder="Nhập ghi chú đối chiếu bao bì, cân nặng thực tế (nếu có)..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="wh-dialog-button" onclick="hideModal('receiveModal')">Hủy bỏ</button>
+                <button type="submit" class="wh-dialog-button wh-dialog-button--primary">
+                    <i class="bi bi-check-lg"></i> Xác nhận nhập kho
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MODAL 2: TỪ CHỐI YÊU CẦU NHẬP KHO ===== -->
+<div class="modal-overlay warehouse-dialog" id="rejectModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="rejectModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title wh-dialog-title--danger" id="rejectModalTitle">
+                <i class="bi bi-x-circle-fill" aria-hidden="true"></i> Từ Chối Yêu Cầu Nhập Kho
+            </h3>
+            <button class="modal-close" aria-label="Đóng" onclick="hideModal('rejectModal')" type="button">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <form method="post" asp-page-handler="Reject">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="receiptId" id="rejectReceiptId" />
+            <div class="modal-body">
+                <p class="wh-dialog-message">
+                    Từ chối yêu cầu nhập kho <strong id="rejectDisplayCode" style="color: #243d35;"></strong>. Yêu cầu sẽ được chuyển lại cho nhân viên sản xuất kèm lý do bên dưới để xử lý lại.
+                </p>
+                <div>
+                    <label for="rejectReason" class="wh-dialog-label">
+                        Lý do từ chối <span style="color: #a55449;">*</span>
+                    </label>
+                    <textarea name="reason" id="rejectReason" rows="3" maxlength="1000" required class="wh-dialog-input"
+                              placeholder="Nhập lý do cụ thể (sai bao bì, rách vỡ, số lượng không khớp, v.v.)..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="wh-dialog-button" onclick="hideModal('rejectModal')">Hủy bỏ</button>
+                <button type="submit" class="wh-dialog-button wh-dialog-button--danger">
+                    <i class="bi bi-x-lg"></i> Gửi lại cho Staff
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MODAL 3: XEM CHI TIẾT PHIẾU NHẬP KHO ===== -->
+<div class="modal-overlay warehouse-dialog" id="detailReceiptModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="detailReceiptModalTitle">
+        <div class="modal-header">
+            <h3 class="modal-title" id="detailReceiptModalTitle">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i> Chi Tiết Phiếu Nhập Kho Thành Phẩm
+            </h3>
+            <button class="modal-close" aria-label="Đóng" onclick="hideModal('detailReceiptModal')" type="button">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="wh-detail-summary">
+                <div>
+                    <span class="wh-dialog-label">Mã phiếu</span>
+                    <code id="detailCode" class="wh-dialog-code"></code>
+                </div>
+                <div>
+                    <span class="wh-dialog-label">Trạng thái</span>
+                    <div id="detailStatusBadge"></div>
+                </div>
+            </div>
+
+            <div class="wh-detail-grid">
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Ca · Ngày sản xuất</span>
+                    <div class="val" id="detailDateShift"></div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Lô thành phẩm (Mã LOT)</span>
+                    <div class="val" id="detailLot" style="font-family: monospace;"></div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Người gửi yêu cầu</span>
+                    <div class="val">
+                        <span id="detailRequester"></span>
+                        <div class="wh-dialog-caption" id="detailReqTime"></div>
+                    </div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Người xác nhận nhập</span>
+                    <div class="val">
+                        <span id="detailReceiver"></span>
+                        <div class="wh-dialog-caption" id="detailRecTime"></div>
+                    </div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Khối lượng đề nghị</span>
+                    <div class="val" id="detailExpQty"></div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Khối lượng thực nhập</span>
+                    <div class="val" id="detailActQty"></div>
+                </div>
+            </div>
+
+            <!-- Notes Section -->
+            <div id="detailReqNoteWrap" style="display: none;">
+                <span class="wh-dialog-label">Ghi chú gửi hàng từ Staff:</span>
+                <div id="detailReqNote" class="wh-note-block info"></div>
+            </div>
+
+            <div id="detailDiscNoteWrap" style="display: none;">
+                <span class="wh-dialog-label">Ghi chú đối chiếu từ Thủ kho:</span>
+                <div id="detailDiscNote" class="wh-note-block warning"></div>
+            </div>
+
+            <div id="detailRejReasonWrap" style="display: none;">
+                <span class="wh-dialog-label">Lý do từ chối:</span>
+                <div id="detailRejReason" class="wh-note-block danger"></div>
+            </div>
+
+            <div id="detailQcImgWrap" style="display: none;">
+                <a id="detailQcImgLink" class="wh-dialog-button" target="_blank" rel="noopener">
+                    <i class="bi bi-image" aria-hidden="true"></i> Xem ảnh kết quả kiểm tra QC
+                </a>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="wh-dialog-button" onclick="hideModal('detailReceiptModal')">Đóng</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('show');
+        }
+        function hideModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('show');
+        }
+        function openReceiveModal(id, code, expQty, lot) {
+            document.getElementById('receiveReceiptId').value = id;
+            document.getElementById('receiveDisplayCode').textContent = code;
+            document.getElementById('receiveDisplayLot').textContent = lot;
+            document.getElementById('receiveDisplayExpQty').textContent = expQty + ' kg';
+            document.getElementById('receiveActualQty').value = expQty;
+            document.getElementById('receiveNote').value = '';
+            showModal('receiveModal');
+        }
+        function openRejectModal(id, code) {
+            document.getElementById('rejectReceiptId').value = id;
+            document.getElementById('rejectDisplayCode').textContent = code;
+            document.getElementById('rejectReason').value = '';
+            showModal('rejectModal');
+        }
+        function openDetailModal(btn) {
+            const d = btn.dataset;
+            document.getElementById('detailCode').textContent = d.code || '';
+            document.getElementById('detailDateShift').textContent = d.dateShift || '';
+            document.getElementById('detailLot').textContent = d.lot || '';
+            document.getElementById('detailRequester').textContent = d.requester || '';
+            document.getElementById('detailReqTime').textContent = d.reqTime ? ('(' + d.reqTime + ')') : '';
+            document.getElementById('detailExpQty').textContent = d.expQty || '';
+            document.getElementById('detailActQty').textContent = d.actQty || 'Chưa nhập';
+            document.getElementById('detailReceiver').textContent = d.receiver || 'Chưa ghi nhận';
+            document.getElementById('detailRecTime').textContent = d.recTime ? ('(' + d.recTime + ')') : '';
+
+            // Status badge in modal
+            const statusBadgeEl = document.getElementById('detailStatusBadge');
+            const st = d.status || '';
+            if (st === 'Pending') {
+                statusBadgeEl.className = 'badge badge-pending';
+                statusBadgeEl.innerHTML = '<i class="bi bi-clock-fill" style="font-size: 8px; margin-right: 4px;"></i> Chờ duyệt';
+            } else if (st === 'Received') {
+                statusBadgeEl.className = 'badge badge-approved';
+                statusBadgeEl.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size: 8px; margin-right: 4px;"></i> Đã nhập kho';
+            } else if (st === 'Rejected') {
+                statusBadgeEl.className = 'badge badge-rejected';
+                statusBadgeEl.innerHTML = '<i class="bi bi-x-circle-fill" style="font-size: 8px; margin-right: 4px;"></i> Đã từ chối';
+            } else if (st === 'AwaitingStaffConfirmation') {
+                statusBadgeEl.className = 'badge badge-awaiting';
+                statusBadgeEl.innerHTML = '<i class="bi bi-hourglass-split" style="font-size: 8px; margin-right: 4px;"></i> Chờ xác nhận';
+            } else {
+                statusBadgeEl.className = 'badge badge-inactive';
+                statusBadgeEl.textContent = d.statusLabel || st;
+            }
+
+            // Ghi chú giao hàng
+            const reqNoteWrap = document.getElementById('detailReqNoteWrap');
+            if (d.reqNote && d.reqNote.trim() !== '') {
+                document.getElementById('detailReqNote').textContent = d.reqNote;
+                reqNoteWrap.style.display = 'block';
+            } else {
+                reqNoteWrap.style.display = 'none';
+            }
+
+            // Ghi chú đối chiếu
+            const discNoteWrap = document.getElementById('detailDiscNoteWrap');
+            if (d.discNote && d.discNote.trim() !== '') {
+                document.getElementById('detailDiscNote').textContent = d.discNote;
+                discNoteWrap.style.display = 'block';
+            } else {
+                discNoteWrap.style.display = 'none';
+            }
+
+            // Lý do từ chối
+            const rejReasonWrap = document.getElementById('detailRejReasonWrap');
+            if (d.rejReason && d.rejReason.trim() !== '') {
+                document.getElementById('detailRejReason').textContent = d.rejReason;
+                rejReasonWrap.style.display = 'block';
+            } else {
+                rejReasonWrap.style.display = 'none';
+            }
+
+            // Ảnh QC
+            const qcImgWrap = document.getElementById('detailQcImgWrap');
+            if (d.qcImgUrl && d.qcImgUrl.trim() !== '') {
+                document.getElementById('detailQcImgLink').href = d.qcImgUrl;
+                qcImgWrap.style.display = 'block';
+            } else {
+                qcImgWrap.style.display = 'none';
+            }
+
+            showModal('detailReceiptModal');
+        }
+
+        // Close on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('show');
+                }
+            });
+        });
+        // Close on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
+            }
+        });
+    </script>
+}

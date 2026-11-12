@@ -1,0 +1,52 @@
+.warehouse-overview { color: var(--text-primary); min-width: 0; }
+.warehouse-overview .page-header { margin-bottom: 28px; }
+.warehouse-overview .page-title { display: flex; align-items: center; gap: 14px; font-size: 34px; line-height: 1.3; margin: 0; }
+.wo-stock-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 28px; }
+.wo-stock-card { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); padding: 24px 28px; min-width: 0; }
+.wo-stock-card header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.wo-stock-card h2 { font-size: 16px; font-weight: 600; margin: 0; }
+.wo-stock-card header i { color: var(--primary); font-size: 24px; }
+.wo-stock-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; margin-top: 18px; font-variant-numeric: tabular-nums; }
+.wo-stock-value strong { font-size: 36px; line-height: 1.2; font-weight: 650; overflow-wrap: anywhere; }
+.wo-stock-value span { color: var(--text-secondary); font-size: 16px; }
+.wo-stock-card p { margin: 12px 0 0; color: var(--text-secondary); font-size: 13px; }
+.wo-history { min-width: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
+.wo-history-head { padding: 24px 28px 0; }
+.wo-history-head h2 { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; margin: 0; }
+.wo-filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding: 20px 28px 24px; }
+.wo-filter { flex: 1 1 160px; min-width: 0; max-width: 210px; }
+.wo-filter label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.wo-filter input, .wo-filter select { display: block; width: 100%; min-width: 0; min-height: 54px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--text-primary); padding: 12px; font: inherit; }
+.wo-filter input:focus-visible { outline: 2px solid #b5974f; outline-offset: 2px; }
+.wo-filters > button { min-height: 54px; flex-shrink: 0; }
+.wo-filter-error { margin: 0 28px 20px; color: #94473e; font-size: 14px; }
+.wo-table-scroll { width: 100%; overflow-x: auto; border-top: 1px solid var(--border); }
+.wo-table-scroll:focus-visible { outline: 2px solid #b5974f; outline-offset: -2px; }
+.wo-table { width: 100%; min-width: 1040px; border-collapse: collapse; font-size: 14px; }
+.wo-table th { padding: 14px 16px; text-align: left; background: var(--primary-light); color: var(--text-secondary); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.wo-table td { padding: 16px; vertical-align: top; border-top: 1px solid var(--border); }
+.wo-table tbody tr:hover { background: var(--bg-hover); }
+.wo-table time, .wo-table .wo-quantity { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wo-table time small { display: block; margin-top: 3px; color: var(--text-secondary); }
+.wo-quantity, .wo-table th.wo-quantity { text-align: right; }
+.wo-direction { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; white-space: nowrap; color: var(--primary); }
+.wo-direction.out { color: #8a692d; }
+.wo-item { min-width: 180px; max-width: 260px; overflow-wrap: anywhere; }
+.wo-reference { min-width: 100px; max-width: 160px; overflow-wrap: anywhere; font-weight: 600; }
+.wo-empty { padding: 44px 20px !important; text-align: center; color: var(--text-secondary); }
+.warehouse-overview .admin-pagination { justify-content: flex-end; }
+.warehouse-overview .admin-pagination > span { display: none; }
+@media(max-width: 767px) {
+    .warehouse-overview .page-title { font-size: 27px; }
+    .wo-stock-card { padding: 20px; }
+    .wo-stock-value strong { font-size: 30px; }
+    .wo-history-head { padding: 20px 20px 0; }
+    .wo-filters { padding: 20px; }
+    .wo-filter { max-width: none; }
+    .wo-filter-error { margin-inline: 20px; }
+}
+@media(max-width: 540px) {
+    .wo-stock-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .wo-filter { flex-basis: calc(50% - 12px); }
+    .wo-filters > button { width: 100%; }
+}

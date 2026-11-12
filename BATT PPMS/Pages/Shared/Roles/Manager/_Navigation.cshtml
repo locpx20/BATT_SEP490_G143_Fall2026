@@ -14,7 +14,7 @@
     <div class="owner-nav-label">Vận hành</div>
     <a class="nav-item @(ap == "PurchaseInvoice" ? "active" : "")" href="/PurchaseInvoices/Index"><i class="bi bi-inbox"></i><span>Danh sách yêu cầu thu mua</span></a>
     <a class="nav-item @(ap == "PurchasePrice" ? "active" : "")" href="/PurchasePrices/Index"><i class="bi bi-tag"></i><span>Giá thu mua NVL</span></a>
-    <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Phân công lao động</span></a>
+    <a class="nav-item @(ap == "Personnel" ? "active" : "")" href="/Personnel/Index"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Phân công công việc</span></a>
     <a class="nav-item @(ap == "QC" ? "active" : "")" href="/QC/Index"><i class="bi bi-patch-check" aria-hidden="true"></i><span>Kiểm tra chất lượng</span></a>
     <details class="owner-nav-details" open="@(ap is "Maintenance" or "MaterialPurchase" or "BrokenReport" or "Machines")">
         <summary class="nav-item"><i class="bi bi-wrench"></i><span>Sự cố &amp; bảo trì</span><i class="bi bi-chevron-down"></i></summary>

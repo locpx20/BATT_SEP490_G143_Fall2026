@@ -9,14 +9,18 @@
         const fields = shift.querySelector('[data-plan-fields]');
         const note = shift.querySelector('[data-plan-note]');
         const off = mode.querySelector('option[value="Off"]');
-        off.disabled = date.value !== form.dataset.today;
-        if (off.disabled && mode.value === 'Off') mode.value = mode.options[0].value;
+        if (off) {
+            off.disabled = date.value !== form.dataset.today;
+            if (off.disabled && mode.value === 'Off') mode.value = mode.options[0].value;
+        }
         const working = mode.value === 'Work';
         const scheduled = mode.value !== 'Skip';
         shift.dataset.mode = mode.value;
-        fields.hidden = fields.disabled = !working;
+        if (fields) {
+            fields.hidden = fields.disabled = !working;
+            fields.querySelectorAll('[data-plan-quantity]').forEach(input => input.required = working);
+        }
         note.hidden = note.disabled = !scheduled;
-        fields.querySelectorAll('[data-plan-quantity]').forEach(input => input.required = working);
     }
     shifts.forEach(shift => shift.querySelector('[data-plan-mode]')
         .addEventListener('change', () => updateShift(shift)));

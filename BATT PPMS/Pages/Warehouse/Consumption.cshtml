@@ -107,15 +107,17 @@
         </div>
     </header>
 
-    @if (Model.StaffView) {
-        var selectedDay = Model.EditId > 0 ? Model.Assignments.FirstOrDefault()?.AssignmentDate ?? Model.Today : Model.Today;
-        var workDates = Model.Assignments.Select(a => a.AssignmentDate).Append(selectedDay).Distinct().OrderBy(d => d).ToList();
+    @if (Model.StaffView && Model.Assignments.Count > 0) {
+        var workDates = Model.Assignments.Select(a => a.AssignmentDate).Distinct().OrderBy(d => d).ToList();
+        var preferredDay = Model.DateFilter ?? Model.Today;
+        var selectedDay = workDates.Contains(preferredDay)
+            ? preferredDay
+            : workDates.LastOrDefault(day => day <= Model.Today, workDates[0]);
         var canChooseDate = workDates.Count > 1;
-        var hasAvailableShift = Model.Assignments.Any(a => a.AssignmentDate == selectedDay);
         <div class="modal fade closeout-modal" id="consumptionEntry" tabindex="-1" aria-labelledby="consumptionEntryTitle" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                    <form method="post" asp-page-handler="Save">
+                    <form method="post" asp-page-handler="Save" asp-route-DateFilter="@Model.DateFilterInput">
                         <input type="hidden" asp-for="EditId" />
                         <div class="modal-header">
                             <h2 id="consumptionEntryTitle" class="modal-title">@(Model.EditId > 0 ? $"Chỉnh sửa phiếu TH-{Model.EditId:D4}" : "Nguyên liệu đã tiêu thụ")</h2>
@@ -137,8 +139,8 @@
                                 </div>
                                 <div class="closeout-field">
                                     <label for="AssignmentId">Ca làm việc</label>
-                                    <select asp-for="AssignmentId" required disabled="@(!hasAvailableShift)">
-                                        @if (Model.EditId == 0 || !hasAvailableShift) {
+                                    <select asp-for="AssignmentId" required>
+                                        @if (Model.EditId == 0) {
                                             <option value="">Chọn ca làm việc</option>
                                         }
                                         @foreach (var a in Model.Assignments) {
@@ -146,7 +148,6 @@
                                             <option value="@a.AssignmentId" data-date="@a.AssignmentDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" hidden="@otherDay" disabled="@otherDay">@(a.Shift ?? "Chưa ghi nhận ca")</option>
                                         }
                                     </select>
-                                    <small id="consumptionEntryNoShift" hidden="@hasAvailableShift">@(Model.EditId > 0 ? "Phân công của phiếu không còn hiệu lực." : "Không có ca chưa báo cáo trong ngày này.")</small>
                                 </div>
                                 <div class="closeout-field">
                                     <label for="QuantityKg">Tổng nguyên liệu đã sử dụng trong ca (kg)</label>
@@ -159,7 +160,7 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button id="consumptionEntrySubmit" type="submit" class="closeout-button primary" disabled="@(!hasAvailableShift)">
+                            <button type="submit" class="closeout-button primary">
                                 <i class="bi bi-send" aria-hidden="true"></i> Gửi Thủ kho duyệt
                             </button>
                         </div>
@@ -332,11 +333,7 @@
                 option.hidden = !match;
                 option.disabled = !match;
             }
-            const hasShift = options.some(option => !option.disabled);
             shiftSelect.value = '';
-            shiftSelect.disabled = !hasShift;
-            document.getElementById('consumptionEntryNoShift').hidden = hasShift;
-            document.getElementById('consumptionEntrySubmit').disabled = !hasShift;
             shiftSelect.dispatchEvent(new Event('change', { bubbles: true }));
         });
         function showModal(id) {

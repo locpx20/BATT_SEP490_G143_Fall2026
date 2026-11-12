@@ -55,6 +55,8 @@
         <h1><i class="bi @titleIcon" aria-hidden="true"></i> @listTitle</h1>
     </header>
 
+    <partial name="_CloseoutNotifications" model="Model.Notices" />
+
     <section class="closeout-register warehouse-plans" aria-label="@listTitle">
         <div class="closeout-section-head">
             <form method="get" asp-page="./Index" class="report-filters">
@@ -110,7 +112,7 @@
                         @foreach (var report in Model.Reports) {
                             var code = Model.ShowReceipts ? $"NK-{report.Id:D4}" : $"TH-{report.Id:D4}";
                             var statusClass = report.Status switch {
-                                "Approved" or "Received" or "AwaitingStaffConfirmation" => "approved",
+                                "Approved" or "Received" => "approved",
                                 "Rejected" => "rejected",
                                 _ => "pending"
                             };

@@ -62,6 +62,7 @@ namespace BATT_PPMS.Pages.Personnel
             return "Assigned";
         }
         public DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        public DateOnly EarliestNewPlanDate => Today.AddDays(1);
         public DateOnly? DisplayDate { get; private set; }
         public bool ShowingLatestPlanDate { get; private set; }
 
@@ -74,6 +75,7 @@ namespace BATT_PPMS.Pages.Personnel
         [BindProperty(SupportsGet = true)] public bool AllPlanShifts { get; set; } = true;
         [BindProperty(SupportsGet = true)] public int PageNumber { get; set; } = 1;
         [BindProperty(SupportsGet = true)] public bool Create { get; set; }
+        [BindProperty(SupportsGet = true)] public bool MarkDayOff { get; set; }
         [BindProperty(SupportsGet = true)] public string? EditShift { get; set; }
 
         // ── Inner DTO ────────────────────────────────────────────────────────
@@ -106,12 +108,17 @@ namespace BATT_PPMS.Pages.Personnel
             CanCreatePlan = IsManager;
             if (IsEditingPlan)
                 return await OpenPlanEditorAsync();
-            if (Create && !CanCreatePlan)
+            if ((Create || MarkDayOff) && !CanCreatePlan)
                 return RedirectToPage("/Auth/AccessDenied");
             if (CanCreatePlan)
             {
-                NewPlanDate = PlanDate ?? Today;
-                await LoadAvailableStaffAsync();
+                Create |= MarkDayOff;
+                NewPlanDate = MarkDayOff ? Today : PlanDate is { } day && day >= EarliestNewPlanDate
+                    ? day : EarliestNewPlanDate;
+                if (MarkDayOff)
+                    ShiftInputs = [new(), new(), new()];
+                else
+                    await LoadAvailableStaffAsync();
             }
             await LoadScheduleAsync();
             return Page();
@@ -273,7 +280,7 @@ namespace BATT_PPMS.Pages.Personnel
                 AllPlanShifts, shifts, rows, page, invalidDate, CurrentUserId, shiftStatuses, DaysOff: daysOff);
         }
 
-        [BindProperty] public DateOnly NewPlanDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        [BindProperty] public DateOnly NewPlanDate { get; set; }
         [BindProperty] public List<ShiftInput> ShiftInputs { get; set; } = [new() { Included = true }, new(), new()];
         [BindProperty] public DateOnly EstimateDate { get; set; } = DateOnly.FromDateTime(ProductionFlow.Now);
         [BindProperty] public decimal EstimateKg { get; set; }
@@ -305,7 +312,7 @@ namespace BATT_PPMS.Pages.Personnel
 
         public static IReadOnlyList<ProductionStage> ProductionStages { get; } =
         [
-            new("Băm nguyên liệu", "Máy băm"),
+            new("Băm nguyên liệu", ProductionAssignmentTasks.Chipper),
             new("Nghiền nguyên liệu", "Máy nghiền"),
             new("Sấy nguyên liệu", "Máy sấy"),
             new("Nén viên", "Máy nén"),
@@ -359,8 +366,8 @@ namespace BATT_PPMS.Pages.Personnel
 
         private static IEnumerable<PersonnelAssignment> AssignmentsForStage(IEnumerable<PersonnelAssignment> rows, int stageIndex)
         {
-            var name = StaffMachineName(ProductionStages[stageIndex].TaskDescription);
-            return rows.Where(row => StaffMachineName(row.TaskDescription ?? "") == name);
+            var name = ProductionAssignmentTasks.MachineName(ProductionStages[stageIndex].TaskDescription);
+            return rows.Where(row => ProductionAssignmentTasks.MachineName(row.TaskDescription) == name);
         }
 
         private async Task LoadAvailableStaffAsync(int[]? assignedStaff = null)
@@ -383,7 +390,8 @@ namespace BATT_PPMS.Pages.Personnel
                 ? await EditableAssignments(NewPlanDate, EditShift!).Where(a => a.StaffId.HasValue)
                     .Select(a => a.StaffId!.Value).Distinct().ToArrayAsync()
                 : [];
-            await LoadAvailableStaffAsync(assignedStaff);
+            if (!MarkDayOff || IsEditingPlan)
+                await LoadAvailableStaffAsync(assignedStaff);
             if (Create) await LoadScheduleAsync();
             return Page();
         }
@@ -415,6 +423,10 @@ namespace BATT_PPMS.Pages.Personnel
                 || await _context.ProductionMaterialRequests.AnyAsync(r => ids.Contains(r.AssignmentId));
         }
 
+        private string? ValidateNewPlanDate() => MarkDayOff
+            ? (NewPlanDate == Today ? null : "Chỉ được đánh dấu nghỉ cho ca của ngày hôm nay.")
+            : (NewPlanDate >= EarliestNewPlanDate ? null : "Chỉ được tạo phân công công việc từ ngày mai.");
+
         public async Task<IActionResult> OnPostCreatePlanAsync()
         {
             var check = RequireRole(RoleConstants.Manager);
@@ -423,11 +435,15 @@ namespace BATT_PPMS.Pages.Personnel
 
             if (!ModelState.IsValid || NewPlanDate.Year is < 2000 or > 2100 || ShiftInputs.Count != ProductionShifts.Count)
                 return await ShowPlanErrorAsync("Vui lòng kiểm tra ngày sản xuất và các trường số lượng.");
+            if (ValidateNewPlanDate() is { } dateError)
+                return await ShowPlanErrorAsync(dateError);
 
             var shifts = ShiftInputs.Select((input, index) => (Name: ProductionShifts[index], Input: input))
                 .Where(shift => shift.Input.SelectedMode != ShiftMode.Skip).ToList();
             if (shifts.Count == 0)
-                return await ShowPlanErrorAsync("Vui lòng chọn ít nhất một ca để phân công hoặc đánh dấu nghỉ.");
+                return await ShowPlanErrorAsync(MarkDayOff ? "Vui lòng chọn ít nhất một ca nghỉ." : "Vui lòng chọn ít nhất một ca để phân công.");
+            if (MarkDayOff && shifts.Any(shift => !shift.Input.IsDayOff))
+                return await ShowPlanErrorAsync("Chỉ được chọn Nghỉ hoặc Bỏ qua khi đánh dấu ca nghỉ.");
 
             foreach (var (name, input) in shifts)
             {
@@ -491,8 +507,8 @@ namespace BATT_PPMS.Pages.Personnel
                 var projected = workingShifts.Sum(shift => shift.Input.ExpectedMaterialKg!.Value);
                 await NotifyWarehouseOfPlanAsync(workingShifts.Select(shift => shift.Name), projected, offNames);
 
-                if (offNames.Length > 0 && NewPlanDate != Today)
-                    throw new ProductionFlowException("Chỉ được đánh dấu nghỉ cho ca của ngày hôm nay.");
+                if (ValidateNewPlanDate() is { } expiredDateError)
+                    throw new ProductionFlowException(expiredDateError);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
@@ -643,17 +659,6 @@ namespace BATT_PPMS.Pages.Personnel
             try{await new DailyMaterialPlanning(_context).Set(CurrentUserId,EstimateDate,EstimateKg);await _context.SaveChangesAsync();await tx.CommitAsync();SuccessMessage=$"Đã cập nhật {EstimateKg:N2} kg dự kiến ngày {EstimateDate:dd/MM/yyyy} cho Thủ kho.";}
             catch(ProductionFlowException ex){ErrorMessage=ex.Message;}
             return RedirectToPage(new { PlanDate = EstimateDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) });
-        }
-
-        public static string StaffMachineName(string task)
-        {
-            var description = task.ToLowerInvariant();
-            if (description.Contains("đóng gói") || description.Contains("đóng bao")) return "Đóng gói";
-            if (description.Contains("sấy")) return "Máy sấy";
-            if (description.Contains("nén") || description.Contains("ép viên")) return "Máy nén";
-            if (description.Contains("băm")) return "Máy băm";
-            if (description.Contains("nghiền")) return "Máy nghiền";
-            return task;
         }
 
         public class StageGroup

@@ -14,7 +14,7 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
     public static string Label(string? status) => status switch {
         "Pending" => "Chờ tiếp nhận", "In Progress" => "Đang kiểm tra", "Completed" => "Đã trả kết quả",
         "Pass" => "Đạt", "Fail" => "Không đạt", "Rejected" => "Bị từ chối", "Issued" => "Đã cấp nguyên liệu",
-        "Received" => "Đã nhập kho", "AwaitingStaffConfirmation" => "Chờ Staff xác nhận",
+        "Received" or "AwaitingStaffConfirmation" => "Đã nhập kho",
         "Submitted" => "Chờ Manager duyệt", "Approved" => "Đã duyệt", _ => status ?? "Chưa có" };
 
     public IQueryable<ProductionQualityRequest> QualityQuery => db.ProductionQualityRequests
@@ -32,9 +32,12 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         return value;
     }
     private async Task Actor(int userId, string role) => Need(await db.Users.AnyAsync(x => x.UserId == userId && x.Status == "Active" && x.Role.RoleName == role), "Tài khoản không có quyền thực hiện thao tác này.");
-    private async Task NotifyManagers(string message) {
-        var ids=await db.Users.Where(x=>x.Status=="Active"&&x.Role.RoleName==RoleConstants.Manager).Select(x=>x.UserId).ToListAsync();
-        foreach(var id in ids) Notifier.Add(db,id,"Thông tin nhập kho thành phẩm",message,"/Warehouse/Index?tab=receipts");
+    private async Task NotifyManagersOfReceipt(DateOnly productionDate, string message) {
+        var ids = await db.Users.Where(x => x.Status == "Active" && x.Role.RoleName == RoleConstants.Manager)
+            .Select(x => x.UserId).ToListAsync();
+        var date = productionDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        foreach (var id in ids)
+            Notifier.Add(db, id, "Đã nhập kho thành phẩm", message, $"/ShiftReports/Index?tab=receipts&ReportDate={date}&StatusFilter=Received");
     }
     private async Task<T> Change<T>(Func<Task<T>> action) {
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -56,23 +59,27 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             .Select(shift => shift.FirstOrDefault(a => a.AssignmentId == preferredAssignmentId) ?? shift.First())
             .ToList();
     }
-    public async Task<List<PersonnelAssignment>> ConsumptionShiftOptions(int staff, int editReportId = 0)
+    public async Task<List<PersonnelAssignment>> ConsumptionShiftOptions(int staff)
     {
-        var today = DateOnly.FromDateTime(Now);
-        var assignments = db.PersonnelAssignments.AsNoTracking()
-            .Where(a => a.StaffId == staff && a.Status != "Cancelled");
-        if (editReportId > 0)
-            return await assignments.Where(a => db.MaterialUsageReviews.Any(review =>
-                review.ReportId == editReportId && review.Report.StaffId == staff
-                && review.Report.AssignmentId == a.AssignmentId)).ToListAsync();
-
-        var available = await assignments
-            .Where(a => a.AssignmentDate >= today
+        var available = await db.PersonnelAssignments.AsNoTracking()
+            .Where(a => a.StaffId == staff && a.Status != "Cancelled"
                 && !db.MaterialUsageReviews.Any(review => review.Report.ShiftDate == a.AssignmentDate
                     && review.Report.Assignment.Shift == a.Shift))
             .OrderBy(a => a.AssignmentDate).ThenBy(a => a.Shift).ThenBy(a => a.AssignmentId)
             .ToListAsync();
-        return available.GroupBy(a => new { a.AssignmentDate, a.Shift }).Select(shift => shift.First()).ToList();
+        return available.Where(a => ProductionAssignmentTasks.IsChipping(a.TaskDescription))
+            .GroupBy(a => new { a.AssignmentDate, a.Shift }).Select(shift => shift.First()).ToList();
+    }
+
+    public async Task<HashSet<(DateOnly Date, string? Shift)>> ChippingShiftsAsync(int staff, DateOnly[] dates)
+    {
+        if (dates.Length == 0) return [];
+
+        var assignments = await db.PersonnelAssignments.AsNoTracking()
+            .Where(a => a.StaffId == staff && a.Status != "Cancelled" && dates.Contains(a.AssignmentDate))
+            .Select(a => new { a.AssignmentDate, a.Shift, a.TaskDescription }).ToListAsync();
+        return assignments.Where(a => ProductionAssignmentTasks.IsChipping(a.TaskDescription))
+            .Select(a => (a.AssignmentDate, a.Shift)).ToHashSet();
     }
 
     public Task<int> RequestQc(int staff, int assignmentId, int quantity, string? note) => Change(async () => {
@@ -98,19 +105,45 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         Need(request?.Inspection.Status == "Pending", "Yêu cầu không còn ở trạng thái chờ tiếp nhận.");
         request!.Inspection.Status = "In Progress"; request.Inspection.InspectedBy = qc; return requestId;
     });
-    public Task<int> FinishQc(int qc, int requestId, string? result, string? note, byte[]? image = null) => Change(async () => {
+    public Task<int> FinishQc(int qc, QcResultInput input, byte[] image) => Change(async () => {
         await Actor(qc, RoleConstants.QCStaff);
-        Need(result is "Pass" or "Fail", "Vui lòng chọn kết quả đạt hoặc không đạt.");
-        var text = Text(note, 5000, "kết luận kiểm tra", true);
-        var request = await QualityQuery.SingleOrDefaultAsync(x => x.RequestId == requestId);
+        var request = await QualityQuery.SingleOrDefaultAsync(x => x.RequestId == input.RequestId);
         Need(request?.Inspection.Status == "In Progress" && request.Inspection.InspectedBy == qc, "Chỉ nhân viên QC đã tiếp nhận được trả kết quả một lần.");
+        Need(input.Result is "Pass" or "Fail", "Vui lòng chọn kết quả đạt hoặc không đạt.");
+        Need(input.Grade is "A" or "B", "Vui lòng chọn hàng loại A hoặc hàng loại B.");
+        Need(input.HasImpurities.HasValue, "Vui lòng chọn có hoặc không có tạp chất.");
+        Need(input.PelletLengthMm is > 0 and <= 999999.99m && decimal.Round(input.PelletLengthMm.Value, 2) == input.PelletLengthMm,
+            "Độ dài viên phải lớn hơn 0 mm và có tối đa 2 chữ số thập phân.");
+        Need(input.AshPercent is >= 0 and <= 100 && decimal.Round(input.AshPercent.Value, 2) == input.AshPercent,
+            "Độ tro phải từ 0 đến 100% và có tối đa 2 chữ số thập phân.");
+        var text = Text(input.Note, 5000, "kết luận kiểm tra", true);
+        var details = new ProductionQcResult
+        {
+            RequestId = input.RequestId,
+            PelletColor = Text(input.PelletColor, 100, "màu sắc viên", true)!,
+            PelletDescription = Text(input.PelletDescription, 1000, "mô tả viên", true)!,
+            PelletLengthMm = input.PelletLengthMm!.Value,
+            Compaction = Text(input.Compaction, 100, "độ nén", true)!,
+            AshPercent = input.AshPercent!.Value,
+            HasImpurities = input.HasImpurities!.Value,
+            Grade = input.Grade!
+        };
+
         var inspection = request!.Inspection;
-        request.ResultImageType = QcEvidence.Validate(image); request.ResultImage = image;
-        inspection.Result = result; inspection.Note = string.Join("\n", new[] { inspection.Note, $"Kết luận QC: {text}" }.Where(x => !string.IsNullOrWhiteSpace(x)));
-        inspection.InspectDate = Now; inspection.Status = "Completed";
-        inspection.Batch.Status = result == "Pass" ? "Pending Receipt" : "QC Failed";
-        if(inspection.RequestedBy.HasValue) Notifier.Add(db,inspection.RequestedBy.Value,"QC đã trả kết quả kiểm tra",$"{inspection.InspectionCode}: {Label(result)}. {text}",result=="Pass"?$"/Warehouse/Index?tab=receipts&QualityRequestId={requestId}":"/QC/Index");
-        return requestId;
+        request.ResultImageType = QcEvidence.Validate(image);
+        request.ResultImage = image;
+        db.ProductionQcResults.Add(details);
+        inspection.Result = input.Result;
+        inspection.Note = string.Join("\n", new[] { inspection.Note, $"Kết luận QC: {text}" }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        inspection.InspectDate = Now;
+        inspection.Status = "Completed";
+        var passed = input.Result == "Pass";
+        inspection.Batch.Status = passed ? "Pending Receipt" : "QC Failed";
+        if (inspection.RequestedBy.HasValue)
+            Notifier.Add(db, inspection.RequestedBy.Value, "QC đã trả kết quả kiểm tra",
+                $"{inspection.InspectionCode}: {Label(input.Result)} · Hàng loại {details.Grade}. {text}",
+                passed ? $"/Warehouse/Index?tab=receipts&QualityRequestId={input.RequestId}" : $"/QC/Index?SearchTerm={inspection.InspectionCode}");
+        return input.RequestId;
     });
     private async Task SetUsage(EndOfShiftReport report, List<MaterialUsageInput>? input) {
         var rows = (input ?? new()).Where(x => x.Quantity.HasValue && x.Quantity != 0).ToList();
@@ -140,7 +173,14 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
     }
     public Task<int> SaveConsumption(int staff, int assignmentId, List<MaterialUsageInput> materials, string? note, int reportId = 0) => Change(async () => {
         await Actor(staff, RoleConstants.Staff); var assignment = await OwnAssignment(assignmentId, staff);
-        Need(reportId > 0 || assignment.AssignmentDate >= DateOnly.FromDateTime(Now), "Chỉ được tạo phiếu tiêu hao từ ngày hôm nay trở đi.");
+        var canReport = ProductionAssignmentTasks.IsChipping(assignment.TaskDescription);
+        if (!canReport && reportId > 0)
+        {
+            // Older reports may link to another task of the same shift.
+            var chippingShifts = await ChippingShiftsAsync(staff, [assignment.AssignmentDate]);
+            canReport = chippingShifts.Contains((assignment.AssignmentDate, assignment.Shift));
+        }
+        Need(canReport, "Bạn cần được phân công Máy băm trong ca này để nhập nguyên liệu tiêu thụ.");
         Need(!await db.MaterialUsageReviews.AnyAsync(x => x.ReportId != reportId
             && x.Report.ShiftDate == assignment.AssignmentDate && x.Report.Assignment.Shift == assignment.Shift),
             "Ca này đã có phiếu tiêu hao. Người gửi có thể sửa và gửi lại phiếu hiện có nếu cần.");
@@ -233,10 +273,19 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         return requestId;
     });
     public Task<int> RejectReceipt(int keeper, int receiptId, string? reason) => Change(async () => {
-        await Actor(keeper, RoleConstants.WarehouseStaff); var text = Text(reason, 1000, "lý do từ chối", true);
-        var r = await db.FinishedGoodsReceipts.SingleOrDefaultAsync(x => x.ReceiptId == receiptId);
-        Need(r?.Status == "Pending", "Yêu cầu đã được xử lý."); r!.Status = "Rejected"; r.RejectionReason = text; r.ReceivedBy = keeper;
-        if(r.RequestedBy.HasValue) Notifier.Add(db,r.RequestedBy.Value,"Yêu cầu nhập kho bị từ chối",$"NK-{receiptId:D4}: {text}","/Warehouse/Index?tab=receipts");
+        await Actor(keeper, RoleConstants.WarehouseStaff);
+        var text = Text(reason, 1000, "lý do từ chối", true);
+        var r = await db.FinishedGoodsReceipts.Include(x => x.QualityRequest).ThenInclude(x => x.Assignment)
+            .SingleOrDefaultAsync(x => x.ReceiptId == receiptId);
+        Need(r?.Status == "Pending", "Yêu cầu đã được xử lý.");
+        r!.Status = "Rejected";
+        r.RejectionReason = text;
+        r.ReceivedBy = keeper;
+        if (r.RequestedBy.HasValue) {
+            var date = r.QualityRequest.Assignment.AssignmentDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            Notifier.Add(db, r.RequestedBy.Value, "Yêu cầu nhập kho bị từ chối", $"NK-{receiptId:D4}: {text}",
+                $"/Warehouse/Index?tab=receipts&Step=4&StatusFilter=Rejected&ReceiptDate={date}");
+        }
         return receiptId;
     });
     public Task<int> ReceiveGoods(int keeper, int receiptId, decimal actual, string? note) => Change(async () => {
@@ -255,8 +304,7 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             "Ca này đã nhập lô thành phẩm tổng vào kho.");
         var text = Text(note, 2000, "ghi chú đối chiếu", actual != r.ExpectedQuantity);
         r.ActualQuantity = actual; r.DiscrepancyNote = text; r.ReceivedBy = keeper; r.ReceivedAt = Now;
-        // Preserve the user's diagram: discrepancy Yes -> Manager; No -> Staff confirmation -> Manager.
-        r.Status = actual != r.ExpectedQuantity ? "Received" : "AwaitingStaffConfirmation";
+        r.Status = "Received";
         r.QualityRequest.Inspection.Batch.Quantity = actual;
         r.QualityRequest.Inspection.Batch.Status = "In Stock";
         var keepers = await db.Users.Where(u => u.Status == "Active" && u.Role.RoleName == RoleConstants.WarehouseStaff)
@@ -264,16 +312,10 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         foreach (var id in keepers) Notifier.Add(db,id,"Kho thành phẩm đã cập nhật",
             $"Lô {r.QualityRequest.Inspection.Batch.BagNumber} đã nhập {actual:N2} kg theo phiếu NK-{receiptId:D4}.",
             "/Inventory/Index?tab=finished");
-        if(actual!=r.ExpectedQuantity) await NotifyManagers($"Phiếu NK-{receiptId:D4} đã nhập kho, chênh lệch {actual-r.ExpectedQuantity:N2} kg. {text}");
-        else if(r.RequestedBy.HasValue) Notifier.Add(db,r.RequestedBy.Value,"Xác nhận phiếu nhập thành phẩm",$"Phiếu NK-{receiptId:D4} chờ bạn xác nhận.","/Warehouse/Index?tab=receipts");
-        return receiptId;
-    });
-    public Task<int> ConfirmReceipt(int staff, int receiptId) => Change(async () => {
-        await Actor(staff, RoleConstants.Staff);
-        var r = await db.FinishedGoodsReceipts.SingleOrDefaultAsync(x => x.ReceiptId == receiptId && x.RequestedBy == staff);
-        Need(r?.Status == "AwaitingStaffConfirmation", "Phiếu không còn chờ xác nhận của bạn.");
-        r!.StaffConfirmedAt = Now; r.Status = "Received";
-        await NotifyManagers($"Staff đã xác nhận phiếu NK-{receiptId:D4}. Nhập kho thành phẩm hoàn tất.");
+        var summary = $"Phiếu NK-{receiptId:D4} đã nhập kho {actual:N2} kg.";
+        if (actual != r.ExpectedQuantity)
+            summary += $" Chênh lệch {actual - r.ExpectedQuantity:N2} kg. {text}";
+        await NotifyManagersOfReceipt(assignment.AssignmentDate, summary);
         return receiptId;
     });
 }

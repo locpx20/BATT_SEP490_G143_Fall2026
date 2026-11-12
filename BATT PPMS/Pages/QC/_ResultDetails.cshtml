@@ -1,0 +1,51 @@
+@using BATT_PPMS.Models
+@using BATT_PPMS.Services
+@model (ProductionQualityRequest Request, ProductionQcResult? Result)
+@{
+    var q = Model.Request;
+    var result = Model.Result;
+    var inspection = q.Inspection;
+    var detailId = $"qc-details-{inspection.InspectionId}";
+}
+<div class="modal fade closeout-modal qc-modal" id="@detailId" tabindex="-1" aria-labelledby="@(detailId + "-title")" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <section class="modal-content">
+            <header class="modal-header">
+                <h2 id="@(detailId + "-title")" class="modal-title">Chi tiết phiếu QC</h2>
+                <button type="button" class="closeout-modal-close" data-bs-dismiss="modal" aria-label="Đóng">×</button>
+            </header>
+            <div class="modal-body">
+                <dl class="qc-details">
+                    <div class="qc-wide"><dt>Mã lô</dt><dd><code>@inspection.Batch.BagNumber</code></dd></div>
+                    <div class="qc-wide"><dt>Mã phiếu</dt><dd><code>@inspection.InspectionCode</code></dd></div>
+                    <div><dt>Ngày sản xuất</dt><dd>@inspection.Batch.ProductionDate.ToString("dd/MM/yyyy")</dd></div>
+                    <div><dt>Ca sản xuất</dt><dd>@(q.Assignment.Shift ?? "Chưa ghi nhận ca")</dd></div>
+                    <div><dt>Người gửi</dt><dd>@(inspection.RequestedByNavigation?.FullName ?? "—")</dd></div>
+                    <div><dt>Nhân viên QC</dt><dd>@(inspection.InspectedByNavigation?.FullName ?? "—")</dd></div>
+                    <div><dt>Trạng thái</dt><dd>@ProductionFlow.Label(inspection.Status)</dd></div>
+                    <div><dt>Thời điểm kiểm tra</dt><dd>@(inspection.InspectDate?.ToString("HH:mm dd/MM/yyyy") ?? "—")</dd></div>
+                    @if (inspection.Result != null) {
+                        <div><dt>Kết quả kiểm tra</dt><dd>@ProductionFlow.Label(inspection.Result)</dd></div>
+                    }
+                    @if (result != null) {
+                        <div><dt>Phân loại hàng</dt><dd>Hàng loại @result.Grade</dd></div>
+                        <div><dt>Màu sắc viên</dt><dd>@result.PelletColor</dd></div>
+                        <div><dt>Độ dài viên</dt><dd>@result.PelletLengthMm.ToString("0.##") mm</dd></div>
+                        <div><dt>Độ nén</dt><dd>@result.Compaction</dd></div>
+                        <div><dt>Độ tro</dt><dd>@result.AshPercent.ToString("0.##")%</dd></div>
+                        <div><dt>Tạp chất</dt><dd>@(result.HasImpurities ? "Có" : "Không")</dd></div>
+                        <div class="qc-wide"><dt>Mô tả hình thức viên</dt><dd>@result.PelletDescription</dd></div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(inspection.Note)) {
+                        <div class="qc-wide"><dt>Ghi chú và kết luận</dt><dd>@inspection.Note</dd></div>
+                    }
+                </dl>
+                @if (q.ResultImage != null) {
+                    <a class="closeout-button secondary" asp-page="/QC/Index" asp-page-handler="Image" asp-route-requestId="@q.RequestId" target="_blank" rel="noopener">
+                        <i class="bi bi-image" aria-hidden="true"></i> Xem ảnh kết quả
+                    </a>
+                }
+            </div>
+        </section>
+    </div>
+</div>

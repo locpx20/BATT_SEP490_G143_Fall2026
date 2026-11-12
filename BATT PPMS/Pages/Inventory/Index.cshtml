@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Inventory.IndexModel
 @using BATT_PPMS.Helpers
 @using System.Globalization
@@ -587,15 +587,6 @@ else
                 <div class="wh-kpi-val" style="color: #15803d;">@Model.ReceivedReceiptsCount <span style="font-size: 13px; font-weight: 600; color: #64748b;">phiếu</span></div>
             </div>
         </div>
-
-        <section class="flow-card" aria-labelledby="rawStockHeading">
-            <h2 id="rawStockHeading" class="wh-card-title" style="padding:20px">Tồn kho nguyên liệu</h2>
-            <div class="flow-table-wrap"><table class="flow-table"><thead><tr><th>Nguyên liệu</th><th>Số lượng tồn</th><th>Đơn vị</th></tr></thead><tbody>
-            @foreach(var m in Model.Materials){<tr><td>@m.MaterialName</td><td>@m.CurrentQuantity.ToString("N2",viCulture)</td><td>@m.Unit</td></tr>}
-            @if(Model.Materials.Count==0){<tr><td colspan="3" class="flow-empty">Không có nguyên liệu phù hợp.</td></tr>}
-            </tbody></table></div>
-            <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination,"/Inventory/Index",new(){["Tab"]="raw",["SearchTerm"]=Model.SearchTerm,["StatusFilter"]=Model.StatusFilter,["SupplierFilter"]=Model.SupplierFilter?.ToString(),["DateFilter"]=Model.DateFilter,["CurrentPage"]=Model.CurrentPage.ToString(),["PageSize"]=Model.PageSize.ToString()})' />
-        </section>
 
         @if (Model.ViewMode != "imports")
         {

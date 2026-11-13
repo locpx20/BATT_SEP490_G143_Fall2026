@@ -19,6 +19,7 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         "Pass" => "Đạt", "Fail" => "Không đạt", "Rejected" => "Bị từ chối", "Issued" => "Đã cấp nguyên liệu",
         "Received" or "AwaitingStaffConfirmation" => "Đã nhập kho",
         "Submitted" => "Chờ Manager duyệt", "Approved" => "Đã duyệt", _ => status ?? "Chưa có" };
+    public static string QcStatusLabel(string? status) => status == "Pending" ? "Chờ kiểm tra" : Label(status);
 
     public IQueryable<ProductionQualityRequest> QualityQuery => db.ProductionQualityRequests
         .Include(x => x.Assignment).ThenInclude(x => x.AssignedByNavigation)
@@ -193,16 +194,8 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
     public static bool IsShiftIncidentNote(string? note) =>
         note?.StartsWith(ShiftIncidentNotePrefix, StringComparison.Ordinal) == true
         || note?.StartsWith("Lý do tách lô:", StringComparison.Ordinal) == true;
-    public Task<int> StartQc(int qc, int requestId) => Change(async () => {
-        await Actor(qc, RoleConstants.QCStaff);
-        var request = await QualityQuery.SingleOrDefaultAsync(x => x.RequestId == requestId);
-        Need(request?.Inspection.Status == "Pending", "Yêu cầu không còn ở trạng thái chờ tiếp nhận.");
-        request!.Inspection.Status = "In Progress"; request.Inspection.InspectedBy = qc; return requestId;
-    });
     public Task<int> FinishQc(int qc, QcResultInput input, byte[] image) => Change(async () => {
         await Actor(qc, RoleConstants.QCStaff);
-        var request = await QualityQuery.SingleOrDefaultAsync(x => x.RequestId == input.RequestId);
-        Need(request?.Inspection.Status == "In Progress" && request.Inspection.InspectedBy == qc, "Chỉ nhân viên QC đã tiếp nhận được trả kết quả một lần.");
         Need(input.Result is "Pass" or "Fail", "Vui lòng chọn kết quả đạt hoặc không đạt.");
         Need(input.Grade is "A" or "B", "Vui lòng chọn hàng loại A hoặc hàng loại B.");
         Need(input.HasImpurities.HasValue, "Vui lòng chọn có hoặc không có tạp chất.");
@@ -223,13 +216,35 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             Grade = input.Grade!
         };
 
+        var imageType = QcEvidence.Validate(image);
+        var lockName = FormattableString.Invariant($"ProductionQcResult:{input.RequestId}");
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                DECLARE @lockResult int;
+                EXEC @lockResult = sp_getapplock
+                    @Resource = {lockName}, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 5000;
+                IF @lockResult < 0 THROW 51022, 'Unable to lock the QC request.', 1;
+                """);
+        }
+        catch (SqlException ex) when (ex.Number is 51022 or 1205)
+        {
+            throw new ProductionFlowException("Yêu cầu đang được xử lý. Kiểm tra trạng thái trước khi gửi lại.");
+        }
+
+        var request = await db.ProductionQualityRequests.Include(q => q.Inspection).ThenInclude(i => i.Batch)
+            .SingleOrDefaultAsync(q => q.RequestId == input.RequestId);
+        Need(request != null, "Không tìm thấy yêu cầu kiểm tra.");
         var inspection = request!.Inspection;
-        request.ResultImageType = QcEvidence.Validate(image);
+        Need(inspection.Status == "Pending" || (inspection.Status == "In Progress" && inspection.InspectedBy == qc),
+            "Yêu cầu đã có kết quả hoặc đang do nhân viên QC khác phụ trách.");
+        request.ResultImageType = imageType;
         request.ResultImage = image;
         db.ProductionQcResults.Add(details);
         inspection.Result = input.Result;
         inspection.Note = string.Join("\n", new[] { inspection.Note, $"Kết luận QC: {text}" }.Where(x => !string.IsNullOrWhiteSpace(x)));
         inspection.InspectDate = Now;
+        inspection.InspectedBy = qc;
         inspection.Status = "Completed";
         var passed = input.Result == "Pass";
         inspection.Batch.Status = passed ? "Pending Receipt" : "QC Failed";

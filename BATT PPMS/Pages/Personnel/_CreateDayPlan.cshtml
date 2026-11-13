@@ -13,7 +13,8 @@
       asp-route-ShiftFilter="@(!editing ? Model.ShiftFilter : null)"
       asp-route-StatusFilter="@(!editing ? Model.StatusFilter : null)"
       asp-route-SearchTerm="@(!editing ? Model.SearchTerm : null)"
-      data-today="@today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">
+      data-today="@today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+      data-scheduled-url="@(!editing ? Url.Page("./Index", "ScheduledShifts") : null)">
     @if (editing) {
         <input asp-for="EditShift" type="hidden" />
     }
@@ -38,21 +39,38 @@
                 </nav>
             }
         </div>
+        @if (!editing) {
+            <p class="labor-message labor-message-error" role="status" data-plan-lookup-error hidden>Không tải được lịch ca. Hãy chọn lại ngày sản xuất.</p>
+        }
 
         @for (var i = 0; i < shifts.Count; i++) {
             var shift = shifts[i];
             var shiftInput = Model.ShiftInputs[i];
+            var scheduled = !editing && Model.ExistingCreateShifts.Contains(shift, StringComparer.OrdinalIgnoreCase);
             var mode = editing ? shiftInput.Mode ?? IndexModel.ShiftMode.Work : shiftInput.SelectedMode;
             var workersByStage = shiftInput.StaffByStage;
-            <section class="labor-form-shift" aria-labelledby="labor-form-shift-@i" data-plan-shift>
+            <section class="labor-form-shift" aria-labelledby="labor-form-shift-@i" data-plan-shift="@shift">
+                @if (!editing) {
+                    <input type="hidden" name="ShiftInputs[@i].Included" value="false" />
+                }
                 <header>
                     <div>
                         <h2 id="labor-form-shift-@i">@shift</h2>
                         <span><i class="bi bi-clock" aria-hidden="true"></i> @IndexModel.ShiftHours(shift)</span>
                     </div>
-                    <div class="labor-shift-choice">
+                    @if (!editing) {
+                        <div data-plan-existing hidden="@(!scheduled)">
+                            <a class="labor-button" asp-page="./Index" asp-route-PlanDate="@today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                               asp-route-EditShift="@shift" aria-label="Chỉnh sửa @shift" data-plan-edit
+                               hidden="@(Model.NewPlanDate != today)">
+                                <i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa
+                            </a>
+                            <span data-plan-readonly hidden="@(Model.NewPlanDate == today)">Đã có lịch</span>
+                        </div>
+                    }
+                    <div class="labor-shift-choice" data-plan-choice hidden="@scheduled">
                         <label asp-for="ShiftInputs[i].Mode">Lịch @shift.ToLowerInvariant()</label>
-                        <select asp-for="ShiftInputs[i].Mode" data-plan-mode>
+                        <select asp-for="ShiftInputs[i].Mode" data-plan-mode disabled="@scheduled">
                             @if (!editing) {
                                 <option value="" hidden selected="@(mode == IndexModel.ShiftMode.Skip)">Chọn lịch ca</option>
                             }
@@ -61,7 +79,7 @@
                         </select>
                     </div>
                 </header>
-                <fieldset class="labor-form-fields" data-plan-fields aria-labelledby="labor-form-shift-@i">
+                <fieldset class="labor-form-fields" data-plan-fields aria-labelledby="labor-form-shift-@i" hidden="@scheduled" disabled="@scheduled">
                     <div class="labor-form-quantities">
                         <div>
                             <label asp-for="ShiftInputs[i].ExpectedMaterialKg">Nguyên liệu tiêu thụ dự kiến cho 1 ca (kg)</label>
@@ -102,7 +120,7 @@
                         }
                     </div>
                 </fieldset>
-                <fieldset class="labor-form-note" data-plan-note>
+                <fieldset class="labor-form-note" data-plan-note hidden="@scheduled" disabled="@scheduled">
                     <label asp-for="ShiftInputs[i].Note">Ghi chú</label>
                     <textarea asp-for="ShiftInputs[i].Note" maxlength="1000" rows="2"></textarea>
                 </fieldset>
@@ -117,7 +135,7 @@
         } else {
             <button class="labor-button" type="button" data-plan-close>Hủy</button>
         }
-        <button class="labor-button labor-primary" type="submit">
+        <button class="labor-button labor-primary" type="submit" disabled="@(!editing && Model.ExistingCreateShifts.Count == shifts.Count)">
             <i class="bi bi-check2-circle" aria-hidden="true"></i> @(editing ? "Lưu chỉnh sửa" : "Lưu phân công công việc")
         </button>
     </footer>

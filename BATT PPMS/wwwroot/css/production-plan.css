@@ -173,6 +173,8 @@
 .labor-form-note { min-inline-size: 0; margin: 0; padding: 18px 22px; border: 0; }
 .labor-form-fields:not([hidden]) + .labor-form-note { padding-top: 0; }
 .labor-form-shift > fieldset[hidden] { display: none; }
+.labor-form [data-plan-edit][hidden],
+.labor-form [data-plan-lookup-error][hidden] { display: none; }
 .labor-form-quantities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .labor-form-quantities > div { display: flex; flex-direction: column; justify-content: flex-end; }
 .labor-form-stages { border-block: 1px solid var(--border); }

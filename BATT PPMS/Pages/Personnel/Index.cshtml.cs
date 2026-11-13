@@ -32,6 +32,7 @@ namespace BATT_PPMS.Pages.Personnel
 
         public bool CanCreatePlan { get; set; }
         public bool IsEditingPlan => !string.IsNullOrEmpty(EditShift);
+        public IReadOnlyList<string> ExistingCreateShifts { get; private set; } = [];
         public bool IsStaffView => IsStaff;
         public ProductionScheduleViewModel? StaffSchedule { get; private set; }
         public static string NormalizeAssignmentStatus(string? status) => status switch
@@ -112,11 +113,30 @@ namespace BATT_PPMS.Pages.Personnel
             {
                 var today = Today;
                 NewPlanDate = PlanDate is { } day && day >= today ? day : today;
+                ExistingCreateShifts = await FindScheduledShiftsAsync(NewPlanDate, ProductionShifts);
                 await LoadAvailableStaffAsync();
             }
             await LoadScheduleAsync();
             return Page();
         }
+
+        public async Task<IActionResult> OnGetScheduledShiftsAsync(DateOnly date)
+        {
+            var check = RequireRole(RoleConstants.Manager);
+            if (check != null) return check;
+            if (!ModelState.IsValid || date < Today || date.Year > 2100)
+                return BadRequest();
+
+            return new JsonResult(await FindScheduledShiftsAsync(date, ProductionShifts));
+        }
+
+        private async Task<string[]> FindScheduledShiftsAsync(DateOnly day, IReadOnlyList<string> shifts) =>
+            await _context.PersonnelAssignments.AsNoTracking()
+                .Where(a => a.AssignmentDate == day && shifts.Contains(a.Shift) && a.Status != "Cancelled")
+                .Select(a => a.Shift!)
+                .Union(_context.ShiftProductionPlans.AsNoTracking()
+                    .Where(plan => plan.PlanDate == day && shifts.Contains(plan.Shift)).Select(plan => plan.Shift))
+                .ToArrayAsync();
 
         private async Task LoadScheduleAsync()
         {
@@ -343,7 +363,7 @@ namespace BATT_PPMS.Pages.Personnel
             var assignments = await EditableAssignments(day, shift).AsNoTracking().ToListAsync();
             var projection = await _context.ShiftProductionPlans.AsNoTracking()
                 .SingleOrDefaultAsync(p => p.PlanDate == day && p.Shift == shift);
-            if (assignments.Count == 0 && projection?.IsDayOff != true)
+            if (assignments.Count == 0 && projection == null)
                 return PlanEditUnavailable(day, "Ca này chưa có lịch để chỉnh sửa.");
 
             NewPlanDate = day;
@@ -392,7 +412,12 @@ namespace BATT_PPMS.Pages.Personnel
                     .Select(a => a.StaffId!.Value).Distinct().ToArrayAsync()
                 : [];
             await LoadAvailableStaffAsync(assignedStaff);
-            if (Create) await LoadScheduleAsync();
+            if (Create)
+            {
+                if (NewPlanDate >= Today && NewPlanDate.Year <= 2100)
+                    ExistingCreateShifts = await FindScheduledShiftsAsync(NewPlanDate, ProductionShifts);
+                await LoadScheduleAsync();
+            }
             return Page();
         }
 
@@ -460,12 +485,8 @@ namespace BATT_PPMS.Pages.Personnel
                     && u.Role.RoleName == RoleConstants.Manager && u.Status == StatusConstants.Active);
                 if (!activeManager) return RedirectToPage("/Auth/AccessDenied");
 
-                var existing = await _context.PersonnelAssignments
-                    .Where(a => a.AssignmentDate == NewPlanDate && shiftNames.Contains(a.Shift) && a.Status != "Cancelled")
-                    .Select(a => a.Shift).Union(_context.ShiftProductionPlans
-                        .Where(plan => plan.PlanDate == NewPlanDate && shiftNames.Contains(plan.Shift)).Select(plan => plan.Shift))
-                    .ToListAsync();
-                if (existing.Count > 0)
+                var existing = await FindScheduledShiftsAsync(NewPlanDate, shiftNames);
+                if (existing.Length > 0)
                     throw new ProductionFlowException($"{string.Join(", ", existing.Order())} đã có lịch ngày {NewPlanDate:dd/MM/yyyy}. Chỉ chọn ca chưa có lịch khi tạo phiếu mới.");
                 if (offNames.Length > 0 && await HasShiftRecordsAsync(_context.PersonnelAssignments
                     .Where(a => a.AssignmentDate == NewPlanDate && offNames.Contains(a.Shift))))
@@ -551,7 +572,7 @@ namespace BATT_PPMS.Pages.Personnel
                 var assignments = await EditableAssignments(day, shift).ToListAsync();
                 var projection = await _context.ShiftProductionPlans
                     .SingleOrDefaultAsync(p => p.PlanDate == day && p.Shift == shift);
-                if (assignments.Count == 0 && projection?.IsDayOff != true)
+                if (assignments.Count == 0 && projection == null)
                     return PlanEditUnavailable(day, "Ca này chưa có lịch để chỉnh sửa.");
 
                 var removed = new List<PersonnelAssignment>();

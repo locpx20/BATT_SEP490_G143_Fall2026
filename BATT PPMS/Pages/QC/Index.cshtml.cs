@@ -18,7 +18,9 @@ namespace BATT_PPMS.Pages.QC
         public List<QcShiftOption> Assignments { get; set; } = new();
         public List<AppNotification> Notices { get; set; } = new();
         public IReadOnlyDictionary<int, ProductionQcResult> Results { get; private set; } = new Dictionary<int, ProductionQcResult>();
-        public List<ResultShift> ResultShifts { get; private set; } = new();
+        public bool HasResultForm => ResultLots.Count > 0;
+        public List<ResultLot> ResultLots { get; private set; } = [];
+        public ResultLot? RetryLot => ResultError == null ? null : ResultLots.Find(lot => lot.RequestId == ResultInput.RequestId);
         public string? ResultError { get; private set; }
         [BindProperty] public QcResultInput ResultInput { get; set; } = new();
         [BindProperty(SupportsGet = true)] public string? SearchTerm { get; set; }
@@ -28,8 +30,12 @@ namespace BATT_PPMS.Pages.QC
         public PageWindow Pagination { get; set; } = new(0, 1);
         [TempData] public string? SuccessMessage { get; set; }
         [TempData] public string? ErrorMessage { get; set; }
-        public bool CanFinish(ProductionQualityRequest q) => IsQCStaff && !Legacy && q.Inspection.Status == "In Progress" && q.Inspection.InspectedBy == CurrentUserId;
-        public sealed record ResultShift(int RequestId, DateOnly ProductionDate, string? Shift, string Lot);
+        public bool CanFinish(ProductionQualityRequest q) => IsQCStaff && !Legacy
+            && (q.Inspection.Status == "Pending" || (q.Inspection.Status == "In Progress" && q.Inspection.InspectedBy == CurrentUserId));
+        public sealed record ResultLot(int RequestId, string Code, DateOnly ProductionDate, string? Shift)
+        {
+            public string ShiftKey => $"{ProductionDate:yyyy-MM-dd}|{Shift?.Trim().ToUpperInvariant()}";
+        }
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -63,10 +69,12 @@ namespace BATT_PPMS.Pages.QC
                 Results = await _context.ProductionQcResults.AsNoTracking()
                     .Where(x => completedIds.Contains(x.RequestId)).ToDictionaryAsync(x => x.RequestId);
             if (IsQCStaff && (Requests.Any(CanFinish) || ResultError != null))
-                ResultShifts = await _context.ProductionQualityRequests.AsNoTracking()
-                    .Where(x => x.Inspection.Status == "In Progress" && x.Inspection.InspectedBy == CurrentUserId)
-                    .OrderByDescending(x => x.Inspection.Batch.ProductionDate).ThenBy(x => x.Assignment.Shift).ThenBy(x => x.RequestId)
-                    .Select(x => new ResultShift(x.RequestId, x.Inspection.Batch.ProductionDate, x.Assignment.Shift, x.Inspection.Batch.BagNumber))
+                ResultLots = await _context.ProductionQualityRequests.AsNoTracking()
+                    .Where(x => x.Inspection.Status == "Pending"
+                        || (x.Inspection.Status == "In Progress" && x.Inspection.InspectedBy == CurrentUserId))
+                    .OrderByDescending(x => x.Inspection.Batch.ProductionDate).ThenBy(x => x.Assignment.Shift)
+                    .ThenBy(x => x.Inspection.Batch.BagNumber).ThenBy(x => x.RequestId)
+                    .Select(x => new ResultLot(x.RequestId, x.Inspection.Batch.BagNumber, x.Inspection.Batch.ProductionDate, x.Assignment.Shift))
                     .ToListAsync();
             if (IsStaff) Assignments = await new ProductionFlow(_context).QcShiftOptions(CurrentUserId);
 
@@ -75,13 +83,7 @@ namespace BATT_PPMS.Pages.QC
         public async Task<IActionResult> OnPostRequestAsync(int assignmentId, int? bags, string? note, bool hasShiftIncident, string? exceptionReason) {
             var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
             if (!ModelState.IsValid) { ErrorMessage = "Kiểm tra lại ca và số bao thành phẩm."; return RedirectToPage(); }
-            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, bags, note, hasShiftIncident, exceptionReason); SuccessMessage = "Đã gửi yêu cầu tới nhân viên QC để tiếp nhận và kiểm tra chất lượng."; }
-            catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
-            return RedirectToPage();
-        }
-        public async Task<IActionResult> OnPostStartAsync(int requestId) {
-            var check = RequireRole(RoleConstants.QCStaff); if (check != null) return check;
-            try { await new ProductionFlow(_context).StartQc(CurrentUserId, requestId); SuccessMessage = "Đã tiếp nhận yêu cầu kiểm tra."; }
+            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, bags, note, hasShiftIncident, exceptionReason); SuccessMessage = "Đã gửi yêu cầu kiểm tra chất lượng cho nhân viên QC."; }
             catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
         }

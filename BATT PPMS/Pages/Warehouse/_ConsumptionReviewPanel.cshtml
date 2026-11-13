@@ -17,24 +17,25 @@
         <form method="get" class="closeout-filter" style="margin-left: 0;">
             <div class="usage-filter-field">
                 <label class="plan-filter-label" for="consumptionDate">Ngày làm việc</label>
-                <input id="consumptionDate" type="date" name="DateFilter" value="@Model.DateFilterInput" />
+                <input id="consumptionDate" type="date" name="DateFilter" value="@Model.DateFilterInput" required="@Model.StaffView" />
             </div>
             <div class="usage-filter-field">
                 <label for="consumptionStatus">Trạng thái</label>
-                <select id="consumptionStatus" name="@Model.FilterParameter" onchange="this.form.requestSubmit()" style="min-width: 180px;">
+                <select id="consumptionStatus" name="@Model.FilterParameter" onchange="@(Model.StaffView ? null : "this.form.requestSubmit()")" style="min-width: 180px;">
                     <option value="All" selected="@(Model.StatusFilter == "All")">Tất cả trạng thái</option>
                     @foreach (var state in new[] { "Pending", "Rejected", "Approved" }) {
                         <option value="@state" selected="@(state == Model.StatusFilter)">@(state == "Pending" ? "Chờ Thủ kho duyệt" : state == "Approved" ? "Đã trừ tồn" : "Cần chỉnh sửa")</option>
                     }
                 </select>
             </div>
-            <button class="closeout-button secondary" type="submit">Tìm kiếm</button>
+            <button class="closeout-button secondary" type="submit" name="SearchSubmitted" value="true">Tìm kiếm</button>
             @if (Model.StatusFilter != "All" || Model.DateFilter.HasValue || !string.IsNullOrWhiteSpace(Model.ShiftFilter)) {
                 <a class="plan-shift-link" href="/Warehouse/Consumption" style="padding: 10px 16px; border: 1px solid var(--plan-rule); border-radius: 8px;">Đặt lại</a>
             }
         </form>
-        @if (Model.CanCreateConsumption) {
-            <button type="button" class="closeout-button primary" data-bs-toggle="modal" data-bs-target="#consumptionEntry">
+        @if (Model.StaffView && Model.EditId == 0) {
+            <button type="button" class="closeout-button primary" data-bs-toggle="modal"
+                    data-bs-target="@(Model.CanCreateConsumption ? "#consumptionEntry" : "#consumptionEntryNotice")">
                 <i class="bi bi-plus-lg" aria-hidden="true"></i> Nhập nguyên liệu đã tiêu thụ
             </button>
         }
@@ -45,12 +46,14 @@
         <nav class="warehouse-plan-shifts" aria-label="Chọn ca làm việc" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px;">
             <div style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 @{ var allActive = string.IsNullOrWhiteSpace(Model.ShiftFilter); }
-                <a class="plan-shift-link @(allActive ? "active" : "")" asp-page="/Warehouse/Consumption" asp-route-DateFilter="@Model.NavigationDateInput" asp-route-StatusFilter="@Model.StatusFilter" aria-current="@(allActive ? "page" : null)">
+                @{ var navigationDate = Model.StaffView ? Model.DateFilterInput : Model.NavigationDateInput;
+                   var searched = Model.HasSearchedDate ? "true" : null; }
+                <a class="plan-shift-link @(allActive ? "active" : "")" asp-page="/Warehouse/Consumption" asp-route-DateFilter="@navigationDate" asp-route-StatusFilter="@Model.StatusFilter" asp-route-SearchSubmitted="@searched" aria-current="@(allActive ? "page" : null)">
                     Tất cả ca
                 </a>
                 @foreach (var shift in Model.ConsumptionShifts) {
                     var active = string.Equals(Model.ShiftFilter, shift, StringComparison.OrdinalIgnoreCase);
-                    <a class="plan-shift-link @(active ? "active" : "")" asp-page="/Warehouse/Consumption" asp-route-DateFilter="@Model.NavigationDateInput" asp-route-StatusFilter="@Model.StatusFilter" asp-route-ShiftFilter="@shift" aria-current="@(active ? "page" : null)">
+                    <a class="plan-shift-link @(active ? "active" : "")" asp-page="/Warehouse/Consumption" asp-route-DateFilter="@navigationDate" asp-route-StatusFilter="@Model.StatusFilter" asp-route-SearchSubmitted="@searched" asp-route-ShiftFilter="@shift" aria-current="@(active ? "page" : null)">
                         <i class="bi bi-clock" aria-hidden="true"></i> @shift
                     </a>
                 }

@@ -10,6 +10,7 @@
     var warehousePlans = Model.Tab == "plans" && Model.CanReceive;
     var isReceiptTab = Model.Tab != "plans";
     string FormatQuantity(decimal kg, string? lot) => Model.StaffView ? FinishedGoodsQuantity.ForStaff(kg, lot) : $"{kg:N2} kg";
+    string ReceiptDestination(string? grade) => grade is "A" or "B" ? $"Kho {grade}" : "Chưa phân loại";
 }
 @section Styles {
     <link rel="stylesheet" href="~/css/warehouse-dialogs.css" asp-append-version="true" />
@@ -729,11 +730,12 @@
                         <div class="warehouse-plans-scroll" role="region" aria-label="@receiptListLabel" tabindex="0">
                             <table class="warehouse-plans-table" aria-label="@receiptListLabel" style="min-width: @(Model.StaffView ? "930px" : "1180px");">
                                 <colgroup>
-                                    <col style="width: 11%;" />
+                                    <col style="width: 8%;" />
                                     <col style="width: 16%;" />
-                                    <col style="width: 18%;" />
-                                    <col style="width: 13%;" />
-                                    <col style="width: 13%;" />
+                                    <col style="width: 9%;" />
+                                    <col style="width: 16%;" />
+                                    <col style="width: 11%;" />
+                                    <col style="width: 11%;" />
                                     <col style="width: 12%;" />
                                     <col style="width: 17%;" />
                                 </colgroup>
@@ -741,6 +743,7 @@
                                     <tr>
                                         <th scope="col">Mã phiếu</th>
                                         <th scope="col">Lô thành phẩm</th>
+                                        <th scope="col">Phân loại QC</th>
                                         <th scope="col">@(Model.StaffView ? "Ngày / Ca sản xuất" : "Người gửi")</th>
                                         <th scope="col" style="text-align: right;">KL Đề nghị</th>
                                         <th scope="col" style="text-align: right;">KL Thực nhập</th>
@@ -751,7 +754,7 @@
                                 <tbody>
                                     @if (Model.Receipts.Count == 0) {
                                         <tr>
-                                            <td colspan="7" class="plan-empty" style="padding: 50px 20px; text-align: center;">
+                                            <td colspan="8" class="plan-empty" style="padding: 50px 20px; text-align: center;">
                                                 <i class="bi bi-box-seam" style="font-size: 32px; display: block; margin-bottom: 8px; color: #96a298;" aria-hidden="true"></i>
                                                 @if (Model.StaffView) {
                                                     <div style="font-size: 16px; font-weight: 700; color: #243d35;">@(Model.StaffReceivedView ? "Chưa có phiếu đã nhập kho phù hợp" : "Chưa có yêu cầu nhập kho phù hợp")</div>
@@ -767,6 +770,8 @@
                                         var isReceived = r.Status is "Received" or "AwaitingStaffConfirmation";
                                         var isRejected = r.Status == "Rejected";
                                         var lot = r.QualityRequest.Inspection.Batch.BagNumber;
+                                        var grade = Model.ReceiptGrades.GetValueOrDefault(r.QualityRequestId);
+                                        var destination = ReceiptDestination(grade);
                                         <tr>
                                             <!-- Mã phiếu -->
                                             <td class="plan-index" style="font-family: monospace; font-weight: 700; font-size: 15.5px;">
@@ -783,6 +788,15 @@
                                                        class="qc-img-badge" title="Xem ảnh biên bản kiểm tra QC đạt">
                                                         <i class="bi bi-image"></i> Ảnh QC đạt
                                                     </a>
+                                                }
+                                            </td>
+
+                                            <td>
+                                                @if (grade != null) {
+                                                    <span class="badge @(grade == "A" ? "badge-approved" : "badge-pending")">Loại @grade</span>
+                                                    <div><small>@destination</small></div>
+                                                } else {
+                                                    <span class="badge badge-inactive">@destination</span>
                                                 }
                                             </td>
 
@@ -837,8 +851,14 @@
                                                 <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap;">
                                                     @if (Model.CanReceive && isPending) {
                                                         <button type="button" class="btn-wh-action btn-wh-receive"
-                                                                onclick="openReceiveModal(@r.ReceiptId, 'NK-@r.ReceiptId.ToString("D4")', '@r.ExpectedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)', '@r.QualityRequest.Inspection.Batch.BagNumber')"
-                                                                title="Duyệt và lập phiếu nhập kho">
+                                                                data-receipt-id="@r.ReceiptId"
+                                                                data-code="NK-@r.ReceiptId.ToString("D4")"
+                                                                data-exp-qty="@r.ExpectedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                                data-lot="@lot"
+                                                                data-grade="@grade"
+                                                                data-destination="@destination"
+                                                                onclick="openReceiveModal(this)"
+                                                                title="@(grade == null ? "Duyệt nhập kho thành phẩm" : $"Duyệt nhập vào {destination}")">
                                                             <i class="bi bi-check-lg"></i> Đồng ý
                                                         </button>
                                                         <button type="button" class="btn-wh-action btn-wh-reject"
@@ -854,6 +874,8 @@
                                                             data-status-label="@ProductionFlow.Label(r.Status)"
                                                             data-date-shift="@(r.QualityRequest.Assignment.Shift) · Ngày @r.QualityRequest.Assignment.AssignmentDate.ToString("dd/MM/yyyy")"
                                                             data-lot="@r.QualityRequest.Inspection.Batch.BagNumber"
+                                                            data-grade="@grade"
+                                                            data-destination="@destination"
                                                             data-requester="@(r.Requester?.FullName ?? "Tài khoản đã xóa")"
                                                             data-req-time="@r.RequestedAt.ToString("HH:mm dd/MM/yyyy")"
                                                             data-exp-qty="@FormatQuantity(r.ExpectedQuantity, lot)"
@@ -918,6 +940,11 @@
                         <span class="wh-dialog-label">KL Đề nghị</span>
                         <div class="wh-dialog-value" id="receiveDisplayExpQty"></div>
                     </div>
+                </div>
+
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Kho nhập theo kết quả QC</span>
+                    <div class="wh-dialog-value" id="receiveDestination"></div>
                 </div>
 
                 <div>
@@ -1018,6 +1045,14 @@
                     <div class="val" id="detailLot" style="font-family: monospace;"></div>
                 </div>
                 <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Phân loại QC</span>
+                    <div class="val" id="detailGrade"></div>
+                </div>
+                <div class="wh-detail-field">
+                    <span class="wh-dialog-label">Kho theo phân loại QC</span>
+                    <div class="val" id="detailDestination"></div>
+                </div>
+                <div class="wh-detail-field">
                     <span class="wh-dialog-label">Người gửi yêu cầu</span>
                     <div class="val">
                         <span id="detailRequester"></span>
@@ -1095,12 +1130,14 @@
             const el = document.getElementById(id);
             if (el) el.classList.remove('show');
         }
-        function openReceiveModal(id, code, expQty, lot) {
-            document.getElementById('receiveReceiptId').value = id;
-            document.getElementById('receiveDisplayCode').textContent = code;
-            document.getElementById('receiveDisplayLot').textContent = lot;
-            document.getElementById('receiveDisplayExpQty').textContent = expQty + ' kg';
-            document.getElementById('receiveActualQty').value = expQty;
+        function openReceiveModal(button) {
+            const d = button.dataset;
+            document.getElementById('receiveReceiptId').value = d.receiptId;
+            document.getElementById('receiveDisplayCode').textContent = d.code;
+            document.getElementById('receiveDisplayLot').textContent = d.lot;
+            document.getElementById('receiveDisplayExpQty').textContent = d.expQty + ' kg';
+            document.getElementById('receiveDestination').textContent = d.grade ? d.destination + ' · Loại ' + d.grade : d.destination;
+            document.getElementById('receiveActualQty').value = d.expQty;
             document.getElementById('receiveNote').value = '';
             showModal('receiveModal');
         }
@@ -1115,6 +1152,8 @@
             document.getElementById('detailCode').textContent = d.code || '';
             document.getElementById('detailDateShift').textContent = d.dateShift || '';
             document.getElementById('detailLot').textContent = d.lot || '';
+            document.getElementById('detailGrade').textContent = d.grade ? 'Loại ' + d.grade : 'Chưa phân loại';
+            document.getElementById('detailDestination').textContent = d.grade ? d.destination : '—';
             document.getElementById('detailRequester').textContent = d.requester || '';
             document.getElementById('detailReqTime').textContent = d.reqTime ? ('(' + d.reqTime + ')') : '';
             document.getElementById('detailExpQty').textContent = d.expQty || '';

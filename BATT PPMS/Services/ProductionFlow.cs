@@ -97,16 +97,24 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
                 q.Inspection.Status == "Completed" && q.Inspection.Result == "Fail", q.Inspection.Note))
             .ToListAsync();
 
-    public async Task<List<PersonnelAssignment>> ConsumptionShiftOptions(int staff)
+    public async Task<(bool HasChipperAssignment, List<PersonnelAssignment> AvailableShifts)> ConsumptionShiftOptions(
+        int staff, DateOnly date, string? shift = null)
     {
-        var available = await db.PersonnelAssignments.AsNoTracking()
-            .Where(a => a.StaffId == staff && a.Status != "Cancelled"
-                && !db.MaterialUsageReviews.Any(review => review.Report.ShiftDate == a.AssignmentDate
-                    && review.Report.Assignment.Shift == a.Shift))
+        var assignments = await db.PersonnelAssignments.AsNoTracking()
+            .Where(a => a.StaffId == staff && a.Status != "Cancelled" && a.AssignmentDate == date
+                && (shift == null || a.Shift == shift))
             .OrderBy(a => a.AssignmentDate).ThenBy(a => a.Shift).ThenBy(a => a.AssignmentId)
+            .Select(a => new
+            {
+                Assignment = a,
+                HasReport = db.MaterialUsageReviews.Any(review => review.Report.ShiftDate == a.AssignmentDate
+                    && review.Report.Assignment.Shift == a.Shift)
+            })
             .ToListAsync();
-        return available.Where(a => ProductionAssignmentTasks.IsChipping(a.TaskDescription))
+        var chipperAssignments = assignments.Where(a => ProductionAssignmentTasks.IsChipping(a.Assignment.TaskDescription)).ToList();
+        var availableShifts = chipperAssignments.Where(a => !a.HasReport).Select(a => a.Assignment)
             .GroupBy(a => new { a.AssignmentDate, a.Shift }).Select(shift => shift.First()).ToList();
+        return (chipperAssignments.Count > 0, availableShifts);
     }
 
     public async Task<HashSet<(DateOnly Date, string? Shift)>> ChippingShiftsAsync(int staff, DateOnly[] dates)
@@ -250,14 +258,17 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             usage.Quantity = row.Quantity!.Value;
         }
     }
-    public async Task<int> SaveConsumptionKg(int staff, int assignmentId, decimal quantityKg, string? note, int reportId = 0) {
+    public async Task<int> SaveConsumptionKg(int staff, int assignmentId, decimal quantityKg, string? note, int reportId = 0,
+        DateOnly? selectedDate = null, string? selectedShift = null) {
         Need(quantityKg > 0 && quantityKg <= 9999999999.99m && decimal.Round(quantityKg,2) == quantityKg, "Khối lượng phải lớn hơn 0 kg và tối đa 2 chữ số thập phân.");
         var materials=await db.RawMaterials.AsNoTracking().Where(x=>x.Unit.Trim().ToLower()=="kg").OrderBy(x=>x.MaterialId).ToListAsync();
         Need(materials.Count>0, "Kho chưa có nguyên liệu theo đơn vị kg.");
         Need(materials.Select(x=>x.MaterialName.Trim().ToUpperInvariant()).Distinct().Count()==1, "Kho có nhiều loại nguyên liệu khác nhau. Cần xác định loại nguyên liệu sản xuất trước khi khai báo.");
-        return await SaveConsumption(staff,assignmentId,new(){new(){MaterialId=materials[0].MaterialId,Quantity=quantityKg}},note,reportId);
+        return await SaveConsumption(staff,assignmentId,new(){new(){MaterialId=materials[0].MaterialId,Quantity=quantityKg}},note,reportId,
+            selectedDate, selectedShift);
     }
-    public Task<int> SaveConsumption(int staff, int assignmentId, List<MaterialUsageInput> materials, string? note, int reportId = 0) => Change(async () => {
+    public Task<int> SaveConsumption(int staff, int assignmentId, List<MaterialUsageInput> materials, string? note, int reportId = 0,
+        DateOnly? selectedDate = null, string? selectedShift = null) => Change(async () => {
         await Actor(staff, RoleConstants.Staff); var assignment = await OwnAssignment(assignmentId, staff);
         var canReport = ProductionAssignmentTasks.IsChipping(assignment.TaskDescription);
         if (!canReport && reportId > 0)
@@ -267,6 +278,11 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             canReport = chippingShifts.Contains((assignment.AssignmentDate, assignment.Shift));
         }
         Need(canReport, "Bạn cần được phân công Máy băm trong ca này để nhập nguyên liệu tiêu thụ.");
+        if (reportId == 0) {
+            Need((selectedDate == null || assignment.AssignmentDate == selectedDate)
+                && (string.IsNullOrWhiteSpace(selectedShift) || string.Equals(assignment.Shift, selectedShift, StringComparison.OrdinalIgnoreCase)),
+                "Bạn không có quyền nhập cho ngày hoặc ca đang chọn.");
+        }
         Need(!await db.MaterialUsageReviews.AnyAsync(x => x.ReportId != reportId
             && x.Report.ShiftDate == assignment.AssignmentDate && x.Report.Assignment.Shift == assignment.Shift),
             "Ca này đã có phiếu tiêu hao. Người gửi có thể sửa và gửi lại phiếu hiện có nếu cần.");
@@ -353,8 +369,11 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             q.Receipt.RequestNote = Text(note, 2000, "nội dung điều chỉnh", true);
             q.Receipt.Status = "Pending"; q.Receipt.RequestedAt = Now;
         } else db.FinishedGoodsReceipts.Add(new() { QualityRequest = q, RequestedBy = staff, RequestedAt = Now, ExpectedQuantity = q.Inspection.Batch.Quantity, RequestNote = Text(note, 2000, "ghi chú yêu cầu") });
+        var grade = await db.ProductionQcResults.Where(result => result.RequestId == requestId)
+            .Select(result => result.Grade).SingleOrDefaultAsync();
+        var qcSummary = grade is "A" or "B" ? $"QC đạt, loại {grade} · Kho {grade}." : "QC đạt, chưa phân loại A/B.";
         var keepers=await db.Users.Where(x=>x.Status=="Active"&&x.Role.RoleName==RoleConstants.WarehouseStaff).Select(x=>x.UserId).ToListAsync();
-        foreach(var keeper in keepers)Notifier.Add(db,keeper,"Yêu cầu nhập thành phẩm chờ duyệt",$"Lô {q.Inspection.Batch.BagNumber}, {q.Inspection.Batch.Quantity:N2} kg. QC đã trả kết quả đạt.","/Warehouse/Index?tab=receipts&StatusFilter=Pending");
+        foreach(var keeper in keepers)Notifier.Add(db,keeper,"Yêu cầu nhập thành phẩm chờ duyệt",$"Lô {q.Inspection.Batch.BagNumber}, {q.Inspection.Batch.Quantity:N2} kg. {qcSummary}","/Warehouse/Index?tab=receipts&StatusFilter=Pending");
         return requestId;
     });
     public Task<int> RejectReceipt(int keeper, int receiptId, string? reason) => Change(async () => {
@@ -382,6 +401,10 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             .SingleOrDefaultAsync(x => x.ReceiptId == receiptId);
         Need(r?.Status == "Pending", "Yêu cầu đã được xử lý; không thể nhập kho lần nữa.");
         Need(r!.QualityRequest.Inspection.Status == "Completed" && r.QualityRequest.Inspection.Result == "Pass", "Lô hàng chưa có kết quả QC đạt.");
+        var grade = await db.ProductionQcResults.Where(result => result.RequestId == r.QualityRequestId)
+            .Select(result => result.Grade).SingleOrDefaultAsync();
+        var destination = grade is "A" or "B" ? $" vào Kho {grade}" : "";
+        var stockUrl = grade is "A" or "B" ? $"/Inventory/Index?tab=finished&StockGrade={grade}" : "/Inventory/Index?tab=finished";
         var assignment = r.QualityRequest.Assignment;
         Need(!await db.FinishedGoodsReceipts.AnyAsync(x => x.ReceiptId != receiptId && x.ReceivedAt != null && x.ActualQuantity > 0
             && x.QualityRequest.Inspection.BatchId == r.QualityRequest.Inspection.BatchId),
@@ -394,9 +417,9 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         var keepers = await db.Users.Where(u => u.Status == "Active" && u.Role.RoleName == RoleConstants.WarehouseStaff)
             .Select(u => u.UserId).ToListAsync();
         foreach (var id in keepers) Notifier.Add(db,id,"Kho thành phẩm đã cập nhật",
-            $"Lô {r.QualityRequest.Inspection.Batch.BagNumber} đã nhập {actual:N2} kg theo phiếu NK-{receiptId:D4}.",
-            "/Inventory/Index?tab=finished");
-        var summary = $"Phiếu NK-{receiptId:D4} đã nhập kho {actual:N2} kg.";
+            $"Lô {r.QualityRequest.Inspection.Batch.BagNumber} đã nhập {actual:N2} kg{destination} theo phiếu NK-{receiptId:D4}.",
+            stockUrl);
+        var summary = $"Phiếu NK-{receiptId:D4} đã nhập kho {actual:N2} kg{destination}.";
         if (actual != r.ExpectedQuantity)
             summary += $" Chênh lệch {actual - r.ExpectedQuantity:N2} kg. {text}";
         await NotifyManagersOfReceipt(assignment.AssignmentDate, summary);

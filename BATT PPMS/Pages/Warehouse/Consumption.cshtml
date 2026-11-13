@@ -13,6 +13,32 @@
     <style>
         #consumptionEntry .consumption-entry-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 
+        #consumptionEntryNotice .modal-dialog {
+            width: min(420px, calc(100% - 32px));
+            margin: 16px auto;
+            min-height: calc(100% - 32px);
+        }
+        #consumptionEntryNotice .consumption-notice {
+            display: grid;
+            justify-items: center;
+            gap: 16px;
+            padding: clamp(20px, 6vw, 32px);
+            text-align: center;
+            overflow-y: auto;
+        }
+        .consumption-notice-icon {
+            display: grid;
+            place-items: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary);
+            font-size: 22px;
+        }
+        .consumption-notice h2 { color: var(--primary); font-size: 18px; font-weight: 650; line-height: 1.5; }
+        .consumption-notice .closeout-button { min-width: 110px; }
+
         .warehouse-table-records {
             padding: 0 !important;
         }
@@ -108,16 +134,12 @@
     </header>
 
     @if (Model.StaffView && Model.Assignments.Count > 0) {
-        var workDates = Model.Assignments.Select(a => a.AssignmentDate).Distinct().OrderBy(d => d).ToList();
-        var preferredDay = Model.DateFilter ?? Model.Today;
-        var selectedDay = workDates.Contains(preferredDay)
-            ? preferredDay
-            : workDates.LastOrDefault(day => day <= Model.Today, workDates[0]);
-        var canChooseDate = workDates.Count > 1;
+        var entryDate = Model.Assignments[0].AssignmentDate;
         <div class="modal fade closeout-modal" id="consumptionEntry" tabindex="-1" aria-labelledby="consumptionEntryTitle" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
-                    <form method="post" asp-page-handler="Save" asp-route-DateFilter="@Model.DateFilterInput">
+                    <form method="post" asp-page-handler="Save" asp-route-DateFilter="@Model.NavigationDateInput"
+                          asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-SearchSubmitted="@Model.HasSearchedDate">
                         <input type="hidden" asp-for="EditId" />
                         <div class="modal-header">
                             <h2 id="consumptionEntryTitle" class="modal-title">@(Model.EditId > 0 ? $"Chỉnh sửa phiếu TH-{Model.EditId:D4}" : "Nguyên liệu đã tiêu thụ")</h2>
@@ -127,15 +149,7 @@
                             <div class="consumption-entry-fields">
                                 <div class="closeout-field">
                                     <label for="consumptionEntryDate">Ngày làm việc</label>
-                                    @if (canChooseDate) {
-                                        <select id="consumptionEntryDate">
-                                            @foreach (var date in workDates) {
-                                                <option value="@date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" selected="@(date == selectedDay)">@date.ToString("dd/MM/yyyy")</option>
-                                            }
-                                        </select>
-                                    } else {
-                                        <input id="consumptionEntryDate" type="text" value="@selectedDay.ToString("dd/MM/yyyy")" readonly />
-                                    }
+                                    <input id="consumptionEntryDate" type="text" value="@entryDate.ToString("dd/MM/yyyy")" readonly />
                                 </div>
                                 <div class="closeout-field">
                                     <label for="AssignmentId">Ca làm việc</label>
@@ -144,8 +158,7 @@
                                             <option value="">Chọn ca làm việc</option>
                                         }
                                         @foreach (var a in Model.Assignments) {
-                                            var otherDay = a.AssignmentDate != selectedDay;
-                                            <option value="@a.AssignmentId" data-date="@a.AssignmentDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)" hidden="@otherDay" disabled="@otherDay">@(a.Shift ?? "Chưa ghi nhận ca")</option>
+                                            <option value="@a.AssignmentId">@(a.Shift ?? "Chưa ghi nhận ca")</option>
                                         }
                                     </select>
                                 </div>
@@ -165,6 +178,19 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    } else if (Model.StaffView) {
+        <div class="modal fade closeout-modal" id="consumptionEntryNotice" tabindex="-1"
+             aria-labelledby="consumptionEntryNoticeMessage" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content consumption-notice">
+                    <span class="consumption-notice-icon" aria-hidden="true">
+                        <i class="bi @(Model.HasSearchedDate && !Model.HasChipperAssignment ? "bi-shield-lock" : "bi-info-circle")"></i>
+                    </span>
+                    <h2 id="consumptionEntryNoticeMessage">@Model.EntryNotice</h2>
+                    <button type="button" class="closeout-button primary" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>
@@ -324,18 +350,6 @@
         <script>bootstrap.Modal.getOrCreateInstance(document.getElementById("consumptionEntry")).show();</script>
     }
     <script>
-        const consumptionEntryDate = document.querySelector('select#consumptionEntryDate');
-        consumptionEntryDate?.addEventListener('change', () => {
-            const shiftSelect = document.getElementById('AssignmentId');
-            const options = [...shiftSelect.options].slice(1);
-            for (const option of options) {
-                const match = option.dataset.date === consumptionEntryDate.value;
-                option.hidden = !match;
-                option.disabled = !match;
-            }
-            shiftSelect.value = '';
-            shiftSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        });
         function showModal(id) {
             const el = document.getElementById(id);
             if (el) el.classList.add('show');

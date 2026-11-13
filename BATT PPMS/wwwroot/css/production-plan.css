@@ -161,7 +161,6 @@
 .labor-form { display: grid; gap: 16px; }
 .labor-form-body { display: grid; gap: 16px; }
 .labor-form-date { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px 24px; padding: 18px 22px; }
-.labor-select-all { margin-inline-start: auto; }
 .labor-form-shift h2 { scroll-margin-top: 20px; }
 .labor-form-shift > header { padding: 16px 22px; border-radius: 11px; }
 .labor-form-shift:is([data-mode="Work"], [data-mode="Off"]) > header {
@@ -265,7 +264,6 @@
     .labor-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .labor-estimates { width: 100%; }
     .labor-form-date, .labor-form-shift > header, .labor-form-fields, .labor-form-note { padding: 14px; }
-    .labor-select-all { margin-inline-start: 0; }
     .labor-form-quantities, .labor-stage-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
     .labor-stage-row > strong { padding-top: 0; }
     .labor-table { font-size: 13px; }

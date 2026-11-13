@@ -62,7 +62,6 @@ namespace BATT_PPMS.Pages.Personnel
             return "Assigned";
         }
         public DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
-        public DateOnly EarliestNewPlanDate => Today.AddDays(1);
         public DateOnly? DisplayDate { get; private set; }
         public bool ShowingLatestPlanDate { get; private set; }
 
@@ -75,7 +74,6 @@ namespace BATT_PPMS.Pages.Personnel
         [BindProperty(SupportsGet = true)] public bool AllPlanShifts { get; set; } = true;
         [BindProperty(SupportsGet = true)] public int PageNumber { get; set; } = 1;
         [BindProperty(SupportsGet = true)] public bool Create { get; set; }
-        [BindProperty(SupportsGet = true)] public bool MarkDayOff { get; set; }
         [BindProperty(SupportsGet = true)] public string? EditShift { get; set; }
 
         // ── Inner DTO ────────────────────────────────────────────────────────
@@ -108,17 +106,13 @@ namespace BATT_PPMS.Pages.Personnel
             CanCreatePlan = IsManager;
             if (IsEditingPlan)
                 return await OpenPlanEditorAsync();
-            if ((Create || MarkDayOff) && !CanCreatePlan)
+            if (Create && !CanCreatePlan)
                 return RedirectToPage("/Auth/AccessDenied");
             if (CanCreatePlan)
             {
-                Create |= MarkDayOff;
-                NewPlanDate = MarkDayOff ? Today : PlanDate is { } day && day >= EarliestNewPlanDate
-                    ? day : EarliestNewPlanDate;
-                if (MarkDayOff)
-                    ShiftInputs = [new(), new(), new()];
-                else
-                    await LoadAvailableStaffAsync();
+                var today = Today;
+                NewPlanDate = PlanDate is { } day && day >= today ? day : today;
+                await LoadAvailableStaffAsync();
             }
             await LoadScheduleAsync();
             return Page();
@@ -288,7 +282,7 @@ namespace BATT_PPMS.Pages.Personnel
         }
 
         [BindProperty] public DateOnly NewPlanDate { get; set; }
-        [BindProperty] public List<ShiftInput> ShiftInputs { get; set; } = [new() { Included = true }, new(), new()];
+        [BindProperty] public List<ShiftInput> ShiftInputs { get; set; } = [new(), new(), new()];
         [BindProperty] public DateOnly EstimateDate { get; set; } = DateOnly.FromDateTime(ProductionFlow.Now);
         [BindProperty] public decimal EstimateKg { get; set; }
 
@@ -397,8 +391,7 @@ namespace BATT_PPMS.Pages.Personnel
                 ? await EditableAssignments(NewPlanDate, EditShift!).Where(a => a.StaffId.HasValue)
                     .Select(a => a.StaffId!.Value).Distinct().ToArrayAsync()
                 : [];
-            if (!MarkDayOff || IsEditingPlan)
-                await LoadAvailableStaffAsync(assignedStaff);
+            await LoadAvailableStaffAsync(assignedStaff);
             if (Create) await LoadScheduleAsync();
             return Page();
         }
@@ -430,9 +423,8 @@ namespace BATT_PPMS.Pages.Personnel
                 || await _context.ProductionMaterialRequests.AnyAsync(r => ids.Contains(r.AssignmentId));
         }
 
-        private string? ValidateNewPlanDate() => MarkDayOff
-            ? (NewPlanDate == Today ? null : "Chỉ được đánh dấu nghỉ cho ca của ngày hôm nay.")
-            : (NewPlanDate >= EarliestNewPlanDate ? null : "Chỉ được tạo phân công công việc từ ngày mai.");
+        private string? ValidateNewPlanDate() =>
+            NewPlanDate >= Today ? null : "Chỉ được tạo phân công công việc từ hôm nay trở đi.";
 
         public async Task<IActionResult> OnPostCreatePlanAsync()
         {
@@ -448,9 +440,7 @@ namespace BATT_PPMS.Pages.Personnel
             var shifts = ShiftInputs.Select((input, index) => (Name: ProductionShifts[index], Input: input))
                 .Where(shift => shift.Input.SelectedMode != ShiftMode.Skip).ToList();
             if (shifts.Count == 0)
-                return await ShowPlanErrorAsync(MarkDayOff ? "Vui lòng chọn ít nhất một ca nghỉ." : "Vui lòng chọn ít nhất một ca để phân công.");
-            if (MarkDayOff && shifts.Any(shift => !shift.Input.IsDayOff))
-                return await ShowPlanErrorAsync("Chỉ được chọn Nghỉ hoặc Bỏ qua khi đánh dấu ca nghỉ.");
+                return await ShowPlanErrorAsync("Vui lòng chọn Phân công hoặc Nghỉ cho ít nhất một ca.");
 
             foreach (var (name, input) in shifts)
             {
@@ -476,7 +466,7 @@ namespace BATT_PPMS.Pages.Personnel
                         .Where(plan => plan.PlanDate == NewPlanDate && shiftNames.Contains(plan.Shift)).Select(plan => plan.Shift))
                     .ToListAsync();
                 if (existing.Count > 0)
-                    throw new ProductionFlowException($"{string.Join(", ", existing.Order())} đã có lịch ngày {NewPlanDate:dd/MM/yyyy}. Chọn Bỏ qua cho các ca này rồi lưu lại.");
+                    throw new ProductionFlowException($"{string.Join(", ", existing.Order())} đã có lịch ngày {NewPlanDate:dd/MM/yyyy}. Chỉ chọn ca chưa có lịch khi tạo phiếu mới.");
                 if (offNames.Length > 0 && await HasShiftRecordsAsync(_context.PersonnelAssignments
                     .Where(a => a.AssignmentDate == NewPlanDate && offNames.Contains(a.Shift))))
                     throw new ProductionFlowException("Ca đã có báo cáo hoặc yêu cầu nghiệp vụ không thể chuyển sang nghỉ.");

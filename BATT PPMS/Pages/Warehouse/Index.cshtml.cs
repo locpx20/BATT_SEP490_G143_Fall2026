@@ -29,6 +29,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     [BindProperty(SupportsGet = true)] public int PageNumber { get; set; } = 1;
     public PageWindow Pagination { get; set; } = new(0, 1);
     public List<FinishedGoodsReceipt> Receipts { get; set; } = new();
+    public IReadOnlyDictionary<int, string> ReceiptGrades { get; private set; } = new Dictionary<int, string>();
     public List<PersonnelAssignment> Plans { get; set; } = new();
     public List<string?> PlanShifts { get; set; } = new();
     public List<ProductionQualityRequest> ReadyQc { get; set; } = new();
@@ -176,6 +177,12 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
             ? statusQuery.OrderByDescending(x => x.ReceivedAt).ThenByDescending(x => x.ReceiptId)
             : statusQuery.OrderByDescending(x => x.ReceiptId);
         Receipts = await ordered.Skip(Pagination.Offset).Take(PageWindow.Size).ToListAsync();
+        var passedRequestIds = Receipts.Where(r => r.QualityRequest.Inspection is { Status: "Completed", Result: "Pass" })
+            .Select(r => r.QualityRequestId).ToArray();
+        if (passedRequestIds.Length > 0)
+            ReceiptGrades = await db.ProductionQcResults.AsNoTracking()
+                .Where(result => passedRequestIds.Contains(result.RequestId) && (result.Grade == "A" || result.Grade == "B"))
+                .ToDictionaryAsync(result => result.RequestId, result => result.Grade);
     }
     public async Task<IActionResult> OnGetInboxCountsAsync() {
         var check = RequireRole(RoleConstants.WarehouseStaff);

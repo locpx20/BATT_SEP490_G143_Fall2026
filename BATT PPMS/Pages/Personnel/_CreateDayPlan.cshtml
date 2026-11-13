@@ -4,8 +4,8 @@
 @using System.Globalization
 @{
     var editing = Model.IsEditingPlan;
-    var markingDayOff = !editing && Model.MarkDayOff;
     var shifts = editing ? new[] { Model.EditShift! } : IndexModel.ProductionShifts;
+    var today = Model.Today;
 }
 
 <form method="post" asp-page-handler="@(editing ? "EditPlan" : "CreatePlan")" class="labor-form"
@@ -13,12 +13,9 @@
       asp-route-ShiftFilter="@(!editing ? Model.ShiftFilter : null)"
       asp-route-StatusFilter="@(!editing ? Model.StatusFilter : null)"
       asp-route-SearchTerm="@(!editing ? Model.SearchTerm : null)"
-      data-today="@Model.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">
+      data-today="@today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">
     @if (editing) {
         <input asp-for="EditShift" type="hidden" />
-    }
-    @if (markingDayOff) {
-        <input type="hidden" name="MarkDayOff" value="true" />
     }
     <div class="labor-form-body">
         @if (!editing && Model.Create && !string.IsNullOrEmpty(Model.ErrorMessage)) {
@@ -30,8 +27,8 @@
             <div>
                 <label asp-for="NewPlanDate">Ngày sản xuất</label>
                 <input asp-for="NewPlanDate" type="date" asp-format="{0:yyyy-MM-dd}"
-                       min="@(!editing && !markingDayOff ? Model.EarliestNewPlanDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null)"
-                       max="2100-12-31" readonly="@(editing || markingDayOff)" data-plan-date required />
+                       min="@(!editing ? today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) : null)"
+                       max="2100-12-31" readonly="@editing" data-plan-date required />
             </div>
             @if (!editing) {
                 <nav class="labor-shift-index" aria-label="Đến ca cần phân công">
@@ -39,18 +36,6 @@
                         <a href="#labor-form-shift-@i">@shifts[i]</a>
                     }
                 </nav>
-                @if (!markingDayOff) {
-                    <button class="labor-button labor-select-all" type="button" data-plan-all>
-                        <i class="bi bi-calendar-check" aria-hidden="true"></i> Phân công cả ngày
-                    </button>
-                }
-                <a class="labor-button" asp-page="./Index" asp-route-Create="true"
-                   asp-route-MarkDayOff="@(!markingDayOff ? "true" : null)"
-                   asp-route-PlanDate="@Model.DisplayDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                   asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter"
-                   asp-route-SearchTerm="@Model.SearchTerm">
-                    @(markingDayOff ? "Tạo phân công công việc" : "Đánh dấu ca nghỉ hôm nay")
-                </a>
             }
         </div>
 
@@ -69,60 +54,54 @@
                         <label asp-for="ShiftInputs[i].Mode">Lịch @shift.ToLowerInvariant()</label>
                         <select asp-for="ShiftInputs[i].Mode" data-plan-mode>
                             @if (!editing) {
-                                <option value="Skip" selected="@(mode == IndexModel.ShiftMode.Skip)">Bỏ qua</option>
+                                <option value="" hidden selected="@(mode == IndexModel.ShiftMode.Skip)">Chọn lịch ca</option>
                             }
-                            @if (!markingDayOff) {
-                                <option value="Work" selected="@(mode == IndexModel.ShiftMode.Work)">Phân công</option>
-                            }
-                            @if (editing || markingDayOff) {
-                                <option value="Off" selected="@(mode == IndexModel.ShiftMode.Off)">Nghỉ</option>
-                            }
+                            <option value="Work" selected="@(mode == IndexModel.ShiftMode.Work)">Phân công</option>
+                            <option value="Off" selected="@(mode == IndexModel.ShiftMode.Off)" disabled="@(Model.NewPlanDate != today)">Nghỉ</option>
                         </select>
                     </div>
                 </header>
-                @if (!markingDayOff) {
-                    <fieldset class="labor-form-fields" data-plan-fields aria-labelledby="labor-form-shift-@i">
-                        <div class="labor-form-quantities">
-                            <div>
-                                <label asp-for="ShiftInputs[i].ExpectedMaterialKg">Nguyên liệu tiêu thụ dự kiến cho 1 ca (kg)</label>
-                                <input asp-for="ShiftInputs[i].ExpectedMaterialKg" type="number" min="0.01" max="9999999999.99" step="0.01" data-plan-quantity />
-                            </div>
-                            <div>
-                                <label asp-for="ShiftInputs[i].ExpectedFinishedKg">Thành phẩm dự kiến (kg)</label>
-                                <input asp-for="ShiftInputs[i].ExpectedFinishedKg" type="number" min="0.01" max="9999999999.99" step="0.01" data-plan-quantity />
-                            </div>
+                <fieldset class="labor-form-fields" data-plan-fields aria-labelledby="labor-form-shift-@i">
+                    <div class="labor-form-quantities">
+                        <div>
+                            <label asp-for="ShiftInputs[i].ExpectedMaterialKg">Nguyên liệu tiêu thụ dự kiến cho 1 ca (kg)</label>
+                            <input asp-for="ShiftInputs[i].ExpectedMaterialKg" type="number" min="0.01" max="9999999999.99" step="0.01" data-plan-quantity />
                         </div>
-                        <div class="labor-form-stages">
-                            @for (var stageIndex = 0; stageIndex < IndexModel.ProductionStages.Count; stageIndex++) {
-                                var stage = IndexModel.ProductionStages[stageIndex];
-                                var fieldName = $"ShiftInputs[{i}].Stage{stageIndex + 1}StaffIds";
-                                <div class="labor-stage-row">
-                                    <strong>@stage.Name</strong>
-                                    <details class="plan-staff-picker" data-staff-picker>
-                                        <summary>
-                                            <span data-staff-caption>Chọn công nhân</span>
-                                            <span class="plan-staff-count" data-staff-count hidden></span>
-                                            <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                                        </summary>
-                                        <div class="plan-staff-options" role="group" aria-label="@stage.Name, @shift">
-                                            @foreach (var worker in Model.AvailableStaff) {
-                                                var isSelected = workersByStage[stageIndex].Contains(worker.UserId);
-                                                var isActiveStaff = worker.Status == StatusConstants.Active && worker.Role.RoleName == RoleConstants.Staff;
-                                                if (!isSelected && !isActiveStaff) { continue; }
-                                                <label class="plan-staff-option">
-                                                    <input type="checkbox" name="@fieldName" value="@worker.UserId"
-                                                           checked="@isSelected" data-worker-name="@worker.FullName" />
-                                                    <span>@worker.FullName <small>@worker.Username</small></span>
-                                                </label>
-                                            }
-                                            @if (Model.AvailableStaff.Count == 0) { <p>Chưa có công nhân đang hoạt động.</p> }
-                                        </div>
-                                    </details>
-                                </div>
-                            }
+                        <div>
+                            <label asp-for="ShiftInputs[i].ExpectedFinishedKg">Thành phẩm dự kiến (kg)</label>
+                            <input asp-for="ShiftInputs[i].ExpectedFinishedKg" type="number" min="0.01" max="9999999999.99" step="0.01" data-plan-quantity />
                         </div>
-                    </fieldset>
-                }
+                    </div>
+                    <div class="labor-form-stages">
+                        @for (var stageIndex = 0; stageIndex < IndexModel.ProductionStages.Count; stageIndex++) {
+                            var stage = IndexModel.ProductionStages[stageIndex];
+                            var fieldName = $"ShiftInputs[{i}].Stage{stageIndex + 1}StaffIds";
+                            <div class="labor-stage-row">
+                                <strong>@stage.Name</strong>
+                                <details class="plan-staff-picker" data-staff-picker>
+                                    <summary>
+                                        <span data-staff-caption>Chọn công nhân</span>
+                                        <span class="plan-staff-count" data-staff-count hidden></span>
+                                        <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                                    </summary>
+                                    <div class="plan-staff-options" role="group" aria-label="@stage.Name, @shift">
+                                        @foreach (var worker in Model.AvailableStaff) {
+                                            var isSelected = workersByStage[stageIndex].Contains(worker.UserId);
+                                            var isActiveStaff = worker.Status == StatusConstants.Active && worker.Role.RoleName == RoleConstants.Staff;
+                                            if (!isSelected && !isActiveStaff) { continue; }
+                                            <label class="plan-staff-option">
+                                                <input type="checkbox" name="@fieldName" value="@worker.UserId"
+                                                       checked="@isSelected" data-worker-name="@worker.FullName" />
+                                                <span>@worker.FullName <small>@worker.Username</small></span>
+                                            </label>
+                                        }
+                                        @if (Model.AvailableStaff.Count == 0) { <p>Chưa có công nhân đang hoạt động.</p> }
+                                    </div>
+                                </details>
+                            </div>
+                        }
+                    </div>
+                </fieldset>
                 <fieldset class="labor-form-note" data-plan-note>
                     <label asp-for="ShiftInputs[i].Note">Ghi chú</label>
                     <textarea asp-for="ShiftInputs[i].Note" maxlength="1000" rows="2"></textarea>
@@ -139,7 +118,7 @@
             <button class="labor-button" type="button" data-plan-close>Hủy</button>
         }
         <button class="labor-button labor-primary" type="submit">
-            <i class="bi bi-check2-circle" aria-hidden="true"></i> @(editing ? "Lưu chỉnh sửa" : markingDayOff ? "Lưu ca nghỉ" : "Lưu phân công công việc")
+            <i class="bi bi-check2-circle" aria-hidden="true"></i> @(editing ? "Lưu chỉnh sửa" : "Lưu phân công công việc")
         </button>
     </footer>
 </form>

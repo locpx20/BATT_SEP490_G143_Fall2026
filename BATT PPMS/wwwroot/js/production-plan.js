@@ -14,7 +14,7 @@
             if (off.disabled && mode.value === 'Off') mode.value = mode.options[0].value;
         }
         const working = mode.value === 'Work';
-        const scheduled = mode.value !== 'Skip';
+        const scheduled = working || mode.value === 'Off';
         shift.dataset.mode = mode.value;
         if (fields) {
             fields.hidden = fields.disabled = !working;
@@ -25,13 +25,6 @@
     shifts.forEach(shift => shift.querySelector('[data-plan-mode]')
         .addEventListener('change', () => updateShift(shift)));
     date.addEventListener('change', () => shifts.forEach(updateShift));
-    form.querySelector('[data-plan-all]')?.addEventListener('click', () => {
-        shifts.forEach(shift => {
-            const mode = shift.querySelector('[data-plan-mode]');
-            if (mode.value === 'Skip') mode.value = 'Work';
-            updateShift(shift);
-        });
-    });
     shifts.forEach(updateShift);
 
     const pickers = [...form.querySelectorAll('[data-staff-picker]')];

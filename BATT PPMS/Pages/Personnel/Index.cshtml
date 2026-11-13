@@ -72,8 +72,7 @@
                 @if (Model.CanCreatePlan) {
                     <button class="labor-button labor-primary labor-create-button" type="button"
                             aria-haspopup="dialog" aria-controls="labor-create-dialog" data-plan-open>
-                        <i class="bi @(Model.MarkDayOff ? "bi-calendar-x" : "bi-plus-lg")" aria-hidden="true"></i>
-                        @(Model.MarkDayOff ? "Đánh dấu ca nghỉ hôm nay" : "Tạo phân công công việc")
+                        <i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo phân công công việc
                     </button>
                 }
             </header>
@@ -186,8 +185,7 @@
                     data-open-on-load="@(Model.Create ? "true" : "false")">
                 <header class="labor-dialog-head">
                     <h2 id="labor-create-title">
-                        <i class="bi @(Model.MarkDayOff ? "bi-calendar-x" : "bi-calendar-plus")" aria-hidden="true"></i>
-                        @(Model.MarkDayOff ? "Đánh dấu ca nghỉ hôm nay" : "Tạo phân công công việc")
+                        <i class="bi bi-calendar-plus" aria-hidden="true"></i> Tạo phân công công việc
                     </h2>
                     <button class="labor-dialog-close" type="button" aria-label="Đóng" data-plan-close>
                         <i class="bi bi-x-lg" aria-hidden="true"></i>

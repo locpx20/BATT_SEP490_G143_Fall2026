@@ -55,23 +55,23 @@
                 <select aria-label="Trạng thái kiểm tra" name="StatusFilter">
                     <option value="">Tất cả trạng thái</option>
                     @foreach (var status in new[] { "Pending", "In Progress", "Completed" }) {
-                        <option value="@status" selected="@(status == Model.StatusFilter)">@ProductionFlow.Label(status)</option>
+                        <option value="@status" selected="@(status == Model.StatusFilter)">@ProductionFlow.QcStatusLabel(status)</option>
                     }
                 </select>
                 <button type="submit" class="closeout-button primary"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
             </form>
         </div>
         <div class="qc-table-wrap" tabindex="0" role="region" aria-label="Bảng yêu cầu kiểm tra">
-            <table class="qc-table">
+            <table class="qc-table @(Model.QcView ? "qc-table-inspection" : null)">
                 <thead>
                     <tr>
-                        <th scope="col">Mã lô</th>
-                        <th scope="col">Ngày / Ca sản xuất</th>
+                        <th scope="col" class="qc-lot">Mã lô</th>
+                        <th scope="col" class="qc-date">Ngày / Ca sản xuất</th>
                         <th scope="col">Người gửi / QC</th>
                         <th scope="col" class="qc-quantity">@(Model.StaffView ? "Sản lượng" : "Khối lượng (kg)")</th>
-                        <th scope="col">Trạng thái</th>
-                        <th scope="col">Kết quả</th>
-                        <th scope="col">Thao tác</th>
+                        <th scope="col" class="qc-state">Trạng thái</th>
+                        <th scope="col" class="qc-outcome">Kết quả</th>
+                        <th scope="col" class="qc-action">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -92,7 +92,7 @@
                                 @{ var quantity = q.Receipt?.ExpectedQuantity ?? inspection.Batch.Quantity; }
                                 @(Model.StaffView ? FinishedGoodsQuantity.ForStaff(quantity, lot) : quantity.ToString("N2"))
                             </td>
-                            <td><span class="closeout-status @statusClass">@ProductionFlow.Label(inspection.Status)</span></td>
+                            <td><span class="closeout-status @statusClass">@ProductionFlow.QcStatusLabel(inspection.Status)</span></td>
                             <td>
                                 @if (inspection.Result != null) {
                                     <span class="closeout-status @(inspection.Result == "Pass" ? "completed" : "fail")">@ProductionFlow.Label(inspection.Result)</span>
@@ -106,23 +106,17 @@
                                     <button type="button" class="closeout-button secondary" data-bs-toggle="modal" data-bs-target="#@detailId">
                                         <i class="bi bi-eye" aria-hidden="true"></i> Chi tiết
                                     </button>
-                                    @if (Model.QcView && !Model.Legacy && inspection.Status == "Pending") {
-                                        <form method="post" asp-page-handler="Start">
-                                            <input type="hidden" name="requestId" value="@q.RequestId" />
-                                            <button type="submit" class="closeout-button primary">Tiếp nhận</button>
-                                        </form>
-                                    }
                                     @if (Model.CanFinish(q)) {
-                                        <button type="button" class="closeout-button primary" data-bs-toggle="modal"
+                                        <button type="button" class="closeout-button primary qc-open-inspection" data-bs-toggle="modal"
                                                 data-bs-target="#qc-result" data-request-id="@q.RequestId">
-                                            <i class="bi bi-pencil-square" aria-hidden="true"></i> Trả kết quả
+                                            <i class="bi bi-clipboard-check" aria-hidden="true"></i><span>Tiếp nhận kiểm tra</span>
                                         </button>
                                     }
                                     @if (Model.StaffView && !Model.Legacy && inspection.Status == "Completed" && inspection.Result == "Pass" && q.Receipt == null) {
                                         <a class="closeout-button primary" asp-page="/Warehouse/Index" asp-route-tab="receipts"
                                            asp-route-QualityRequestId="@q.RequestId">Tạo yêu cầu nhập thành phẩm</a>
                                     }
-                                    @if (q.Receipt != null) {
+                                    @if (!Model.QcView && q.Receipt != null) {
                                         <a class="closeout-button secondary" asp-page="/Warehouse/Index" asp-route-tab="receipts">Theo dõi phiếu nhập</a>
                                     }
                                 </div>
@@ -143,7 +137,7 @@
         Model.Results.TryGetValue(q.RequestId, out var result);
         <partial name="_ResultDetails" model="(q, result)" />
     }
-    @if (Model.ResultShifts.Count > 0 || Model.ResultError != null) {
+    @if (Model.HasResultForm || Model.ResultError != null) {
         <partial name="_ResultForm" model="Model" />
     }
 </div>
@@ -152,7 +146,7 @@
     @if (Model.StaffView && !Model.Legacy) {
         <script src="~/js/qc-request.js" asp-append-version="true"></script>
     }
-    @if (Model.ResultShifts.Count > 0 || Model.ResultError != null) {
+    @if (Model.HasResultForm || Model.ResultError != null) {
         <script src="~/js/qc-result.js" asp-append-version="true"></script>
     }
 }

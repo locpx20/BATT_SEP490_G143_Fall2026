@@ -290,21 +290,12 @@
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
 
-                                                <form method="post" asp-page-handler="DeletePurchasePlan" style="display: inline; margin: 0;"
-                                                      onsubmit="return confirm('Bạn có chắc chắn muốn xóa yêu cầu thu mua @o.InvoiceCode?');">
-                                                    <input type="hidden" name="invoiceId" value="@o.InvoiceId" />
-                                                    <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
-                                                    <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
-                                                    <input type="hidden" name="StaffFilter" value="@Model.StaffFilter" />
-                                                    <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
-                                                    <input type="hidden" name="PageSize" value="@Model.PageSize" />
-                                                    <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
-                                                    <button type="submit"
-                                                            title="Xóa yêu cầu thu mua @o.InvoiceCode (chưa có phiếu mua hàng)"
-                                                            style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fecaca; background: #ffffff; color: #b91c1c; cursor: pointer; font-size: 14px;">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </form>
+                                                <button type="button"
+                                                        title="Xóa yêu cầu thu mua @o.InvoiceCode (chưa có phiếu mua hàng)"
+                                                        onclick="openDeletePlanModal(@o.InvoiceId, '@o.InvoiceCode', '@o.PlannedQuantity.ToString("N0", viCulture)')"
+                                                        style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #fecaca; background: #ffffff; color: #b91c1c; cursor: pointer; font-size: 14px;">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             }
                                             else
                                             {
@@ -377,6 +368,8 @@
 </div>
 
 
+@if (Model.CanCreateOrder)
+{
 <!-- POPUP: TẠO YÊU CẦU THU MUA -->
 <div class="pm-overlay" id="createPlanModal" onclick="if (event.target === this) closePmModal('createPlanModal')">
     <div class="pm-dialog" role="dialog" aria-modal="true" aria-labelledby="createPlanTitle">
@@ -419,7 +412,7 @@
                                 <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #f8fafc;">
                                     <label for="staffCheck_@staff.UserId" style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: #1e293b; font-weight: 600;">
                                         <input type="checkbox" name="assignedStaffIds" id="staffCheck_@staff.UserId" class="create-staff-check" value="@staff.UserId" @(isChecked ? "checked" : "")
-                                               onchange="toggleStaffNoteBox('staffNoteWrap_@staff.UserId', this.checked)"
+                                               onchange="toggleStaffNoteBox('staffNoteWrap_@staff.UserId', this.checked, 'createStaffError')"
                                                style="width: 17px; height: 17px; margin: 0; cursor: pointer;" />
                                         <span>@staff.FullName</span>
                                     </label>
@@ -430,13 +423,16 @@
                                 </div>
                             }
                         </div>
+                        <div id="createStaffError" style="display: none; margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: 12px; font-weight: 500;">
+                            <i class="bi bi-exclamation-circle-fill me-1"></i> Vui lòng chọn ít nhất 1 nhân viên thu mua được phân công.
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="pm-foot">
                 <button type="button" class="pm-btn-cancel" onclick="closePmModal('createPlanModal')">Hủy</button>
-                <button type="submit" class="pm-btn-primary" onclick="return validateStaffSelection('.create-staff-check')">Gửi phiếu</button>
+                <button type="submit" class="pm-btn-primary" onclick="return validateStaffSelection('.create-staff-check', 'createStaffError')">Gửi phiếu</button>
             </div>
         </form>
     </div>
@@ -481,7 +477,7 @@
                                 <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; background: #f8fafc;">
                                     <label for="editStaffCheck_@staff.UserId" style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: #1e293b; font-weight: 600;">
                                         <input type="checkbox" name="assignedStaffIds" id="editStaffCheck_@staff.UserId" class="edit-staff-check" value="@staff.UserId"
-                                               onchange="toggleStaffNoteBox('editStaffNoteWrap_@staff.UserId', this.checked)"
+                                               onchange="toggleStaffNoteBox('editStaffNoteWrap_@staff.UserId', this.checked, 'editStaffError')"
                                                style="width: 17px; height: 17px; margin: 0; cursor: pointer;" />
                                         <span>@staff.FullName</span>
                                     </label>
@@ -492,17 +488,65 @@
                                 </div>
                             }
                         </div>
+                        <div id="editStaffError" style="display: none; margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: 12px; font-weight: 500;">
+                            <i class="bi bi-exclamation-circle-fill me-1"></i> Vui lòng chọn ít nhất 1 nhân viên thu mua được phân công.
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="pm-foot">
                 <button type="button" class="pm-btn-cancel" onclick="closePmModal('editPlanModal')">Hủy</button>
-                <button type="submit" class="pm-btn-primary" onclick="return validateStaffSelection('.edit-staff-check')">Lưu thay đổi</button>
+                <button type="submit" class="pm-btn-primary" onclick="return validateStaffSelection('.edit-staff-check', 'editStaffError')">Lưu thay đổi</button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- POPUP: XÁC NHẬN XÓA YÊU CẦU THU MUA -->
+<div class="pm-overlay" id="deletePlanModal" onclick="if (event.target === this) closePmModal('deletePlanModal')">
+    <div class="pm-dialog" role="dialog" aria-modal="true" aria-labelledby="deletePlanTitle" style="max-width: 440px;">
+        <form method="post" asp-page-handler="DeletePurchasePlan">
+            <input type="hidden" name="invoiceId" id="deleteInvoiceIdInput" />
+            <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
+            <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+            <input type="hidden" name="StaffFilter" value="@Model.StaffFilter" />
+            <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
+            <input type="hidden" name="PageSize" value="@Model.PageSize" />
+            <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
+
+            <div class="pm-head">
+                <h5 class="pm-title" id="deletePlanTitle" style="display: flex; align-items: center; gap: 10px;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </span>
+                    <span>Xác nhận xóa yêu cầu thu mua</span>
+                </h5>
+                <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('deletePlanModal')">&times;</button>
+            </div>
+
+            <div class="pm-body">
+                <p style="font-size: 13.5px; color: #334155; line-height: 1.55; margin: 0;">
+                    Bạn có chắc chắn muốn xóa yêu cầu thu mua
+                    <span id="deleteInvoiceCodeBadge" style="display: inline-flex; align-items: center; background: #faf4e8; border: 1px solid #ecdcc0; border-left: 3px solid #c88a2e; border-radius: 4px; padding: 1px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; font-weight: 700; color: #6d4d12; margin: 0 2px;"></span>
+                    (<strong id="deletePlannedQtyText"></strong> kg)?
+                </p>
+                <div style="margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #fef2f2; border: 1px solid #fecaca; font-size: 12px; color: #991b1b;">
+                    Hành động này sẽ xóa vĩnh viễn yêu cầu thu mua khỏi hệ thống và không thể hoàn tác.
+                </div>
+            </div>
+
+            <div class="pm-foot">
+                <button type="button" class="pm-btn-cancel" onclick="closePmModal('deletePlanModal')">Hủy</button>
+                <button type="submit" class="pm-btn-primary" style="background: #b91c1c; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="bi bi-trash"></i>
+                    <span>Xóa yêu cầu</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+}
 
 <!-- POPUP: TẠO NHANH PHIẾU MUA HÀNG NGAY TRÊN MÀN HÌNH DANH SÁCH (CHỈ DÀNH CHO PURCHASING STAFF) -->
 @if (Model.CanCreateSubReceipt)
@@ -575,6 +619,8 @@
 @section Scripts {
     <script>
         function openCreatePlanModal() {
+            var errBox = document.getElementById('createStaffError');
+            if (errBox) errBox.style.display = 'none';
             document.getElementById('createPlanModal').classList.add('open');
             document.getElementById('plannedWeightInput').focus();
         }
@@ -657,23 +703,38 @@
             }
         });
 
-        function toggleStaffNoteBox(wrapId, isChecked) {
+        function toggleStaffNoteBox(wrapId, isChecked, errorBoxId) {
             var wrap = document.getElementById(wrapId);
             if (wrap) {
                 wrap.style.display = isChecked ? 'block' : 'none';
             }
+            if (isChecked && errorBoxId) {
+                var err = document.getElementById(errorBoxId);
+                if (err) err.style.display = 'none';
+            }
         }
 
-        function validateStaffSelection(selector) {
+        function validateStaffSelection(selector, errorBoxId) {
             var checked = document.querySelectorAll(selector + ':checked');
+            var err = errorBoxId ? document.getElementById(errorBoxId) : null;
             if (!checked || checked.length === 0) {
-                alert('Vui lòng chọn ít nhất 1 nhân viên thu mua được phân công.');
+                if (err) err.style.display = 'block';
                 return false;
             }
+            if (err) err.style.display = 'none';
             return true;
         }
 
+        function openDeletePlanModal(invoiceId, invoiceCode, plannedQtyText) {
+            document.getElementById('deleteInvoiceIdInput').value = invoiceId;
+            document.getElementById('deleteInvoiceCodeBadge').innerText = invoiceCode;
+            document.getElementById('deletePlannedQtyText').innerText = plannedQtyText || '0';
+            document.getElementById('deletePlanModal').classList.add('open');
+        }
+
         function openEditPlanModal(btnEl, invoiceId, invoiceCode, plannedQty, ceilingPrice) {
+            var errBox = document.getElementById('editStaffError');
+            if (errBox) errBox.style.display = 'none';
             document.getElementById('editInvoiceIdInput').value = invoiceId;
             document.getElementById('editInvoiceCodeText').innerText = invoiceCode;
             document.getElementById('editPlannedWeightInput').value = plannedQty;
@@ -703,13 +764,16 @@
         }
 
         function closePmModal(id) {
-            document.getElementById(id).classList.remove('open');
+            var el = document.getElementById(id);
+            if (el) el.classList.remove('open');
         }
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closePmModal('createPlanModal');
                 closePmModal('editPlanModal');
+                closePmModal('deletePlanModal');
+                closePmModal('quickCreateReceiptModal');
             }
         });
 

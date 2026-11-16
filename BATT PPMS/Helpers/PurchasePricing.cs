@@ -11,8 +11,8 @@ public static class PurchasePricing
     /// <summary>Số lượng tối đa cho một đơn mua.</summary>
     public const int MaxOrderQuantity = 10_000_000;
 
-    /// <summary>Giới hạn cột total_amount DECIMAL(12,2).</summary>
-    public const decimal MaxAmount = 9_999_999_999.99m;
+    /// <summary>Giới hạn cột total_amount DECIMAL(18,2).</summary>
+    public const decimal MaxAmount = 9_999_999_999_999_999.99m;
 
     /// <summary>Định dạng giá không phụ thuộc culture (dùng cho hidden field / data-attribute).</summary>
     public static string FormatInvariant(decimal? price) =>

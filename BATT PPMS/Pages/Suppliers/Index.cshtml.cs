@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -91,7 +91,7 @@ namespace BATT_PPMS.Pages.Suppliers
 
         public async Task<IActionResult> OnGetAsync()
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.PurchasingStaff);
             if (check != null) return check;
 
             if (string.IsNullOrWhiteSpace(Tab))

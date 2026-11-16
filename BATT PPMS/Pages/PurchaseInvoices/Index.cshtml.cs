@@ -97,7 +97,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public int DefaultMaterialId { get; set; }
         public string DefaultMaterialName { get; set; } = "Mùn cưa cao su & Keo";
 
-        public bool CanCreateOrder => IsManager || IsOwner;
+        // Chỉ Manager mới có quyền tạo / sửa / xóa Yêu cầu thu mua; Owner chỉ xem danh sách Yêu cầu thu mua.
+        public bool CanCreateOrder => IsManager;
         public bool CanCreateSubReceipt => IsPurchasingStaff;
 
         [TempData]
@@ -456,7 +457,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             int? assignedStaffId,
             int? materialId)
         {
-            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
             IActionResult Back() => RedirectToPage(new
@@ -491,10 +492,17 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             // Giá trần chỉ đọc: luôn lấy từ "Giá Thu mua Nguyên liệu" hiện hành ở server, bỏ qua giá client gửi lên
             if (material.PurchasePrice is not decimal currentPrice || currentPrice <= 0 || currentPrice > PurchasePricing.MaxUnitPrice)
             {
-                ErrorMessage = $"Nguyên liệu '{material.MaterialName}' chưa được thiết lập giá thu mua. Vui lòng thiết lập tại mục Giá thu mua Nguyên liệu.";
+                ErrorMessage = $"Nguyên liệu '{material.MaterialName}' chưa được thiết lập giá thu mua. Vui lòng liên hệ Chủ nhà máy (Owner) thiết lập giá tại mục Giá thu mua Nguyên liệu.";
                 return Back();
             }
             ceilingPrice = currentPrice;
+
+            var totalAmountErr = ValidateTotalAmountLimit(plannedWeight, ceilingPrice);
+            if (totalAmountErr != null)
+            {
+                ErrorMessage = totalAmountErr;
+                return Back();
+            }
 
             var selectedIds = (assignedStaffIds ?? new List<int>())
                 .Where(id => id > 0)
@@ -641,7 +649,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             List<int>? assignedStaffIds,
             int? assignedStaffId)
         {
-            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
             IActionResult Back() => RedirectToPage(new
@@ -726,6 +734,13 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
             var detail = invoice.PurchaseInvoiceDetails.FirstOrDefault();
             var unitPrice = detail?.UnitPrice ?? CurrentCeilingPrice;
+            var totalAmountErr = ValidateTotalAmountLimit(plannedWeight, unitPrice);
+            if (totalAmountErr != null)
+            {
+                ErrorMessage = totalAmountErr;
+                return Back();
+            }
+
             if (detail != null)
             {
                 detail.Quantity = plannedWeight;
@@ -744,7 +759,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
         public async Task<IActionResult> OnPostDeletePurchasePlanAsync(int invoiceId)
         {
-            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
             IActionResult Back() => RedirectToPage(new
@@ -792,5 +807,15 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             return Back();
         }
 
+        private static string? ValidateTotalAmountLimit(decimal weight, decimal unitPrice)
+        {
+            var totalAmount = Math.Round(weight * unitPrice, 2);
+            if (totalAmount <= PurchasePricing.MaxAmount) return null;
+
+            var maxAllowedWeight = unitPrice > 0
+                ? Math.Floor(PurchasePricing.MaxAmount / unitPrice)
+                : PurchasePricing.MaxOrderQuantity;
+            return $"Tổng giá trị dự kiến ({totalAmount:N0} VNĐ = {weight:N0} kg × {unitPrice:N0} VNĐ/kg) vượt quá giới hạn tối đa của hệ thống ({PurchasePricing.MaxAmount:N0} VNĐ). Với đơn giá {unitPrice:N0} VNĐ/kg, khối lượng tối đa cho 1 yêu cầu là {maxAllowedWeight:N0} kg (vui lòng giảm khối lượng hoặc chia nhỏ thành nhiều yêu cầu).";
+        }
     }
 }

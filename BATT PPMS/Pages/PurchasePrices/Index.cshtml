@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.PurchasePrices.IndexModel
 @using BATT_PPMS.Helpers
 @{
@@ -30,7 +30,7 @@
                 Giá đang áp dụng được dùng tự động cho mọi đơn mua mới cho đến khi được thay đổi. Đơn đã tạo giữ nguyên giá tại thời điểm tạo.
                 @if (!Model.CanManage)
                 {
-                    <span> Bạn chỉ có quyền xem; việc thiết lập giá do Giám đốc / Quản lý thực hiện.</span>
+                    <span> Bạn chỉ có quyền xem; việc thiết lập / xét giá do Chủ nhà máy (Owner) thực hiện.</span>
                 }
             </p>
         </div>

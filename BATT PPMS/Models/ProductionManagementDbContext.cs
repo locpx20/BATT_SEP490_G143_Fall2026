@@ -548,7 +548,7 @@ public partial class ProductionManagementDbContext : DbContext
                 .HasColumnName("status");
             entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
             entity.Property(e => e.TotalAmount)
-                .HasColumnType("decimal(12, 2)")
+                .HasColumnType("decimal(18, 2)")
                 .HasColumnName("total_amount");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.PurchaseInvoiceCreatedByNavigations)

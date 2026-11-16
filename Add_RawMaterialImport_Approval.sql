@@ -91,3 +91,15 @@ SET import_code = 'PNK-26' + RIGHT('000' + CAST(import_id AS VARCHAR(10)), 3),
 WHERE import_code IS NULL;
 GO
 
+-- 7. Mở rộng PurchaseInvoice.total_amount lên DECIMAL(18, 2) để không bị giới hạn dưới 10 tỷ VNĐ
+IF EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.PurchaseInvoice')
+      AND name = N'total_amount'
+      AND precision < 18
+)
+BEGIN
+    ALTER TABLE dbo.PurchaseInvoice ALTER COLUMN total_amount DECIMAL(18, 2) NOT NULL;
+END
+GO
+

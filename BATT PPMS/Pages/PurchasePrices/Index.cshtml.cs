@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -46,8 +46,8 @@ namespace BATT_PPMS.Pages.PurchasePrices
         public List<PriceHistoryRow> History { get; set; } = new();
         public PageWindow Pagination { get; private set; } = new(0, 1);
 
-        // Chỉ Owner / Manager được thiết lập giá; các vai trò thu mua chỉ xem.
-        public bool CanManage => IsOwnerOrManager;
+        // Chỉ Owner được thiết lập / xét giá; Manager và các vai trò thu mua chỉ xem.
+        public bool CanManage => IsOwner;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -67,7 +67,7 @@ namespace BATT_PPMS.Pages.PurchasePrices
 
         public async Task<IActionResult> OnPostUpdatePriceAsync(int priceMaterialId, long newPrice, string? expectedOldPrice, string? reason)
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
 
             if (newPrice < 1 || newPrice > PurchasePricing.MaxUnitPrice)

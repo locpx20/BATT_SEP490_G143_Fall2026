@@ -1,4 +1,4 @@
-﻿-- 1. Kiểm tra và tạo Database 
+-- 1. Kiểm tra và tạo Database 
 IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'ProductionManagementDB')
 BEGIN
     CREATE DATABASE ProductionManagementDB;
@@ -313,7 +313,7 @@ CREATE TABLE PurchaseInvoice (
     invoice_code NVARCHAR(50) NOT NULL UNIQUE,
     supplier_id INT NOT NULL,
     purchase_date DATETIME NOT NULL,
-    total_amount DECIMAL(12, 2) NOT NULL,
+    total_amount DECIMAL(18, 2) NOT NULL,
     status NVARCHAR(50) DEFAULT 'Pending',
     created_by INT NULL,
     approved_by INT,

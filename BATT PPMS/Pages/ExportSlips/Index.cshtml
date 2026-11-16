@@ -1,0 +1,81 @@
+@page
+@using BATT_PPMS.Helpers
+@using BATT_PPMS.Models
+@using BATT_PPMS.Pages.Orders
+@model BATT_PPMS.Pages.ExportSlips.IndexModel
+@{
+    ViewData["Title"] = "Phiếu xuất kho";
+    ViewData["ActivePage"] = "ExportSlip";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Phiếu xuất kho thành phẩm</h1>
+        <p class="page-subtitle">@Model.TotalCount phiếu@(Model.ProcessingCount > 0 ? $" · {Model.ProcessingCount} phiếu đang xử lý" : "")</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="filter-bar" style="margin-bottom:0;flex:1;">
+            <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control"
+                   placeholder="Tìm theo mã phiếu, mã yêu cầu, tài xế hoặc biển số..." id="searchSlip" />
+            <select class="form-control" style="width:auto;" name="Status" id="filterStatus" onchange="this.form.submit()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="@ExportSlipStatus.Processing" selected="@(Model.Status == ExportSlipStatus.Processing)">@DeliveryWorkflow.SlipLabel(ExportSlipStatus.Processing)</option>
+                <option value="@ExportSlipStatus.Completed" selected="@(Model.Status == ExportSlipStatus.Completed)">@DeliveryWorkflow.SlipLabel(ExportSlipStatus.Completed)</option>
+            </select>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Lọc</button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.Status))
+            {
+                <a href="/ExportSlips/Index" class="btn btn-secondary">Xóa lọc</a>
+            }
+        </form>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr><th>Mã phiếu</th><th>Mã yêu cầu bán</th><th>Khách hàng</th><th>Loại / Số lượng</th><th>Tài xế / Biển số</th><th>Ngày tạo</th><th>Trạng thái</th><th>Thao tác</th></tr>
+            </thead>
+            <tbody>
+                @if (Model.Slips.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <i class="bi bi-file-earmark-text"></i>
+                                <h3>Chưa có phiếu xuất kho</h3>
+                                <p>Phiếu được thủ kho lập sau khi kiểm tra yêu cầu xuất kho.</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @foreach (var s in Model.Slips)
+                {
+                    <tr>
+                        <td><strong>@s.SlipCode</strong></td>
+                        <td>@s.Order.OrderCode</td>
+                        <td>@(s.Order.Customer?.CustomerName ?? "—")</td>
+                        <td>@SalesFlow.GradeLabel(s.Order.Grade) · @s.Lines.Sum(l => l.Bags).ToString("N0") bao</td>
+                        <td>@s.Delivery.DriverName · @s.Delivery.LicensePlate</td>
+                        <td>@s.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="badge @DeliveryWorkflow.SlipBadge(s.Status)">@DeliveryWorkflow.SlipLabel(s.Status)</span></td>
+                        <td><a href="/ExportSlips/Detail?id=@s.SlipId" class="btn btn-sm btn-outline" title="Xem phiếu"><i class="bi bi-eye"></i></a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pagination" style="padding:14px;">
+            @for (var p = 1; p <= Model.TotalPages; p++)
+            {
+                <a class="page-link @(p == Model.PageNumber ? "active" : "")"
+                   href="/ExportSlips/Index?PageNumber=@p&SearchTerm=@Uri.EscapeDataString(Model.SearchTerm ?? "")&Status=@Uri.EscapeDataString(Model.Status ?? "")">@p</a>
+            }
+        </div>
+    }
+</div>

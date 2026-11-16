@@ -15,8 +15,14 @@ namespace BATT_PPMS.Pages.QC
         public bool StaffView => IsStaff;
         public bool QcView => IsQCStaff;
         public List<ProductionQualityRequest> Requests { get; set; } = new();
-        public List<PersonnelAssignment> Assignments { get; set; } = new();
+        public List<QcShiftOption> Assignments { get; set; } = new();
         public List<AppNotification> Notices { get; set; } = new();
+        public IReadOnlyDictionary<int, ProductionQcResult> Results { get; private set; } = new Dictionary<int, ProductionQcResult>();
+        public bool HasResultForm => ResultLots.Count > 0;
+        public List<ResultLot> ResultLots { get; private set; } = [];
+        public ResultLot? RetryLot => ResultError == null ? null : ResultLots.Find(lot => lot.RequestId == ResultInput.RequestId);
+        public string? ResultError { get; private set; }
+        [BindProperty] public QcResultInput ResultInput { get; set; } = new();
         [BindProperty(SupportsGet = true)] public string? SearchTerm { get; set; }
         [BindProperty(SupportsGet = true)] public string? StatusFilter { get; set; }
         [BindProperty(SupportsGet = true)] public bool Legacy { get; set; }
@@ -24,7 +30,12 @@ namespace BATT_PPMS.Pages.QC
         public PageWindow Pagination { get; set; } = new(0, 1);
         [TempData] public string? SuccessMessage { get; set; }
         [TempData] public string? ErrorMessage { get; set; }
-        public bool CanFinish(ProductionQualityRequest q) => IsQCStaff && !Legacy && q.Inspection.Status == "In Progress" && q.Inspection.InspectedBy == CurrentUserId;
+        public bool CanFinish(ProductionQualityRequest q) => IsQCStaff && !Legacy
+            && (q.Inspection.Status == "Pending" || (q.Inspection.Status == "In Progress" && q.Inspection.InspectedBy == CurrentUserId));
+        public sealed record ResultLot(int RequestId, string Code, DateOnly ProductionDate, string? Shift)
+        {
+            public string ShiftKey => $"{ProductionDate:yyyy-MM-dd}|{Shift?.Trim().ToUpperInvariant()}";
+        }
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -53,34 +64,52 @@ namespace BATT_PPMS.Pages.QC
             }
             Pagination = new(await query.CountAsync(), PageWindow.ReadRequestedPage(Request.Query, PageNumber));
             Requests = await query.OrderByDescending(x => x.RequestId).Skip(Pagination.Offset).Take(PageWindow.Size).ToListAsync();
-            if (IsStaff) Assignments = await new ProductionFlow(_context).AssignedShiftOptions(CurrentUserId);
+            var completedIds = Requests.Where(x => x.Inspection.Status == "Completed").Select(x => x.RequestId).ToArray();
+            if (completedIds.Length > 0)
+                Results = await _context.ProductionQcResults.AsNoTracking()
+                    .Where(x => completedIds.Contains(x.RequestId)).ToDictionaryAsync(x => x.RequestId);
+            if (IsQCStaff && (Requests.Any(CanFinish) || ResultError != null))
+                ResultLots = await _context.ProductionQualityRequests.AsNoTracking()
+                    .Where(x => x.Inspection.Status == "Pending"
+                        || (x.Inspection.Status == "In Progress" && x.Inspection.InspectedBy == CurrentUserId))
+                    .OrderByDescending(x => x.Inspection.Batch.ProductionDate).ThenBy(x => x.Assignment.Shift)
+                    .ThenBy(x => x.Inspection.Batch.BagNumber).ThenBy(x => x.RequestId)
+                    .Select(x => new ResultLot(x.RequestId, x.Inspection.Batch.BagNumber, x.Inspection.Batch.ProductionDate, x.Assignment.Shift))
+                    .ToListAsync();
+            if (IsStaff) Assignments = await new ProductionFlow(_context).QcShiftOptions(CurrentUserId);
 
             return Page();
         }
-        public async Task<IActionResult> OnPostRequestAsync(int assignmentId, int quantity, string? note) {
+        public async Task<IActionResult> OnPostRequestAsync(int assignmentId, int? bags, string? note, bool hasShiftIncident, string? exceptionReason) {
             var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
-            if (!ModelState.IsValid) { ErrorMessage = "Kiểm tra lại ca và sản lượng cần kiểm tra."; return RedirectToPage(); }
-            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, quantity, note); SuccessMessage = "Đã gửi yêu cầu tới nhân viên QC để tiếp nhận và kiểm tra chất lượng."; }
+            if (!ModelState.IsValid) { ErrorMessage = "Kiểm tra lại ca và số bao thành phẩm."; return RedirectToPage(); }
+            try { await new ProductionFlow(_context).RequestQc(CurrentUserId, assignmentId, bags, note, hasShiftIncident, exceptionReason); SuccessMessage = "Đã gửi yêu cầu kiểm tra chất lượng cho nhân viên QC."; }
             catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
         }
-        public async Task<IActionResult> OnPostStartAsync(int requestId) {
-            var check = RequireRole(RoleConstants.QCStaff); if (check != null) return check;
-            try { await new ProductionFlow(_context).StartQc(CurrentUserId, requestId); SuccessMessage = "Đã tiếp nhận yêu cầu kiểm tra."; }
-            catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
-            return RedirectToPage();
-        }
-        public async Task<IActionResult> OnPostFinishAsync(int requestId, string? result, string? note, IFormFile? image) {
-            var check = RequireRole(RoleConstants.QCStaff); if (check != null) return check;
-            if (!ModelState.IsValid) { ErrorMessage = "Dữ liệu kết quả kiểm tra không hợp lệ."; return RedirectToPage(); }
-            try {
-                if(image == null || image.Length == 0 || image.Length > QcEvidence.MaxBytes) throw new ProductionFlowException("Vui lòng đính kèm ảnh kết quả, tối đa 5 MB.");
-                using var buffer = new MemoryStream(); await image.CopyToAsync(buffer);
-                await new ProductionFlow(_context).FinishQc(CurrentUserId, requestId, result, note, buffer.ToArray());
+        public async Task<IActionResult> OnPostFinishAsync(IFormFile? image)
+        {
+            var check = RequireRole(RoleConstants.QCStaff);
+            if (check != null) return check;
+            if (!ModelState.IsValid)
+                ResultError = "Dữ liệu kết quả kiểm tra không hợp lệ. Vui lòng kiểm tra các chỉ tiêu đã nhập.";
+            else try
+            {
+                if (image == null || image.Length == 0 || image.Length > QcEvidence.MaxBytes)
+                    throw new ProductionFlowException("Vui lòng đính kèm ảnh kết quả, tối đa 5 MB.");
+                using var buffer = new MemoryStream();
+                await image.CopyToAsync(buffer, HttpContext.RequestAborted);
+                await new ProductionFlow(_context).FinishQc(CurrentUserId, ResultInput, buffer.ToArray());
                 SuccessMessage = "Đã trả kết quả và hình ảnh kiểm tra cho Staff.";
+                return RedirectToPage(new { StatusFilter, SearchTerm, PageNumber });
             }
-            catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
-            return RedirectToPage();
+            catch (ProductionFlowException ex)
+            {
+                ResultError = ex.Message;
+            }
+
+            Legacy = false;
+            return await OnGetAsync();
         }
         public async Task<IActionResult> OnGetImageAsync(int requestId) {
             var check=RequireRole(RoleConstants.Staff,RoleConstants.QCStaff,RoleConstants.WarehouseStaff,RoleConstants.Manager,RoleConstants.Owner);

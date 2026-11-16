@@ -1,4 +1,4 @@
 @model List<BATT_PPMS.Models.AppNotification>
-@foreach(var notice in Model){
+@foreach(var notice in Model.Where(notice => notice.Title != "Xác nhận phiếu nhập thành phẩm")){
     <div class="closeout-message success" role="status"><strong>@notice.Title</strong><p>@notice.Message</p>@if(notice.Url!=null){<a href="@notice.Url">Xem chi tiết</a>}</div>
 }

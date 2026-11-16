@@ -6,6 +6,7 @@ namespace BATT_PPMS.Helpers;
 public sealed record WarehouseInboxSummary(int Imports, int Consumption, int FinishedReceipts = 0, int Plans = 0, int FinishedStock = 0)
 {
     public int Total => Imports + Consumption;
+    public int FinishedTotal => FinishedReceipts + FinishedStock;
 
     public static async Task<WarehouseInboxSummary> ReadAsync(ProductionManagementDbContext db, int userId, CancellationToken cancellationToken = default)
     {

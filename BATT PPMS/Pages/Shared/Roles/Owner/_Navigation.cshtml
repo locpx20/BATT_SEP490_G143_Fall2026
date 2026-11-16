@@ -18,7 +18,9 @@
         <a class="nav-item @(ap == "Machines" ? "active" : "")" href="/Machines/Index">Danh mục Máy móc</a>
         <a class="nav-item @(ap == "MaterialPurchase" ? "active" : "")" href="/MaterialPurchases/Index">Vật tư bảo trì</a>
     </details>
-    <a class="nav-item @(ap == "OrderList" ? "active" : "")" href="/Orders/Index"><i class="bi bi-truck"></i><span>Đề xuất xuất hàng</span></a>
+    <a class="nav-item @(ap == "OrderList" ? "active" : "")" href="/Orders/Index"><i class="bi bi-cart-check"></i><span>Duyệt yêu cầu bán hàng</span></a>
+    <a class="nav-item @(ap == "Delivery" ? "active" : "")" href="/Deliveries/Index"><i class="bi bi-truck"></i><span>Yêu cầu xuất kho</span></a>
+    <a class="nav-item @(ap == "ExportSlip" ? "active" : "")" href="/ExportSlips/Index"><i class="bi bi-file-earmark-text"></i><span>Phiếu xuất kho</span></a>
     <a class="nav-item @(ap == "Inventory" && tab != "finished" ? "active" : "")" href="/Inventory/Index?tab=raw"><i class="bi bi-box"></i><span>Kho nguyên liệu thô</span></a>
     <a class="nav-item @(ap == "Inventory" && tab == "finished" ? "active" : "")" href="/Inventory/Index?tab=finished"><i class="bi bi-stack"></i><span>Kho viên nén thành phẩm</span></a>
 </div>

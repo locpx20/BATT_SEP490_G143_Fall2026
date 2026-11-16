@@ -58,7 +58,6 @@
 .owner-partner-status.is-active { background: #e2eee4; color: #356e51; }
 .owner-partner-status.is-inactive { background: #f2e9cb; color: #7d602e; }
 .owner-row-actions { display: flex; align-items: center; gap: 10px; }
-.owner-workspace:not(.manager-workspace) .owner-history-action { display: none; }
 .owner-text-action { background: none; border: 0; color: var(--primary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .owner-text-action:hover { text-decoration: underline; text-underline-offset: 3px; }
 .owner-edit-action { background: none; border: 0; color: var(--primary); padding: 7px; font-size: 15px; cursor: pointer; }

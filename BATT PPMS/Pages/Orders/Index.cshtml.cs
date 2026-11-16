@@ -1,11 +1,11 @@
-﻿using BATT_PPMS.Helpers;
+using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Pages.Orders
 {
-    /// <summary>Screen: Order List (Manager).</summary>
+    /// <summary>Screen: Danh sách yêu cầu bán hàng (Manager tạo; Owner duyệt).</summary>
     public class IndexModel : BasePageModel
     {
         public const int PageSize = 10;
@@ -29,9 +29,11 @@ namespace BATT_PPMS.Pages.Orders
         public List<Order> Orders { get; private set; } = new();
         public int TotalCount { get; private set; }
         public int TotalPages { get; private set; }
+        public int PendingCount { get; private set; }
 
-        /// <summary>Chỉ Manager được tạo / sửa / xoá; Owner chỉ xem.</summary>
+        /// <summary>Chỉ Manager được tạo / sửa / hủy; Owner duyệt trong trang chi tiết.</summary>
         public bool CanManage => IsManager;
+        public bool IsOwnerView => IsOwner;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -44,15 +46,18 @@ namespace BATT_PPMS.Pages.Orders
             var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
             if (check != null) return check;
 
+            PendingCount = await _context.Orders.CountAsync(o => o.Status == StatusConstants.Pending);
+
             var query = _context.Orders.AsNoTracking()
                 .Include(o => o.Customer)
-                .Include(o => o.Inventory)
+                .Include(o => o.Deliveries).ThenInclude(d => d.ExportSlip)
+                .AsSplitQuery()
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(SearchTerm))
             {
                 var term = SearchTerm.Trim();
-                query = query.Where(o => o.OrderCode.Contains(term) || o.Customer.CustomerName.Contains(term));
+                query = query.Where(o => o.OrderCode.Contains(term) || (o.Customer != null && o.Customer.CustomerName.Contains(term)));
             }
 
             if (!string.IsNullOrWhiteSpace(Status))

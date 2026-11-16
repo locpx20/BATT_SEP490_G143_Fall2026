@@ -23,7 +23,7 @@ namespace BATT_PPMS.Helpers
         public static readonly string[] PartnerStatuses = { "Active", "Inactive" };
         public static readonly string[] InventoryStatuses = { "Available", "Unavailable", "Inactive" };
         public static readonly string[] OrderStatuses = { "Pending", "Approved", "Rejected", "Completed", "Cancelled" };
-        public static readonly string[] DeliveryStatuses = { "Prepared", "In Transit", "Delivered", "Cancelled" };
+        public static readonly string[] DeliveryStatuses = { "Prepared", "Returned", "In Transit", "Delivered", "Cancelled" };
         public static readonly string[] EquipmentStatuses = { "Reported", "Under Maintenance", "Fixed" };
         public static readonly string[] PriorityLevels = { "Low", "Normal", "Medium", "High", "Critical" };
         public static readonly string[] MaintenanceStatuses = { "Pending", "Reported", "Assigned", "In Progress", "InProgress", "WaitingMaterial", "Completed", "Rejected", "Cancelled" };

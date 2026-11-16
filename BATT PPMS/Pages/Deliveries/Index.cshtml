@@ -1,28 +1,150 @@
-﻿@page
+@page
+@using BATT_PPMS.Helpers
+@using BATT_PPMS.Pages.Orders
 @model BATT_PPMS.Pages.Deliveries.IndexModel
 @{
-    ViewData["Title"] = "Giao hang / Boc hang";
+    ViewData["Title"] = "Yêu cầu xuất kho";
     ViewData["ActivePage"] = "Delivery";
+}
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success" style="border-radius:12px;">
+        <i class="bi bi-check-circle-fill" style="margin-right:8px;"></i><span>@Model.SuccessMessage</span>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i><span>@Model.ErrorMessage</span>
+    </div>
 }
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Giao hàng / Bốc hàng</h1>
-        <p class="page-subtitle">Quản lý thông tin giao hàng cho các đơn hàng đã duyệt</p>
-    </div>
-    <div class="page-actions">
-        <a href="/Deliveries/Create" class="btn btn-primary" id="btn-create-delivery">
-            <i class="bi bi-plus-lg"></i> Tạo phiếu giao hàng
-        </a>
+        <h1 class="page-title">Yêu cầu xuất kho</h1>
+        <p class="page-subtitle">
+            @Model.TotalCount yêu cầu@(Model.WaitingCheckCount > 0 ? $" · {Model.WaitingCheckCount} yêu cầu chờ thủ kho kiểm tra" : "")
+        </p>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="bi bi-truck"></i>
-            <h3>Chưa có phiếu giao hàng</h3>
-            <p>TODO: Hiển thị danh sách giao hàng, biển số xe, tài xế, ngày bốc hàng</p>
+@if (Model.CanManage && Model.ReadyOrders.Count > 0)
+{
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h3 class="card-title">Yêu cầu bán đã duyệt – chờ tạo yêu cầu xuất kho</h3></div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead><tr><th>Mã yêu cầu</th><th>Khách hàng</th><th>Loại</th><th>Số lượng</th><th>Thao tác</th></tr></thead>
+                <tbody>
+                    @foreach (var o in Model.ReadyOrders)
+                    {
+                        <tr>
+                            <td><strong>@o.OrderCode</strong></td>
+                            <td>@(o.Customer?.CustomerName ?? "—")</td>
+                            <td>@SalesFlow.GradeLabel(o.Grade)</td>
+                            <td>@SalesFlow.Bags(o.Quantity) bao</td>
+                            <td style="white-space:nowrap;">
+                                <a href="/Orders/Detail?id=@o.OrderId" class="btn btn-sm btn-outline" title="Xem yêu cầu bán"><i class="bi bi-eye"></i></a>
+                                <a href="/Deliveries/Edit?orderId=@o.OrderId" class="btn btn-sm btn-primary"><i class="bi bi-truck"></i> Tạo yêu cầu xuất kho</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <form method="get" class="filter-bar" style="margin-bottom:0;flex:1;">
+            <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control"
+                   placeholder="Tìm theo mã yêu cầu, tài xế hoặc biển số..." id="searchDelivery" />
+            <select class="form-control" style="width:auto;" name="Status" id="filterStatus" onchange="this.form.submit()">
+                <option value="">Tất cả trạng thái</option>
+                @foreach (var s in BATT_PPMS.Pages.Deliveries.IndexModel.FilterStatuses)
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@DeliveryWorkflow.Label(s)</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Lọc</button>
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.Status))
+            {
+                <a href="/Deliveries/Index" class="btn btn-secondary">Xóa lọc</a>
+            }
+        </form>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Mã yêu cầu bán</th>
+                    <th>Khách hàng</th>
+                    <th>Loại / Số lượng</th>
+                    <th>Tài xế</th>
+                    <th>Biển số</th>
+                    <th>Ngày lấy hàng</th>
+                    <th>Trạng thái</th>
+                    <th>Phiếu xuất kho</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Deliveries.Count == 0)
+                {
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <i class="bi bi-truck"></i>
+                                <h3>Chưa có yêu cầu xuất kho</h3>
+                                <p>Yêu cầu xuất kho được tạo từ yêu cầu bán đã được Owner duyệt.</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @foreach (var d in Model.Deliveries)
+                {
+                    var stage = DeliveryWorkflow.Stage(d);
+                    <tr>
+                        <td><strong>@d.Order.OrderCode</strong></td>
+                        <td>@(d.Order.Customer?.CustomerName ?? "—")</td>
+                        <td>@SalesFlow.GradeLabel(d.Order.Grade) · @SalesFlow.Bags(d.Order.Quantity) bao</td>
+                        <td>@d.DriverName</td>
+                        <td>@d.LicensePlate</td>
+                        <td>@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="badge @stage.Badge">@stage.Label</span></td>
+                        <td>
+                            @if (d.ExportSlip != null)
+                            {
+                                <a href="/ExportSlips/Detail?id=@d.ExportSlip.SlipId">@d.ExportSlip.SlipCode</a>
+                            }
+                            else { <span>—</span> }
+                        </td>
+                        <td style="white-space:nowrap;">
+                            <a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-sm @(Model.IsWarehouse && d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlip == null ? "btn-primary" : "btn-outline")" title="Xem chi tiết">
+                                @if (Model.IsWarehouse && d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlip == null) { <span>Kiểm tra</span> } else { <i class="bi bi-eye"></i> }
+                            </a>
+                            @if (Model.CanManage && DeliveryWorkflow.CanEdit(d))
+                            {
+                                <a href="/Deliveries/Edit?id=@d.DeliveryId" class="btn btn-sm btn-outline" title="Cập nhật"><i class="bi bi-pencil"></i></a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pagination" style="padding:14px;">
+            @for (var p = 1; p <= Model.TotalPages; p++)
+            {
+                <a class="page-link @(p == Model.PageNumber ? "active" : "")"
+                   href="/Deliveries/Index?PageNumber=@p&SearchTerm=@Uri.EscapeDataString(Model.SearchTerm ?? "")&Status=@Uri.EscapeDataString(Model.Status ?? "")">@p</a>
+            }
+        </div>
+    }
 </div>

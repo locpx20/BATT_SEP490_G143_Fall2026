@@ -16,15 +16,10 @@
     @if (Model.Tab == "finished") {
         <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
         <link rel="stylesheet" href="~/css/warehouse-plans.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/finished-stock.css" asp-append-version="true" />
     }
     <link rel="stylesheet" href="~/css/warehouse-import.css" asp-append-version="true" />
     <style>
-        .warehouse-plans .finished-stock-filter { flex: 0 1 650px; flex-wrap: wrap; justify-content: flex-start; }
-        .warehouse-plans .finished-stock-table { min-width: 640px; }
-        .finished-stock-table .stock-lot-code { color: var(--co-ink); font-weight: 700; overflow-wrap: anywhere; }
-        .finished-stock-table .stock-quantity { text-align: right; white-space: nowrap; }
-        .finished-stock-table td.stock-quantity { font-weight: 700; font-variant-numeric: tabular-nums; }
-
         .wh-page-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -455,59 +450,7 @@
 
 @if (Model.Tab == "finished")
 {
-    <div class="closeout">
-        <header class="closeout-header">
-            <h1><i class="bi bi-boxes" aria-hidden="true"></i> @ViewData["Title"]</h1>
-        </header>
-        <section class="closeout-register warehouse-plans">
-            <div class="closeout-section-head">
-                <form method="get" asp-page="/Inventory/Index" class="closeout-filter finished-stock-filter">
-                    <input type="hidden" name="Tab" value="finished" />
-                    <label class="plan-filter-label" for="inventoryProductionDate">Ngày sản xuất</label>
-                    <input id="inventoryProductionDate" type="date" name="ProductionDateFilter" value="@Model.ProductionDateInput" />
-                    <button class="closeout-button secondary" type="submit"><i class="bi bi-search" aria-hidden="true"></i> Tìm kiếm</button>
-                </form>
-            </div>
-            <div class="warehouse-plans-scroll" role="region" aria-label="Bảng tồn kho thành phẩm" tabindex="0">
-                <table class="warehouse-plans-table finished-stock-table" aria-label="Tồn kho thành phẩm">
-                    <colgroup>
-                        <col style="width: 30%;" />
-                        <col style="width: 22%;" />
-                        <col style="width: 24%;" />
-                        <col style="width: 24%;" />
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th scope="col">Mã lô</th>
-                            <th scope="col">Ngày sản xuất</th>
-                            <th scope="col" class="stock-quantity">Khối lượng tồn</th>
-                            <th scope="col">Người tạo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var batch in Model.Batches)
-                        {
-                            <tr>
-                                <td><code class="stock-lot-code" title="@batch.BagNumber">@LotCode.ForListDisplay(batch.BagNumber)</code></td>
-                                <td>@batch.ProductionDate.ToString("dd/MM/yyyy")</td>
-                                <td class="stock-quantity">@batch.Quantity.ToString("N2") kg</td>
-                                <td>@(batch.CreatedByNavigation?.FullName ?? "Tài khoản đã xóa")</td>
-                            </tr>
-                        }
-                        @if (Model.Batches.Count == 0)
-                        {
-                            <tr>
-                                <td colspan="4" class="plan-empty">
-                                    @(Model.InvalidProductionDateFilter ? "Vui lòng chọn ngày sản xuất hợp lệ." : "Không có lô thành phẩm phù hợp.")
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-            <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.Pagination, "/Inventory/Index", new() { ["Tab"] = Model.Tab, ["ProductionDateFilter"] = Model.ProductionDateInput })' />
-        </section>
-    </div>
+    <partial name="_FinishedStock" model="Model" />
 }
 else
 {
@@ -1227,6 +1170,9 @@ else
 }
 
 @section Scripts {
+    @if (Model.Tab == "finished") {
+        <script src="~/js/finished-stock.js" asp-append-version="true"></script>
+    }
     <script>
         function openPmModal(id) { document.getElementById(id).classList.add('open'); }
         function closePmModal(id) { document.getElementById(id).classList.remove('open'); }

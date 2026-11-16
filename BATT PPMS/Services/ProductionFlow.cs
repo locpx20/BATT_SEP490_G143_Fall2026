@@ -1,21 +1,25 @@
 using System.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Services;
 
 public sealed class ProductionFlowException(string message) : Exception(message);
+public sealed record QcShiftOption(int AssignmentId, DateOnly AssignmentDate, string? Shift, string LotPrefix, string? RecheckLot);
 
 /// <summary>Enforces production handoffs and posts stock exactly once, in one transaction.</summary>
 public sealed class ProductionFlow(ProductionManagementDbContext db)
 {
+    public const string ShiftIncidentNotePrefix = "Lý do phát sinh trong ca:";
     public static DateTime Now => DateTime.UtcNow.AddHours(7);
     public static string Label(string? status) => status switch {
         "Pending" => "Chờ tiếp nhận", "In Progress" => "Đang kiểm tra", "Completed" => "Đã trả kết quả",
         "Pass" => "Đạt", "Fail" => "Không đạt", "Rejected" => "Bị từ chối", "Issued" => "Đã cấp nguyên liệu",
-        "Received" => "Đã nhập kho", "AwaitingStaffConfirmation" => "Chờ Staff xác nhận",
+        "Received" or "AwaitingStaffConfirmation" => "Đã nhập kho",
         "Submitted" => "Chờ Manager duyệt", "Approved" => "Đã duyệt", _ => status ?? "Chưa có" };
+    public static string QcStatusLabel(string? status) => status == "Pending" ? "Chờ kiểm tra" : Label(status);
 
     public IQueryable<ProductionQualityRequest> QualityQuery => db.ProductionQualityRequests
         .Include(x => x.Assignment).ThenInclude(x => x.AssignedByNavigation)
@@ -32,9 +36,12 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         return value;
     }
     private async Task Actor(int userId, string role) => Need(await db.Users.AnyAsync(x => x.UserId == userId && x.Status == "Active" && x.Role.RoleName == role), "Tài khoản không có quyền thực hiện thao tác này.");
-    private async Task NotifyManagers(string message) {
-        var ids=await db.Users.Where(x=>x.Status=="Active"&&x.Role.RoleName==RoleConstants.Manager).Select(x=>x.UserId).ToListAsync();
-        foreach(var id in ids) Notifier.Add(db,id,"Thông tin nhập kho thành phẩm",message,"/Warehouse/Index?tab=receipts");
+    private async Task NotifyManagersOfReceipt(DateOnly productionDate, string message) {
+        var ids = await db.Users.Where(x => x.Status == "Active" && x.Role.RoleName == RoleConstants.Manager)
+            .Select(x => x.UserId).ToListAsync();
+        var date = productionDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        foreach (var id in ids)
+            Notifier.Add(db, id, "Đã nhập kho thành phẩm", message, $"/ShiftReports/Index?tab=receipts&ReportDate={date}&StatusFilter=Received");
     }
     private async Task<T> Change<T>(Func<Task<T>> action) {
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -56,61 +63,196 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             .Select(shift => shift.FirstOrDefault(a => a.AssignmentId == preferredAssignmentId) ?? shift.First())
             .ToList();
     }
-    public async Task<List<PersonnelAssignment>> ConsumptionShiftOptions(int staff, int editReportId = 0)
-    {
-        var today = DateOnly.FromDateTime(Now);
-        var assignments = db.PersonnelAssignments.AsNoTracking()
-            .Where(a => a.StaffId == staff && a.Status != "Cancelled");
-        if (editReportId > 0)
-            return await assignments.Where(a => db.MaterialUsageReviews.Any(review =>
-                review.ReportId == editReportId && review.Report.StaffId == staff
-                && review.Report.AssignmentId == a.AssignmentId)).ToListAsync();
 
-        var available = await assignments
-            .Where(a => a.AssignmentDate >= today
-                && !db.MaterialUsageReviews.Any(review => review.Report.ShiftDate == a.AssignmentDate
-                    && review.Report.Assignment.Shift == a.Shift))
-            .OrderBy(a => a.AssignmentDate).ThenBy(a => a.Shift).ThenBy(a => a.AssignmentId)
-            .ToListAsync();
-        return available.GroupBy(a => new { a.AssignmentDate, a.Shift }).Select(shift => shift.First()).ToList();
+    public async Task<List<QcShiftOption>> QcShiftOptions(int staff)
+    {
+        var assignments = (await AssignedShiftOptions(staff)).Where(a => LotCode.ShiftNumber(a.Shift).HasValue).ToList();
+        if (assignments.Count == 0)
+            return [];
+
+        var dates = assignments.Select(a => a.AssignmentDate).Distinct().ToArray();
+        var existing = (await ReadShiftQcAsync(dates)).ToLookup(q => (q.Date, LotCode.ShiftNumber(q.Shift)));
+        var options = new List<QcShiftOption>();
+        foreach (var shift in assignments.GroupBy(a => (a.AssignmentDate, LotCode.ShiftNumber(a.Shift))))
+        {
+            var requests = existing[shift.Key];
+            var latest = requests.FirstOrDefault();
+            if (requests.Any(q => !q.Failed) || (latest != null && latest.RequestedBy != staff))
+                continue;
+
+            var assignment = shift.First();
+            options.Add(new QcShiftOption(assignment.AssignmentId, assignment.AssignmentDate, assignment.Shift,
+                LotCode.ShiftPrefix(assignment.AssignmentDate, shift.Key.Item2!.Value), latest?.Lot));
+        }
+        return options;
     }
 
-    public Task<int> RequestQc(int staff, int assignmentId, int quantity, string? note) => Change(async () => {
+    private sealed record ShiftQcRequest(DateOnly Date, string? Shift, int BatchId, string Lot,
+        int? RequestedBy, bool Failed, string? Note);
+
+    private Task<List<ShiftQcRequest>> ReadShiftQcAsync(DateOnly[] dates) =>
+        db.ProductionQualityRequests.AsNoTracking().Where(q => dates.Contains(q.Assignment.AssignmentDate))
+            .OrderByDescending(q => q.RequestId)
+            .Select(q => new ShiftQcRequest(q.Assignment.AssignmentDate, q.Assignment.Shift,
+                q.Inspection.BatchId, q.Inspection.Batch.BagNumber, q.Inspection.RequestedBy,
+                q.Inspection.Status == "Completed" && q.Inspection.Result == "Fail", q.Inspection.Note))
+            .ToListAsync();
+
+    public async Task<(bool HasChipperAssignment, List<PersonnelAssignment> AvailableShifts)> ConsumptionShiftOptions(
+        int staff, DateOnly date, string? shift = null)
+    {
+        var assignments = await db.PersonnelAssignments.AsNoTracking()
+            .Where(a => a.StaffId == staff && a.Status != "Cancelled" && a.AssignmentDate == date
+                && (shift == null || a.Shift == shift))
+            .OrderBy(a => a.AssignmentDate).ThenBy(a => a.Shift).ThenBy(a => a.AssignmentId)
+            .Select(a => new
+            {
+                Assignment = a,
+                HasReport = db.MaterialUsageReviews.Any(review => review.Report.ShiftDate == a.AssignmentDate
+                    && review.Report.Assignment.Shift == a.Shift)
+            })
+            .ToListAsync();
+        var chipperAssignments = assignments.Where(a => ProductionAssignmentTasks.IsChipping(a.Assignment.TaskDescription)).ToList();
+        var availableShifts = chipperAssignments.Where(a => !a.HasReport).Select(a => a.Assignment)
+            .GroupBy(a => new { a.AssignmentDate, a.Shift }).Select(shift => shift.First()).ToList();
+        return (chipperAssignments.Count > 0, availableShifts);
+    }
+
+    public async Task<HashSet<(DateOnly Date, string? Shift)>> ChippingShiftsAsync(int staff, DateOnly[] dates)
+    {
+        if (dates.Length == 0) return [];
+
+        var assignments = await db.PersonnelAssignments.AsNoTracking()
+            .Where(a => a.StaffId == staff && a.Status != "Cancelled" && dates.Contains(a.AssignmentDate))
+            .Select(a => new { a.AssignmentDate, a.Shift, a.TaskDescription }).ToListAsync();
+        return assignments.Where(a => ProductionAssignmentTasks.IsChipping(a.TaskDescription))
+            .Select(a => (a.AssignmentDate, a.Shift)).ToHashSet();
+    }
+
+    public Task<int> RequestQc(int staff, int assignmentId, int? bags, string? note,
+        bool hasShiftIncident = false, string? exceptionReason = null) => Change(async () => {
         await Actor(staff, RoleConstants.Staff); var a = await OwnAssignment(assignmentId, staff);
         Need(a.AssignmentDate >= DateOnly.FromDateTime(Now), "Chỉ được tạo yêu cầu QC từ ngày hôm nay trở đi.");
-        Need(quantity > 0, "Sản lượng cần kiểm tra phải lớn hơn 0 kg.");
+        var shift = LotCode.ShiftNumber(a.Shift);
+        Need(shift.HasValue, "Phân công chưa có ca hợp lệ để cấp mã lô.");
+        var prefix = LotCode.ShiftPrefix(a.AssignmentDate, shift!.Value);
+        var lockName = FormattableString.Invariant($"FinishedGoodsLot:{a.AssignmentDate:yyyy-MM-dd}");
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                DECLARE @lockResult int;
+                EXEC @lockResult = sp_getapplock
+                    @Resource = {lockName}, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 5000;
+                IF @lockResult < 0 THROW 51021, 'Unable to allocate a finished goods lot number.', 1;
+                """);
+        }
+        catch (SqlException ex) when (ex.Number is 51021 or 1205)
+        {
+            throw new ProductionFlowException("Ca này đang được cấp mã lô. Vui lòng thử gửi lại.");
+        }
+
+        var previous = (await ReadShiftQcAsync([a.AssignmentDate])).Where(q => LotCode.ShiftNumber(q.Shift) == shift).ToList();
+        Need(previous.All(q => q.Failed), "Ca này đã có lô thành phẩm gửi QC. Mỗi ca ghi nhận một lô tổng.");
+        var latest = previous.FirstOrDefault();
         var text = Text(note, 5000, "ghi chú");
-        Need(!await db.ProductionQualityRequests.AnyAsync(x =>
-            x.Assignment.AssignmentDate == a.AssignmentDate && x.Assignment.Shift == a.Shift
-            && (x.Inspection.Status != "Completed" || x.Inspection.Result != "Fail")),
-            "Ca này đã có lô thành phẩm gửi kiểm tra. Mỗi ca chỉ gửi một lô tổng.");
-        var batch = new FinishedGoodBatch { BagNumber = LotCode.Create(a.AssignmentDate), ProductionDate = a.AssignmentDate, Quantity = quantity, CreatedBy = staff, Status = "Pending QC" };
+        FinishedGoodBatch batch;
+        string? incidentNote;
+        if (latest != null)
+        {
+            Need(latest.RequestedBy == staff, "Người đã gửi lô thành phẩm của ca mới có thể yêu cầu QC kiểm tra lại.");
+            batch = await db.FinishedGoodBatches.SingleAsync(b => b.BatchId == latest.BatchId);
+            Need(batch.Status == "QC Failed", "Lô thành phẩm không còn ở trạng thái cần kiểm tra lại.");
+            batch.Status = "Pending QC";
+            var firstLine = latest.Note?.Split('\n', 2)[0];
+            incidentNote = IsShiftIncidentNote(firstLine) ? firstLine : null;
+        }
+        else
+        {
+            Need(bags is >= 1 and <= FinishedGoodsQuantity.MaxBags, "Số bao thành phẩm phải là số nguyên dương trong giới hạn cho phép.");
+            Need(!await db.FinishedGoodBatches.AnyAsync(b => b.BagNumber.StartsWith(prefix)),
+                "Ca này đã có mã lô thành phẩm.");
+            var reason = Text(hasShiftIncident ? exceptionReason : null, 1000, "lý do phát sinh trong ca", hasShiftIncident);
+            incidentNote = reason == null ? null : $"{ShiftIncidentNotePrefix} {reason.ReplaceLineEndings(" ")}";
+            batch = new FinishedGoodBatch
+            {
+                BagNumber = LotCode.Create(prefix, hasShiftIncident ? 2 : 1, bags!.Value),
+                ProductionDate = a.AssignmentDate,
+                Quantity = (decimal)bags.Value * FinishedGoodsQuantity.KilogramsPerBag,
+                CreatedBy = staff,
+                Status = "Pending QC"
+            };
+        }
+        if (incidentNote != null)
+            text = text == null ? incidentNote : $"{incidentNote}\n{text}";
         var inspection = new Qcinspection { InspectionCode = $"QC-{Guid.NewGuid():N}", Batch = batch, RequestedBy = staff, RequestDate = Now, Status = "Pending", Note = text };
         var request = new ProductionQualityRequest { Assignment = a, Inspection = inspection, CreatedAt = Now };
         db.ProductionQualityRequests.Add(request); await db.SaveChangesAsync();
         var inspectors=await db.Users.Where(x=>x.Status=="Active"&&x.Role.RoleName==RoleConstants.QCStaff).Select(x=>x.UserId).ToListAsync();
-        foreach(var id in inspectors) Notifier.Add(db,id,"Yêu cầu kiểm tra chất lượng mới",$"{inspection.InspectionCode}: kiểm tra lô {batch.BagNumber}, {quantity:N0} kg.","/QC/Index");
+        foreach(var id in inspectors) Notifier.Add(db,id,"Yêu cầu kiểm tra chất lượng mới",$"{inspection.InspectionCode}: kiểm tra lô {batch.BagNumber}, {batch.Quantity:N2} kg.","/QC/Index");
         return request.RequestId;
     });
-    public Task<int> StartQc(int qc, int requestId) => Change(async () => {
+    public static bool IsShiftIncidentNote(string? note) =>
+        note?.StartsWith(ShiftIncidentNotePrefix, StringComparison.Ordinal) == true
+        || note?.StartsWith("Lý do tách lô:", StringComparison.Ordinal) == true;
+    public Task<int> FinishQc(int qc, QcResultInput input, byte[] image) => Change(async () => {
         await Actor(qc, RoleConstants.QCStaff);
-        var request = await QualityQuery.SingleOrDefaultAsync(x => x.RequestId == requestId);
-        Need(request?.Inspection.Status == "Pending", "Yêu cầu không còn ở trạng thái chờ tiếp nhận.");
-        request!.Inspection.Status = "In Progress"; request.Inspection.InspectedBy = qc; return requestId;
-    });
-    public Task<int> FinishQc(int qc, int requestId, string? result, string? note, byte[]? image = null) => Change(async () => {
-        await Actor(qc, RoleConstants.QCStaff);
-        Need(result is "Pass" or "Fail", "Vui lòng chọn kết quả đạt hoặc không đạt.");
-        var text = Text(note, 5000, "kết luận kiểm tra", true);
-        var request = await QualityQuery.SingleOrDefaultAsync(x => x.RequestId == requestId);
-        Need(request?.Inspection.Status == "In Progress" && request.Inspection.InspectedBy == qc, "Chỉ nhân viên QC đã tiếp nhận được trả kết quả một lần.");
+        Need(input.Result is "Pass" or "Fail", "Vui lòng chọn kết quả đạt hoặc không đạt.");
+        Need(input.Grade is "A" or "B", "Vui lòng chọn hàng loại A hoặc hàng loại B.");
+        Need(input.HasImpurities.HasValue, "Vui lòng chọn có hoặc không có tạp chất.");
+        Need(input.PelletLengthMm is > 0 and <= 999999.99m && decimal.Round(input.PelletLengthMm.Value, 2) == input.PelletLengthMm,
+            "Độ dài viên phải lớn hơn 0 mm và có tối đa 2 chữ số thập phân.");
+        Need(input.AshPercent is >= 0 and <= 100 && decimal.Round(input.AshPercent.Value, 2) == input.AshPercent,
+            "Độ tro phải từ 0 đến 100% và có tối đa 2 chữ số thập phân.");
+        var text = Text(input.Note, 5000, "kết luận kiểm tra", true);
+        var details = new ProductionQcResult
+        {
+            RequestId = input.RequestId,
+            PelletColor = Text(input.PelletColor, 100, "màu sắc viên", true)!,
+            PelletDescription = Text(input.PelletDescription, 1000, "mô tả viên", true)!,
+            PelletLengthMm = input.PelletLengthMm!.Value,
+            Compaction = Text(input.Compaction, 100, "độ nén", true)!,
+            AshPercent = input.AshPercent!.Value,
+            HasImpurities = input.HasImpurities!.Value,
+            Grade = input.Grade!
+        };
+
+        var imageType = QcEvidence.Validate(image);
+        var lockName = FormattableString.Invariant($"ProductionQcResult:{input.RequestId}");
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                DECLARE @lockResult int;
+                EXEC @lockResult = sp_getapplock
+                    @Resource = {lockName}, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 5000;
+                IF @lockResult < 0 THROW 51022, 'Unable to lock the QC request.', 1;
+                """);
+        }
+        catch (SqlException ex) when (ex.Number is 51022 or 1205)
+        {
+            throw new ProductionFlowException("Yêu cầu đang được xử lý. Kiểm tra trạng thái trước khi gửi lại.");
+        }
+
+        var request = await db.ProductionQualityRequests.Include(q => q.Inspection).ThenInclude(i => i.Batch)
+            .SingleOrDefaultAsync(q => q.RequestId == input.RequestId);
+        Need(request != null, "Không tìm thấy yêu cầu kiểm tra.");
         var inspection = request!.Inspection;
-        request.ResultImageType = QcEvidence.Validate(image); request.ResultImage = image;
-        inspection.Result = result; inspection.Note = string.Join("\n", new[] { inspection.Note, $"Kết luận QC: {text}" }.Where(x => !string.IsNullOrWhiteSpace(x)));
-        inspection.InspectDate = Now; inspection.Status = "Completed";
-        inspection.Batch.Status = result == "Pass" ? "Pending Receipt" : "QC Failed";
-        if(inspection.RequestedBy.HasValue) Notifier.Add(db,inspection.RequestedBy.Value,"QC đã trả kết quả kiểm tra",$"{inspection.InspectionCode}: {Label(result)}. {text}",result=="Pass"?$"/Warehouse/Index?tab=receipts&QualityRequestId={requestId}":"/QC/Index");
-        return requestId;
+        Need(inspection.Status == "Pending" || (inspection.Status == "In Progress" && inspection.InspectedBy == qc),
+            "Yêu cầu đã có kết quả hoặc đang do nhân viên QC khác phụ trách.");
+        request.ResultImageType = imageType;
+        request.ResultImage = image;
+        db.ProductionQcResults.Add(details);
+        inspection.Result = input.Result;
+        inspection.Note = string.Join("\n", new[] { inspection.Note, $"Kết luận QC: {text}" }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        inspection.InspectDate = Now;
+        inspection.InspectedBy = qc;
+        inspection.Status = "Completed";
+        var passed = input.Result == "Pass";
+        inspection.Batch.Status = passed ? "Pending Receipt" : "QC Failed";
+        if (inspection.RequestedBy.HasValue)
+            Notifier.Add(db, inspection.RequestedBy.Value, "QC đã trả kết quả kiểm tra",
+                $"{inspection.InspectionCode}: {Label(input.Result)} · Hàng loại {details.Grade}. {text}",
+                passed ? $"/Warehouse/Index?tab=receipts&QualityRequestId={input.RequestId}" : $"/QC/Index?SearchTerm={inspection.InspectionCode}");
+        return input.RequestId;
     });
     private async Task SetUsage(EndOfShiftReport report, List<MaterialUsageInput>? input) {
         var rows = (input ?? new()).Where(x => x.Quantity.HasValue && x.Quantity != 0).ToList();
@@ -131,16 +273,31 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             usage.Quantity = row.Quantity!.Value;
         }
     }
-    public async Task<int> SaveConsumptionKg(int staff, int assignmentId, decimal quantityKg, string? note, int reportId = 0) {
+    public async Task<int> SaveConsumptionKg(int staff, int assignmentId, decimal quantityKg, string? note, int reportId = 0,
+        DateOnly? selectedDate = null, string? selectedShift = null) {
         Need(quantityKg > 0 && quantityKg <= 9999999999.99m && decimal.Round(quantityKg,2) == quantityKg, "Khối lượng phải lớn hơn 0 kg và tối đa 2 chữ số thập phân.");
         var materials=await db.RawMaterials.AsNoTracking().Where(x=>x.Unit.Trim().ToLower()=="kg").OrderBy(x=>x.MaterialId).ToListAsync();
         Need(materials.Count>0, "Kho chưa có nguyên liệu theo đơn vị kg.");
         Need(materials.Select(x=>x.MaterialName.Trim().ToUpperInvariant()).Distinct().Count()==1, "Kho có nhiều loại nguyên liệu khác nhau. Cần xác định loại nguyên liệu sản xuất trước khi khai báo.");
-        return await SaveConsumption(staff,assignmentId,new(){new(){MaterialId=materials[0].MaterialId,Quantity=quantityKg}},note,reportId);
+        return await SaveConsumption(staff,assignmentId,new(){new(){MaterialId=materials[0].MaterialId,Quantity=quantityKg}},note,reportId,
+            selectedDate, selectedShift);
     }
-    public Task<int> SaveConsumption(int staff, int assignmentId, List<MaterialUsageInput> materials, string? note, int reportId = 0) => Change(async () => {
+    public Task<int> SaveConsumption(int staff, int assignmentId, List<MaterialUsageInput> materials, string? note, int reportId = 0,
+        DateOnly? selectedDate = null, string? selectedShift = null) => Change(async () => {
         await Actor(staff, RoleConstants.Staff); var assignment = await OwnAssignment(assignmentId, staff);
-        Need(reportId > 0 || assignment.AssignmentDate >= DateOnly.FromDateTime(Now), "Chỉ được tạo phiếu tiêu hao từ ngày hôm nay trở đi.");
+        var canReport = ProductionAssignmentTasks.IsChipping(assignment.TaskDescription);
+        if (!canReport && reportId > 0)
+        {
+            // Older reports may link to another task of the same shift.
+            var chippingShifts = await ChippingShiftsAsync(staff, [assignment.AssignmentDate]);
+            canReport = chippingShifts.Contains((assignment.AssignmentDate, assignment.Shift));
+        }
+        Need(canReport, "Bạn cần được phân công Máy băm trong ca này để nhập nguyên liệu tiêu thụ.");
+        if (reportId == 0) {
+            Need((selectedDate == null || assignment.AssignmentDate == selectedDate)
+                && (string.IsNullOrWhiteSpace(selectedShift) || string.Equals(assignment.Shift, selectedShift, StringComparison.OrdinalIgnoreCase)),
+                "Bạn không có quyền nhập cho ngày hoặc ca đang chọn.");
+        }
         Need(!await db.MaterialUsageReviews.AnyAsync(x => x.ReportId != reportId
             && x.Report.ShiftDate == assignment.AssignmentDate && x.Report.Assignment.Shift == assignment.Shift),
             "Ca này đã có phiếu tiêu hao. Người gửi có thể sửa và gửi lại phiếu hiện có nếu cần.");
@@ -220,23 +377,34 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         Need(q!.Inspection.Status == "Completed" && q.Inspection.Result == "Pass", "Chỉ được yêu cầu nhập kho sau khi QC trả kết quả đạt.");
         Need(q.Assignment.Status != "Cancelled", "Phân công đã bị hủy.");
         Need(!await db.FinishedGoodsReceipts.AnyAsync(x => x.QualityRequestId != requestId
-            && x.QualityRequest.Assignment.AssignmentDate == q.Assignment.AssignmentDate
-            && x.QualityRequest.Assignment.Shift == q.Assignment.Shift),
-            "Ca này đã có yêu cầu nhập lô thành phẩm tổng.");
+            && x.QualityRequest.Inspection.BatchId == q.Inspection.BatchId),
+            "Lô thành phẩm này đã có yêu cầu nhập kho.");
         if (q.Receipt != null) {
             Need(q.Receipt.Status == "Rejected", "Yêu cầu nhập kho đã được gửi hoặc xử lý.");
             q.Receipt.RequestNote = Text(note, 2000, "nội dung điều chỉnh", true);
             q.Receipt.Status = "Pending"; q.Receipt.RequestedAt = Now;
         } else db.FinishedGoodsReceipts.Add(new() { QualityRequest = q, RequestedBy = staff, RequestedAt = Now, ExpectedQuantity = q.Inspection.Batch.Quantity, RequestNote = Text(note, 2000, "ghi chú yêu cầu") });
+        var grade = await db.ProductionQcResults.Where(result => result.RequestId == requestId)
+            .Select(result => result.Grade).SingleOrDefaultAsync();
+        var qcSummary = grade is "A" or "B" ? $"QC đạt, loại {grade} · Kho {grade}." : "QC đạt, chưa phân loại A/B.";
         var keepers=await db.Users.Where(x=>x.Status=="Active"&&x.Role.RoleName==RoleConstants.WarehouseStaff).Select(x=>x.UserId).ToListAsync();
-        foreach(var keeper in keepers)Notifier.Add(db,keeper,"Yêu cầu nhập thành phẩm chờ duyệt",$"Lô {q.Inspection.Batch.BagNumber}, {q.Inspection.Batch.Quantity:N2} kg. QC đã trả kết quả đạt.","/Warehouse/Index?tab=receipts&StatusFilter=Pending");
+        foreach(var keeper in keepers)Notifier.Add(db,keeper,"Yêu cầu nhập thành phẩm chờ duyệt",$"Lô {q.Inspection.Batch.BagNumber}, {q.Inspection.Batch.Quantity:N2} kg. {qcSummary}","/Warehouse/Index?tab=receipts&StatusFilter=Pending");
         return requestId;
     });
     public Task<int> RejectReceipt(int keeper, int receiptId, string? reason) => Change(async () => {
-        await Actor(keeper, RoleConstants.WarehouseStaff); var text = Text(reason, 1000, "lý do từ chối", true);
-        var r = await db.FinishedGoodsReceipts.SingleOrDefaultAsync(x => x.ReceiptId == receiptId);
-        Need(r?.Status == "Pending", "Yêu cầu đã được xử lý."); r!.Status = "Rejected"; r.RejectionReason = text; r.ReceivedBy = keeper;
-        if(r.RequestedBy.HasValue) Notifier.Add(db,r.RequestedBy.Value,"Yêu cầu nhập kho bị từ chối",$"NK-{receiptId:D4}: {text}","/Warehouse/Index?tab=receipts");
+        await Actor(keeper, RoleConstants.WarehouseStaff);
+        var text = Text(reason, 1000, "lý do từ chối", true);
+        var r = await db.FinishedGoodsReceipts.Include(x => x.QualityRequest).ThenInclude(x => x.Assignment)
+            .SingleOrDefaultAsync(x => x.ReceiptId == receiptId);
+        Need(r?.Status == "Pending", "Yêu cầu đã được xử lý.");
+        r!.Status = "Rejected";
+        r.RejectionReason = text;
+        r.ReceivedBy = keeper;
+        if (r.RequestedBy.HasValue) {
+            var date = r.QualityRequest.Assignment.AssignmentDate.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            Notifier.Add(db, r.RequestedBy.Value, "Yêu cầu nhập kho bị từ chối", $"NK-{receiptId:D4}: {text}",
+                $"/Warehouse/Index?tab=receipts&Step=4&StatusFilter=Rejected&ReceiptDate={date}");
+        }
         return receiptId;
     });
     public Task<int> ReceiveGoods(int keeper, int receiptId, decimal actual, string? note) => Change(async () => {
@@ -248,32 +416,28 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             .SingleOrDefaultAsync(x => x.ReceiptId == receiptId);
         Need(r?.Status == "Pending", "Yêu cầu đã được xử lý; không thể nhập kho lần nữa.");
         Need(r!.QualityRequest.Inspection.Status == "Completed" && r.QualityRequest.Inspection.Result == "Pass", "Lô hàng chưa có kết quả QC đạt.");
+        var grade = await db.ProductionQcResults.Where(result => result.RequestId == r.QualityRequestId)
+            .Select(result => result.Grade).SingleOrDefaultAsync();
+        var destination = grade is "A" or "B" ? $" vào Kho {grade}" : "";
+        var stockUrl = grade is "A" or "B" ? $"/Inventory/Index?tab=finished&StockGrade={grade}" : "/Inventory/Index?tab=finished";
         var assignment = r.QualityRequest.Assignment;
         Need(!await db.FinishedGoodsReceipts.AnyAsync(x => x.ReceiptId != receiptId && x.ReceivedAt != null && x.ActualQuantity > 0
-            && x.QualityRequest.Assignment.AssignmentDate == assignment.AssignmentDate
-            && x.QualityRequest.Assignment.Shift == assignment.Shift),
-            "Ca này đã nhập lô thành phẩm tổng vào kho.");
+            && x.QualityRequest.Inspection.BatchId == r.QualityRequest.Inspection.BatchId),
+            "Lô thành phẩm này đã được nhập kho.");
         var text = Text(note, 2000, "ghi chú đối chiếu", actual != r.ExpectedQuantity);
         r.ActualQuantity = actual; r.DiscrepancyNote = text; r.ReceivedBy = keeper; r.ReceivedAt = Now;
-        // Preserve the user's diagram: discrepancy Yes -> Manager; No -> Staff confirmation -> Manager.
-        r.Status = actual != r.ExpectedQuantity ? "Received" : "AwaitingStaffConfirmation";
+        r.Status = "Received";
         r.QualityRequest.Inspection.Batch.Quantity = actual;
         r.QualityRequest.Inspection.Batch.Status = "In Stock";
         var keepers = await db.Users.Where(u => u.Status == "Active" && u.Role.RoleName == RoleConstants.WarehouseStaff)
             .Select(u => u.UserId).ToListAsync();
         foreach (var id in keepers) Notifier.Add(db,id,"Kho thành phẩm đã cập nhật",
-            $"Lô {r.QualityRequest.Inspection.Batch.BagNumber} đã nhập {actual:N2} kg theo phiếu NK-{receiptId:D4}.",
-            "/Inventory/Index?tab=finished");
-        if(actual!=r.ExpectedQuantity) await NotifyManagers($"Phiếu NK-{receiptId:D4} đã nhập kho, chênh lệch {actual-r.ExpectedQuantity:N2} kg. {text}");
-        else if(r.RequestedBy.HasValue) Notifier.Add(db,r.RequestedBy.Value,"Xác nhận phiếu nhập thành phẩm",$"Phiếu NK-{receiptId:D4} chờ bạn xác nhận.","/Warehouse/Index?tab=receipts");
-        return receiptId;
-    });
-    public Task<int> ConfirmReceipt(int staff, int receiptId) => Change(async () => {
-        await Actor(staff, RoleConstants.Staff);
-        var r = await db.FinishedGoodsReceipts.SingleOrDefaultAsync(x => x.ReceiptId == receiptId && x.RequestedBy == staff);
-        Need(r?.Status == "AwaitingStaffConfirmation", "Phiếu không còn chờ xác nhận của bạn.");
-        r!.StaffConfirmedAt = Now; r.Status = "Received";
-        await NotifyManagers($"Staff đã xác nhận phiếu NK-{receiptId:D4}. Nhập kho thành phẩm hoàn tất.");
+            $"Lô {r.QualityRequest.Inspection.Batch.BagNumber} đã nhập {actual:N2} kg{destination} theo phiếu NK-{receiptId:D4}.",
+            stockUrl);
+        var summary = $"Phiếu NK-{receiptId:D4} đã nhập kho {actual:N2} kg{destination}.";
+        if (actual != r.ExpectedQuantity)
+            summary += $" Chênh lệch {actual - r.ExpectedQuantity:N2} kg. {text}";
+        await NotifyManagersOfReceipt(assignment.AssignmentDate, summary);
         return receiptId;
     });
 }

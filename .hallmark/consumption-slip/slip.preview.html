@@ -1,0 +1,91 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Phiếu tiêu hao nguyên liệu, xem thử thành phần</title><meta name="description" content="Vùng phiếu tiêu hao BATT với dữ liệu từ ảnh tham chiếu."><style>/* Hallmark · component: consumption slip · genre: modern-minimal · theme: BATT brand · states: 8 · redesign: full · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V4 · weakest: E, constrain metadata and quantity independently on narrow screens */
+:root {
+    --slip-ink: var(--color-ink, #243d35);
+    --slip-muted: var(--color-ink-2, #52675d);
+    --slip-surface: var(--color-paper-2, #fffefa);
+    --slip-wash: var(--color-paper, #f4f2ea);
+    --slip-rule: var(--color-rule, #d7dfd3);
+    --slip-accent: var(--color-accent, #193f35);
+    --slip-accent-ink: var(--color-accent-ink, #fffefa);
+    --slip-field-edge: var(--color-field-edge, #789183);
+    --slip-focus: var(--color-focus, #356e51);
+    --slip-pending-bg: #f3eddb;
+    --slip-pending-ink: #78581d;
+    --slip-approved-bg: #e2eee4;
+    --slip-approved-ink: #28543f;
+    --slip-rejected-bg: #f8ebe5;
+    --slip-rejected-ink: #94473e;
+    --slip-font: var(--font-body, 'Segoe UI', Arial, sans-serif);
+}
+html, body { overflow-x: clip; }
+.usage-register { background: var(--slip-surface); border: 1px solid var(--slip-rule); border-radius: 12px; color: var(--slip-ink); font-family: var(--slip-font); }
+.usage-register .closeout-section-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--slip-rule); padding: 24px 28px; gap: 16px 24px; }
+.usage-register .closeout-section-head h2 { display: flex; align-items: center; gap: 12px; font-size: 20px; text-wrap: balance; font-weight: 600; min-width: 0; overflow-wrap: break-word; }
+.usage-register .closeout-filter { display: flex; align-items: center; flex-wrap: wrap; flex: 1 1 360px; justify-content: flex-end; max-width: 530px; gap: 12px; }
+.usage-register .closeout-filter label { color: var(--slip-muted); font-size: 14px; margin: 0; }
+.usage-register select { font: inherit; min-width: 0; min-height: 54px; padding: 12px 16px; border: 1px solid var(--slip-field-edge); border-radius: 8px; background: var(--slip-surface); color: var(--slip-ink); }
+.usage-register select:focus-visible { outline: 2px solid var(--slip-focus); outline-offset: 2px; }
+.usage-register .closeout-filter .batt-select { max-width: 220px; }
+.usage-register .closeout-records { padding: 0 28px; }
+.usage-slip { padding: 24px 0; border-bottom: 1px solid var(--slip-rule); font-size: 16px; }
+.usage-slip:last-child { border-bottom: 0; }
+.usage-slip-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.usage-slip-head h3 { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: 0; color: var(--slip-accent); min-width: 0; overflow-wrap: break-word; }
+.usage-slip .usage-slip-status { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 12px; border-radius: 6px; font-size: 13px; line-height: 1.5; font-weight: 500; background: var(--slip-pending-bg); color: var(--slip-pending-ink); }
+.usage-slip-status.approved { background: var(--slip-approved-bg); color: var(--slip-approved-ink); }
+.usage-slip-status.rejected { background: var(--slip-rejected-bg); color: var(--slip-rejected-ink); }
+.usage-slip-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .5fr); align-items: center; gap: 32px; margin-top: 24px; }
+.usage-slip-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin: 0; }
+.usage-slip-meta > div { min-width: 0; }
+.usage-slip dt, .usage-slip-note strong { color: var(--slip-muted); font-size: 14px; line-height: 1.5; font-weight: 400; }
+.usage-slip-meta dd { margin: 8px 0 0; font-size: 16px; color: var(--slip-ink); line-height: 1.5; font-weight: 500; overflow-wrap: anywhere; }
+.usage-slip-meta time { font-variant-numeric: tabular-nums; }
+.usage-slip-weight { margin: 0; padding-left: 28px; border-left: 1px solid var(--slip-rule); text-align: right; }
+.usage-slip-weight dd { margin: 8px 0 0; display: flex; justify-content: flex-end; align-items: baseline; gap: 8px; }
+.usage-slip-weight data { color: var(--slip-accent); font-size: 32px; line-height: 1.2; letter-spacing: -.025em; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+.usage-slip-weight dd span { font-size: 16px; color: var(--slip-muted); }
+.usage-slip-note { display: flex; align-items: baseline; gap: 16px; margin-top: 24px; font-size: 15px; }
+.usage-slip-note strong { flex-shrink: 0; }
+.usage-slip-note p { color: var(--slip-ink); white-space: pre-line; overflow-wrap: anywhere; }
+.usage-slip .closeout-rejection { background: var(--slip-rejected-bg); border-color: var(--slip-rule); color: var(--slip-rejected-ink); border-radius: 8px; margin: 20px 0 0 !important; }
+.usage-slip-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 24px; }
+.usage-slip-foot > small { color: var(--slip-muted); font-size: 13px; }
+.usage-slip-foot:has(> .closeout-actions:empty) { margin-top: 16px; }
+.usage-slip-foot .closeout-actions { margin-left: auto; }
+.usage-register .closeout-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1px solid var(--slip-field-edge); border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.5; padding: 8px 16px; white-space: nowrap; text-decoration: none; cursor: pointer; }
+.usage-register .closeout-filter .closeout-button { min-height: 54px; }
+.usage-register .closeout-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.usage-register .closeout-button.secondary { border-color: var(--slip-field-edge); color: var(--slip-accent); background: var(--slip-surface); }
+.usage-register .closeout-button.secondary:hover, .usage-register .closeout-button.secondary.is-hover { background: var(--slip-approved-bg); }
+.usage-register .closeout-button:focus-visible, .usage-register .closeout-button.is-focus { outline: 2px solid var(--slip-focus); outline-offset: 3px; }
+.usage-register .closeout-button:active, .usage-register .closeout-button.is-active { background: var(--slip-wash); color: var(--slip-accent); }
+.usage-register .closeout-button:disabled, .usage-register .closeout-button[aria-disabled="true"] { cursor: not-allowed; color: var(--slip-muted); background: var(--slip-wash); border-color: var(--slip-rule); }
+.usage-register .closeout-button[aria-busy="true"] { cursor: progress; }
+.usage-register .closeout-inline summary:focus-visible { outline: 2px solid var(--slip-focus); outline-offset: 3px; }
+.usage-register .closeout-filter .batt-select-trigger { border-color: var(--slip-field-edge); }
+@media(max-width: 1050px) {
+    .usage-slip-body { grid-template-columns: minmax(0, 1fr) minmax(190px, .6fr); gap: 24px; }
+    .usage-slip-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; }
+    .usage-slip-meta > div:last-child { grid-column: 1 / -1; }
+}
+@media(max-width: 600px) {
+    .usage-register .closeout-section-head { padding: 20px; }
+    .usage-register .closeout-records { padding: 0 20px; }
+    .usage-register .closeout-filter { flex-basis: 100%; }
+    .usage-register .closeout-filter { justify-content: flex-start; }
+    .usage-register .closeout-filter label { width: 100%; }
+    .usage-register .closeout-filter select { flex: 1 1 140px; }
+    .usage-register .closeout-filter .batt-select { max-width: none; }
+    .usage-slip-head { flex-wrap: wrap; gap: 12px; }
+    .usage-slip-body { grid-template-columns: minmax(0, 1fr); gap: 20px; margin-top: 20px; }
+    .usage-slip-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .usage-slip-weight { border-left: 0; border-top: 1px solid var(--slip-rule); padding: 20px 0 0; text-align: left; }
+    .usage-slip-weight dd { justify-content: flex-start; }
+    .usage-slip-weight data { font-size: 30px; }
+    .usage-slip-note { display: grid; gap: 8px; }
+    .usage-slip-foot { align-items: flex-start; flex-wrap: wrap; }
+    .usage-slip-foot .closeout-actions { width: 100%; justify-content: flex-end; }
+}
+@media(prefers-reduced-motion: reduce) { .usage-register .closeout-button { transition: none; } }
+</style><style>:root{--preview-paper:#f4f2ea;--preview-font:'Segoe UI',Arial,sans-serif}*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:var(--preview-paper);font:16px/1.5 var(--preview-font)}main{max-width:1200px;margin:auto}h2{margin:0;text-wrap:balance}h3{line-height:1.4}p{margin:0}.preview-heading{margin:24px 0 12px;font-size:18px;font-weight:600}.preview-group{margin-top:24px}</style></head><body><main><section class="usage-register"><div class="closeout-section-head"><h2>Phiếu tiêu hao nguyên liệu</h2><form class="closeout-filter" method="get"><label for="preview-status">Trạng thái</label><select id="preview-status" name="StatusFilter"><option>Tất cả</option><option>Chờ Thủ kho</option><option>Cần chỉnh sửa</option></select><button class="closeout-button secondary" type="submit">Tìm kiếm</button></form></div><div class="closeout-records"><article class="usage-slip"><header class="usage-slip-head"><h3>TH-0039</h3><span role="status" class="usage-slip-status pending">Chờ Thủ kho duyệt</span></header><div class="usage-slip-body"><dl class="usage-slip-meta"><div><dt>Ngày làm việc</dt><dd><time datetime="2026-11-04">04/11/2026</time></dd></div><div><dt>Ca làm việc</dt><dd>Ca 1</dd></div><div><dt>Người gửi</dt><dd>cuongcccc</dd></div></dl><dl class="usage-slip-weight"><dt>Nguyên liệu đã sử dụng</dt><dd><data value="55555">55.555,00</data><span>kg</span></dd></dl></div><div class="usage-slip-note"><strong>Ghi chú</strong><p>không có</p></div><footer class="usage-slip-foot"><small></small><div class="closeout-actions"><button type="button" class="closeout-button secondary " >Sửa và gửi lại</button></div></footer></article></div></section></main></body></html>

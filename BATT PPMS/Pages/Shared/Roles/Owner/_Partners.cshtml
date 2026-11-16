@@ -2,8 +2,8 @@
 @{
     var suppliers = Model.Tab != "customers";
     var rows = suppliers
-        ? Model.Suppliers.Select(s => new { Id = s.SupplierId, s.Code, s.Name, s.ContactPerson, s.Phone, s.Email, s.Address, s.Status, Value = s.TotalPaidVnd })
-        : Model.Customers.Select(c => new { Id = c.CustomerId, c.Code, c.Name, c.ContactPerson, c.Phone, c.Email, c.Address, c.Status, Value = c.TotalRevenueVnd });
+        ? Model.Suppliers.Select(s => new { Id = s.SupplierId, s.Code, s.Name, s.ContactPerson, s.Phone, s.Email, s.Address, s.Status, Value = s.TotalPaidVnd, PurchaseCount = s.ReceivedPurchaseCount })
+        : Model.Customers.Select(c => new { Id = c.CustomerId, c.Code, c.Name, c.ContactPerson, c.Phone, c.Email, c.Address, c.Status, Value = c.TotalRevenueVnd, PurchaseCount = 0 });
 }
 <div class="owner-partners">
     <div class="page-header owner-page-header">
@@ -46,6 +46,7 @@
                     <th scope="col">@(suppliers ? "Mã NCC" : "Mã KH")</th>
                     <th scope="col">@(suppliers ? "Nhà cung cấp" : "Khách hàng")</th>
                     <th scope="col">Người liên hệ</th><th scope="col">Điện thoại</th>
+                    @if (suppliers) { <th scope="col" class="owner-nowrap">Số lần mua</th> }
                     <th scope="col">@(suppliers ? "Giá trị thu mua" : "Giá trị đơn hàng")</th>
                     <th scope="col">Trạng thái</th><th scope="col">Chi tiết</th>
                 </tr></thead>
@@ -56,11 +57,16 @@
                             <td><span class="owner-partner-code">@row.Code</span></td>
                             <td><strong>@row.Name</strong><small>@row.Code</small></td>
                             <td>@row.ContactPerson</td><td class="owner-nowrap">@row.Phone</td>
+                            @if (suppliers) { <td class="owner-amount">@row.PurchaseCount lần</td> }
                             <td class="owner-amount">@row.Value.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("vi-VN")) VNĐ</td>
                             <td><span class="owner-partner-status @(row.Status == "Active" ? "is-active" : "is-inactive")">@(row.Status == "Active" ? "Đang hợp tác" : "Ngừng hợp tác")</span></td>
                             <td>
                                 <div class="owner-row-actions">
-                                    <button type="button" class="owner-text-action owner-history-action" onclick="@(suppliers ? $"viewSupplierHistory({row.Id}, '', '')" : $"viewCustomerHistory({row.Id}, '', '')")">Xem lịch sử giao dịch</button>
+                                    <button type="button" class="owner-text-action" aria-haspopup="dialog"
+                                            aria-controls="partnerDetailsDialog" aria-label="Xem chi tiết @row.Name"
+                                            data-partner-details="@Url.Page("/Suppliers/Index", "Details", new { id = row.Id, tab = suppliers ? "suppliers" : "customers" })">
+                                        <i class="bi bi-eye" aria-hidden="true"></i> Xem chi tiết
+                                    </button>
                                     @if (Model.CanManage)
                                     {
                                     <button type="button" class="owner-edit-action" title="Chỉnh sửa đối tác" aria-label="Chỉnh sửa @row.Name"
@@ -71,7 +77,7 @@
                             </td>
                         </tr>
                     }
-                    @if (!rows.Any()) { <tr><td colspan="7" class="owner-partner-empty">Không tìm thấy đối tác phù hợp.</td></tr> }
+                    @if (!rows.Any()) { <tr><td colspan="@(suppliers ? 8 : 7)" class="owner-partner-empty">Không tìm thấy đối tác phù hợp.</td></tr> }
                 </tbody>
             </table>
         </div>
@@ -79,3 +85,17 @@
                  model='new BATT_PPMS.Helpers.AdminPaginationViewModel(Model.PartnerPagination, "/Suppliers/Index", new() { ["tab"] = Model.Tab, ["SearchTerm"] = Model.SearchTerm, ["StatusFilter"] = Model.StatusFilter })' />
     </section>
 </div>
+<dialog class="partner-create-modal partner-details-dialog" id="partnerDetailsDialog" aria-labelledby="partnerDetailsTitle">
+    <div class="modal-box">
+        <header class="modal-header">
+            <h2 class="modal-title" id="partnerDetailsTitle">
+                <i class="bi @(suppliers ? "bi-buildings" : "bi-person-vcard")" aria-hidden="true"></i>
+                @(suppliers ? "Chi tiết nhà cung cấp" : "Chi tiết khách hàng")
+            </h2>
+            <button type="button" class="modal-close" aria-label="Đóng" data-close-partner-details>
+                <i class="bi bi-x" aria-hidden="true"></i>
+            </button>
+        </header>
+        <div class="modal-body" id="partnerDetailsContent"></div>
+    </div>
+</dialog>

@@ -14,4 +14,5 @@ public sealed record ProductionScheduleViewModel(
     bool InvalidDate,
     int? CurrentWorkerId = null,
     IReadOnlyDictionary<(DateOnly Date, string? Shift), string>? ShiftStatuses = null,
-    IReadOnlyDictionary<string, ShiftProductionPlan>? ShiftPlans = null);
+    IReadOnlyDictionary<string, ShiftProductionPlan>? ShiftPlans = null,
+    IReadOnlyList<ShiftProductionPlan>? DaysOff = null);

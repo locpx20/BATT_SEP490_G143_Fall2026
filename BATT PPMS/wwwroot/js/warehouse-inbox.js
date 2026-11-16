@@ -7,6 +7,7 @@
         finishedReceipts: 'phiếu nhập thành phẩm chờ xử lý',
         plans: 'thông báo chưa đọc',
         finishedStock: 'thông báo kho thành phẩm chưa đọc',
+        finishedTotal: 'mục kho thành phẩm cần xem hoặc xử lý',
         total: 'phiếu nguyên liệu chờ xử lý'
     };
     let refreshing = false;

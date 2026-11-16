@@ -18,6 +18,28 @@
 .partner-create-modal .modal-footer { padding: 20px 32px; gap: 12px; flex-shrink: 0; }
 .partner-create-modal .modal-footer .btn { min-height: 48px; padding: 12px 22px; font-family: var(--font); font-size: 15px; font-weight: 600; }
 .partner-create-modal .form-control:focus-visible, .partner-create-modal button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.partner-details-dialog {
+    width: min(820px, calc(100% - 32px));
+    max-width: none;
+    margin: auto;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-xl);
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+.partner-details-dialog::backdrop { background: rgb(15 23 42 / 50%); backdrop-filter: blur(4px); }
+.partner-details-dialog .modal-box { transform: none; }
+.partner-details-dialog .modal-body { overscroll-behavior: contain; }
+.partner-details-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 12px; }
+.partner-details-heading h3 { margin: 6px 0 0; overflow-wrap: anywhere; }
+.partner-details-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: 16px; margin: 0; }
+.partner-details-fields dt { font-size: 13px; color: var(--text-secondary); }
+.partner-details-fields dd { margin: 4px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.partner-details-address { grid-column: 1 / -1; }
+.partner-transaction-table { margin-top: 10px; }
+.partner-details-empty { margin: 10px 0 0; color: var(--text-secondary); }
 @media (max-width: 600px) {
     .partner-create-modal .modal-header { padding: 18px 20px; }
     .partner-create-modal .modal-title { font-size: 20px; }

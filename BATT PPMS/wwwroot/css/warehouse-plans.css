@@ -25,6 +25,8 @@
 .schedule-shift-state[data-status="InProgress"] { background: #e5eee7; color: #30584b; }
 .schedule-shift-state[data-status="Completed"] { background: #dfece2; color: #28543f; }
 .schedule-shift-state[data-status="Cancelled"] { background: #faeeea; color: #94473e; }
+.schedule-shift-state[data-status="Off"] { background: var(--plan-row-alt); color: var(--primary); }
+.schedule-day-off > p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .warehouse-plans .plan-shift-link { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; min-width: 100px; min-height: 46px; padding: 10px 20px; border: 1px solid transparent; border-radius: 8px; white-space: nowrap; text-decoration: none; font-weight: 600; color: var(--primary, #193f35); background: transparent; }
 .warehouse-plans .plan-shift-link:hover { background: var(--plan-row-alt); border-color: var(--plan-rule); }
 .warehouse-plans .plan-shift-link.active { background: var(--primary, #193f35); border-color: var(--primary, #193f35); color: #fffefa; }

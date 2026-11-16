@@ -9,8 +9,12 @@ public partial class Order : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext ctx)
     {
-        if (TotalAmount != Math.Round(Quantity * UnitPrice, 2))
+        if (TotalAmount != Math.Round(Quantity * (UnitPrice ?? 0m), 2))
             yield return new ValidationResult("Tổng tiền phải bằng số lượng × đơn giá.", new[] { nameof(TotalAmount) });
+        if (Grade != null && Grade != "A" && Grade != "B")
+            yield return new ValidationResult("Loại thành phẩm chỉ có thể là A hoặc B.", new[] { nameof(Grade) });
+        if ((Status == "Approved" || Status == "Completed") && Grade != null && (CustomerId == null || UnitPrice == null))
+            yield return new ValidationResult("Yêu cầu bán đã duyệt phải có khách hàng và giá bán.", new[] { nameof(CustomerId) });
         if (Status == "Rejected" && ApprovedBy == null)
             yield return new ValidationResult("Đơn bị từ chối phải ghi nhận người xử lý.", new[] { nameof(ApprovedBy) });
     }

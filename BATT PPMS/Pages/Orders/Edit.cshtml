@@ -1,17 +1,25 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Orders.EditModel
 @{
-    ViewData["Title"] = "Cập nhật đơn hàng xuất kho";
+    ViewData["Title"] = "Cập nhật yêu cầu bán hàng";
     ViewData["ActivePage"] = "OrderList";
     ViewData["CancelUrl"] = $"/Orders/Detail?id={Model.OrderId}";
 }
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Cập nhật đơn hàng <span style="color:var(--primary);">@Model.EditingOrderCode</span></h1>
-        <p class="page-subtitle">Chỉ có thể chỉnh sửa khi đơn còn ở trạng thái Chờ duyệt.</p>
+        <h1 class="page-title">Cập nhật yêu cầu <span style="color:var(--primary);">@Model.EditingOrderCode</span></h1>
+        <p class="page-subtitle">Sửa được khi yêu cầu Chờ duyệt hoặc bị từ chối. Lưu xong yêu cầu được gửi lại cho Owner.</p>
     </div>
     <a href="/Orders/Detail?id=@Model.OrderId" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
 </div>
+
+@if (!string.IsNullOrWhiteSpace(Model.RejectionReason))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-x-octagon-fill" style="margin-right:8px;"></i>
+        <strong>Lý do Owner từ chối:</strong> @Model.RejectionReason
+    </div>
+}
 
 <partial name="_OrderForm" model="Model" />

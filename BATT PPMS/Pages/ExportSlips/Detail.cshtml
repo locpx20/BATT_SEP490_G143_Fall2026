@@ -1,0 +1,106 @@
+@page
+@using BATT_PPMS.Helpers
+@using BATT_PPMS.Pages.Orders
+@model BATT_PPMS.Pages.ExportSlips.DetailModel
+@{
+    ViewData["Title"] = "Chi tiết phiếu xuất kho";
+    ViewData["ActivePage"] = "ExportSlip";
+    var s = Model.Slip;
+    var o = s.Order;
+    var d = s.Delivery;
+}
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success" style="border-radius:12px;">
+        <i class="bi bi-check-circle-fill" style="margin-right:8px;"></i><span>@Model.SuccessMessage</span>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i><span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            Phiếu xuất kho @s.SlipCode
+            <span class="badge @DeliveryWorkflow.SlipBadge(s.Status)" style="vertical-align:middle;margin-left:8px;">@DeliveryWorkflow.SlipLabel(s.Status)</span>
+        </h1>
+        <p class="page-subtitle">Lập bởi @(s.CreatedByNavigation?.FullName ?? "—") lúc @s.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+    <div class="page-actions">
+        <a href="/ExportSlips/Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+        <a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-outline">Yêu cầu xuất kho</a>
+        <button type="button" class="btn btn-outline" onclick="window.print()"><i class="bi bi-printer"></i> In phiếu</button>
+    </div>
+</div>
+
+@if (Model.CanComplete)
+{
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-body">
+            <p style="margin-top:0;">Sau khi hàng đã lên xe và giao cho tài xế, bấm hoàn thành để hệ thống trừ tồn kho từng lô bên dưới.</p>
+            <form method="post" asp-page-handler="Complete" asp-route-id="@s.SlipId"
+                  onsubmit="return confirm('Hoàn thành phiếu @s.SlipCode và trừ kho thành phẩm?');">
+                <button type="submit" class="btn btn-success" id="btn-complete-slip"><i class="bi bi-check2-circle"></i> Hoàn thành xuất kho</button>
+            </form>
+        </div>
+    </div>
+}
+
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 class="card-title">Thông tin xuất kho</h3></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="form-group"><span class="form-label">Yêu cầu bán</span><div><a href="/Orders/Detail?id=@o.OrderId">@o.OrderCode</a></div></div>
+            <div class="form-group"><span class="form-label">Người mua</span><div>@(o.Customer?.CustomerName ?? "—")</div>@if (!string.IsNullOrWhiteSpace(o.Customer?.Phone)) { <span class="form-hint">@(o.Customer?.ContactPerson) · @(o.Customer?.Phone)</span> }</div>
+            <div class="form-group"><span class="form-label">Tài xế</span><div>@d.DriverName</div>@if (!string.IsNullOrWhiteSpace(d.DriverPhone)) { <span class="form-hint">@d.DriverPhone</span> }</div>
+            <div class="form-group"><span class="form-label">Biển số xe</span><div>@d.LicensePlate</div></div>
+            <div class="form-group"><span class="form-label">Ngày lấy hàng</span><div>@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</div></div>
+            <div class="form-group"><span class="form-label">Hoàn thành</span>
+                <div>@(s.CompletedAt.HasValue ? s.CompletedAt.Value.ToString("dd/MM/yyyy HH:mm") + " · " + (s.CompletedByNavigation?.FullName ?? "Tài khoản đã xóa") : "Chưa hoàn thành")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(s.ImagePath))
+{
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h3 class="card-title">Ảnh phiếu xuất kho thực tế</h3></div>
+        <div class="card-body">
+            <a href="@s.ImagePath" target="_blank" rel="noopener"><img src="@s.ImagePath" alt="Ảnh phiếu xuất kho @s.SlipCode" style="max-width:100%;max-height:480px;border-radius:8px;border:1px solid var(--border);" /></a>
+        </div>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Chi tiết lô xuất</h3></div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>Mã lot</th><th>Loại</th><th>Ngày sản xuất</th><th>Số bao</th><th>Số lượng (kg)</th><th>Tồn lô hiện tại (kg)</th></tr></thead>
+            <tbody>
+                @foreach (var line in s.Lines.OrderBy(l => l.Batch.ProductionDate).ThenBy(l => l.BatchId))
+                {
+                    <tr>
+                        <td><strong>@line.Batch.BagNumber</strong></td>
+                        <td>@SalesFlow.GradeLabel(line.Grade)</td>
+                        <td>@line.Batch.ProductionDate.ToString("dd/MM/yyyy")</td>
+                        <td>@line.Bags.ToString("N0")</td>
+                        <td>@line.Quantity.ToString("N0")</td>
+                        <td>@line.Batch.Quantity.ToString("N0")</td>
+                    </tr>
+                }
+                <tr>
+                    <td colspan="3"><strong>Tổng</strong></td>
+                    <td><strong>@s.Lines.Sum(l => l.Bags).ToString("N0")</strong></td>
+                    <td><strong>@s.Lines.Sum(l => l.Quantity).ToString("N0")</strong></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

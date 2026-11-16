@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -7,12 +7,13 @@ using Microsoft.EntityFrameworkCore;
 namespace BATT_PPMS.Pages.Orders
 {
     /// <summary>
-    /// Quy tắc workflow của đơn hàng xuất kho (Outbound Order).
-    /// Manager chỉ được sửa / xoá khi đơn còn ở trạng thái Pending (chưa được Owner duyệt).
+    /// Quy tắc workflow của yêu cầu bán hàng (Order):
+    /// Pending (Manager tạo) -> Approved (Owner gán khách + giá) | Rejected (Owner ghi lý do)
+    /// Approved -> Completed khi phiếu xuất kho hoàn thành. Manager chỉ sửa / hủy khi Pending hoặc Rejected.
     /// </summary>
     public static class OrderWorkflow
     {
-        public static bool CanModify(string? status) => status == StatusConstants.Pending;
+        public static bool CanModify(string? status) => status is StatusConstants.Pending or StatusConstants.Rejected;
 
         public static string Label(string? status) => status switch
         {
@@ -39,34 +40,91 @@ namespace BATT_PPMS.Pages.Orders
             StatusConstants.Completed, StatusConstants.Cancelled
         };
 
+        /// <summary>Yêu cầu xuất kho còn hiệu lực của đơn (bỏ qua yêu cầu đã hủy). Cần Include(Deliveries).</summary>
+        public static Delivery? ActiveDelivery(Order order) => order.Deliveries
+            .Where(d => d.DeliveryStatus != StatusConstants.Cancelled)
+            .OrderByDescending(d => d.DeliveryId)
+            .FirstOrDefault();
+
+        /// <summary>Tiến độ chi tiết hiển thị ở danh sách (cần Include Deliveries + ExportSlip).</summary>
+        public static (string Label, string Badge) Stage(Order order)
+        {
+            switch (order.Status)
+            {
+                case StatusConstants.Pending: return ("Chờ Owner duyệt", "badge-pending");
+                case StatusConstants.Rejected: return ("Owner từ chối", "badge-rejected");
+                case StatusConstants.Cancelled: return ("Đã hủy", "badge-inactive");
+                case StatusConstants.Completed: return ("Đã xuất kho", "badge-completed");
+                case StatusConstants.Approved:
+                    var d = ActiveDelivery(order);
+                    if (d == null) return ("Chờ tạo yêu cầu xuất kho", "badge-approved");
+                    return DeliveryWorkflow.Stage(d);
+                default: return (Label(order.Status), Badge(order.Status));
+            }
+        }
+
         /// <summary>Giới hạn của cột decimal(12,2) trong bảng [Order].</summary>
         public const decimal MaxAmount = 9_999_999_999.99m;
+
+        public const int MaxBagsPerOrder = 10_000;
     }
 
-    /// <summary>Dữ liệu nhập từ form Create / Update Outbound Order.</summary>
+    /// <summary>Quy tắc workflow của yêu cầu xuất kho (Delivery) và phiếu xuất kho.</summary>
+    public static class DeliveryWorkflow
+    {
+        /// <summary>Manager chỉ sửa được khi thủ kho chưa lập phiếu (Prepared / Returned).</summary>
+        public static bool CanEdit(Delivery d) =>
+            d.DeliveryStatus is StatusConstants.Prepared or "Returned" && d.ExportSlip == null;
+
+        public static string Label(string? status) => status switch
+        {
+            StatusConstants.Prepared => "Chờ thủ kho kiểm tra",
+            "Returned" => "Thủ kho trả lại – cần sửa",
+            StatusConstants.InTransit => "Đang vận chuyển",
+            StatusConstants.Delivered => "Đã xuất kho",
+            StatusConstants.Cancelled => "Đã hủy",
+            _ => status ?? "—"
+        };
+
+        public static string Badge(string? status) => status switch
+        {
+            StatusConstants.Prepared => "badge-pending",
+            "Returned" => "badge-rejected",
+            StatusConstants.InTransit or StatusConstants.Delivered => "badge-completed",
+            _ => "badge-inactive"
+        };
+
+        public static (string Label, string Badge) Stage(Delivery d) =>
+            d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlip != null
+                ? ("Đang lập phiếu xuất kho", "badge-medium")
+                : (Label(d.DeliveryStatus), Badge(d.DeliveryStatus));
+
+        public static string SlipLabel(string? status) => status switch
+        {
+            ExportSlipStatus.Processing => "Đang xử lý",
+            ExportSlipStatus.Completed => "Đã hoàn thành",
+            _ => status ?? "—"
+        };
+
+        public static string SlipBadge(string? status) =>
+            status == ExportSlipStatus.Completed ? "badge-completed" : "badge-medium";
+    }
+
+    /// <summary>Dữ liệu nhập từ form tạo / sửa yêu cầu bán hàng: chỉ cần loại và số bao.</summary>
     public class OrderInput
     {
-        [Required(ErrorMessage = "Vui lòng chọn khách hàng.")]
-        public int? CustomerId { get; set; }
+        [Required(ErrorMessage = "Vui lòng chọn loại thành phẩm (A hoặc B).")]
+        public string? Grade { get; set; }
 
-        [Required(ErrorMessage = "Vui lòng chọn sản phẩm / hàng hoá.")]
-        public int? InventoryId { get; set; }
+        [Required(ErrorMessage = "Vui lòng nhập số bao cần bán.")]
+        [Range(1, OrderWorkflow.MaxBagsPerOrder, ErrorMessage = "Số bao phải là số nguyên từ 1 đến 10.000.")]
+        public int? Bags { get; set; }
 
-        [Required(ErrorMessage = "Vui lòng nhập số lượng.")]
-        [Range(1, 1_000_000, ErrorMessage = "Số lượng phải là số nguyên từ 1 đến 1.000.000.")]
-        public int? Quantity { get; set; }
-
-        [Required(ErrorMessage = "Vui lòng nhập đơn giá.")]
-        [Range(0.01, 9_999_999_999.99, ErrorMessage = "Đơn giá phải lớn hơn 0.")]
-        public decimal? UnitPrice { get; set; }
-
-        [Required(ErrorMessage = "Vui lòng chọn ngày đặt hàng.")]
-        public DateTime? OrderDate { get; set; }
+        [StringLength(500, ErrorMessage = "Ghi chú không được vượt quá 500 ký tự.")]
+        public string? Note { get; set; }
     }
 
-    /// <summary>
-    /// Base chung cho Create và Update: nạp danh sách khách hàng / sản phẩm và validate nghiệp vụ.
-    /// </summary>
+    /// <summary>Base chung cho Create và Edit: nạp lô khả dụng, kiểm tra tồn kho và phân bổ lô theo FIFO.</summary>
     public abstract class OrderFormPageModel : BasePageModel
     {
         protected readonly ProductionManagementDbContext _context;
@@ -79,10 +137,9 @@ namespace BATT_PPMS.Pages.Orders
         [BindProperty]
         public OrderInput Input { get; set; } = new();
 
-        public List<Customer> Customers { get; private set; } = new();
-        public List<InventoryItem> Items { get; private set; } = new();
+        /// <summary>Lô còn bán được theo từng loại, sắp xếp FIFO (dùng để xem trước phân bổ).</summary>
+        public Dictionary<string, List<LotAvailability>> LotsByGrade { get; private set; } = new();
 
-        /// <summary>Có phải form sửa đơn (true) hay tạo mới (false).</summary>
         public abstract bool IsEdit { get; }
 
         public string? EditingOrderCode { get; protected set; }
@@ -90,59 +147,41 @@ namespace BATT_PPMS.Pages.Orders
         [TempData]
         public string? ErrorMessage { get; set; }
 
-        /// <summary>
-        /// Nạp dropdown. Khi sửa đơn, vẫn giữ khách hàng / sản phẩm hiện tại dù đã bị ngưng hoạt động.
-        /// </summary>
-        protected async Task LoadLookupsAsync(int? keepCustomerId = null, int? keepInventoryId = null)
+        protected async Task LoadLotsAsync(int? excludeOrderId = null)
         {
-            Customers = await _context.Customers.AsNoTracking()
-                .Where(c => c.Status == StatusConstants.Active || c.CustomerId == keepCustomerId)
-                .OrderBy(c => c.CustomerName)
-                .ToListAsync();
-
-            Items = await _context.InventoryItems.AsNoTracking()
-                .Where(i => i.Status == "Available" || i.InventoryId == keepInventoryId)
-                .OrderBy(i => i.ItemName)
-                .ToListAsync();
+            LotsByGrade = new();
+            foreach (var grade in SalesFlow.Grades)
+                LotsByGrade[grade] = await SalesFlow.AvailableLotsAsync(_context, grade, excludeOrderId, HttpContext.RequestAborted);
         }
 
         /// <summary>
-        /// Kiểm tra nghiệp vụ ngoài DataAnnotations: khách hàng hợp lệ, đủ tồn kho, tổng tiền không tràn cột.
-        /// Lỗi được thêm vào ModelState.
+        /// Kiểm tra đủ hàng và phân bổ lô theo FIFO. Lỗi được thêm vào ModelState; trả null nếu không hợp lệ.
         /// </summary>
-        protected async Task ValidateBusinessRulesAsync(int? keepCustomerId = null, int? keepInventoryId = null)
+        protected async Task<List<LotAllocation>?> AllocateAsync(int? excludeOrderId = null)
         {
-            if (!ModelState.IsValid) return;
-
-            var customer = await _context.Customers.AsNoTracking()
-                .FirstOrDefaultAsync(c => c.CustomerId == Input.CustomerId);
-            if (customer == null ||
-                (customer.Status != StatusConstants.Active && customer.CustomerId != keepCustomerId))
+            if (!ModelState.IsValid) return null;
+            if (!SalesFlow.IsGrade(Input.Grade))
             {
-                ModelState.AddModelError("Input.CustomerId", "Khách hàng không tồn tại hoặc đã ngưng hoạt động.");
+                ModelState.AddModelError("Input.Grade", "Loại thành phẩm không hợp lệ.");
+                return null;
             }
 
-            var item = await _context.InventoryItems.AsNoTracking()
-                .FirstOrDefaultAsync(i => i.InventoryId == Input.InventoryId);
-            if (item == null)
+            var lots = await SalesFlow.AvailableLotsAsync(_context, Input.Grade, excludeOrderId, HttpContext.RequestAborted);
+            var allocation = SalesFlow.Allocate(lots, Input.Bags!.Value);
+            if (allocation == null)
             {
-                ModelState.AddModelError("Input.InventoryId", "Sản phẩm không tồn tại trong kho.");
+                var available = lots.Sum(l => l.AvailableBags);
+                ModelState.AddModelError("Input.Bags",
+                    $"Kho {SalesFlow.GradeLabel(Input.Grade)} chỉ còn {available:N0} bao khả dụng " +
+                    $"(đã trừ phần giữ chỗ cho các yêu cầu bán khác), không đủ {Input.Bags.Value:N0} bao.");
             }
-            else
-            {
-                if (item.Status != "Available" && item.InventoryId != keepInventoryId)
-                    ModelState.AddModelError("Input.InventoryId", "Sản phẩm hiện không khả dụng để xuất kho.");
+            return allocation;
+        }
 
-                if (Input.Quantity > item.Quantity)
-                    ModelState.AddModelError("Input.Quantity",
-                        $"Số lượng vượt quá tồn kho hiện tại ({item.Quantity:N0} {item.Unit}).");
-            }
-
-            if (Input.Quantity.HasValue && Input.UnitPrice.HasValue &&
-                (decimal)Input.Quantity.Value * Input.UnitPrice.Value > OrderWorkflow.MaxAmount)
-            {
-                ModelState.AddModelError("Input.UnitPrice", "Tổng tiền đơn hàng vượt quá giới hạn cho phép.");
-            }
+        protected static void ApplyAllocation(Order order, List<LotAllocation> allocation)
+        {
+            foreach (var line in allocation)
+                order.OrderDetails.Add(new OrderDetail { BatchId = line.BatchId, Quantity = line.Kg });
         }
     }
 }

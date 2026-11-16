@@ -1,0 +1,133 @@
+@page
+@using BATT_PPMS.Helpers
+@using BATT_PPMS.Pages.Orders
+@model BATT_PPMS.Pages.Deliveries.DetailModel
+@{
+    ViewData["Title"] = "Chi tiết yêu cầu xuất kho";
+    ViewData["ActivePage"] = "Delivery";
+    var d = Model.Delivery;
+    var o = Model.Order;
+    var stage = DeliveryWorkflow.Stage(d);
+}
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success" style="border-radius:12px;">
+        <i class="bi bi-check-circle-fill" style="margin-right:8px;"></i><span>@Model.SuccessMessage</span>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i><span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            Yêu cầu xuất kho @o.OrderCode
+            <span class="badge @stage.Badge" style="vertical-align:middle;margin-left:8px;">@stage.Label</span>
+        </h1>
+        <p class="page-subtitle">Tạo bởi @(d.CreatedByNavigation?.FullName ?? "—")@(d.CreatedAt.HasValue ? " lúc " + d.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "")</p>
+    </div>
+    <div class="page-actions">
+        <a href="/Deliveries/Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+        @if (Model.CanEdit)
+        {
+            <a href="/Deliveries/Edit?id=@d.DeliveryId" class="btn btn-primary" id="btn-edit-delivery"><i class="bi bi-pencil"></i> Cập nhật</a>
+        }
+        @if (d.ExportSlip != null)
+        {
+            <a href="/ExportSlips/Detail?id=@d.ExportSlip.SlipId" class="btn btn-primary"><i class="bi bi-file-earmark-text"></i> Phiếu @d.ExportSlip.SlipCode</a>
+        }
+    </div>
+</div>
+
+@if (d.DeliveryStatus == "Returned" && !string.IsNullOrWhiteSpace(d.ReturnReason))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-arrow-return-left" style="margin-right:8px;"></i>
+        <strong>Thủ kho trả lại:</strong> @d.ReturnReason
+    </div>
+}
+
+@if (Model.CanCheck)
+{
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h3 class="card-title">Kiểm tra khi người mua đến lấy hàng</h3></div>
+        <div class="card-body">
+            <p style="margin-top:0;">Đối chiếu tài xế, biển số xe, ngày lấy hàng và người mua với thông tin bên dưới. Đúng thì lập phiếu xuất kho; sai thì trả lại Manager sửa.</p>
+            <div class="form-grid">
+                <form method="post" asp-page-handler="CreateSlip" asp-route-id="@d.DeliveryId" enctype="multipart/form-data">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label" for="inp-slip-image">Ảnh phiếu xuất kho thực tế (không bắt buộc)</label>
+                        <input class="form-control" type="file" name="slipImage" id="inp-slip-image" accept="image/jpeg,image/png,image/webp" />
+                        <span class="form-hint">JPG, PNG hoặc WEBP, tối đa 10 MB.</span>
+                    </div>
+                    <button type="submit" class="btn btn-success" id="btn-create-slip"><i class="bi bi-check-lg"></i> Thông tin đúng – tạo phiếu xuất kho</button>
+                </form>
+                <form method="post" asp-page-handler="Return" asp-route-id="@d.DeliveryId" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:16px;">
+                    <div class="form-group">
+                        <label class="form-label" for="inp-reason">Thông tin chưa đúng – lý do gửi lại Manager <span class="required-star">*</span></label>
+                        <textarea class="form-control" name="reason" id="inp-reason" rows="2" maxlength="500" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger" id="btn-return-delivery"><i class="bi bi-arrow-return-left"></i> Trả lại Manager</button>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 class="card-title">Thông tin tài xế đến lấy hàng</h3></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="form-group"><span class="form-label">Tên tài xế</span><div>@d.DriverName</div></div>
+            <div class="form-group"><span class="form-label">Số điện thoại</span><div>@(d.DriverPhone ?? "—")</div></div>
+            <div class="form-group"><span class="form-label">Biển số xe</span><div>@d.LicensePlate</div></div>
+            <div class="form-group"><span class="form-label">Ngày lấy hàng</span><div>@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</div></div>
+            @if (d.ConfirmedByNavigation != null)
+            {
+                <div class="form-group"><span class="form-label">Thủ kho xác nhận xuất</span><div>@d.ConfirmedByNavigation.FullName</div></div>
+            }
+            @if (!string.IsNullOrWhiteSpace(d.Note))
+            {
+                <div class="form-group" style="grid-column:1/-1;"><span class="form-label">Ghi chú</span><div>@d.Note</div></div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 class="card-title">Người mua và hàng xuất</h3></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="form-group"><span class="form-label">Yêu cầu bán</span><div><a href="/Orders/Detail?id=@o.OrderId">@o.OrderCode</a></div></div>
+            <div class="form-group"><span class="form-label">Khách hàng</span><div>@(o.Customer?.CustomerName ?? "—")</div></div>
+            <div class="form-group"><span class="form-label">Người liên hệ</span><div>@(o.Customer?.ContactPerson ?? "—")</div>@if (!string.IsNullOrWhiteSpace(o.Customer?.Phone)) { <span class="form-hint">@(o.Customer?.Phone)</span> }</div>
+            <div class="form-group"><span class="form-label">Loại / Số lượng</span><div>@SalesFlow.GradeLabel(o.Grade) · @SalesFlow.Bags(o.Quantity) bao</div><span class="form-hint">@o.Quantity.ToString("N0") kg</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Lô thành phẩm xuất (FIFO)</h3></div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>Mã lot</th><th>Ngày sản xuất</th><th>Số bao</th><th>Số lượng (kg)</th><th>Tồn hiện tại của lô (kg)</th></tr></thead>
+            <tbody>
+                @foreach (var line in o.OrderDetails.OrderBy(x => x.Batch.ProductionDate).ThenBy(x => x.BatchId))
+                {
+                    <tr>
+                        <td><strong>@line.Batch.BagNumber</strong></td>
+                        <td>@line.Batch.ProductionDate.ToString("dd/MM/yyyy")</td>
+                        <td>@SalesFlow.Bags(line.Quantity)</td>
+                        <td>@line.Quantity.ToString("N0")</td>
+                        <td>@line.Batch.Quantity.ToString("N0")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

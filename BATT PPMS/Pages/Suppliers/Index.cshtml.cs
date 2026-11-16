@@ -88,7 +88,7 @@ namespace BATT_PPMS.Pages.Suppliers
         public List<CustomerViewModel> Customers { get; set; } = new();
 
         public bool CanManage => IsOwner;
-        public bool UseWorkspaceView => IsOwnerOrManager;
+        public bool UseWorkspaceView => IsOwnerOrManager || IsPurchasingStaff;
         public bool CanViewCustomers => !IsPurchasingStaff;
 
         [TempData]
@@ -120,8 +120,10 @@ namespace BATT_PPMS.Pages.Suppliers
 
         public async Task<IActionResult> OnGetDetailsAsync(int id, string? tab, CancellationToken cancellationToken)
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager, RoleConstants.PurchasingStaff);
             if (check != null) return check;
+            if (!CanViewCustomers && !string.Equals(tab, "suppliers", StringComparison.OrdinalIgnoreCase))
+                return NotFound();
 
             var details = tab switch
             {

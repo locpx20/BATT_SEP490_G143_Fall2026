@@ -3,9 +3,23 @@
 @using BATT_PPMS.Pages.Orders
 @model BATT_PPMS.Pages.Orders.DetailModel
 @{
-    ViewData["Title"] = "Chi tiết đơn hàng";
+    ViewData["Title"] = "Chi tiết yêu cầu bán hàng";
     ViewData["ActivePage"] = "OrderList";
     var o = Model.Order;
+    var d = Model.ActiveDelivery;
+    var stage = OrderWorkflow.Stage(o);
+    var slip = d?.ExportSlip;
+
+    // Tiến độ luồng: 0 tạo yêu cầu, 1 Owner duyệt, 2 yêu cầu xuất kho, 3 thủ kho kiểm tra, 4 phiếu xuất kho, 5 hoàn thành
+    var step = o.Status switch
+    {
+        StatusConstants.Pending => 1,
+        StatusConstants.Rejected => 1,
+        StatusConstants.Completed => 5,
+        StatusConstants.Approved => d == null ? 2 : (slip != null ? 4 : (d.DeliveryStatus == "Returned" ? 2 : 3)),
+        _ => 0
+    };
+    var steps = new[] { "Tạo yêu cầu", "Owner duyệt", "Yêu cầu xuất kho", "Thủ kho kiểm tra", "Phiếu xuất kho", "Hoàn thành" };
 }
 
 @if (!string.IsNullOrEmpty(Model.SuccessMessage))
@@ -24,26 +38,35 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">
-            Đơn hàng @o.OrderCode
-            <span class="badge @OrderWorkflow.Badge(o.Status)" style="vertical-align:middle;margin-left:8px;">@OrderWorkflow.Label(o.Status)</span>
+            Yêu cầu bán @o.OrderCode
+            <span class="badge @stage.Badge" style="vertical-align:middle;margin-left:8px;">@stage.Label</span>
         </h1>
-        <p class="page-subtitle">Ngày đặt: @o.OrderDate.ToString("dd/MM/yyyy HH:mm")</p>
+        <p class="page-subtitle">Ngày tạo: @o.OrderDate.ToString("dd/MM/yyyy HH:mm")</p>
     </div>
     <div class="page-actions">
         <a href="/Orders/Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
         @if (Model.CanModify)
         {
-            <a href="/Orders/Edit?id=@o.OrderId" class="btn btn-primary" id="btn-edit-order"><i class="bi bi-pencil"></i> Chỉnh sửa</a>
-            <a href="/Orders/Delete?id=@o.OrderId" class="btn btn-danger" id="btn-delete-order"><i class="bi bi-trash"></i> Xóa</a>
+            <a href="/Orders/Edit?id=@o.OrderId" class="btn btn-primary" id="btn-edit-order"><i class="bi bi-pencil"></i> @(o.Status == StatusConstants.Rejected ? "Sửa và gửi lại" : "Chỉnh sửa")</a>
+            <a href="/Orders/Delete?id=@o.OrderId" class="btn btn-danger" id="btn-delete-order"><i class="bi bi-x-circle"></i> Hủy yêu cầu</a>
+        }
+        @if (Model.CanCreateDelivery)
+        {
+            <a href="/Deliveries/Edit?orderId=@o.OrderId" class="btn btn-primary" id="btn-create-delivery"><i class="bi bi-truck"></i> Tạo yêu cầu xuất kho</a>
         }
     </div>
 </div>
 
-@if (Model.CanManage && !Model.CanModify)
+@if (o.Status is StatusConstants.Pending or StatusConstants.Approved or StatusConstants.Completed)
 {
-    <div class="alert alert-info" style="border-radius:12px;">
-        <i class="bi bi-info-circle-fill" style="margin-right:8px;"></i>
-        Đơn hàng ở trạng thái "@OrderWorkflow.Label(o.Status)" nên không thể chỉnh sửa hoặc xóa.
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-body" style="display:flex;flex-wrap:wrap;gap:8px;">
+            @for (var i = 0; i < steps.Length; i++)
+            {
+                var cls = i < step || step == 5 ? "badge-completed" : (i == step ? "badge-pending" : "badge-inactive");
+                <span class="badge @cls">@(i + 1). @steps[i]</span>
+            }
+        </div>
     </div>
 }
 
@@ -51,45 +74,120 @@
 {
     <div class="alert alert-danger" style="border-radius:12px;">
         <i class="bi bi-x-octagon-fill" style="margin-right:8px;"></i>
-        <strong>Lý do từ chối:</strong> @o.RejectionReason
+        <strong>Lý do Owner từ chối:</strong> @o.RejectionReason
     </div>
 }
 
+@if (Model.CanDecide)
+{
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h3 class="card-title">Quyết định của Owner</h3></div>
+        <div class="card-body">
+            <div class="form-grid">
+                <form method="post" asp-page-handler="Approve" asp-route-id="@o.OrderId" id="approveForm" style="grid-column:1/-1;">
+                    <h4 style="margin:0 0 12px;">Đồng ý – cập nhật người mua và giá bán</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="sel-customer">Người mua <span class="required-star">*</span></label>
+                            <select class="form-control" name="customerId" id="sel-customer" required>
+                                <option value="">-- Chọn khách hàng --</option>
+                                @foreach (var c in Model.Customers)
+                                {
+                                    <option value="@c.CustomerId">@c.CustomerName@(string.IsNullOrWhiteSpace(c.Phone) ? "" : " · " + c.Phone)</option>
+                                }
+                            </select>
+                            <span class="form-hint">Chưa có khách hàng? <a href="/Suppliers/Index?tab=customers">Thêm khách hàng</a> rồi quay lại.</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="inp-price">Giá bán (₫/kg) <span class="required-star">*</span></label>
+                            <input class="form-control" type="number" name="unitPrice" id="inp-price" min="0.01" step="0.01" required />
+                            <span class="form-hint">Số lượng: @o.Quantity.ToString("N0") kg (@SalesFlow.Bags(o.Quantity) bao).</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tổng tiền (tự động tính)</label>
+                            <div class="info-box" style="font-size:16px;font-weight:700;" id="total-preview">0 ₫</div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success" id="btn-approve-order"><i class="bi bi-check-lg"></i> Duyệt và gửi Manager</button>
+                </form>
+                <form method="post" asp-page-handler="Reject" asp-route-id="@o.OrderId" id="rejectForm" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:16px;">
+                    <h4 style="margin:0 0 12px;">Không đồng ý – ghi lý do</h4>
+                    <div class="form-group">
+                        <label class="form-label" for="inp-reason">Lý do từ chối <span class="required-star">*</span></label>
+                        <textarea class="form-control" name="reason" id="inp-reason" rows="2" maxlength="1000" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger" id="btn-reject-order"><i class="bi bi-x-lg"></i> Từ chối yêu cầu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var price = document.getElementById('inp-price');
+            var total = document.getElementById('total-preview');
+            var kg = @o.Quantity;
+            price.addEventListener('input', function () {
+                var p = parseFloat(price.value);
+                total.textContent = isNaN(p) ? '0 ₫' : (kg * p).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' ₫';
+            });
+        })();
+    </script>
+}
+
 <div class="card" style="margin-bottom:20px;">
-    <div class="card-header"><h3 class="card-title">Thông tin đơn hàng</h3></div>
+    <div class="card-header"><h3 class="card-title">Thông tin yêu cầu</h3></div>
     <div class="card-body">
         <div class="form-grid">
-            <div class="form-group"><span class="form-label">Khách hàng</span><div>@o.Customer.CustomerName</div>
-                @if (!string.IsNullOrWhiteSpace(o.Customer.Phone)) { <span class="form-hint">@o.Customer.ContactPerson · @o.Customer.Phone</span> }
-            </div>
-            <div class="form-group"><span class="form-label">Sản phẩm</span><div>@o.Inventory.ItemName (@o.Inventory.ItemCode)</div>
-                <span class="form-hint">Tồn kho hiện tại: @o.Inventory.Quantity.ToString("N0") @o.Inventory.Unit</span>
-            </div>
-            <div class="form-group"><span class="form-label">Số lượng</span><div>@o.Quantity.ToString("N0") @o.Inventory.Unit</div></div>
-            <div class="form-group"><span class="form-label">Đơn giá</span><div>@o.UnitPrice.ToString("N0") ₫</div></div>
-            <div class="form-group"><span class="form-label">Tổng tiền</span><div style="font-size:18px;font-weight:700;">@o.TotalAmount.ToString("N0") ₫</div></div>
+            <div class="form-group"><span class="form-label">Loại thành phẩm</span><div>@SalesFlow.GradeLabel(o.Grade)</div></div>
+            <div class="form-group"><span class="form-label">Số lượng</span><div>@SalesFlow.Bags(o.Quantity) bao</div><span class="form-hint">@o.Quantity.ToString("N0") kg</span></div>
+            <div class="form-group"><span class="form-label">Giá bán</span><div>@(o.UnitPrice.HasValue ? o.UnitPrice.Value.ToString("N0") + " ₫/kg" : "Chưa có (chờ Owner)")</div></div>
+            <div class="form-group"><span class="form-label">Tổng tiền</span><div style="font-size:18px;font-weight:700;">@(o.UnitPrice.HasValue ? o.TotalAmount.ToString("N0") + " ₫" : "—")</div></div>
             <div class="form-group"><span class="form-label">Người tạo</span><div>@(o.CreatedByNavigation?.FullName ?? "Tài khoản đã xóa")</div></div>
-            <div class="form-group"><span class="form-label">Người duyệt</span><div>@(o.ApprovedByNavigation?.FullName ?? "Chưa có")</div></div>
+            <div class="form-group"><span class="form-label">Người xử lý (Owner)</span><div>@(o.ApprovedByNavigation?.FullName ?? "Chưa có")</div>
+                @if (o.ApprovedAt.HasValue) { <span class="form-hint">@o.ApprovedAt.Value.ToString("dd/MM/yyyy HH:mm")</span> }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(o.Note))
+            {
+                <div class="form-group" style="grid-column:1/-1;"><span class="form-label">Ghi chú</span><div>@o.Note</div></div>
+            }
         </div>
     </div>
 </div>
 
+@if (o.Customer != null)
+{
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h3 class="card-title">Thông tin người mua</h3></div>
+        <div class="card-body">
+            <div class="form-grid">
+                <div class="form-group"><span class="form-label">Khách hàng</span><div>@o.Customer.CustomerName</div></div>
+                <div class="form-group"><span class="form-label">Người liên hệ</span><div>@(o.Customer.ContactPerson ?? "—")</div></div>
+                <div class="form-group"><span class="form-label">Số điện thoại</span><div>@(o.Customer.Phone ?? "—")</div></div>
+                <div class="form-group"><span class="form-label">Email</span><div>@(o.Customer.Email ?? "—")</div></div>
+                <div class="form-group" style="grid-column:1/-1;"><span class="form-label">Địa chỉ</span><div>@(o.Customer.Address ?? "—")</div></div>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="card" style="margin-bottom:20px;">
-    <div class="card-header"><h3 class="card-title">Bao thành phẩm xuất kho</h3></div>
+    <div class="card-header"><h3 class="card-title">Lô thành phẩm sẽ xuất (FIFO)</h3></div>
     <div class="table-wrapper">
         <table class="data-table">
-            <thead><tr><th>Số bao</th><th>Ngày sản xuất</th><th>Số lượng</th></tr></thead>
+            <thead><tr><th>Mã lot</th><th>Loại</th><th>Ngày sản xuất</th><th>Số bao</th><th>Số lượng (kg)</th></tr></thead>
             <tbody>
                 @if (!o.OrderDetails.Any())
                 {
-                    <tr><td colspan="3"><div class="empty-state" style="padding:24px;"><p>Chưa phân bổ bao thành phẩm cho đơn này.</p></div></td></tr>
+                    <tr><td colspan="5"><div class="empty-state" style="padding:24px;"><p>Chưa phân bổ lô thành phẩm cho yêu cầu này.</p></div></td></tr>
                 }
-                @foreach (var d in o.OrderDetails)
+                @foreach (var line in o.OrderDetails.OrderBy(x => x.Batch.ProductionDate).ThenBy(x => x.BatchId))
                 {
                     <tr>
-                        <td><strong>@d.Batch.BagNumber</strong></td>
-                        <td>@d.Batch.ProductionDate.ToString("dd/MM/yyyy")</td>
-                        <td>@d.Quantity.ToString("N2")</td>
+                        <td><strong>@line.Batch.BagNumber</strong></td>
+                        <td>@SalesFlow.GradeLabel(o.Grade)</td>
+                        <td>@line.Batch.ProductionDate.ToString("dd/MM/yyyy")</td>
+                        <td>@SalesFlow.Bags(line.Quantity)</td>
+                        <td>@line.Quantity.ToString("N0")</td>
                     </tr>
                 }
             </tbody>
@@ -98,25 +196,45 @@
 </div>
 
 <div class="card">
-    <div class="card-header"><h3 class="card-title">Giao hàng</h3></div>
-    <div class="table-wrapper">
-        <table class="data-table">
-            <thead><tr><th>Biển số xe</th><th>Tài xế</th><th>Ngày lấy hàng</th><th>Trạng thái</th></tr></thead>
-            <tbody>
-                @if (!o.Deliveries.Any())
+    <div class="card-header">
+        <h3 class="card-title">Yêu cầu xuất kho</h3>
+        @if (Model.CanEditDelivery && d != null)
+        {
+            var editDeliveryId = d.DeliveryId;
+            <a href="/Deliveries/Edit?id=@editDeliveryId" class="btn btn-sm btn-primary"><i class="bi bi-pencil"></i> Cập nhật</a>
+        }
+    </div>
+    <div class="card-body">
+        @if (d == null)
+        {
+            <div class="empty-state" style="padding:24px;">
+                <p>@(o.Status == StatusConstants.Approved ? "Yêu cầu đã được duyệt, chưa có yêu cầu xuất kho." : "Chỉ tạo được yêu cầu xuất kho sau khi Owner duyệt.")</p>
+            </div>
+        }
+        else
+        {
+            @if (d.DeliveryStatus == "Returned" && !string.IsNullOrWhiteSpace(d.ReturnReason))
+            {
+                <div class="alert alert-danger" style="border-radius:12px;">
+                    <i class="bi bi-arrow-return-left" style="margin-right:8px;"></i>
+                    <strong>Thủ kho trả lại:</strong> @d.ReturnReason
+                </div>
+            }
+            <div class="form-grid">
+                <div class="form-group"><span class="form-label">Tài xế</span><div>@d.DriverName</div>@if (!string.IsNullOrWhiteSpace(d.DriverPhone)) { <span class="form-hint">@d.DriverPhone</span> }</div>
+                <div class="form-group"><span class="form-label">Biển số xe</span><div>@d.LicensePlate</div></div>
+                <div class="form-group"><span class="form-label">Ngày lấy hàng</span><div>@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</div></div>
+                <div class="form-group"><span class="form-label">Trạng thái</span><div><span class="badge @DeliveryWorkflow.Stage(d).Badge">@DeliveryWorkflow.Stage(d).Label</span></div></div>
+                @if (!string.IsNullOrWhiteSpace(d.Note))
                 {
-                    <tr><td colspan="4"><div class="empty-state" style="padding:24px;"><p>Chưa có thông tin giao hàng.</p></div></td></tr>
+                    <div class="form-group" style="grid-column:1/-1;"><span class="form-label">Ghi chú</span><div>@d.Note</div></div>
                 }
-                @foreach (var dl in o.Deliveries)
+                @if (slip != null)
                 {
-                    <tr>
-                        <td>@dl.LicensePlate</td>
-                        <td>@dl.DriverName</td>
-                        <td>@dl.PickupDate.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>@dl.DeliveryStatus</td>
-                    </tr>
+                    <div class="form-group"><span class="form-label">Phiếu xuất kho</span><div><a href="/ExportSlips/Detail?id=@slip.SlipId">@slip.SlipCode</a> · @DeliveryWorkflow.SlipLabel(slip.Status)</div></div>
                 }
-            </tbody>
-        </table>
+            </div>
+            <div style="margin-top:12px;"><a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-sm btn-outline">Xem chi tiết yêu cầu xuất kho</a></div>
+        }
     </div>
 </div>

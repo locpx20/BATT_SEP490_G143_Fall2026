@@ -1,11 +1,11 @@
-﻿using BATT_PPMS.Helpers;
+using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Pages.Orders
 {
-    /// <summary>Screen: Delete Outbound Order (Manager). Trang xác nhận; chỉ xóa được đơn Pending.</summary>
+    /// <summary>Screen: Hủy yêu cầu bán (Manager). Chỉ hủy được yêu cầu Chờ duyệt / bị từ chối; lô được giải phóng.</summary>
     public class DeleteModel : BasePageModel
     {
         private readonly ProductionManagementDbContext _context;
@@ -28,12 +28,12 @@ namespace BATT_PPMS.Pages.Orders
             var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
-            var order = await LoadAsync(id, tracking: false);
+            var order = await _context.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.OrderId == id);
             if (order == null) return NotFound();
 
             if (!OrderWorkflow.CanModify(order.Status))
             {
-                ErrorMessage = $"Đơn hàng {order.OrderCode} đang ở trạng thái \"{OrderWorkflow.Label(order.Status)}\" nên không thể xóa.";
+                ErrorMessage = $"Yêu cầu {order.OrderCode} đang ở trạng thái \"{OrderWorkflow.Label(order.Status)}\" nên không thể hủy.";
                 return RedirectToPage("/Orders/Detail", new { id });
             }
 
@@ -46,54 +46,34 @@ namespace BATT_PPMS.Pages.Orders
             var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
-            var order = await LoadAsync(id, tracking: true);
+            var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderId == id);
             if (order == null)
             {
-                ErrorMessage = "Đơn hàng không còn tồn tại.";
+                ErrorMessage = "Yêu cầu không còn tồn tại.";
                 return RedirectToPage("/Orders/Index");
             }
 
             if (!OrderWorkflow.CanModify(order.Status))
             {
-                ErrorMessage = $"Đơn hàng {order.OrderCode} đã chuyển sang trạng thái \"{OrderWorkflow.Label(order.Status)}\" nên không thể xóa.";
+                ErrorMessage = $"Yêu cầu {order.OrderCode} đã chuyển sang trạng thái \"{OrderWorkflow.Label(order.Status)}\" nên không thể hủy.";
                 return RedirectToPage("/Orders/Detail", new { id });
             }
 
-            // Đơn Pending không nên có phân bổ bao hoặc giao hàng; nếu có thì chặn để không mất dữ liệu liên quan.
-            if (order.OrderDetails.Count > 0 || order.Deliveries.Count > 0)
-            {
-                ErrorMessage = $"Đơn hàng {order.OrderCode} đã có dữ liệu xuất kho / giao hàng liên quan nên không thể xóa.";
-                return RedirectToPage("/Orders/Detail", new { id });
-            }
+            // Giữ lại lịch sử: chuyển sang Cancelled; trạng thái này không còn giữ chỗ tồn kho.
+            var wasPending = order.Status == StatusConstants.Pending;
+            order.Status = StatusConstants.Cancelled;
+            order.CustomerId = null;
+            order.UnitPrice = null;
+            order.TotalAmount = 0;
 
-            var code = order.OrderCode;
-            _context.Orders.Remove(order);
+            if (wasPending)
+                await SalesFlow.NotifyRoleAsync(_context, RoleConstants.Owner, "Yêu cầu bán đã bị hủy",
+                    $"{order.OrderCode} đã được Manager hủy.", $"/Orders/Detail?id={order.OrderId}");
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                ErrorMessage = $"Không thể xóa đơn hàng {code} vì còn dữ liệu liên quan.";
-                return RedirectToPage("/Orders/Detail", new { id });
-            }
+            await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã xóa đơn hàng {code}.";
+            SuccessMessage = $"Đã hủy yêu cầu {order.OrderCode}.";
             return RedirectToPage("/Orders/Index");
-        }
-
-        private Task<Order?> LoadAsync(int id, bool tracking)
-        {
-            var q = _context.Orders
-                .Include(o => o.Customer)
-                .Include(o => o.Inventory)
-                .Include(o => o.OrderDetails)
-                .Include(o => o.Deliveries)
-                .AsSplitQuery();
-
-            if (!tracking) q = q.AsNoTracking();
-            return q.FirstOrDefaultAsync(o => o.OrderId == id);
         }
     }
 }

@@ -38,5 +38,7 @@
             <span class="warehouse-pending-count" data-warehouse-count="finishedReceipts" hidden="@(Model.Counts.FinishedReceipts == 0)" aria-label="@Model.Counts.FinishedReceipts phiếu nhập thành phẩm chờ xử lý">@Model.Counts.FinishedReceipts</span>
         </a>
     </details>
+    <a class="nav-item @(Model.ActivePage == "Delivery" ? "active" : "")" href="/Deliveries/Index"><i class="bi bi-truck" aria-hidden="true"></i><span>Yêu cầu xuất kho</span></a>
+    <a class="nav-item @(Model.ActivePage == "ExportSlip" ? "active" : "")" href="/ExportSlips/Index"><i class="bi bi-file-earmark-text" aria-hidden="true"></i><span>Phiếu xuất kho</span></a>
 </div>
 </div>

@@ -71,6 +71,7 @@ public partial class ProductionManagementDbContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
     {
+        ConfigureSalesExport(modelBuilder);
         modelBuilder.Entity<DailyMaterialPlan>(e=>{
             e.ToTable("DailyMaterialPlan");e.HasKey(x=>x.PlanDate);
             e.Property(x=>x.ExpectedKg).HasPrecision(12,2);

@@ -1,13 +1,18 @@
-﻿@model BATT_PPMS.Pages.Orders.OrderFormPageModel
+@using BATT_PPMS.Helpers
+@using System.Text.Json
+@model BATT_PPMS.Pages.Orders.OrderFormPageModel
 @{
     var errors = ViewData.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
+    var lotJson = JsonSerializer.Serialize(Model.LotsByGrade.ToDictionary(
+        kv => kv.Key,
+        kv => kv.Value.Select(l => new { id = l.BatchId, lot = l.Lot, date = l.ProductionDate.ToString("dd/MM/yyyy"), bags = l.AvailableBags })));
 }
 
 @if (errors.Count > 0)
 {
     <div class="alert alert-danger" style="border-radius:12px;">
         <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i>
-        <strong>Không thể lưu đơn hàng:</strong>
+        <strong>Không thể lưu yêu cầu bán:</strong>
         <ul style="margin:6px 0 0 18px;padding:0;">
             @foreach (var m in errors)
             {
@@ -17,61 +22,39 @@
     </div>
 }
 
-<div class="card">
+<div class="card" style="margin-bottom:20px;">
     <div class="card-body">
         <form method="post" id="orderForm" novalidate>
             <div class="form-grid">
                 <div class="form-group">
-                    <label class="form-label" for="sel-customer">Khách hàng <span class="required-star">*</span></label>
-                    <select class="form-control" name="Input.CustomerId" id="sel-customer" required>
-                        <option value="">-- Chọn khách hàng --</option>
-                        @foreach (var c in Model.Customers)
+                    <label class="form-label" for="sel-grade">Loại thành phẩm <span class="required-star">*</span></label>
+                    <select class="form-control" name="Input.Grade" id="sel-grade" required>
+                        <option value="">-- Chọn loại --</option>
+                        @foreach (var g in SalesFlow.Grades)
                         {
-                            <option value="@c.CustomerId" selected="@(Model.Input.CustomerId == c.CustomerId)">@c.CustomerName</option>
+                            var total = Model.LotsByGrade.TryGetValue(g, out var gl) ? gl.Sum(l => l.AvailableBags) : 0;
+                            <option value="@g" selected="@(Model.Input.Grade == g)">@SalesFlow.GradeLabel(g) (còn @total.ToString("N0") bao khả dụng)</option>
                         }
                     </select>
+                    <span class="form-hint" id="stock-hint">Chọn loại để xem số bao còn bán được.</span>
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label" for="sel-item">Sản phẩm / Hàng hoá <span class="required-star">*</span></label>
-                    <select class="form-control" name="Input.InventoryId" id="sel-item" required>
-                        <option value="">-- Chọn sản phẩm --</option>
-                        @foreach (var i in Model.Items)
-                        {
-                            <option value="@i.InventoryId" data-stock="@i.Quantity" data-unit="@i.Unit"
-                                    selected="@(Model.Input.InventoryId == i.InventoryId)">@i.ItemName (@i.ItemCode)</option>
-                        }
-                    </select>
-                    <span class="form-hint" id="stock-hint">Chọn sản phẩm để xem tồn kho hiện tại.</span>
+                    <label class="form-label" for="inp-bags">Số bao cần bán <span class="required-star">*</span></label>
+                    <input class="form-control" type="number" name="Input.Bags" id="inp-bags" min="1" max="@OrderWorkflow.MaxBagsPerOrder" step="1" required
+                           value="@Model.Input.Bags" />
+                    <span class="form-hint">1 bao = @SalesFlow.KgPerBag.ToString("N0") kg. Tổng: <strong id="kg-preview">0 kg</strong></span>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="inp-quantity">Số lượng <span class="required-star">*</span></label>
-                    <input class="form-control" type="number" name="Input.Quantity" id="inp-quantity" min="1" step="1" required
-                           value="@Model.Input.Quantity" />
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="inp-price">Đơn giá (₫) <span class="required-star">*</span></label>
-                    <input class="form-control" type="number" name="Input.UnitPrice" id="inp-price" min="0.01" step="0.01" required
-                           value="@(Model.Input.UnitPrice?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" />
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="inp-date">Ngày đặt hàng <span class="required-star">*</span></label>
-                    <input class="form-control" type="datetime-local" name="Input.OrderDate" id="inp-date" required
-                           value="@(Model.Input.OrderDate?.ToString("yyyy-MM-ddTHH:mm"))" />
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Tổng tiền (tự động tính)</label>
-                    <div class="info-box" style="font-size:16px;font-weight:700;" id="total-preview">0 ₫</div>
+                <div class="form-group" style="grid-column:1/-1;">
+                    <label class="form-label" for="inp-note">Ghi chú</label>
+                    <textarea class="form-control" name="Input.Note" id="inp-note" rows="2" maxlength="500">@Model.Input.Note</textarea>
                 </div>
             </div>
 
             <div class="form-actions" style="display:flex;gap:8px;margin-top:20px;">
                 <button type="submit" class="btn btn-primary" id="btn-submit-order">
-                    <i class="bi bi-check-lg"></i> @(Model.IsEdit ? "Lưu thay đổi" : "Tạo đơn hàng")
+                    <i class="bi bi-check-lg"></i> @(Model.IsEdit ? "Lưu và gửi Owner duyệt" : "Tạo yêu cầu bán")
                 </button>
                 <a href="@(Model.IsEdit ? ViewData["CancelUrl"] : "/Orders/Index")" class="btn btn-secondary">Hủy</a>
             </div>
@@ -79,31 +62,52 @@
     </div>
 </div>
 
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Lô sẽ được lấy (FIFO – lô sản xuất cũ nhất trước)</h3>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead><tr><th>Mã lot</th><th>Ngày sản xuất</th><th>Lấy (bao)</th><th>Lấy (kg)</th><th>Còn khả dụng (bao)</th></tr></thead>
+            <tbody id="alloc-body">
+                <tr><td colspan="5"><div class="empty-state" style="padding:24px;"><p>Chọn loại và số bao để xem lô được phân bổ.</p></div></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <script>
     (function () {
-        var item = document.getElementById('sel-item');
-        var qty = document.getElementById('inp-quantity');
-        var price = document.getElementById('inp-price');
+        var lots = @Html.Raw(lotJson);
+        var KG = @SalesFlow.KgPerBag;
+        var grade = document.getElementById('sel-grade');
+        var bags = document.getElementById('inp-bags');
         var hint = document.getElementById('stock-hint');
-        var total = document.getElementById('total-preview');
+        var kg = document.getElementById('kg-preview');
+        var body = document.getElementById('alloc-body');
 
         function fmt(n) { return n.toLocaleString('vi-VN', { maximumFractionDigits: 0 }); }
+        function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        function msg(text) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state" style="padding:24px;"><p>' + esc(text) + '</p></div></td></tr>'; }
 
         function refresh() {
-            var opt = item.options[item.selectedIndex];
-            var stock = opt && opt.dataset.stock !== undefined ? parseInt(opt.dataset.stock, 10) : null;
-            if (stock !== null && !isNaN(stock)) {
-                hint.textContent = 'Tồn kho hiện tại: ' + fmt(stock) + ' ' + (opt.dataset.unit || '');
-                qty.max = stock;
-            } else {
-                hint.textContent = 'Chọn sản phẩm để xem tồn kho hiện tại.';
-                qty.removeAttribute('max');
-            }
-            var q = parseFloat(qty.value), p = parseFloat(price.value);
-            total.textContent = (isNaN(q) || isNaN(p)) ? '0 ₫' : fmt(q * p) + ' ₫';
+            var list = lots[grade.value] || [];
+            var available = list.reduce(function (s, l) { return s + l.bags; }, 0);
+            var need = parseInt(bags.value, 10);
+            hint.textContent = grade.value ? 'Còn ' + fmt(available) + ' bao loại ' + grade.value + ' khả dụng (đã trừ phần đang giữ chỗ).' : 'Chọn loại để xem số bao còn bán được.';
+            kg.textContent = isNaN(need) ? '0 kg' : fmt(need * KG) + ' kg';
+            if (!grade.value || isNaN(need) || need < 1) { msg('Chọn loại và số bao để xem lô được phân bổ.'); return; }
+            if (need > available) { msg('Không đủ hàng: cần ' + fmt(need) + ' bao nhưng chỉ còn ' + fmt(available) + ' bao.'); return; }
+            var left = need, rows = '';
+            list.forEach(function (l) {
+                if (left <= 0) return;
+                var take = Math.min(left, l.bags); left -= take;
+                rows += '<tr><td><strong>' + esc(l.lot) + '</strong></td><td>' + esc(l.date) + '</td><td>' + fmt(take) + '</td><td>' + fmt(take * KG) + '</td><td>' + fmt(l.bags) + '</td></tr>';
+            });
+            body.innerHTML = rows;
         }
 
-        [item, qty, price].forEach(function (el) { el.addEventListener('input', refresh); el.addEventListener('change', refresh); });
+        [grade, bags].forEach(function (el) { el.addEventListener('input', refresh); el.addEventListener('change', refresh); });
         refresh();
     })();
 </script>

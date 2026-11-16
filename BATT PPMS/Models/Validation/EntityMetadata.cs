@@ -240,8 +240,9 @@ public class FinishedGoodBatchMetadata
     [SqlDateRange]
     public object? ProductionDate { get; set; }
 
+    // Cho phép 0: lô đã xuất hết (Status = Depleted) vẫn giữ lại để truy vết phiếu xuất kho.
     [Display(Name = "Số lượng")]
-    [Range(typeof(decimal), "0.01", "9999999999.99", ErrorMessage = "{0} phải lớn hơn 0.")]
+    [Range(typeof(decimal), "0", "9999999999.99", ErrorMessage = "{0} không được âm.")]
     public object? Quantity { get; set; }
 
     [Display(Name = "Trạng thái")]
@@ -350,6 +351,10 @@ public class OrderMetadata
     [Display(Name = "Đơn giá")]
     [Range(typeof(decimal), "0.01", "9999999999.99", ErrorMessage = "{0} phải lớn hơn 0.")]
     public object? UnitPrice { get; set; }
+
+    [Display(Name = "Loại thành phẩm")]
+    [StringLength(1, ErrorMessage = "{0} không hợp lệ.")]
+    public object? Grade { get; set; }
 
     [Display(Name = "Tổng tiền")]
     [Range(typeof(decimal), "0", "9999999999.99", ErrorMessage = "{0} không được âm.")]

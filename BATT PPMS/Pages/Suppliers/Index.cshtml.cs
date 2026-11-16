@@ -531,7 +531,7 @@ namespace BATT_PPMS.Pages.Suppliers
                         OrderCode = o.OrderCode,
                         OrderDate = o.OrderDate,
                         Quantity = o.Quantity,
-                        UnitPrice = o.UnitPrice,
+                        UnitPrice = o.UnitPrice ?? 0m,
                         TotalAmount = o.TotalAmount,
                         Status = CustomerOrderStatusLabel(o.Status)
                     }).ToList()

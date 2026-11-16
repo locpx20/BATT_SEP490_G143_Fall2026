@@ -1,0 +1,89 @@
+@page
+@using BATT_PPMS.Helpers
+@model BATT_PPMS.Pages.Deliveries.EditModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Cập nhật yêu cầu xuất kho" : "Tạo yêu cầu xuất kho";
+    ViewData["ActivePage"] = "Delivery";
+    var o = Model.Order;
+    var errors = ViewData.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
+    int? createOrderId = Model.IsEdit ? null : o.OrderId;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@(Model.IsEdit ? "Cập nhật yêu cầu xuất kho" : "Tạo yêu cầu xuất kho") <span style="color:var(--primary);">@o.OrderCode</span></h1>
+        <p class="page-subtitle">Nhập thông tin tài xế đến lấy hàng. Thủ kho sẽ đối chiếu khi người mua đến.</p>
+    </div>
+    <a href="/Orders/Detail?id=@o.OrderId" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.ReturnReason))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-arrow-return-left" style="margin-right:8px;"></i>
+        <strong>Thủ kho trả lại:</strong> @Model.ReturnReason
+    </div>
+}
+
+@if (errors.Count > 0)
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i>
+        <strong>Không thể lưu yêu cầu xuất kho:</strong>
+        <ul style="margin:6px 0 0 18px;padding:0;">
+            @foreach (var m in errors)
+            {
+                <li>@m</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 class="card-title">Hàng xuất</h3></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="form-group"><span class="form-label">Người mua</span><div>@(o.Customer?.CustomerName ?? "—")</div></div>
+            <div class="form-group"><span class="form-label">Loại / Số lượng</span><div>@SalesFlow.GradeLabel(o.Grade) · @SalesFlow.Bags(o.Quantity) bao (@o.Quantity.ToString("N0") kg)</div></div>
+            <div class="form-group" style="grid-column:1/-1;"><span class="form-label">Lô xuất (FIFO)</span>
+                <div>@string.Join(", ", o.OrderDetails.OrderBy(x => x.Batch.ProductionDate).ThenBy(x => x.BatchId).Select(x => $"{x.Batch.BagNumber} ({SalesFlow.Bags(x.Quantity)} bao)"))</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" asp-page="/Deliveries/Edit" asp-route-id="@Model.DeliveryId" asp-route-orderId="@createOrderId" id="deliveryForm" novalidate>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="inp-driver">Tên tài xế <span class="required-star">*</span></label>
+                    <input class="form-control" type="text" name="Input.DriverName" id="inp-driver" maxlength="100" required value="@Model.Input.DriverName" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="inp-phone">Số điện thoại tài xế</label>
+                    <input class="form-control" type="tel" name="Input.DriverPhone" id="inp-phone" maxlength="20" value="@Model.Input.DriverPhone" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="inp-plate">Biển số xe <span class="required-star">*</span></label>
+                    <input class="form-control" type="text" name="Input.LicensePlate" id="inp-plate" maxlength="20" required value="@Model.Input.LicensePlate" />
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="inp-pickup">Ngày lấy hàng <span class="required-star">*</span></label>
+                    <input class="form-control" type="datetime-local" name="Input.PickupDate" id="inp-pickup" required value="@(Model.Input.PickupDate?.ToString("yyyy-MM-ddTHH:mm"))" />
+                </div>
+                <div class="form-group" style="grid-column:1/-1;">
+                    <label class="form-label" for="inp-note">Ghi chú</label>
+                    <textarea class="form-control" name="Input.Note" id="inp-note" rows="2" maxlength="500">@Model.Input.Note</textarea>
+                </div>
+            </div>
+
+            <div class="form-actions" style="display:flex;gap:8px;margin-top:20px;">
+                <button type="submit" class="btn btn-primary" id="btn-submit-delivery">
+                    <i class="bi bi-check-lg"></i> @(Model.IsEdit ? "Lưu và gửi thủ kho" : "Tạo yêu cầu xuất kho")
+                </button>
+                <a href="/Orders/Detail?id=@o.OrderId" class="btn btn-secondary">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>

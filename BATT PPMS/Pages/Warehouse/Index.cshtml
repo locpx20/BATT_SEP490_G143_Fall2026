@@ -17,7 +17,27 @@
     <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/warehouse-plans.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/consumption-slip.css" asp-append-version="true" />
+    @if (Model.StaffView && Model.EffectiveStep == 4) { <link rel="stylesheet" href="~/css/production-plan.css" asp-append-version="true" /> }
+    @if (Model.StaffView && Model.EffectiveStep == 4) { <link rel="stylesheet" href="~/css/qc.css" asp-append-version="true" /> }
     <style>
+        .staff-notice-dialog { width: min(500px, calc(100% - 32px)); max-height: min(75vh, 600px); padding: 0; border: 1px solid #cbded0; border-radius: 16px; background: #fffefa; color: #243d35; box-shadow: 0 20px 60px rgb(12 37 29 / 20%); }
+        .staff-notice-dialog::backdrop { background: rgb(20 46 37 / 45%); }
+        .staff-notice-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid #e2ebe3; }
+        .staff-notice-header h2 { margin: 0; color: #193f35; font-size: 20px; }
+        .staff-notice-close { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 36px; width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: #52675d; font-size: 24px; line-height: 1; cursor: pointer; }
+        .staff-notice-close:hover { background: #e5eee7; color: #193f35; }
+        .staff-notice-close:focus-visible, .staff-notice-body a:focus-visible { outline: 2px solid #193f35; outline-offset: 2px; }
+        .staff-notice-body { display: grid; gap: 12px; padding: 20px 24px 24px; }
+        .staff-notice-item { padding: 14px 16px; border: 1px solid #c6dbc9; border-radius: 10px; background: #e8f2e9; overflow-wrap: anywhere; }
+        .staff-notice-item strong { display: block; color: #193f35; }
+        .staff-notice-item p { margin: 5px 0 0; white-space: pre-line; }
+        .staff-notice-item a { display: inline-block; margin-top: 8px; color: #215c49; font-weight: 600; }
+        .staff-workflow-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .staff-workflow-action { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 42px; width: 42px; height: 42px; border: 1px solid #cbdcd0; border-radius: 8px; background: #edf3ed; color: #245247; font-size: 17px; line-height: 1; text-decoration: none; cursor: pointer; }
+        .staff-workflow-action:hover { background: #dcebe0; color: #193f35; }
+        .staff-workflow-action-delete { border-color: #e8c8c0; background: #fdf3f0; color: #ae5048; }
+        .staff-workflow-action-delete:hover { background: #f6e1dc; color: #8d3832; }
+        .staff-workflow-action:focus-visible { outline: 2px solid #193f35; outline-offset: 2px; }
         .warehouse-table-records {
             padding: 0 !important;
         }
@@ -216,9 +236,29 @@
         </div>
     </header>
 
-    <partial name="_CloseoutNotifications" model="Model.Notices" />
+    @if (Model.StaffView || Model.CanReceive) {
+        var visibleNotices = Model.Notices.Where(notice => notice.Title != "Xác nhận phiếu nhập thành phẩm").ToList();
+        @if (visibleNotices.Count > 0 || Model.SuccessMessage != null) {
+            <dialog class="staff-notice-dialog" id="staff-notice-dialog" aria-labelledby="staff-notice-title">
+                <header class="staff-notice-header">
+                    <h2 id="staff-notice-title"><i class="bi bi-check-circle" aria-hidden="true"></i> Thông báo</h2>
+                    <button type="button" class="staff-notice-close" data-staff-notice-close aria-label="Đóng thông báo">&times;</button>
+                </header>
+                <div class="staff-notice-body">
+                    @if (Model.SuccessMessage != null) {
+                        <div class="staff-notice-item"><p>@Model.SuccessMessage</p></div>
+                    }
+                    @foreach (var notice in visibleNotices) {
+                        <div class="staff-notice-item"><strong>@notice.Title</strong><p>@notice.Message</p>@if (notice.Url != null) { <a href="@notice.Url">Xem chi tiết</a> }</div>
+                    }
+                </div>
+            </dialog>
+        }
+    } else {
+        <partial name="_CloseoutNotifications" model="Model.Notices" />
+    }
 
-    @if (Model.SuccessMessage != null) {
+    @if (!Model.StaffView && !Model.CanReceive && Model.SuccessMessage != null) {
         <div class="closeout-message success" role="status">
             <i class="bi bi-check-circle-fill" style="margin-right: 6px;"></i> @Model.SuccessMessage
         </div>
@@ -265,6 +305,8 @@
                 .Where(plan => plan.IsDayOff && (Model.AllPlanShifts || plan.Shift == Model.PlanShifts.ElementAtOrDefault(Model.Pagination.Offset)))
                 .ToList());
         <partial name="~/Pages/Shared/_ProductionSchedule.cshtml" model="schedule" />
+    } else if (Model.StaffView && Model.EffectiveStep == 4) {
+        <partial name="_StaffReceiptWorkflow" model="Model" />
     } else if (Model.StaffView && Model.EffectiveStep <= 3) {
         <div class="staff-flow-wrapper" style="margin-top: 18px;">
             @if (Model.EffectiveStep == 1) {
@@ -304,7 +346,7 @@
                                         @foreach (var d in distinctDates) {
                                             var isToday = d == Model.Today;
                                             var label = isToday ? $"Hôm nay - {d:dd/MM/yyyy}" : $"Ngày {d:dd/MM/yyyy}";
-                                            <option value="@d.ToString("yyyy-MM-dd")" selected="@isToday">@label</option>
+                                            <option value="@d.ToString("yyyy-MM-dd")" selected="@(Model.QcDate.HasValue ? d == Model.QcDate : isToday)">@label</option>
                                         }
                                     </select>
                                 }
@@ -318,7 +360,7 @@
                                 <select name="assignmentId" id="step1AssignmentId" required class="wh-dialog-input" style="width: 100%; height: 46px; font-size: 15px;">
                                     <option value="">Chọn ca làm việc</option>
                                     @foreach (var a in Model.StaffAssignments) {
-                                        <option value="@a.AssignmentId" data-date="@a.AssignmentDate.ToString("yyyy-MM-dd")"
+                                        <option value="@a.AssignmentId" data-date="@a.AssignmentDate.ToString("yyyy-MM-dd")" data-shift="@a.Shift"
                                                 data-lot-prefix="@a.LotPrefix" data-recheck-lot="@a.RecheckLot" data-recheck-bags="@LotCode.BagCount(a.RecheckLot)">
                                             @IndexModel.FormatShift(a.Shift)@(a.RecheckLot != null ? " · Kiểm tra lại" : "")
                                         </option>
@@ -364,6 +406,11 @@
                                 } else {
                                     onQcDateSelectionChange('@Model.Today.ToString("yyyy-MM-dd")');
                                 }
+                                const requestedShift = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.QcShift));
+                                const requestedDate = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.QcDate?.ToString("yyyy-MM-dd")));
+                                const shiftSelect = document.getElementById('step1AssignmentId');
+                                const option = Array.from(shiftSelect.options).find(item => !item.disabled && item.dataset.shift === requestedShift && item.dataset.date === requestedDate);
+                                if (option) { shiftSelect.value = option.value; shiftSelect.dispatchEvent(new Event('change', { bubbles: true })); }
                             });
                         </script>
                     }
@@ -771,7 +818,9 @@
                                         var isRejected = r.Status == "Rejected";
                                         var lot = r.QualityRequest.Inspection.Batch.BagNumber;
                                         var grade = Model.ReceiptGrades.GetValueOrDefault(r.QualityRequestId);
-                                        var destination = ReceiptDestination(grade);
+                                        var storageGrade = Model.ReceiptStorageGrades.GetValueOrDefault(r.QualityRequestId);
+                                        if (storageGrade == null && isReceived) storageGrade = grade;
+                                        var destination = ReceiptDestination(storageGrade);
                                         <tr>
                                             <!-- Mã phiếu -->
                                             <td class="plan-index" style="font-family: monospace; font-weight: 700; font-size: 15.5px;">
@@ -793,10 +842,9 @@
 
                                             <td>
                                                 @if (grade != null) {
-                                                    <span class="badge @(grade == "A" ? "badge-approved" : "badge-pending")">Loại @grade</span>
-                                                    <div><small>@destination</small></div>
+                                                    <span class="badge @(grade == "A" ? "badge-approved" : "badge-pending")">Đạt · Loại @grade</span>
                                                 } else {
-                                                    <span class="badge badge-inactive">@destination</span>
+                                                    <span class="badge badge-inactive">Chưa có kết quả QC</span>
                                                 }
                                             </td>
 
@@ -943,8 +991,17 @@
                 </div>
 
                 <div class="wh-detail-field">
-                    <span class="wh-dialog-label">Kho nhập theo kết quả QC</span>
-                    <div class="wh-dialog-value" id="receiveDestination"></div>
+                    <span class="wh-dialog-label">Kết quả QC</span>
+                    <div class="wh-dialog-value" id="receiveQcResult"></div>
+                </div>
+
+                <div>
+                    <label for="receiveStorageGrade" class="wh-dialog-label">Chọn kho nhập <span style="color: #a55449;">*</span></label>
+                    <select name="storageGrade" id="receiveStorageGrade" class="wh-dialog-input" required>
+                        <option value="">Chọn kho</option>
+                        <option value="A">Kho A</option>
+                        <option value="B">Kho B</option>
+                    </select>
                 </div>
 
                 <div>
@@ -1049,7 +1106,7 @@
                     <div class="val" id="detailGrade"></div>
                 </div>
                 <div class="wh-detail-field">
-                    <span class="wh-dialog-label">Kho theo phân loại QC</span>
+                    <span class="wh-dialog-label">Kho nhập</span>
                     <div class="val" id="detailDestination"></div>
                 </div>
                 <div class="wh-detail-field">
@@ -1122,6 +1179,25 @@
         <script src="~/js/qc-request.js" asp-append-version="true"></script>
     }
     <script>
+        const staffNoticeDialog = document.getElementById('staff-notice-dialog');
+        if (staffNoticeDialog) {
+            staffNoticeDialog.showModal();
+            const noticeTimeout = window.setTimeout(() => staffNoticeDialog.close(), 10000);
+            staffNoticeDialog.querySelector('[data-staff-notice-close]').addEventListener('click', () => staffNoticeDialog.close());
+            staffNoticeDialog.addEventListener('close', () => window.clearTimeout(noticeTimeout));
+        }
+        document.querySelectorAll('[data-workflow-edit], [data-workflow-delete], [data-workflow-revise]').forEach(button => {
+            button.addEventListener('click', () => {
+                const action = button.hasAttribute('data-workflow-edit') ? 'edit' : button.hasAttribute('data-workflow-delete') ? 'delete' : 'revise';
+                const dialog = document.getElementById('workflow-' + action);
+                dialog.querySelector('[name="requestId"]').value = button.dataset.id;
+                if (action === 'edit') { dialog.querySelector('[name="bags"]').value = button.dataset.bags; dialog.querySelector('[name="note"]').value = button.dataset.note || ''; }
+                if (action === 'delete') dialog.querySelector('[data-workflow-lot]').textContent = button.dataset.lot;
+                if (action === 'revise') { dialog.querySelector('[name="note"]').value = button.dataset.note || ''; dialog.querySelector('[data-workflow-reason]').textContent = button.dataset.reason || ''; }
+                dialog.showModal();
+            });
+        });
+        document.querySelectorAll('[data-workflow-close]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
         function showModal(id) {
             const el = document.getElementById(id);
             if (el) el.classList.add('show');
@@ -1136,7 +1212,8 @@
             document.getElementById('receiveDisplayCode').textContent = d.code;
             document.getElementById('receiveDisplayLot').textContent = d.lot;
             document.getElementById('receiveDisplayExpQty').textContent = d.expQty + ' kg';
-            document.getElementById('receiveDestination').textContent = d.grade ? d.destination + ' · Loại ' + d.grade : d.destination;
+            document.getElementById('receiveQcResult').textContent = d.grade ? 'Đạt · Hàng loại ' + d.grade : 'Chưa có kết quả QC';
+            document.getElementById('receiveStorageGrade').value = '';
             document.getElementById('receiveActualQty').value = d.expQty;
             document.getElementById('receiveNote').value = '';
             showModal('receiveModal');

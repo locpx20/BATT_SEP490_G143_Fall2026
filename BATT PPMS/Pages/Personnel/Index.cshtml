@@ -3,18 +3,20 @@
 @using BATT_PPMS.Pages.Personnel
 @using System.Globalization
 @{
-    ViewData["Title"] = Model.IsStaffView ? "Lịch phân công lao động"
+    ViewData["Title"] = Model.IsStaffView ? "Lịch sản xuất hàng ngày"
         : Model.IsEditingPlan ? "Chỉnh sửa phân công công việc"
-        : Model.CanCreatePlan ? "Phân công công việc" : "Phân công lao động";
+        : "Phân công công việc";
     ViewData["ActivePage"] = "Personnel";
 }
 
 @section Styles {
-    @if (Model.IsStaffView) {
-        <link rel="stylesheet" href="~/css/shift-closeout.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/warehouse-plans.css" asp-append-version="true" />
+    @if (Model.IsStaffView || Model.IsOwnerView) {
+        <link rel="stylesheet" href="~/css/staff-weekly-schedule.css" asp-append-version="true" />
     } else {
         <link rel="stylesheet" href="~/css/production-plan.css" asp-append-version="true" />
+        @if (Model.CanCreatePlan && !Model.IsEditingPlan) {
+            <link rel="stylesheet" href="~/css/staff-weekly-schedule.css" asp-append-version="true" />
+        }
     }
 }
 
@@ -22,18 +24,38 @@
     @if (Model.CanCreatePlan) {
         <script src="~/js/production-plan.js" asp-append-version="true"></script>
     }
+    @if (Model.IsStaffView || Model.IsOwnerView || (Model.CanCreatePlan && !Model.IsEditingPlan)) {
+        <script>
+            const weekPicker = document.getElementById('staff-schedule-week');
+            weekPicker?.addEventListener('change', () => {
+                if (weekPicker.value && weekPicker.checkValidity()) weekPicker.form.requestSubmit();
+            });
+            const deleteDialog = document.getElementById('staff-schedule-delete-dialog');
+            document.querySelectorAll('[data-delete-day]').forEach(button => button.addEventListener('click', () => {
+                deleteDialog.querySelector('[data-delete-date-input]').value = button.dataset.deleteDay;
+                deleteDialog.querySelector('[data-delete-shift-input]').value = button.dataset.deleteShift;
+                deleteDialog.querySelector('[data-delete-summary]').textContent = `${button.dataset.deleteShift} ngày ${button.dataset.deleteLabel}`;
+                deleteDialog.showModal();
+            }));
+            deleteDialog?.querySelector('[data-delete-cancel]').addEventListener('click', () => deleteDialog.close());
+        </script>
+    }
 }
 
-@if (Model.IsStaffView && Model.StaffSchedule is { } schedule) {
-    <div class="closeout">
-        <header class="closeout-header">
-            <h1><i class="bi bi-calendar-week" aria-hidden="true"></i> @ViewData["Title"]</h1>
-        </header>
-        @if (Model.ShowingLatestPlanDate) {
-            <div class="closeout-message" role="status">Hôm nay (@Model.Today.ToString("dd/MM/yyyy")) chưa có phân công. Đang hiển thị lịch ngày @Model.DisplayDate?.ToString("dd/MM/yyyy").</div>
-        }
-        <partial name="~/Pages/Shared/_ProductionSchedule.cshtml" model="schedule" />
-    </div>
+@if (Model.IsStaffView || Model.IsOwnerView || (Model.CanCreatePlan && !Model.IsEditingPlan)) {
+    <partial name="_StaffWeeklySchedule" model="Model" />
+    @if (Model.CanCreatePlan) {
+        <div class="labor-page">
+        <dialog class="labor-create-dialog" id="labor-create-dialog" aria-labelledby="labor-create-title"
+                data-open-on-load="@(Model.Create ? "true" : "false")">
+            <header class="labor-dialog-head">
+                <h2 id="labor-create-title"><i class="bi bi-calendar-plus" aria-hidden="true"></i> Tạo phân công công việc</h2>
+                <button class="labor-dialog-close" type="button" aria-label="Đóng" data-plan-close><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </header>
+            <partial name="_CreateDayPlan" model="Model" />
+        </dialog>
+        </div>
+    }
     return;
 }
 
@@ -51,7 +73,10 @@
     </header>
 
     @if (!string.IsNullOrEmpty(Model.SuccessMessage)) {
-        <p class="labor-message" role="status"><i class="bi bi-check-circle" aria-hidden="true"></i> @Model.SuccessMessage</p>
+        <p class="labor-message labor-update-notice" role="status" data-labor-update-notice>
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+            Đã có cập nhật mới ngày @((Model.DisplayDate ?? Model.Today).ToString("dd/MM/yyyy"))
+        </p>
     }
     @if (!Model.Create && !string.IsNullOrEmpty(Model.ErrorMessage)) {
         <p class="labor-message labor-message-error" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> @Model.ErrorMessage</p>

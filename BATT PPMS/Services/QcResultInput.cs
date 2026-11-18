@@ -10,6 +10,5 @@ public sealed class QcResultInput
     public decimal? AshPercent { get; set; }
     public bool? HasImpurities { get; set; }
     public string? Grade { get; set; }
-    public string? Result { get; set; }
     public string? Note { get; set; }
 }

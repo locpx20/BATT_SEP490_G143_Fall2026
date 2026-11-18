@@ -41,7 +41,9 @@ namespace BATT_PPMS.Pages.QC
         {
             var check = RequireRole(RoleConstants.Staff, RoleConstants.QCStaff, RoleConstants.Manager, RoleConstants.Owner);
             if (check != null) return check;
-            Notices=await Notifier.TakeUnreadAsync(_context,CurrentUserId);
+            Notices=(await Notifier.TakeUnreadAsync(_context,CurrentUserId))
+                .Where(notice => notice.Title != "Yêu cầu kiểm tra chất lượng mới")
+                .ToList();
             if (Legacy) {
                 var old = _context.Qcinspections.AsNoTracking().Include(x => x.Batch).Include(x => x.RequestedByNavigation).Include(x => x.InspectedByNavigation)
                     .Where(x => !_context.ProductionQualityRequests.Any(q => q.InspectionId == x.InspectionId));

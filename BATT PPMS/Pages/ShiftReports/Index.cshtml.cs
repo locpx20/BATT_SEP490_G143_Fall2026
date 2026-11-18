@@ -46,7 +46,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     {
         var check = RequireRole(RoleConstants.Staff, RoleConstants.Manager, RoleConstants.Owner);
         if (check != null) return check;
-        if (!IsManager) return RedirectToPage("/Warehouse/Consumption");
+        if (!IsOwnerOrManager) return RedirectToPage("/Warehouse/Consumption");
 
         Tab = ShowReceipts ? "receipts" : "materials";
         if (ShowReceipts && StatusFilter == "AwaitingStaffConfirmation")

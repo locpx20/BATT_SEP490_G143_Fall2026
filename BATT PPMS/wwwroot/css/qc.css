@@ -223,6 +223,18 @@
     grid-column: 1 / -1;
 }
 
+.qc-grade-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.qc-grade-choice {
+    width: 100%;
+}
+
+.qc-grade-choice select {
+    min-height: 96px;
+}
+
 .qc-page .qc-detail-modal .qc-detail-body {
     display: grid;
     align-content: start;

@@ -1,6 +1,6 @@
 @model string
 <a class="nav-item @(Model == "Personnel" ? "active" : "")" href="/Personnel/Index">
-    <i class="bi bi-calendar-week" aria-hidden="true"></i><span>Lịch phân công lao động</span>
+    <i class="bi bi-calendar-week" aria-hidden="true"></i><span>Lịch sản xuất hàng ngày</span>
 </a>
 <details class="staff-closeout-nav" open="@(Model is "MaterialUsage" or "Warehouse" or "QC" or "ShiftReport")">
     <summary class="nav-item"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span>Báo cáo cuối ca làm việc</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>

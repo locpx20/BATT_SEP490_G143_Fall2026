@@ -30,6 +30,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     public PageWindow Pagination { get; set; } = new(0, 1);
     public List<FinishedGoodsReceipt> Receipts { get; set; } = new();
     public IReadOnlyDictionary<int, string> ReceiptGrades { get; private set; } = new Dictionary<int, string>();
+    public IReadOnlyDictionary<int, string> ReceiptStorageGrades { get; private set; } = new Dictionary<int, string>();
     public List<PersonnelAssignment> Plans { get; set; } = new();
     public List<string?> PlanShifts { get; set; } = new();
     public List<ProductionQualityRequest> ReadyQc { get; set; } = new();
@@ -51,6 +52,8 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     public static IReadOnlyList<string> OpenReceiptStatuses { get; } = ["Pending", "Rejected"];
     public DateOnly Today => DateOnly.FromDateTime(ProductionFlow.Now);
     public List<QcShiftOption> StaffAssignments { get; set; } = new();
+    public List<ProductionQualityRequest> StaffQcRows { get; set; } = new();
+    public IReadOnlyDictionary<int, ProductionQcResult> StaffQcResults { get; private set; } = new Dictionary<int, ProductionQcResult>();
 
     public static string FormatShift(string? shift) {
         if (string.IsNullOrWhiteSpace(shift)) return "Chưa ghi nhận ca";
@@ -120,6 +123,29 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
                     qcFiltered = qcFiltered.Where(x => string.Equals(x.Assignment.Shift, QcShift, StringComparison.OrdinalIgnoreCase));
                 }
                 FilteredQcRequests = qcFiltered.ToList();
+            } else if (IsStaff && EffectiveStep == 4) {
+                StaffAssignments = await new ProductionFlow(db).QcShiftOptions(CurrentUserId);
+                StaffQcRows = await new ProductionFlow(db).QualityQuery.AsNoTracking()
+                    .Where(q => q.Inspection.RequestedBy == CurrentUserId)
+                    .OrderByDescending(q => q.RequestId).ToListAsync();
+                var qcIds = StaffQcRows.Select(q => q.RequestId).ToArray();
+                if (qcIds.Length > 0)
+                    StaffQcResults = await db.ProductionQcResults.AsNoTracking()
+                        .Where(result => qcIds.Contains(result.RequestId))
+                        .ToDictionaryAsync(result => result.RequestId);
+                var legacyInspections = await db.Qcinspections.AsNoTracking()
+                    .Include(inspection => inspection.Batch)
+                    .Include(inspection => inspection.RequestedByNavigation)
+                    .Include(inspection => inspection.InspectedByNavigation)
+                    .Where(inspection => inspection.RequestedBy == CurrentUserId
+                        && !db.ProductionQualityRequests.Any(request => request.InspectionId == inspection.InspectionId))
+                    .ToListAsync();
+                StaffQcRows.AddRange(legacyInspections.Select(inspection => new ProductionQualityRequest {
+                    RequestId = -inspection.InspectionId,
+                    Inspection = inspection,
+                    CreatedAt = inspection.RequestDate,
+                    Assignment = new PersonnelAssignment { AssignmentDate = inspection.Batch.ProductionDate, Shift = "Chưa liên kết ca" }
+                }));
             } else {
                 await LoadReceiptsAsync(page);
             }
@@ -183,6 +209,11 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
             ReceiptGrades = await db.ProductionQcResults.AsNoTracking()
                 .Where(result => passedRequestIds.Contains(result.RequestId) && (result.Grade == "A" || result.Grade == "B"))
                 .ToDictionaryAsync(result => result.RequestId, result => result.Grade);
+        var receiptIds = Receipts.Select(r => r.ReceiptId).ToArray();
+        if (receiptIds.Length > 0)
+            ReceiptStorageGrades = await db.FinishedGoodsReceipts.AsNoTracking()
+                .Where(r => receiptIds.Contains(r.ReceiptId) && (r.StorageGrade == "A" || r.StorageGrade == "B"))
+                .ToDictionaryAsync(r => r.QualityRequestId, r => r.StorageGrade!);
     }
     public async Task<IActionResult> OnGetInboxCountsAsync() {
         var check = RequireRole(RoleConstants.WarehouseStaff);
@@ -213,9 +244,17 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         var check = RequireRole(RoleConstants.Staff); if (check != null) return Task.FromResult(check);
         return Act(() => new ProductionFlow(db).RequestReceipt(CurrentUserId, requestId, note), "Đã gửi yêu cầu nhập thành phẩm cho Thủ kho.", "receipts", 4);
     }
-    public Task<IActionResult> OnPostReceiveAsync(int receiptId, decimal actualQuantity, string? note) {
+    public Task<IActionResult> OnPostEditQcAsync(int requestId, int bags, string? note) {
+        var check = RequireRole(RoleConstants.Staff); if (check != null) return Task.FromResult(check);
+        return Act(() => new ProductionFlow(db).EditPendingQc(CurrentUserId, requestId, bags, note), "Đã cập nhật yêu cầu QC.", "receipts", 4);
+    }
+    public Task<IActionResult> OnPostDeleteQcAsync(int requestId) {
+        var check = RequireRole(RoleConstants.Staff); if (check != null) return Task.FromResult(check);
+        return Act(() => new ProductionFlow(db).DeletePendingQc(CurrentUserId, requestId), "Đã xóa yêu cầu QC.", "receipts", 4);
+    }
+    public Task<IActionResult> OnPostReceiveAsync(int receiptId, decimal actualQuantity, string? storageGrade, string? note) {
         var check = RequireRole(RoleConstants.WarehouseStaff); if (check != null) return Task.FromResult(check);
-        return Act(() => new ProductionFlow(db).ReceiveGoods(CurrentUserId, receiptId, actualQuantity, note),
+        return Act(() => new ProductionFlow(db).ReceiveGoods(CurrentUserId, receiptId, actualQuantity, storageGrade, note),
             "Đã nhập kho thành phẩm và gửi thông báo cho Manager.", "receipts");
     }
     public Task<IActionResult> OnPostRejectAsync(int receiptId, string? reason) {

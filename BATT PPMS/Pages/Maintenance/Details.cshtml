@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.Maintenance.DetailsModel
 @using BATT_PPMS.Helpers
 @{
@@ -285,7 +285,7 @@
                                 <i class="bi bi-lightbulb"></i>
                                 <div>Bạn tự kiểm tra vật tư. <strong>Đủ</strong> thì cứ sửa chữa và hoàn thành bình thường. <strong>Thiếu</strong> thì nhập vật tư cần mua bên dưới và gửi cho Quản lý; yêu cầu sẽ chuyển sang <em>Chờ vật tư</em> cho tới khi mua xong.</div>
                             </div>
-                            <form method="post" asp-page-handler="RequestPurchase" asp-route-id="@it.RequestId">
+                            <form method="post" asp-page-handler="RequestPurchase" asp-route-id="@it.RequestId" id="purchaseForm">
                                 <div class="rf-mat-head"><span>Tên vật tư</span><span>Số lượng</span><span>ĐVT</span><span></span></div>
                                 <div id="matRows"></div>
                                 <template id="matRowTpl">
@@ -298,8 +298,8 @@
                                 </template>
                                 <button type="button" id="matAdd" class="btn btn-outline-secondary btn-sm rf-btn-sm" style="margin-top: 10px;"><i class="bi bi-plus-lg"></i> Thêm vật tư</button>
                                 <textarea name="note" rows="2" maxlength="300" class="form-control" style="font-size: 12px; border-radius: 10px; margin-top: 12px;" placeholder="Ghi chú cho Quản lý (quy cách, nhà cung cấp gợi ý, mức khẩn...)"></textarea>
-                                <button type="submit" class="btn btn-warning btn-sm" style="border-radius: 8px; font-size: 12px; font-weight: 700; margin-top: 12px;"
-                                        onclick="return confirm('Gửi yêu cầu mua vật tư cho Quản lý? Yêu cầu sửa chữa sẽ chuyển sang trạng thái chờ vật tư.');">
+                                <button type="button" class="btn btn-warning btn-sm" style="border-radius: 8px; font-size: 12px; font-weight: 700; margin-top: 12px;"
+                                        data-bs-toggle="modal" data-bs-target="#confirmPurchaseModal">
                                     <i class="bi bi-cart-plus"></i> Gửi yêu cầu mua vật tư
                                 </button>
                             </form>
@@ -457,13 +457,41 @@
 </div>
 
 @* ---------- MODALS ---------- *@
+@* Modal xác nhận gửi yêu cầu mua vật tư *@
+@if (Model.CanRequestMaterial)
+{
+    <div class="modal fade" id="confirmPurchaseModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                    <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;">
+                        <i class="bi bi-cart-plus"></i> Xác nhận gửi yêu cầu mua vật tư
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <p style="font-size: 13px; color: #243d35; margin: 0;">
+                        Gửi yêu cầu mua vật tư cho <strong>Quản lý</strong>?<br>
+                        Yêu cầu sửa chữa sẽ chuyển sang trạng thái <strong>Chờ vật tư</strong>.
+                    </p>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy</button>
+                    <button type="button" id="confirmPurchaseBtn" class="btn btn-warning" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
+                        <i class="bi bi-cart-plus"></i> Xác nhận gửi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 @if (Model.CanReview || Model.CanReassign)
 {
     <!-- Phê duyệt & phân công / Phân công lại -->
     <div class="modal fade" id="assignModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
-                <form method="post" asp-page-handler="@(Model.CanReassign ? "Reassign" : "Approve")" asp-route-id="@it.RequestId">
+                <form method="post" asp-page-handler="@(Model.CanReassign ? "Reassign" : "Approve")" asp-route-id="@it.RequestId" novalidate>
                     <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
                         <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;">
                             <i class="bi bi-person-check"></i> @(Model.CanReassign ? "Phân công lại" : "Phê duyệt & phân công") REQ-@it.RequestId.ToString("D4")
@@ -479,7 +507,7 @@
                         }
                         <div class="mb-3">
                             <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Giao cho nhân viên bảo trì <span style="color: #a55449;">*</span></label>
-                            <select name="assignedStaffId" class="form-select" required style="font-size: 13px; border-radius: 10px;">
+                            <select name="assignedStaffId" id="assignedStaffId" class="form-select" required style="font-size: 13px; border-radius: 10px;">
                                 <option value="">-- Chọn nhân viên --</option>
                                 @foreach (var tech in Model.Technicians)
                                 {
@@ -488,6 +516,7 @@
                                     </option>
                                 }
                             </select>
+                            <div id="assignedStaffError" class="text-danger" style="font-size: 11.5px; margin-top: 4px; display: none;">Vui lòng chọn nhân viên bảo trì.</div>
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-6">
@@ -530,7 +559,7 @@
     <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
-                <form method="post" asp-page-handler="Reject" asp-route-id="@it.RequestId">
+                <form method="post" asp-page-handler="Reject" asp-route-id="@it.RequestId" novalidate>
                     <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
                         <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #94473e;"><i class="bi bi-x-circle"></i> Từ chối REQ-@it.RequestId.ToString("D4")</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -538,8 +567,9 @@
                     <div class="modal-body" style="padding: 20px;">
                         <p style="font-size: 12px; color: #52675d;">Yêu cầu sẽ được trả về cho <strong>@it.RequestedByNavigation.FullName</strong> để chỉnh sửa và gửi lại.</p>
                         <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Lý do từ chối <span style="color: #a55449;">*</span></label>
-                        <textarea name="reason" rows="4" maxlength="500" required class="form-control" style="font-size: 12px; border-radius: 10px;"
+                        <textarea name="reason" id="rejectReason" rows="4" maxlength="500" required class="form-control" style="font-size: 12px; border-radius: 10px;"
                                   placeholder="Nêu rõ cần bổ sung / chỉnh sửa gì..."></textarea>
+                        <div id="rejectReasonError" class="text-danger" style="font-size: 11.5px; margin-top: 4px; display: none;">Vui lòng nhập lý do từ chối.</div>
                     </div>
                     <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
@@ -606,6 +636,7 @@
 @section Scripts {
     <script>
         (function () {
+            // ---- Vật tư: thêm/xóa dòng ----
             var rows = document.getElementById('matRows');
             var tpl = document.getElementById('matRowTpl');
             var add = document.getElementById('matAdd');
@@ -619,6 +650,84 @@
                 if (!rows.querySelector('.mat-row')) addRow();
             });
             if (!rows.querySelector('.mat-row')) addRow();
+        })();
+
+        (function () {
+            // ---- Modal xác nhận gửi yêu cầu mua vật tư ----
+            var confirmBtn = document.getElementById('confirmPurchaseBtn');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function () {
+                    var form = document.getElementById('purchaseForm');
+                    if (form) {
+                        bootstrap.Modal.getInstance(document.getElementById('confirmPurchaseModal')).hide();
+                        form.submit();
+                    }
+                });
+            }
+        })();
+
+        (function () {
+            // ---- Validation hiển thị text lỗi dưới field (thay browser tooltip) ----
+
+            // assignModal: select nhân viên bắt buộc
+            var assignForm = document.querySelector('#assignModal form');
+            if (assignForm) {
+                var staffSelect = document.getElementById('assignedStaffId');
+                var staffError = document.getElementById('assignedStaffError');
+                if (staffSelect && staffError) {
+                    staffSelect.addEventListener('change', function () {
+                        if (staffSelect.value) {
+                            staffSelect.style.borderColor = '';
+                            staffError.style.display = 'none';
+                        }
+                    });
+                    assignForm.addEventListener('submit', function (e) {
+                        if (!staffSelect.value) {
+                            e.preventDefault();
+                            staffSelect.style.borderColor = '#dc3545';
+                            staffError.style.display = 'block';
+                            staffSelect.focus();
+                        }
+                    });
+                }
+            }
+
+            // rejectModal: textarea lý do bắt buộc
+            var rejectForm = document.querySelector('#rejectModal form');
+            if (rejectForm) {
+                var reasonTA = document.getElementById('rejectReason');
+                var reasonError = document.getElementById('rejectReasonError');
+                if (reasonTA && reasonError) {
+                    reasonTA.addEventListener('input', function () {
+                        if (reasonTA.value.trim()) {
+                            reasonTA.style.borderColor = '';
+                            reasonError.style.display = 'none';
+                        }
+                    });
+                    rejectForm.addEventListener('submit', function (e) {
+                        if (!reasonTA.value.trim()) {
+                            e.preventDefault();
+                            reasonTA.style.borderColor = '#dc3545';
+                            reasonError.style.display = 'block';
+                            reasonTA.focus();
+                        }
+                    });
+                }
+            }
+
+            // Reset lỗi khi đóng modal
+            ['assignModal', 'rejectModal'].forEach(function (id) {
+                var modal = document.getElementById(id);
+                if (!modal) return;
+                modal.addEventListener('hidden.bs.modal', function () {
+                    modal.querySelectorAll('.text-danger[id]').forEach(function (el) {
+                        el.style.display = 'none';
+                    });
+                    modal.querySelectorAll('select, textarea').forEach(function (el) {
+                        el.style.borderColor = '';
+                    });
+                });
+            });
         })();
     </script>
 }

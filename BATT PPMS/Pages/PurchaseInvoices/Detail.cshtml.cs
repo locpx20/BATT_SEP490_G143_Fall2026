@@ -294,7 +294,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             return Back();
         }
 
-        // BƯỚC 3A TRÊN SWIMLANE: Manager -> Approved? -> Yes
+        // BƯỚC 3A TRÊN SWIMLANE: Manager hoặc Owner -> Approved? -> Yes
         public async Task<IActionResult> OnPostApproveOrderAsync(int receiptId)
         {
             var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
@@ -305,23 +305,24 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
             receipt.Status = "OrderApproved";
             receipt.RejectionReason = null;
+            var approverLabel = IsOwner ? "Chủ nhà máy (Owner)" : "Manager";
 
             if (receipt.CreatedBy.HasValue)
             {
                 Notifier.Add(
                     _context,
                     receipt.CreatedBy.Value,
-                    $"Đơn mua {receipt.ReceiptCode} đã được Manager duyệt",
-                    $"Manager ({CurrentFullName}) đã phê duyệt đơn mua {receipt.ReceiptCode}. Vui lòng bấm 'Tạo yêu cầu nhập kho (Create Inbound Request)' để gửi sang Kho.",
+                    $"Phiếu mua hàng {receipt.ReceiptCode} đã được duyệt",
+                    $"{approverLabel} ({CurrentFullName}) đã phê duyệt phiếu mua hàng {receipt.ReceiptCode}. Vui lòng bấm 'Gửi yêu cầu nhập kho' để gửi sang Kho.",
                     $"/PurchaseInvoices/Detail?id={receipt.InvoiceId}");
             }
 
             await _context.SaveChangesAsync();
-            SuccessMessage = $"Đã phê duyệt đơn mua {receipt.ReceiptCode}. Nhân viên thu mua có thể bấm 'Tạo yêu cầu nhập kho (Create Inbound Request)' để gửi sang Kho.";
+            SuccessMessage = $"Đã phê duyệt phiếu mua hàng {receipt.ReceiptCode}. Nhân viên thu mua có thể bấm 'Gửi yêu cầu nhập kho' để gửi sang Kho.";
             return RedirectToPage(new { id = receipt.InvoiceId });
         }
 
-        // BƯỚC 3B TRÊN SWIMLANE: Manager -> Approved? -> No -> Rejection Reason -> quay lại Create Purchase Order
+        // BƯỚC 3B TRÊN SWIMLANE: Manager hoặc Owner -> Approved? -> No -> Rejection Reason -> quay lại Create Purchase Order
         public async Task<IActionResult> OnPostRejectOrderAsync(int receiptId, string? rejectionReason)
         {
             var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
@@ -332,26 +333,27 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
             if (string.IsNullOrWhiteSpace(rejectionReason))
             {
-                ErrorMessage = "Vui lòng nhập lý do từ chối (Rejection Reason) cho đơn mua hàng.";
+                ErrorMessage = "Vui lòng nhập lý do từ chối (Rejection Reason) cho phiếu mua hàng.";
                 return RedirectToPage(new { id = receipt.InvoiceId });
             }
 
             var reason = rejectionReason.Trim();
             receipt.Status = "OrderRejected";
             receipt.RejectionReason = reason;
+            var approverLabel = IsOwner ? "Chủ nhà máy (Owner)" : "Manager";
 
             if (receipt.CreatedBy.HasValue)
             {
                 Notifier.Add(
                     _context,
                     receipt.CreatedBy.Value,
-                    $"Đơn mua {receipt.ReceiptCode} bị từ chối",
-                    $"Manager ({CurrentFullName}) đã từ chối đơn mua {receipt.ReceiptCode}. Lý do: {reason}. Vui lòng bấm 'Sửa & Gửi lại đơn mua'.",
+                    $"Phiếu mua hàng {receipt.ReceiptCode} bị từ chối",
+                    $"{approverLabel} ({CurrentFullName}) đã từ chối phiếu mua hàng {receipt.ReceiptCode}. Lý do: {reason}. Vui lòng bấm 'Sửa & gửi lại'.",
                     $"/PurchaseInvoices/Detail?id={receipt.InvoiceId}");
             }
 
             await _context.SaveChangesAsync();
-            SuccessMessage = $"Đã từ chối đơn mua {receipt.ReceiptCode} kèm lý do và gửi trả về cho Nhân viên thu mua chỉnh sửa.";
+            SuccessMessage = $"Đã từ chối phiếu mua hàng {receipt.ReceiptCode} kèm lý do và gửi trả về cho Nhân viên thu mua chỉnh sửa.";
             return RedirectToPage(new { id = receipt.InvoiceId });
         }
 

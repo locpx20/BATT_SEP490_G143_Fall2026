@@ -150,7 +150,8 @@ namespace BATT_PPMS.Pages.Inventory
         public int ReceivedReceiptsCount { get; set; }
         public decimal TotalWeighedKg { get; set; }
 
-        public bool CanWarehouseConfirm => IsWarehouseStaff || IsManager || IsOwner;
+        // Yêu cầu nhập kho (IR -> Lập PNK) chỉ có Warehouse Staff mới được xử lý/duyệt; Phiếu nhập kho (PNK) cả Manager và Owner đều duyệt được.
+        public bool CanWarehouseConfirm => IsWarehouseStaff;
         public bool CanManagerApprove => IsManager || IsOwner;
 
         [TempData]
@@ -578,7 +579,7 @@ namespace BATT_PPMS.Pages.Inventory
             return false;
         }
 
-        // BƯỚC 5 TRÊN SWIMLANE: Warehouse Manager -> Check and compare with IR -> Create Goods Receipt Raw Material note (PNK-26xxx)
+        // BƯỚC 5 TRÊN SWIMLANE: Chỉ Warehouse Staff -> Check and compare with IR -> Create Goods Receipt Raw Material note (PNK-26xxx)
         public async Task<IActionResult> OnPostConfirmReceiptAsync(
             int receiptId,
             int? materialId,
@@ -587,7 +588,7 @@ namespace BATT_PPMS.Pages.Inventory
             string? unitPrice,
             string? warehouseNote)
         {
-            var check = RequireRole(RoleConstants.WarehouseStaff, RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.WarehouseStaff);
             if (check != null) return check;
 
             IActionResult Back(string? targetView = null) => RedirectToPage(new

@@ -150,9 +150,9 @@ namespace BATT_PPMS.Pages.Inventory
         public int ReceivedReceiptsCount { get; set; }
         public decimal TotalWeighedKg { get; set; }
 
-        // Yêu cầu nhập kho (IR -> Lập PNK) chỉ có Warehouse Staff mới được xử lý/duyệt; Phiếu nhập kho (PNK) cả Manager và Owner đều duyệt được.
+        // Yêu cầu nhập kho (IR -> Lập PNK) chỉ có Warehouse Staff mới được xử lý; Phiếu nhập kho (PNK) chỉ có Manager mới được duyệt.
         public bool CanWarehouseConfirm => IsWarehouseStaff;
-        public bool CanManagerApprove => IsManager || IsOwner;
+        public bool CanManagerApprove => IsManager;
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -719,7 +719,7 @@ namespace BATT_PPMS.Pages.Inventory
             var managerIds = await _context.Users
                 .Include(u => u.Role)
                 .Where(u => u.Status == StatusConstants.Active &&
-                            (u.Role.RoleName == RoleConstants.Manager || u.Role.RoleName == RoleConstants.Owner))
+                            u.Role.RoleName == RoleConstants.Manager)
                 .Select(u => u.UserId)
                 .ToListAsync();
 
@@ -740,10 +740,10 @@ namespace BATT_PPMS.Pages.Inventory
             return Back("imports");
         }
 
-        // BƯỚC 6A TRÊN SWIMLANE: Manager -> Approved (Yes) -> Cộng tồn kho & gửi Receive Goods Receipt information về cho Purchasing Staff
+        // BƯỚC 6A TRÊN SWIMLANE: Chỉ Manager -> Approved (Yes) -> Cộng tồn kho & gửi Receive Goods Receipt information về cho Purchasing Staff
         public async Task<IActionResult> OnPostApproveImportAsync(int? importId, int? receiptId)
         {
-            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
             IActionResult Back(string? targetView = null) => RedirectToPage(new
@@ -837,10 +837,10 @@ namespace BATT_PPMS.Pages.Inventory
             return Back();
         }
 
-        // BƯỚC 6B TRÊN SWIMLANE: Manager -> Approved (No) -> Rejection Reason -> quay lại Warehouse Manager: Create Goods Receipt Raw Material note
+        // BƯỚC 6B TRÊN SWIMLANE: Chỉ Manager -> Approved (No) -> Rejection Reason -> quay lại Warehouse Manager: Create Goods Receipt Raw Material note
         public async Task<IActionResult> OnPostRejectImportAsync(int? importId, int? receiptId, string? rejectionReason)
         {
-            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
             IActionResult Back(string? targetView = null) => RedirectToPage(new

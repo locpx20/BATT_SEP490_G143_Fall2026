@@ -1,5 +1,5 @@
 @model string
-@{ var ap = Model; var tab = ViewContext.HttpContext.Request.Query["tab"].ToString(); var reportActive = ap == "ShiftReport"; }
+@{ var ap = Model; var tab = ViewContext.HttpContext.Request.Query["tab"].ToString(); var reportActive = ap == "ShiftReport"; var financeActive = ap == "Finance"; }
 <div class="owner-nav-section">
     <div class="owner-nav-label">Tổng quan</div>
     <a class="nav-item @(ap == "Dashboard" ? "active" : "")" href="/Dashboard/Index"><i class="bi bi-grid"></i><span>Tổng quan</span></a>
@@ -26,7 +26,11 @@
     <div class="owner-nav-label">Dữ liệu</div>
     <a class="nav-item @(ap == "Suppliers" ? "active" : "")" href="/Suppliers/Index?tab=suppliers"><i class="bi bi-buildings"></i><span>Nhà cung cấp</span></a>
     <a class="nav-item @(ap == "Customers" ? "active" : "")" href="/Suppliers/Index?tab=customers"><i class="bi bi-people"></i><span>Khách hàng</span></a>
-    <a class="nav-item" href="/Dashboard/Index#owner-finance"><i class="bi bi-cash-coin"></i><span>Công nợ &amp; tài chính</span></a>
+    <details class="owner-nav-details" open="@financeActive">
+        <summary class="nav-item"><i class="bi bi-cash-coin" aria-hidden="true"></i><span>Công nợ &amp; tài chính</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
+        <a class="nav-item @(financeActive && tab != "materials" ? "active" : "")" href="/Finance/Index?tab=exports"><i class="bi bi-truck" aria-hidden="true"></i><span>Tổng hợp hàng xuất</span></a>
+        <a class="nav-item @(financeActive && tab == "materials" ? "active" : "")" href="/Finance/Index?tab=materials"><i class="bi bi-box-seam" aria-hidden="true"></i><span>TH nguyên liệu</span></a>
+    </details>
     <details class="owner-nav-details" open="@reportActive">
         <summary class="nav-item"><i class="bi bi-graph-up" aria-hidden="true"></i><span>Báo cáo vận hành</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
         <a class="nav-item @(reportActive && tab != "receipts" ? "active" : "")" asp-page="/ShiftReports/Index" asp-route-tab="materials" aria-current="@(reportActive && tab != "receipts" ? "page" : null)"><i class="bi bi-box-arrow-up" aria-hidden="true"></i><span>Nguyên liệu đã sử dụng</span></a>

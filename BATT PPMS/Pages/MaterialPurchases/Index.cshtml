@@ -14,7 +14,7 @@
     var tabs = new[]
     {
         (Label: "Tất cả", Value: (int?)null, Filter: "ALL", Css: ""),
-        (Label: "Chờ mua", Value: (int?)Model.PendingCount, Filter: PurchaseRequestStatus.Pending, Css: Model.PendingCount > 0 ? "alert" : ""),
+        (Label: "Chờ mua", Value: (int?)Model.PendingCount, Filter: PurchaseRequestStatus.Pending,Css: ""),
         (Label: "Đã mua", Value: (int?)Model.PurchasedCount, Filter: PurchaseRequestStatus.Purchased, Css: ""),
         (Label: "Bị từ chối", Value: (int?)Model.RejectedCount, Filter: PurchaseRequestStatus.Rejected, Css: "")
     };

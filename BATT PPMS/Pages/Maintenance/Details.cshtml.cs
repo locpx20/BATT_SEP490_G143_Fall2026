@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -103,7 +103,8 @@ namespace BATT_PPMS.Pages.Maintenance
             CanReview = IsManager && Status == RepairStatus.Pending;
             CanReassign = IsManager && Status == RepairStatus.Assigned;
             CanConfirm = IsMaintenanceStaff && mine && Status == RepairStatus.Assigned;
-            CanRequestMaterial = IsMaintenanceStaff && mine && Status == RepairStatus.InProgress;
+            CanRequestMaterial = IsMaintenanceStaff && mine &&
+                                 (Status == RepairStatus.InProgress || Status == RepairStatus.WaitingMaterial);
             CanComplete = IsMaintenanceStaff && mine && Status == RepairStatus.InProgress;
             CanEditResubmit = IsStaff && owner && Status == RepairStatus.Rejected;
             CanCancel = IsStaff && owner && (Status == RepairStatus.Pending || Status == RepairStatus.Rejected);
@@ -276,8 +277,9 @@ namespace BATT_PPMS.Pages.Maintenance
             var request = await FindTrackedAsync(id);
             if (request == null || request.AssignedTo != CurrentUserId) return MissingRequest();
 
-            if (RepairStatus.Normalize(request.Status) != RepairStatus.InProgress)
-                return Fail(id, "Chỉ tạo yêu cầu mua vật tư được khi yêu cầu đang ở trạng thái sửa chữa.");
+            var currentStatus = RepairStatus.Normalize(request.Status);
+            if (currentStatus != RepairStatus.InProgress && currentStatus != RepairStatus.WaitingMaterial)
+                return Fail(id, "Chỉ tạo yêu cầu mua vật tư được khi yêu cầu đang ở trạng thái sửa chữa hoặc chờ vật tư.");
 
             var noteError = InputValidator.Text(note, "Ghi chú mua vật tư", 300);
             if (noteError != null) return Fail(id, noteError);
@@ -304,7 +306,7 @@ namespace BATT_PPMS.Pages.Maintenance
 
             var summary = string.Join("; ", lines.Select(l => $"{l.Name} ×{l.Qty}{(l.Unit == null ? "" : " " + l.Unit)}"));
             request.Status = RepairStatus.WaitingMaterial;
-            AddLog(request, RepairAction.PurchaseRequested, RepairStatus.InProgress, RepairStatus.WaitingMaterial,
+            AddLog(request, RepairAction.PurchaseRequested, currentStatus, RepairStatus.WaitingMaterial,
                 Clip("Thiếu vật tư: " + summary + (cleanNote != null ? ". Ghi chú: " + cleanNote : "")), now);
 
             var managerIds = await _context.Users

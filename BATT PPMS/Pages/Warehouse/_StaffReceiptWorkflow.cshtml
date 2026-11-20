@@ -1,0 +1,93 @@
+@model BATT_PPMS.Pages.Warehouse.IndexModel
+@using BATT_PPMS.Helpers
+@using BATT_PPMS.Services
+@using System.Globalization
+@{
+    var items = Model.StaffQcRows.AsEnumerable();
+    if (Model.ReceiptDate is { } date) items = items.Where(q => q.Assignment.AssignmentDate == date);
+    if (!string.IsNullOrEmpty(Model.ShiftFilter)) items = items.Where(q => q.Assignment.Shift == Model.ShiftFilter);
+    var requests = items.ToList();
+    var options = Model.StaffAssignments.Where(a => (!Model.ReceiptDate.HasValue || a.AssignmentDate == Model.ReceiptDate)
+        && (string.IsNullOrEmpty(Model.ShiftFilter) || a.Shift == Model.ShiftFilter)).ToList();
+    var page = new PageWindow(requests.Count + options.Count, PageWindow.ReadRequestedPage(Context.Request.Query, Model.PageNumber));
+    var rows = options.Select(a => (Date: a.AssignmentDate, Shift: a.Shift, Option: (QcShiftOption?)a, Request: (BATT_PPMS.Models.ProductionQualityRequest?)null))
+        .Concat(requests.Select(q => (Date: q.Assignment.AssignmentDate, Shift: q.Assignment.Shift, Option: (QcShiftOption?)null, Request: (BATT_PPMS.Models.ProductionQualityRequest?)q)))
+        .OrderByDescending(row => row.Date).ThenBy(row => row.Shift).Skip(page.Offset).Take(page.PageSize).ToList();
+}
+<section class="closeout-register warehouse-plans">
+    <div class="closeout-section-head">
+        <form method="get" asp-page="./Index" class="closeout-filter">
+            <input type="hidden" name="tab" value="receipts" />
+            <label for="staff-workflow-date">Ngày sản xuất</label>
+            <input type="date" id="staff-workflow-date" name="ReceiptDate" value="@Model.ReceiptDateInput" />
+            <button type="submit" class="closeout-button primary"><i class="bi bi-search"></i> Tìm kiếm</button>
+        </form>
+    </div>
+    <div class="warehouse-plans-scroll" role="region" aria-label="Yêu cầu QC và nhập kho" tabindex="0">
+        <table class="warehouse-plans-table">
+            <thead><tr><th>Ngày / Ca</th><th>Mã lô</th><th>Số bao</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+            <tbody>
+            @foreach (var row in rows) {
+                var q = row.Request;
+                var pending = q is { RequestId: > 0 } && q.Inspection.Status == "Pending" && q.Inspection.InspectedBy == null && q.Receipt == null;
+                <tr>
+                    <td>@row.Date.ToString("dd/MM/yyyy")<br /><small>@row.Shift</small></td>
+                    <td>@(q?.Inspection.Batch.BagNumber ?? "—")</td>
+                    <td>@(q == null ? "—" : LotCode.BagCount(q.Inspection.Batch.BagNumber)?.ToString() ?? "—")</td>
+                    <td>
+                        @if (row.Option != null) {
+                            <a class="closeout-button primary" asp-page="./Index" asp-route-tab="receipts" asp-route-Step="1" asp-route-QcDate="@row.Date.ToString("yyyy-MM-dd")" asp-route-QcShift="@row.Shift">Gửi yêu cầu QC</a>
+                        } else if (q!.RequestId < 0) {
+                            <span class="badge badge-inactive">@ProductionFlow.QcStatusLabel(q.Inspection.Status)</span>
+                        } else if (q.Receipt?.Status is "Received" or "AwaitingStaffConfirmation") {
+                            <span class="badge badge-approved">Đã nhập kho</span>
+                        } else if (q.Receipt?.Status == "Rejected") {
+                            <span class="badge badge-rejected">Thủ kho từ chối</span>
+                            <small>@q.Receipt.RejectionReason</small>
+                        } else if (q.Receipt?.Status == "Pending") {
+                            <span class="badge badge-pending">Chờ Thủ kho duyệt</span>
+                        } else if (q.Inspection.Status != "Completed") {
+                            <span class="badge badge-pending">Chờ QC</span>
+                        } else if (q.Inspection.Result == "Pass") {
+                            <form method="post" asp-page-handler="RequestReceipt"><input type="hidden" name="requestId" value="@q.RequestId" /><button class="closeout-button primary" type="submit">Yêu cầu nhập kho</button></form>
+                        } else { <span class="badge badge-rejected">QC không đạt</span> }
+                    </td>
+                    <td>
+                      <div class="staff-workflow-actions">
+                        @if (pending && LotCode.BagCount(q!.Inspection.Batch.BagNumber) is { } bags) {
+                            <button type="button" class="staff-workflow-action" aria-label="Chỉnh sửa yêu cầu QC" title="Chỉnh sửa yêu cầu QC" data-workflow-edit data-id="@q.RequestId" data-bags="@bags" data-note="@q.Inspection.Note"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
+                            <button type="button" class="staff-workflow-action staff-workflow-action-delete" aria-label="Xóa yêu cầu QC" title="Xóa yêu cầu QC" data-workflow-delete data-id="@q.RequestId" data-lot="@q.Inspection.Batch.BagNumber"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                        } else if (q?.Receipt?.Status == "Rejected") {
+                            <button type="button" class="staff-workflow-action" aria-label="Sửa và gửi lại yêu cầu nhập kho" title="Sửa và gửi lại yêu cầu nhập kho" data-workflow-revise data-id="@q.RequestId" data-note="@q.Receipt.RequestNote" data-reason="@q.Receipt.RejectionReason"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
+                        }
+                        @if (q != null) { <button type="button" class="staff-workflow-action" aria-label="Xem chi tiết QC" title="Xem chi tiết QC" data-bs-toggle="modal" data-bs-target="#qc-details-@q.Inspection.InspectionId"><i class="bi bi-eye" aria-hidden="true"></i></button> }
+                      </div>
+                    </td>
+                </tr>
+            }
+            @if (page.TotalCount == 0) { <tr><td colspan="5" class="plan-empty">Chưa có ca hoặc yêu cầu phù hợp.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+    <partial name="~/Pages/Shared/_AdminPagination.cshtml" model='new AdminPaginationViewModel(page, "/Warehouse/Index", new() { ["tab"] = "receipts", ["Step"] = "4", ["ReceiptDate"] = Model.ReceiptDateInput, ["ShiftFilter"] = Model.ShiftFilter })' />
+</section>
+<div class="qc-page">
+    @foreach (var row in rows.Where(row => row.Request != null)) {
+        var request = row.Request!;
+        Model.StaffQcResults.TryGetValue(request.RequestId, out var result);
+        <partial name="~/Pages/QC/_ResultDetails.cshtml" model="(request, result)" />
+    }
+</div>
+<dialog id="workflow-edit" class="labor-create-dialog" aria-labelledby="workflow-edit-title">
+    <form method="post" asp-page-handler="EditQc" class="labor-form">
+        <header class="labor-dialog-head"><h2 id="workflow-edit-title">Sửa yêu cầu QC</h2><button type="button" class="labor-dialog-close" data-workflow-close aria-label="Đóng">×</button></header>
+        <div class="labor-form-body" style="padding:24px;display:grid;gap:16px"><input type="hidden" name="requestId" /><label>Số bao <input class="wh-dialog-input" type="number" name="bags" min="1" max="@FinishedGoodsQuantity.MaxBags" required /></label><label>Ghi chú <textarea class="wh-dialog-input" name="note" maxlength="2000" rows="3"></textarea></label></div>
+        <footer class="labor-form-footer" style="padding:16px 24px"><button type="submit" class="closeout-button primary">Lưu thay đổi</button></footer>
+    </form>
+</dialog>
+<dialog id="workflow-delete" class="labor-create-dialog" aria-labelledby="workflow-delete-title">
+    <form method="post" asp-page-handler="DeleteQc" style="padding:24px"><h2 id="workflow-delete-title">Xóa yêu cầu QC</h2><p>Xác nhận xóa yêu cầu của lô <strong data-workflow-lot></strong>?</p><input type="hidden" name="requestId" /><button type="button" class="closeout-button secondary" data-workflow-close>Hủy</button> <button type="submit" class="closeout-button primary">Xóa</button></form>
+</dialog>
+<dialog id="workflow-revise" class="labor-create-dialog" aria-labelledby="workflow-revise-title">
+    <form method="post" asp-page-handler="RequestReceipt" style="padding:24px;display:grid;gap:14px"><h2 id="workflow-revise-title">Sửa yêu cầu nhập kho</h2><p>Lý do từ chối: <span data-workflow-reason></span></p><input type="hidden" name="requestId" /><label>Nội dung điều chỉnh <textarea name="note" class="wh-dialog-input" rows="3" maxlength="2000" required></textarea></label><div><button type="button" class="closeout-button secondary" data-workflow-close>Hủy</button> <button type="submit" class="closeout-button primary">Gửi lại Thủ kho</button></div></form>
+</dialog>

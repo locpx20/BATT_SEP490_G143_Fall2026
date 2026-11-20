@@ -187,16 +187,67 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         var inspection = new Qcinspection { InspectionCode = $"QC-{Guid.NewGuid():N}", Batch = batch, RequestedBy = staff, RequestDate = Now, Status = "Pending", Note = text };
         var request = new ProductionQualityRequest { Assignment = a, Inspection = inspection, CreatedAt = Now };
         db.ProductionQualityRequests.Add(request); await db.SaveChangesAsync();
-        var inspectors=await db.Users.Where(x=>x.Status=="Active"&&x.Role.RoleName==RoleConstants.QCStaff).Select(x=>x.UserId).ToListAsync();
-        foreach(var id in inspectors) Notifier.Add(db,id,"Yêu cầu kiểm tra chất lượng mới",$"{inspection.InspectionCode}: kiểm tra lô {batch.BagNumber}, {batch.Quantity:N2} kg.","/QC/Index");
         return request.RequestId;
     });
     public static bool IsShiftIncidentNote(string? note) =>
         note?.StartsWith(ShiftIncidentNotePrefix, StringComparison.Ordinal) == true
         || note?.StartsWith("Lý do tách lô:", StringComparison.Ordinal) == true;
+    private async Task<ProductionQualityRequest> PendingQcForChange(int staff, int requestId)
+    {
+        await Actor(staff, RoleConstants.Staff);
+        var lockName = FormattableString.Invariant($"ProductionQcResult:{requestId}");
+        try
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                DECLARE @lockResult int;
+                EXEC @lockResult = sp_getapplock @Resource = {lockName}, @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 5000;
+                IF @lockResult < 0 THROW 51022, 'Unable to lock the QC request.', 1;
+                """);
+        }
+        catch (SqlException ex) when (ex.Number is 51022 or 1205)
+        {
+            throw new ProductionFlowException("Yêu cầu đang được xử lý. Kiểm tra trạng thái trước khi thử lại.");
+        }
+        var request = await db.ProductionQualityRequests.Include(q => q.Inspection).ThenInclude(i => i.Batch)
+            .Include(q => q.Receipt).SingleOrDefaultAsync(q => q.RequestId == requestId);
+        Need(request != null && request.Inspection.RequestedBy == staff && request.Inspection.Status == "Pending" && request.Inspection.InspectedBy == null && request.Receipt == null,
+            "Chỉ được sửa hoặc xóa yêu cầu của bạn đang chờ QC kiểm tra.");
+        return request!;
+    }
+    public Task<int> EditPendingQc(int staff, int requestId, int bags, string? note) => Change(async () => {
+        var request = await PendingQcForChange(staff, requestId);
+        Need(bags >= 1 && bags <= FinishedGoodsQuantity.MaxBags, "Vui lòng nhập số bao hợp lệ.");
+        var batch = request.Inspection.Batch;
+        var parts = batch.BagNumber.Split('-');
+        Need(LotCode.BagCount(batch.BagNumber).HasValue && parts.Length == 5, "Lô cũ không hỗ trợ thay đổi số bao.");
+        Need(!await db.Qcinspections.AnyAsync(i => i.BatchId == batch.BatchId && i.InspectionId != request.InspectionId),
+            "Lô đã có kết quả kiểm tra trước đó nên không thể thay đổi yêu cầu QC.");
+        var updatedLot = string.Join('-', parts.Take(4)) + "-" + bags.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Need(!await db.FinishedGoodBatches.AnyAsync(b => b.BatchId != batch.BatchId && b.BagNumber == updatedLot), "Mã lô đã tồn tại.");
+        var oldFirstLine = request.Inspection.Note?.Split('\n', 2)[0];
+        var incident = IsShiftIncidentNote(oldFirstLine) ? oldFirstLine : null;
+        var text = Text(note, 2000, "ghi chú");
+        if (incident != null && text?.StartsWith(incident, StringComparison.Ordinal) == true)
+            text = text[incident.Length..].TrimStart('\r', '\n');
+        request.Inspection.Note = string.Join("\n", new[] { incident, text }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        batch.BagNumber = updatedLot;
+        batch.Quantity = (decimal)bags * FinishedGoodsQuantity.KilogramsPerBag;
+        return requestId;
+    });
+    public Task<int> DeletePendingQc(int staff, int requestId) => Change(async () => {
+        var request = await PendingQcForChange(staff, requestId);
+        var inspection = request.Inspection;
+        var batch = inspection.Batch;
+        Need(!await db.OrderDetails.AnyAsync(detail => detail.BatchId == batch.BatchId), "Lô đã liên kết đơn hàng và không thể xóa.");
+        var hasOtherInspections = await db.Qcinspections.AnyAsync(i => i.BatchId == batch.BatchId && i.InspectionId != inspection.InspectionId);
+        db.ProductionQualityRequests.Remove(request);
+        db.Qcinspections.Remove(inspection);
+        if (!hasOtherInspections) db.FinishedGoodBatches.Remove(batch);
+        else batch.Status = "QC Failed";
+        return requestId;
+    });
     public Task<int> FinishQc(int qc, QcResultInput input, byte[] image) => Change(async () => {
         await Actor(qc, RoleConstants.QCStaff);
-        Need(input.Result is "Pass" or "Fail", "Vui lòng chọn kết quả đạt hoặc không đạt.");
         Need(input.Grade is "A" or "B", "Vui lòng chọn hàng loại A hoặc hàng loại B.");
         Need(input.HasImpurities.HasValue, "Vui lòng chọn có hoặc không có tạp chất.");
         Need(input.PelletLengthMm is > 0 and <= 999999.99m && decimal.Round(input.PelletLengthMm.Value, 2) == input.PelletLengthMm,
@@ -241,17 +292,17 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         request.ResultImageType = imageType;
         request.ResultImage = image;
         db.ProductionQcResults.Add(details);
-        inspection.Result = input.Result;
+        // Phiếu QC dùng phân loại A/B làm kết luận duy nhất; cả hai loại đều được chuyển tiếp nhập kho.
+        inspection.Result = "Pass";
         inspection.Note = string.Join("\n", new[] { inspection.Note, $"Kết luận QC: {text}" }.Where(x => !string.IsNullOrWhiteSpace(x)));
         inspection.InspectDate = Now;
         inspection.InspectedBy = qc;
         inspection.Status = "Completed";
-        var passed = input.Result == "Pass";
-        inspection.Batch.Status = passed ? "Pending Receipt" : "QC Failed";
+        inspection.Batch.Status = "Pending Receipt";
         if (inspection.RequestedBy.HasValue)
             Notifier.Add(db, inspection.RequestedBy.Value, "QC đã trả kết quả kiểm tra",
-                $"{inspection.InspectionCode}: {Label(input.Result)} · Hàng loại {details.Grade}. {text}",
-                passed ? $"/Warehouse/Index?tab=receipts&QualityRequestId={input.RequestId}" : $"/QC/Index?SearchTerm={inspection.InspectionCode}");
+                $"{inspection.InspectionCode}: Đạt · Hàng loại {details.Grade}. {text}",
+                $"/Warehouse/Index?tab=receipts&QualityRequestId={input.RequestId}");
         return input.RequestId;
     });
     private async Task SetUsage(EndOfShiftReport report, List<MaterialUsageInput>? input) {
@@ -407,9 +458,10 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         }
         return receiptId;
     });
-    public Task<int> ReceiveGoods(int keeper, int receiptId, decimal actual, string? note) => Change(async () => {
+    public Task<int> ReceiveGoods(int keeper, int receiptId, decimal actual, string? storageGrade, string? note) => Change(async () => {
         await Actor(keeper, RoleConstants.WarehouseStaff);
         Need(actual > 0 && actual <= 9999999999.99m && decimal.Round(actual, 2) == actual, "Khối lượng thực nhập phải lớn hơn 0, tối đa 2 chữ số thập phân.");
+        Need(storageGrade is "A" or "B", "Vui lòng chọn Kho A hoặc Kho B.");
         var r = await db.FinishedGoodsReceipts.Include(x => x.QualityRequest).ThenInclude(x => x.Inspection).ThenInclude(x => x.Batch)
             .Include(x => x.QualityRequest).ThenInclude(x => x.Report)
             .Include(x => x.QualityRequest).ThenInclude(x => x.Assignment)
@@ -418,14 +470,14 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         Need(r!.QualityRequest.Inspection.Status == "Completed" && r.QualityRequest.Inspection.Result == "Pass", "Lô hàng chưa có kết quả QC đạt.");
         var grade = await db.ProductionQcResults.Where(result => result.RequestId == r.QualityRequestId)
             .Select(result => result.Grade).SingleOrDefaultAsync();
-        var destination = grade is "A" or "B" ? $" vào Kho {grade}" : "";
-        var stockUrl = grade is "A" or "B" ? $"/Inventory/Index?tab=finished&StockGrade={grade}" : "/Inventory/Index?tab=finished";
+        var destination = $" vào Kho {storageGrade}";
+        var stockUrl = $"/Inventory/Index?tab=finished&StockGrade={storageGrade}";
         var assignment = r.QualityRequest.Assignment;
         Need(!await db.FinishedGoodsReceipts.AnyAsync(x => x.ReceiptId != receiptId && x.ReceivedAt != null && x.ActualQuantity > 0
             && x.QualityRequest.Inspection.BatchId == r.QualityRequest.Inspection.BatchId),
             "Lô thành phẩm này đã được nhập kho.");
         var text = Text(note, 2000, "ghi chú đối chiếu", actual != r.ExpectedQuantity);
-        r.ActualQuantity = actual; r.DiscrepancyNote = text; r.ReceivedBy = keeper; r.ReceivedAt = Now;
+        r.ActualQuantity = actual; r.StorageGrade = storageGrade; r.DiscrepancyNote = text; r.ReceivedBy = keeper; r.ReceivedAt = Now;
         r.Status = "Received";
         r.QualityRequest.Inspection.Batch.Quantity = actual;
         r.QualityRequest.Inspection.Batch.Status = "In Stock";

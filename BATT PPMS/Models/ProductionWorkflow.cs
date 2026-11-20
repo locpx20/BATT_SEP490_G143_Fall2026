@@ -28,6 +28,7 @@ public class FinishedGoodsReceipt
     public DateTime? ReceivedAt { get; set; }
     public decimal ExpectedQuantity { get; set; }
     public decimal? ActualQuantity { get; set; }
+    public string? StorageGrade { get; set; }
     public string Status { get; set; } = "Pending";
     public string? RejectionReason { get; set; }
     public string? DiscrepancyNote { get; set; }
@@ -134,6 +135,7 @@ public partial class ProductionManagementDbContext
             e.ToTable("FinishedGoodsReceipt"); e.HasKey(x => x.ReceiptId);
             e.Property(x => x.RequestNote).HasMaxLength(2000);
             e.Property(x => x.ExpectedQuantity).HasPrecision(12, 2); e.Property(x => x.ActualQuantity).HasPrecision(12, 2);
+            e.Property(x => x.StorageGrade).HasMaxLength(1);
             e.Property(x => x.Status).HasMaxLength(30); e.Property(x => x.RejectionReason).HasMaxLength(1000); e.Property(x => x.DiscrepancyNote).HasMaxLength(2000);
             e.HasOne(x => x.QualityRequest).WithOne(x => x.Receipt).HasForeignKey<FinishedGoodsReceipt>(x => x.QualityRequestId).OnDelete(DeleteBehavior.NoAction);
             e.HasOne(x => x.Requester).WithMany().HasForeignKey(x => x.RequestedBy).OnDelete(DeleteBehavior.NoAction);

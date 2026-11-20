@@ -1,0 +1,182 @@
+@model BATT_PPMS.Pages.Personnel.IndexModel
+@using BATT_PPMS.Helpers
+@using BATT_PPMS.Pages.Personnel
+@using System.Globalization
+@{
+    var vi = CultureInfo.GetCultureInfo("vi-VN");
+    var today = Model.Today;
+    var days = Enumerable.Range(0, 7).Select(offset => Model.StaffWeekStart.AddDays(offset)).ToArray();
+    var stageOrder = IndexModel.ProductionStages
+        .Select((stage, index) => (Name: ProductionAssignmentTasks.MachineName(stage.TaskDescription), Index: index))
+        .ToDictionary(stage => stage.Name, stage => stage.Index, StringComparer.OrdinalIgnoreCase);
+}
+
+<div class="staff-schedule">
+    <nav class="staff-schedule-breadcrumb" aria-label="Đường dẫn">
+        <a asp-page="/Dashboard/Index"><i class="bi bi-house-door" aria-hidden="true"></i> Trang chủ</a>
+        <span aria-hidden="true">/</span>
+        <strong aria-current="page">@(Model.IsStaffView ? "Lịch sản xuất" : "Phân công công việc")</strong>
+    </nav>
+
+    @if (Model.CanCreatePlan) {
+        <div class="staff-schedule-manager-head">
+            <h1>Phân công công việc</h1>
+            <button class="labor-button labor-primary labor-create-button" type="button" aria-haspopup="dialog" aria-controls="labor-create-dialog" data-plan-open>
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Tạo phân công công việc
+            </button>
+        </div>
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage)) {
+            <p class="labor-message labor-update-notice" role="status" data-labor-update-notice>Đã có cập nhật mới ngày @((Model.DisplayDate ?? Model.Today).ToString("dd/MM/yyyy"))</p>
+        }
+        @if (!Model.Create && !string.IsNullOrEmpty(Model.ErrorMessage)) {
+            <p class="labor-message labor-message-error" role="alert">@Model.ErrorMessage</p>
+        }
+    }
+
+    <div class="staff-schedule-card staff-schedule-toolbar">
+        <div>
+            <form method="get" asp-page="./Index" class="staff-schedule-picker">
+                <label for="staff-schedule-week">Chọn tuần</label>
+                <input type="week" id="staff-schedule-week" name="Week" value="@IndexModel.FormatWeek(Model.StaffWeekStart)"
+                       placeholder="2026-W46" pattern="[0-9]{4}-W[0-9]{2}" title="Nhập năm và số tuần, ví dụ 2026-W46" required />
+                <noscript><button type="submit" class="staff-schedule-link">Xem tuần</button></noscript>
+            </form>
+            <nav class="staff-schedule-weeks" aria-label="Điều hướng theo tuần">
+                @if (Model.PreviousStaffWeek is { } previous) {
+                    <a class="staff-schedule-link" asp-page="./Index" asp-route-Week="@IndexModel.FormatWeek(previous)">
+                        <i class="bi bi-arrow-left" aria-hidden="true"></i> Tuần trước
+                    </a>
+                }
+                <a class="staff-schedule-link staff-schedule-current" asp-page="./Index" asp-route-Week="@IndexModel.FormatWeek(today)">
+                    <i class="bi bi-calendar-check" aria-hidden="true"></i> Tuần hiện tại
+                </a>
+                @if (Model.NextStaffWeek is { } next) {
+                    <a class="staff-schedule-link" asp-page="./Index" asp-route-Week="@IndexModel.FormatWeek(next)">
+                        Tuần sau <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </a>
+                }
+            </nav>
+            @if (Model.InvalidStaffWeek) {
+                <p class="staff-schedule-error" role="alert">Tuần đã chọn không hợp lệ. Đang hiển thị tuần hiện tại.</p>
+            }
+        </div>
+        <div class="staff-schedule-guide">
+            <p><strong>Chú thích</strong> · Lịch theo ca và phân công tại từng công đoạn.</p>
+            <div class="staff-schedule-guide-columns">
+                <ul>
+                    <li><strong>Giờ làm việc:</strong> @string.Join(", ", IndexModel.ProductionShifts.Select(shift => $"{shift} ({IndexModel.ShiftHours(shift)})")).</li>
+                    <li><strong>Nghỉ:</strong> Ca được quản lý đánh dấu nghỉ.</li>
+                    <li><strong>Dấu —:</strong> Ca chưa có phân công.</li>
+                </ul>
+                <ul>
+                    <li><strong>NL dự kiến:</strong> Khối lượng nguyên liệu dự kiến cho ca.</li>
+                    <li><strong>TP dự kiến:</strong> Khối lượng thành phẩm dự kiến cho ca.</li>
+                    @if (Model.IsStaffView) { <li><strong>Bạn:</strong> Phân công của tài khoản đang đăng nhập.</li> }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <section class="staff-schedule-card staff-schedule-calendar" aria-labelledby="staff-schedule-title">
+        <header>
+            <h1 id="staff-schedule-title">Lịch sản xuất</h1>
+            <p id="staff-schedule-range">Tuần @days[0].ToString("dd/MM/yyyy") – @days[^1].ToString("dd/MM/yyyy")</p>
+        </header>
+        @if (Model.CanCreatePlan || Model.IsOwnerView) {
+            <form method="get" asp-page="./Index" class="staff-schedule-manager-filters">
+                <input type="hidden" name="Week" value="@IndexModel.FormatWeek(Model.StaffWeekStart)" />
+                <label>Ca sản xuất <select name="ShiftFilter"><option value="">Tất cả ca</option>@foreach (var item in IndexModel.ProductionShifts) { <option value="@item" selected="@(Model.ShiftFilter == item)">@item</option> }</select></label>
+                <label>Trạng thái <select name="StatusFilter"><option value="">Tất cả trạng thái</option>@foreach (var status in new[] { "Assigned", "InProgress", "Completed", "Cancelled", "Off" }) { <option value="@status" selected="@(Model.StatusFilter == status)">@IndexModel.AssignmentStatusLabel(status)</option> }</select></label>
+                <button class="staff-schedule-link" type="submit">Tìm kiếm</button>
+            </form>
+        }
+        <div class="staff-schedule-scroll" role="region" aria-labelledby="staff-schedule-title" tabindex="0">
+            <table class="staff-schedule-table" aria-labelledby="staff-schedule-range">
+                <thead>
+                    <tr>
+                        <th scope="col" class="staff-schedule-shift">Ca làm việc</th>
+                        @foreach (var day in days) {
+                            <th scope="col" class="@(day == today ? "staff-schedule-today" : null)" aria-current="@(day == today ? "date" : null)">
+                                @vi.DateTimeFormat.GetDayName(day.DayOfWeek)
+                                <time datetime="@day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">(@day.ToString("dd/MM"))</time>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var shift in IndexModel.ProductionShifts.Where(shift => Model.IsStaffView || string.IsNullOrEmpty(Model.ShiftFilter) || Model.ShiftFilter == "ALL" || Model.ShiftFilter == shift)) {
+                        <tr>
+                            <th scope="row" class="staff-schedule-shift">
+                                @shift
+                                <span>@IndexModel.ShiftHours(shift)</span>
+                            </th>
+                            @foreach (var day in days) {
+                                var cell = Model.StaffWeekSchedule.GetValueOrDefault((day, shift));
+                                if (!Model.IsStaffView && !string.IsNullOrEmpty(Model.StatusFilter) && Model.StatusFilter != "ALL" && cell?.Status != Model.StatusFilter) { cell = null; }
+                                <td class="@(day == today ? "staff-schedule-today" : null)">
+                                    @if (cell is null) {
+                                        <span class="staff-schedule-empty" aria-hidden="true">—</span><span class="visually-hidden">Chưa có phân công</span>
+                                    } else {
+                                        <span class="staff-schedule-status" data-status="@cell.Status">@IndexModel.AssignmentStatusLabel(cell.Status)</span>
+                                        @if (cell.Status != "Off") {
+                                            <dl class="staff-schedule-estimates">
+                                                <div><dt>NL dự kiến</dt><dd>@(cell.Plan is { } plan ? $"{plan.ExpectedMaterialKg.ToString("N2", vi)} kg" : "—")</dd></div>
+                                                <div><dt>TP dự kiến</dt><dd>@(cell.Plan is { } projection ? $"{projection.ExpectedFinishedKg.ToString("N2", vi)} kg" : "—")</dd></div>
+                                            </dl>
+                                            @if (cell.Assignments.Count > 0) {
+                                                var stages = cell.Assignments
+                                                    .GroupBy(assignment => string.IsNullOrWhiteSpace(assignment.TaskDescription)
+                                                        ? "Chưa ghi nhận công đoạn" : ProductionAssignmentTasks.MachineName(assignment.TaskDescription.Trim()), StringComparer.OrdinalIgnoreCase)
+                                                    .OrderBy(group => stageOrder.GetValueOrDefault(group.Key, int.MaxValue));
+                                                <ul class="staff-schedule-stages">
+                                                    @foreach (var stage in stages) {
+                                                        <li>
+                                                            <strong>@stage.Key</strong>
+                                                            <ul class="staff-schedule-workers">
+                                                                @foreach (var assignment in stage.DistinctBy(assignment => assignment.StaffId)) {
+                                                                    <li>
+                                                                        @(assignment.Staff?.FullName ?? "Tài khoản đã xóa")
+                                                                        @if (Model.IsStaffView && assignment.StaffId == Model.StaffWorkerId) {
+                                                                            <span class="staff-schedule-self">Bạn</span>
+                                                                        }
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            }
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(cell.Plan?.Note)) {
+                                            <p class="staff-schedule-note">@cell.Plan.Note</p>
+                                        }
+                                        @if (Model.CanCreatePlan && day == today && cell.Status != "Cancelled") {
+                                            <div class="staff-schedule-actions">
+                                                <a class="staff-schedule-edit" asp-page="./Index" asp-route-PlanDate="@day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" asp-route-EditShift="@shift"><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</a>
+                                                <button type="button" class="staff-schedule-delete" data-delete-day="@day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" data-delete-label="@day.ToString("dd/MM/yyyy")" data-delete-shift="@shift"><i class="bi bi-trash" aria-hidden="true"></i> Xóa</button>
+                                            </div>
+                                        }
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+@if (Model.CanCreatePlan) {
+    <dialog id="staff-schedule-delete-dialog" class="staff-schedule-confirm" aria-labelledby="staff-schedule-delete-title">
+        <form method="post" asp-page-handler="DeletePlan">
+            <h2 id="staff-schedule-delete-title">Xóa phân công</h2>
+            <p>Xóa phân công <strong data-delete-summary></strong>?</p>
+            <input type="hidden" name="day" data-delete-date-input />
+            <input type="hidden" name="shift" data-delete-shift-input />
+            <div class="staff-schedule-confirm-actions">
+                <button type="button" class="labor-button" data-delete-cancel>Hủy</button>
+                <button type="submit" class="labor-button staff-schedule-confirm-delete">Xóa phân công</button>
+            </div>
+        </form>
+    </dialog>
+}

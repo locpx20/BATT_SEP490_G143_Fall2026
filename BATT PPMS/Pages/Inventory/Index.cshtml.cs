@@ -203,17 +203,25 @@ namespace BATT_PPMS.Pages.Inventory
                              select new { request.Inspection.BatchId, request.RequestId, result.Grade };
             var latestResults = gradedLots.GroupBy(x => x.BatchId).Select(group => group.Max(x => x.RequestId));
             var latestGrades = gradedLots.Where(x => latestResults.Contains(x.RequestId));
+            var receivedReceipts = from stockReceipt in _context.FinishedGoodsReceipts.AsNoTracking()
+                                   where stockReceipt.ReceivedAt != null && stockReceipt.ActualQuantity > 0
+                                       && (stockReceipt.Status == "Received" || stockReceipt.Status == "AwaitingStaffConfirmation")
+                                   select new { stockReceipt.QualityRequest.Inspection.BatchId, stockReceipt.ReceiptId, stockReceipt.StorageGrade };
+            var latestReceiptIds = receivedReceipts.GroupBy(x => x.BatchId).Select(group => group.Max(x => x.ReceiptId));
+            var latestStorageGrades = receivedReceipts.Where(x => latestReceiptIds.Contains(x.ReceiptId));
             var stock = from batch in _context.FinishedGoodBatches.AsNoTracking()
                         where batch.Status == "In Stock"
                         join grade in latestGrades on batch.BatchId equals grade.BatchId into grades
                         from grade in grades.DefaultIfEmpty()
+                        join receipt in latestStorageGrades on batch.BatchId equals receipt.BatchId into stockReceiptGroup
+                        from receipt in stockReceiptGroup.DefaultIfEmpty()
                         select new FinishedStockLot
                         {
                             BatchId = batch.BatchId,
                             Lot = batch.BagNumber,
                             ProductionDate = batch.ProductionDate,
                             StockKg = batch.Quantity,
-                            Grade = grade.Grade
+                            Grade = receipt.StorageGrade ?? grade.Grade
                         };
 
             var totals = await stock.Where(x => x.StockKg > 0).GroupBy(x => x.Grade)

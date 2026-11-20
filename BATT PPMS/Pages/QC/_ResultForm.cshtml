@@ -78,18 +78,10 @@
                         </div>
                     </fieldset>
                     <fieldset class="qc-result-section">
-                        <legend>Kết luận và phân loại</legend>
-                        <div class="qc-fields">
-                            <div class="closeout-field">
-                                <label asp-for="ResultInput.Result">Kết quả kiểm tra</label>
-                                <select asp-for="ResultInput.Result" required>
-                                    <option value="">Chọn kết quả</option>
-                                    <option value="Pass">Đạt</option>
-                                    <option value="Fail">Không đạt</option>
-                                </select>
-                            </div>
-                            <div class="closeout-field">
-                                <label asp-for="ResultInput.Grade">Phân loại hàng</label>
+                        <legend>Phân loại hàng</legend>
+                        <div class="qc-fields qc-grade-grid">
+                            <div class="closeout-field qc-grade-choice">
+                                <label asp-for="ResultInput.Grade">Phân loại theo kết quả kiểm tra</label>
                                 <select asp-for="ResultInput.Grade" required>
                                     <option value="">Chọn loại hàng</option>
                                     <option value="A">Hàng loại A</option>

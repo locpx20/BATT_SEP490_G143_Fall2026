@@ -1,4 +1,12 @@
 (() => {
+    const updateNotice = document.querySelector('[data-labor-update-notice]');
+    if (updateNotice) {
+        window.setTimeout(() => {
+            updateNotice.classList.add('is-expiring');
+            window.setTimeout(() => updateNotice.remove(), 220);
+        }, 10000);
+    }
+
     const form = document.querySelector('.labor-form');
     if (!form) return;
 

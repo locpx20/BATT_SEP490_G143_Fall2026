@@ -35,9 +35,7 @@ public class SalesFlowPureTests
     {
         var newer = new LotAvailability(2, "LOT-NEW", new DateOnly(2026, 11, 20), "A", 5);
         var older = new LotAvailability(1, "LOT-OLD", new DateOnly(2026, 11, 10), "A", 3);
-
         var allocations = SalesFlow.Allocate(new[] { newer, older }, 6)!;
-
         Assert.Equal(2, allocations.Count);
         Assert.Equal(1, allocations[0].BatchId);
         Assert.Equal(3, allocations[0].Bags);
@@ -76,9 +74,10 @@ public class SalesFlowPureTests
     [Fact]
     public void NextCode_IncrementsHighestMatchingSequence()
     {
+        var date = DateTime.Now.ToString("yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture);
         var code = SalesFlow.NextCode(
-            new[] { "EXP-20000101-001", "EXP-20000101-004", "OTHER-20000101-999" },
+            new[] { $"EXP-{date}-001", $"EXP-{date}-004", $"OTHER-{date}-999" },
             "EXP");
-        Assert.Matches(@"^EXP-\d{8}-005$", code);
+        Assert.Equal($"EXP-{date}-005", code);
     }
 }

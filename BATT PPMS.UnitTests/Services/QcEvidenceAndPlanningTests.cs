@@ -33,13 +33,24 @@ public class QcEvidenceAndPlanningTests
         Assert.Equal("image/webp", QcEvidence.Validate(bytes));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData(new byte[0])]
-    [InlineData(new byte[11])]
-    public void QcEvidence_MissingOrTooSmallData_Throws(byte[]? bytes)
+    [Fact]
+    public void QcEvidence_NullData_Throws()
     {
-        var exception = Assert.Throws<ProductionFlowException>(() => QcEvidence.Validate(bytes));
+        var exception = Assert.Throws<ProductionFlowException>(() => QcEvidence.Validate(null));
+        Assert.Contains("ảnh kết quả", exception.Message);
+    }
+
+    [Fact]
+    public void QcEvidence_EmptyData_Throws()
+    {
+        var exception = Assert.Throws<ProductionFlowException>(() => QcEvidence.Validate(Array.Empty<byte>()));
+        Assert.Contains("ảnh kết quả", exception.Message);
+    }
+
+    [Fact]
+    public void QcEvidence_DataShorterThan12Bytes_Throws()
+    {
+        var exception = Assert.Throws<ProductionFlowException>(() => QcEvidence.Validate(new byte[11]));
         Assert.Contains("ảnh kết quả", exception.Message);
     }
 

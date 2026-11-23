@@ -6,57 +6,38 @@ namespace BATT_PPMS.UnitTests.Helpers;
 public class PolicyAndMappingTests
 {
     [Fact]
-    public void RequiresChange_DefaultPasswordForNonAdmin_ReturnsTrue()
-    {
+    public void RequiresChange_DefaultPasswordForNonAdmin_ReturnsTrue() =>
         Assert.True(InitialPasswordPolicy.RequiresChange("Manager", PasswordHasher.Hash(InitialPasswordPolicy.DefaultPassword)));
-    }
 
     [Theory]
     [InlineData("Admin")]
-    [InlineData("admin")]
-    public void RequiresChange_AdminRole_ReturnsFalse(string role)
-    {
+    [InlineData("Admin System")]
+    public void RequiresChange_AdminRole_ReturnsFalse(string role) =>
         Assert.False(InitialPasswordPolicy.RequiresChange(role, PasswordHasher.Hash(InitialPasswordPolicy.DefaultPassword)));
-    }
 
     [Fact]
-    public void RequiresChange_NonDefaultPassword_ReturnsFalse()
-    {
+    public void RequiresChange_NonDefaultPassword_ReturnsFalse() =>
         Assert.False(InitialPasswordPolicy.RequiresChange("Manager", PasswordHasher.Hash("newPassword")));
-    }
 
     [Fact]
-    public void RequiresChange_NullPassword_ReturnsFalse()
-    {
+    public void RequiresChange_NullPassword_ReturnsFalse() =>
         Assert.False(InitialPasswordPolicy.RequiresChange("Manager", null));
-    }
 
     [Fact]
-    public void ValidateNewPassword_ValidAndMatchingPassword_ReturnsNull()
-    {
+    public void ValidateNewPassword_ValidAndMatchingPassword_ReturnsNull() =>
         Assert.Null(InitialPasswordPolicy.ValidateNewPassword("NewPass123", "NewPass123"));
-    }
 
     [Fact]
-    public void ValidateNewPassword_DefaultPassword_IsRejected()
-    {
-        Assert.Equal("Mật khẩu mới phải khác mật khẩu mặc định 123456.",
-            InitialPasswordPolicy.ValidateNewPassword("123456", "123456"));
-    }
+    public void ValidateNewPassword_DefaultPassword_IsRejected() =>
+        Assert.Equal("Mật khẩu mới phải khác mật khẩu mặc định 123456.", InitialPasswordPolicy.ValidateNewPassword("123456", "123456"));
 
     [Fact]
-    public void ValidateNewPassword_Mismatch_IsRejected()
-    {
-        Assert.Equal("Xác nhận mật khẩu không khớp.",
-            InitialPasswordPolicy.ValidateNewPassword("NewPass123", "OtherPass123"));
-    }
+    public void ValidateNewPassword_Mismatch_IsRejected() =>
+        Assert.Equal("Xác nhận mật khẩu không khớp.", InitialPasswordPolicy.ValidateNewPassword("NewPass123", "OtherPass123"));
 
     [Fact]
-    public void ValidateNewPassword_InvalidPassword_ReturnsPasswordValidationError()
-    {
-        Assert.Equal("Mật khẩu mới phải có ít nhất 6 ký tự.",
-            InitialPasswordPolicy.ValidateNewPassword("123", "123"));
-    }
+    public void ValidateNewPassword_InvalidPassword_ReturnsPasswordValidationError() =>
+        Assert.Equal("Mật khẩu mới phải có ít nhất 6 ký tự.", InitialPasswordPolicy.ValidateNewPassword("123", "123"));
 
     [Theory]
     [InlineData("Đóng gói viên")]
@@ -74,10 +55,8 @@ public class PolicyAndMappingTests
         Assert.Equal(expected, ProductionAssignmentTasks.MachineName(task));
 
     [Fact]
-    public void MachineName_NullTask_ReturnsEmpty()
-    {
+    public void MachineName_NullTask_ReturnsEmpty() =>
         Assert.Equal(string.Empty, ProductionAssignmentTasks.MachineName(null));
-    }
 
     [Fact]
     public void IsChipping_RecognizesChippingTask()

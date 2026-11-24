@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -55,6 +55,7 @@ namespace BATT_PPMS.Pages.Maintenance
         public int AssignedCount { get; set; }
         public int InProgressCount { get; set; }
         public int WaitingMaterialCount { get; set; }
+        public int PendingVerificationCount { get; set; }
         public int CompletedCount { get; set; }
 
         // Chỉ nhân viên (Staff) tạo yêu cầu sửa chữa
@@ -64,8 +65,8 @@ namespace BATT_PPMS.Pages.Maintenance
         public bool IsStaffView => IsStaff;
 
         public string ScopeHint =>
-            IsStaff ? "Các yêu cầu sửa chữa do bạn tạo."
-            : IsMaintenanceStaff ? "Các yêu cầu được phân công cho bạn."
+            IsMaintenanceStaff ? "Các yêu cầu được phân công cho bạn."
+            : IsStaff ? "Tất cả yêu cầu sửa chữa trong nhà máy."
             : "Toàn bộ yêu cầu sửa chữa trong nhà máy.";
 
         public List<AppNotification> Notices { get; private set; } = new();
@@ -83,11 +84,9 @@ namespace BATT_PPMS.Pages.Maintenance
 
             PageNumber = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
 
-            // Phạm vi xem: Staff chỉ thấy yêu cầu của mình, Maintenance Staff chỉ thấy việc được giao
+            // Phạm vi xem: Maintenance Staff chỉ thấy việc được giao; Staff và các vai trò khác thấy tất cả
             IQueryable<MaintenanceRequest> scoped = _context.MaintenanceRequests.AsNoTracking();
-            if (IsStaff)
-                scoped = scoped.Where(r => r.RequestedBy == CurrentUserId);
-            else if (IsMaintenanceStaff)
+            if (IsMaintenanceStaff)
                 scoped = scoped.Where(r => r.AssignedTo == CurrentUserId);
 
             var counts = await scoped
@@ -102,6 +101,7 @@ namespace BATT_PPMS.Pages.Maintenance
             AssignedCount = Count(RepairStatus.Assigned);
             InProgressCount = Count(RepairStatus.InProgress);
             WaitingMaterialCount = Count(RepairStatus.WaitingMaterial);
+            PendingVerificationCount = Count(RepairStatus.PendingVerification);
             Notices = await Notifier.TakeUnreadAsync(_context, CurrentUserId);
             CompletedCount = Count(RepairStatus.Completed);
 

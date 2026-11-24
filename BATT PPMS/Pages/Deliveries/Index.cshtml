@@ -68,8 +68,12 @@
                     <option value="@s" selected="@(Model.Status == s)">@DeliveryWorkflow.Label(s)</option>
                 }
             </select>
+            <label class="form-hint" style="margin:0;white-space:nowrap;" for="filterFromDate">Từ ngày</label>
+            <input type="date" class="form-control" style="width:auto;" name="FromDate" id="filterFromDate" value="@Model.FromDate" max="@Model.ToDate" />
+            <label class="form-hint" style="margin:0;white-space:nowrap;" for="filterToDate">Đến ngày</label>
+            <input type="date" class="form-control" style="width:auto;" name="ToDate" id="filterToDate" value="@Model.ToDate" min="@Model.FromDate" />
             <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Lọc</button>
-            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.Status))
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.Status) || !string.IsNullOrWhiteSpace(Model.FromDate) || !string.IsNullOrWhiteSpace(Model.ToDate))
             {
                 <a href="/Deliveries/Index" class="btn btn-secondary">Xóa lọc</a>
             }
@@ -116,15 +120,18 @@
                         <td>@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</td>
                         <td><span class="badge @stage.Badge">@stage.Label</span></td>
                         <td>
-                            @if (d.ExportSlip != null)
+                            @if (d.ExportSlips.Count > 0)
                             {
-                                <a href="/ExportSlips/Detail?id=@d.ExportSlip.SlipId">@d.ExportSlip.SlipCode</a>
+                                @foreach (var sl in d.ExportSlips.OrderBy(x => x.SlipId))
+                                {
+                                    <div><a href="/ExportSlips/Detail?id=@sl.SlipId">@sl.SlipCode</a></div>
+                                }
                             }
                             else { <span>—</span> }
                         </td>
                         <td style="white-space:nowrap;">
-                            <a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-sm @(Model.IsWarehouse && d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlip == null ? "btn-primary" : "btn-outline")" title="Xem chi tiết">
-                                @if (Model.IsWarehouse && d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlip == null) { <span>Kiểm tra</span> } else { <i class="bi bi-eye"></i> }
+                            <a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-sm @(Model.IsWarehouse && d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlips.Count == 0 ? "btn-primary" : "btn-outline")" title="Xem chi tiết">
+                                @if (Model.IsWarehouse && d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlips.Count == 0) { <span>Kiểm tra</span> } else { <i class="bi bi-eye"></i> }
                             </a>
                             @if (Model.CanManage && DeliveryWorkflow.CanEdit(d))
                             {
@@ -143,7 +150,7 @@
             @for (var p = 1; p <= Model.TotalPages; p++)
             {
                 <a class="page-link @(p == Model.PageNumber ? "active" : "")"
-                   href="/Deliveries/Index?PageNumber=@p&SearchTerm=@Uri.EscapeDataString(Model.SearchTerm ?? "")&Status=@Uri.EscapeDataString(Model.Status ?? "")">@p</a>
+                   href="/Deliveries/Index?PageNumber=@p&SearchTerm=@Uri.EscapeDataString(Model.SearchTerm ?? "")&Status=@Uri.EscapeDataString(Model.Status ?? "")&FromDate=@Uri.EscapeDataString(Model.FromDate ?? "")&ToDate=@Uri.EscapeDataString(Model.ToDate ?? "")">@p</a>
             }
         </div>
     }

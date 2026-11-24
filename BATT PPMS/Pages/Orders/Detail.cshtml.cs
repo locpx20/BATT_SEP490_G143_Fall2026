@@ -22,8 +22,22 @@ namespace BATT_PPMS.Pages.Orders
         public bool CanManage => IsManager;
         public bool CanModify => IsManager && OrderWorkflow.CanModify(Order.Status);
         public bool CanDecide => IsOwner && Order.Status == StatusConstants.Pending;
-        public bool CanCreateDelivery => IsManager && Order.Status == StatusConstants.Approved && ActiveDelivery == null;
+        public bool CanCreateDelivery => IsManager && Order.Status == StatusConstants.Approved;
         public bool CanEditDelivery => IsManager && ActiveDelivery != null && DeliveryWorkflow.CanEdit(ActiveDelivery);
+
+        public int TotalBags => (int)Math.Round(Order.Quantity / 800.0);
+        public int ExportedBags => Order.Deliveries
+            .SelectMany(d => d.ExportSlips)
+            .Where(s => s.Status == ExportSlipStatus.Completed)
+            .SelectMany(s => s.Lines)
+            .Sum(l => l.Bags);
+        public decimal ExportedKg => Order.Deliveries
+            .SelectMany(d => d.ExportSlips)
+            .Where(s => s.Status == ExportSlipStatus.Completed)
+            .SelectMany(s => s.Lines)
+            .Sum(l => l.Quantity);
+        public int RemainingBags => Math.Max(0, TotalBags - ExportedBags);
+        public decimal RemainingKg => Math.Max(0, Order.Quantity - ExportedKg);
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -120,6 +134,33 @@ namespace BATT_PPMS.Pages.Orders
             return RedirectToPage(new { id });
         }
 
+        public async Task<IActionResult> OnPostDeleteDeliveryAsync(int deliveryId, int orderId)
+        {
+            var check = RequireRole(RoleConstants.Manager);
+            if (check != null) return check;
+
+            var delivery = await _context.Deliveries
+                .Include(d => d.ExportSlips)
+                .FirstOrDefaultAsync(d => d.DeliveryId == deliveryId && d.OrderId == orderId);
+            if (delivery == null) return NotFound();
+
+            if (delivery.ExportSlips.Count > 0)
+                return Fail(orderId, "Không thể xóa xe này vì thủ kho đã lập phiếu xuất kho.");
+
+            _context.Deliveries.Remove(delivery);
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                return Fail(orderId, "Lỗi khi xóa xe: " + ex.Message);
+            }
+
+            SuccessMessage = $"Đã xóa thông tin xe (Biển số {delivery.LicensePlate}).";
+            return RedirectToPage(new { id = orderId });
+        }
+
         private IActionResult Fail(int id, string message)
         {
             ErrorMessage = message;
@@ -133,7 +174,7 @@ namespace BATT_PPMS.Pages.Orders
                 .Include(o => o.CreatedByNavigation)
                 .Include(o => o.ApprovedByNavigation)
                 .Include(o => o.OrderDetails).ThenInclude(d => d.Batch)
-                .Include(o => o.Deliveries).ThenInclude(d => d.ExportSlip)
+                .Include(o => o.Deliveries).ThenInclude(d => d.ExportSlips).ThenInclude(s => s.Lines)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(o => o.OrderId == id);
 

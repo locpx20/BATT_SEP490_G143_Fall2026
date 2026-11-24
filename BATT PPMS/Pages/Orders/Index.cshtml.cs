@@ -50,7 +50,7 @@ namespace BATT_PPMS.Pages.Orders
 
             var query = _context.Orders.AsNoTracking()
                 .Include(o => o.Customer)
-                .Include(o => o.Deliveries).ThenInclude(d => d.ExportSlip)
+                .Include(o => o.Deliveries).ThenInclude(d => d.ExportSlips)
                 .AsSplitQuery()
                 .AsQueryable();
 

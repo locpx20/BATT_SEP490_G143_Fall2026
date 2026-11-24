@@ -21,6 +21,7 @@
         (Label: "Chờ xác nhận", Value: (int?)Model.AssignedCount, Filter: RepairStatus.Assigned, Css: ""),
         (Label: "Đang sửa chữa", Value: (int?)Model.InProgressCount, Filter: RepairStatus.InProgress, Css: ""),
         (Label: "Chờ vật tư", Value: (int?)Model.WaitingMaterialCount, Filter: RepairStatus.WaitingMaterial, Css: Model.WaitingMaterialCount > 0 ? "hot" : ""),
+        (Label: "Chờ nghiệm thu", Value: (int?)Model.PendingVerificationCount, Filter: RepairStatus.PendingVerification, Css: ""),
         (Label: "Hoàn thành", Value: (int?)Model.CompletedCount, Filter: RepairStatus.Completed, Css: "")
     };
     string TabHref(string status)
@@ -77,21 +78,23 @@
     </nav>
 
     <!-- Bộ lọc -->
-    <form method="get" class="rf-toolbar" style="flex-wrap: nowrap; align-items: center; gap: 8px;">
+    <form method="get" class="rf-toolbar">
         <input type="hidden" name="StatusFilter" value="@currentStatus" />
-        <div class="rf-search" style="flex: 1 1 0; min-width: 0;">
+        <div class="rf-search">
             <i class="bi bi-search"></i>
-            <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Tìm theo mã, máy, vị trí, tiêu đề, người tạo..." />
+            <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control" placeholder="  Tìm theo mã, máy, vị trí, tiêu đề, người tạo..." />
         </div>
-        <select name="PriorityFilter" class="form-select" aria-label="Mức độ" style="flex: 0 0 160px; width: 160px;">
-            <option value="ALL" selected="@(string.IsNullOrEmpty(Model.PriorityFilter) || Model.PriorityFilter == "ALL")">Mọi mức độ</option>
-            @foreach (var p in RepairStatus.PriorityLevels)
-            {
-                <option value="@p" selected="@(Model.PriorityFilter == p)">@RepairStatus.PriorityLabel(p)</option>
-            }
-        </select>
-        <button type="submit" class="btn btn-outline-secondary btn-sm rf-btn-sm" style="white-space: nowrap; flex-shrink: 0;"><i class="bi bi-funnel"></i> Lọc</button>
-        <a href="/Maintenance/Index" class="btn btn-link btn-sm" style="font-size: 12px; white-space: nowrap; flex-shrink: 0;">Xóa lọc</a>
+        <div class="rf-filter-select">
+            <select name="PriorityFilter" class="form-select" aria-label="Mức độ">
+                <option value="ALL" selected="@(string.IsNullOrEmpty(Model.PriorityFilter) || Model.PriorityFilter == "ALL")">Mọi mức độ</option>
+                @foreach (var p in RepairStatus.PriorityLevels)
+                {
+                    <option value="@p" selected="@(Model.PriorityFilter == p)">@RepairStatus.PriorityLabel(p)</option>
+                }
+            </select>
+        </div>
+        <button type="submit" class="btn btn-outline-secondary btn-sm rf-btn-sm"><i class="bi bi-funnel"></i> Lọc</button>
+        <a href="/Maintenance/Index" class="btn btn-link btn-sm">Xóa lọc</a>
     </form>
 
     <!-- Danh sách -->

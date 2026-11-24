@@ -1,0 +1,299 @@
+@page
+@using BATT_PPMS.Helpers
+@using BATT_PPMS.Pages.Orders
+@model BATT_PPMS.Pages.ExportSlips.CreateModel
+@{
+    ViewData["Title"] = "Lập phiếu xuất kho";
+    ViewData["ActivePage"] = "Delivery";
+    var d = Model.Delivery;
+    var o = Model.Order;
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i><span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title"><i class="bi bi-file-earmark-plus"></i> Lập phiếu xuất kho cho xe <span style="color:var(--primary);">@d.LicensePlate</span></h1>
+        <p class="page-subtitle">Nhập số bao thực tế bốc lên xe lần này. Một xe có thể có nhiều phiếu, lập tiếp cho đến khi đủ số bao của đơn.</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-outline" id="btn-quick-view" onclick="document.getElementById('quickViewDialog').showModal()">
+            <i class="bi bi-eye"></i> Xem chi tiết
+        </button>
+        <a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại kiểm tra xe</a>
+    </div>
+</div>
+
+<dialog id="quickViewDialog" style="width:min(820px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--border);border-radius:16px;background:var(--bg-card);color:var(--text-primary);">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:18px 24px;border-bottom:1px solid var(--border);">
+        <h3 style="margin:0;font-size:18px;"><i class="bi bi-eye"></i> Chi tiết đơn @o.OrderCode · xe @d.LicensePlate</h3>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="this.closest('dialog').close()" aria-label="Đóng"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div style="padding:20px 24px;overflow:auto;max-height:calc(100dvh - 140px);">
+        <div class="form-grid" style="margin-bottom:16px;">
+            <div class="form-group"><span class="form-label">Khách hàng</span><div>@(o.Customer?.CustomerName ?? "—")</div></div>
+            <div class="form-group"><span class="form-label">Loại / Số lượng</span><div>@SalesFlow.GradeLabel(o.Grade) · @Model.TotalOrderBags bao (@o.Quantity.ToString("N0") kg)</div></div>
+            <div class="form-group"><span class="form-label">Tài xế</span><div>@d.DriverName@(string.IsNullOrWhiteSpace(d.DriverPhone) ? "" : " · " + d.DriverPhone)</div></div>
+            <div class="form-group"><span class="form-label">Tiến độ</span><div>Đã xuất @Model.ExportedOrderBags · đang xử lý @Model.PendingOrderBags · còn @Model.RemainingOrderBags bao</div></div>
+        </div>
+        <h4 style="margin:0 0 8px;font-size:15px;">Các phiếu xuất kho đã lập cho đơn này (@Model.OrderSlips.Count)</h4>
+        @if (Model.OrderSlips.Count == 0)
+        {
+            <p class="form-hint">Đơn này chưa có phiếu xuất kho nào.</p>
+        }
+        else
+        {
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead><tr><th>Mã phiếu</th><th>Xe</th><th>Lô thành phẩm</th><th>Số bao</th><th>Trạng thái</th></tr></thead>
+                    <tbody>
+                        @foreach (var sl in Model.OrderSlips)
+                        {
+                            <tr>
+                                <td><a href="/ExportSlips/Detail?id=@sl.SlipId" target="_blank" rel="noopener" style="font-weight:600;">@sl.SlipCode</a><div class="form-hint">@sl.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div></td>
+                                <td>@sl.Delivery.LicensePlate</td>
+                                <td>@foreach (var ln in sl.Lines) { <div>@ln.Batch.BagNumber · @ln.Bags bao</div> }</td>
+                                <td>@sl.Lines.Sum(l => l.Bags)</td>
+                                <td><span class="badge @DeliveryWorkflow.SlipBadge(sl.Status)">@DeliveryWorkflow.SlipLabel(sl.Status)</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</dialog>
+
+<div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><h3 class="card-title"><i class="bi bi-truck"></i> Thông tin xe và tiến độ đơn hàng</h3></div>
+    <div class="card-body">
+        <div class="form-grid">
+            <div class="form-group"><span class="form-label">Tài xế</span><div><strong>@d.DriverName</strong></div>@if (!string.IsNullOrWhiteSpace(d.DriverPhone)) { <span class="form-hint">@d.DriverPhone</span> }</div>
+            <div class="form-group"><span class="form-label">Biển số xe</span><div><strong style="font-size:16px;">@d.LicensePlate</strong></div></div>
+            <div class="form-group"><span class="form-label">Ngày lấy hàng</span><div>@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</div></div>
+            <div class="form-group"><span class="form-label">Người mua</span><div><strong>@(o.Customer?.CustomerName ?? "—")</strong></div></div>
+            <div class="form-group"><span class="form-label">Mã đơn hàng</span><div><a href="/Orders/Detail?id=@o.OrderId">@o.OrderCode</a> · @SalesFlow.GradeLabel(o.Grade)</div></div>
+            <div class="form-group">
+                <span class="form-label">Tiến độ xuất hàng của đơn</span>
+                <div style="font-size:15px;">
+                    Tổng đơn: <strong>@Model.TotalOrderBags bao</strong> (@o.Quantity.ToString("N0") kg)
+                    <br /><span style="color:var(--primary);">Đã xuất: @Model.ExportedOrderBags bao</span>
+                    @if (Model.PendingOrderBags > 0)
+                    {
+                        <text>· <span>Phiếu đang xử lý: @Model.PendingOrderBags bao</span></text>
+                    }
+                    · <span style="color:var(--danger);font-weight:600;">Còn có thể lập phiếu: @Model.RemainingOrderBags bao</span>
+                </div>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(d.Note))
+            {
+                <div class="form-group" style="grid-column:1/-1;"><span class="form-label">Ghi chú từ Manager</span><div>@d.Note</div></div>
+            }
+        </div>
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="createSlipForm" data-plate="@d.LicensePlate"
+      data-admin-confirm data-confirm-title="Lập phiếu xuất kho" data-confirm-label="Lập phiếu xuất kho"
+      data-confirm-message="Lập phiếu xuất kho cho xe @d.LicensePlate?">
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <h3 class="card-title"><i class="bi bi-boxes"></i> Chọn lô thành phẩm & nhập số bao bốc lên xe này</h3>
+                <p class="form-hint" style="margin:0;">Các lô phân bổ FIFO của đơn được gợi ý ở đầu danh sách. Nhập số bao thực tế bốc lên xe.</p>
+            </div>
+            <div class="badge badge-pending" style="font-size:14px;padding:6px 12px;" id="total-summary-badge" data-remaining-bags="@Model.RemainingOrderBags">
+                Tổng chọn: <strong id="sum-bags-badge">0</strong> / @Model.RemainingOrderBags bao (<span id="sum-kg-badge">0</span> kg)
+                <span id="over-remaining-warning" style="display:none;color:var(--danger);font-weight:700;">· vượt số bao còn lại của đơn</span>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">STT</th>
+                        <th>Mã lot</th>
+                        <th>Ngày sản xuất</th>
+                        <th>Tồn kho lô hiện tại</th>
+                        <th style="width:180px;">Số bao bốc lên xe <span class="required-star">*</span></th>
+                        <th style="width:160px;text-align:right;">Khối lượng (kg)</th>
+                        <th>Ghi chú lô</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Batches.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state" style="padding:24px;">
+                                    <p>Không có lô thành phẩm nào khả dụng trong kho cho loại hàng này.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @for (var i = 0; i < Model.Batches.Count; i++)
+                    {
+                        var b = Model.Batches[i];
+                        var defaultBags = b.IsAllocatedToOrder ? Math.Min(b.SuggestedBags, b.CurrentStockBags) : 0;
+                        <tr>
+                            <td>@(i + 1)</td>
+                            <td>
+                                <strong>@b.BagNumber</strong>
+                                @if (b.IsAllocatedToOrder)
+                                {
+                                    <span class="badge badge-completed" style="font-size:11px;margin-left:4px;">FIFO Đơn</span>
+                                }
+                            </td>
+                            <td>@b.ProductionDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <strong>@b.CurrentStockBags.ToString("N0") bao</strong>
+                                <span class="form-hint" style="display:inline;">(@b.CurrentStockKg.ToString("N0") kg)</span>
+                            </td>
+                            <td>
+                                <input type="hidden" name="Input.Lines[@i].BatchId" value="@b.BatchId" />
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <input type="number"
+                                           name="Input.Lines[@i].Bags"
+                                           class="form-control bag-input"
+                                           min="0"
+                                           max="@b.CurrentStockBags"
+                                           value="@defaultBags"
+                                           data-kg-per-bag="800"
+                                           data-max-bags="@b.CurrentStockBags"
+                                           style="width:110px;font-weight:700;" />
+                                    <button type="button" class="btn btn-sm btn-outline btn-max" title="Bốc toàn bộ lô">Max</button>
+                                </div>
+                            </td>
+                            <td style="text-align:right;font-weight:600;" class="kg-output">
+                                @((defaultBags * 800).ToString("N0"))
+                            </td>
+                            <td>
+                                @if (b.IsAllocatedToOrder)
+                                {
+                                    <span style="color:var(--primary);font-size:13px;">Gợi ý: @b.SuggestedBags bao</span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--text-secondary);font-size:13px;">Lô khả dụng</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr style="background:var(--bg-light,#f8faf9);font-weight:700;">
+                        <td colspan="4" style="text-align:right;">TỔNG CỘNG HÀNG XUẤT LÊN XE NÀY:</td>
+                        <td><span id="footer-total-bags" style="font-size:16px;color:var(--primary);">0</span> bao</td>
+                        <td style="text-align:right;"><span id="footer-total-kg" style="font-size:16px;color:var(--primary);">0</span> kg</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h3 class="card-title"><i class="bi bi-camera"></i> Ảnh của xe & Ghi chú phiếu xuất</h3></div>
+        <div class="card-body">
+            <div class="form-grid">
+                <div class="form-group" style="grid-column:1/-1;">
+                    <label class="form-label" for="inp-vehicle-images">
+                        <i class="bi bi-images"></i> Ảnh của xe thực tế (có thể tải nhiều ảnh)
+                    </label>
+                    <input class="form-control" type="file" name="vehicleImages" id="inp-vehicle-images" multiple accept="image/jpeg,image/png,image/webp" />
+                    <span class="form-hint">Chụp rõ biển số xe, thùng xe chở hàng, toàn cảnh xe... Hỗ trợ tải nhiều ảnh (JPG, PNG, WEBP, tối đa 6 ảnh, mỗi ảnh ≤ 10 MB).</span>
+                </div>
+                <div class="form-group" style="grid-column:1/-1;">
+                    <label class="form-label" for="inp-note">Ghi chú phiếu xuất kho</label>
+                    <textarea class="form-control" name="Input.Note" id="inp-note" rows="2" maxlength="500" placeholder="Ghi chú thêm về chuyến xe, tình trạng hàng hoặc thỏa thuận giao nhận..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-actions" style="display:flex;gap:12px;margin-bottom:30px;">
+        <button type="submit" class="btn btn-success" id="btn-submit-slip" style="padding:10px 24px;font-size:15px;font-weight:600;">
+            <i class="bi bi-check-lg"></i> Tạo phiếu xuất kho cho xe @d.LicensePlate
+        </button>
+        <a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-secondary" style="padding:10px 20px;">Hủy</a>
+    </div>
+</form>
+
+<script>
+    (function () {
+        var bagInputs = document.querySelectorAll('.bag-input');
+        var maxButtons = document.querySelectorAll('.btn-max');
+        var sumBagsBadge = document.getElementById('sum-bags-badge');
+        var sumKgBadge = document.getElementById('sum-kg-badge');
+        var footerBags = document.getElementById('footer-total-bags');
+        var footerKg = document.getElementById('footer-total-kg');
+
+        function recalculate() {
+            var totalBags = 0;
+            var totalKg = 0;
+
+            bagInputs.forEach(function (inp) {
+                var row = inp.closest('tr');
+                var kgCell = row ? row.querySelector('.kg-output') : null;
+                var val = parseInt(inp.value, 10);
+                if (isNaN(val) || val < 0) val = 0;
+                var max = parseInt(inp.getAttribute('data-max-bags') || '0', 10);
+                if (val > max) {
+                    val = max;
+                    inp.value = val;
+                }
+
+                var kg = val * 800;
+                if (kgCell) kgCell.textContent = kg.toLocaleString('vi-VN');
+
+                totalBags += val;
+                totalKg += kg;
+            });
+
+            if (sumBagsBadge) sumBagsBadge.textContent = totalBags.toLocaleString('vi-VN');
+            if (sumKgBadge) sumKgBadge.textContent = totalKg.toLocaleString('vi-VN');
+            if (footerBags) footerBags.textContent = totalBags.toLocaleString('vi-VN');
+            if (footerKg) footerKg.textContent = totalKg.toLocaleString('vi-VN');
+
+            var badge = document.getElementById('total-summary-badge');
+            var remaining = parseInt(badge ? badge.getAttribute('data-remaining-bags') : '0', 10) || 0;
+            var over = totalBags > remaining;
+            var warn = document.getElementById('over-remaining-warning');
+            var submitBtn = document.getElementById('btn-submit-slip');
+            if (warn) warn.style.display = over ? 'inline' : 'none';
+            if (submitBtn) submitBtn.disabled = over || totalBags === 0;
+
+            // Nội dung hộp thoại xác nhận (dùng chung với các màn hình khác) cập nhật theo số bao đang chọn
+            var form = document.getElementById('createSlipForm');
+            if (form) {
+                form.dataset.confirmMessage = 'Lập phiếu xuất kho cho xe ' + form.getAttribute('data-plate') + ' với ' +
+                    totalBags.toLocaleString('vi-VN') + ' bao (' + totalKg.toLocaleString('vi-VN') + ' kg)?\n' +
+                    'Sau phiếu này đơn còn ' + (remaining - totalBags).toLocaleString('vi-VN') + ' bao chưa lập phiếu.';
+            }
+        }
+
+        bagInputs.forEach(function (inp) {
+            inp.addEventListener('input', recalculate);
+            inp.addEventListener('change', recalculate);
+        });
+
+        maxButtons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var row = btn.closest('tr');
+                var inp = row ? row.querySelector('.bag-input') : null;
+                if (inp) {
+                    var max = parseInt(inp.getAttribute('data-max-bags') || '0', 10);
+                    inp.value = max;
+                    recalculate();
+                }
+            });
+        });
+
+        recalculate();
+    })();
+</script>

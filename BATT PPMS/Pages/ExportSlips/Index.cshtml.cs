@@ -23,6 +23,14 @@ namespace BATT_PPMS.Pages.ExportSlips
         [BindProperty(SupportsGet = true)]
         public string? Status { get; set; }
 
+        /// <summary>Lọc từ ngày (yyyy-MM-dd), bao gồm cả ngày này.</summary>
+        [BindProperty(SupportsGet = true)]
+        public string? FromDate { get; set; }
+
+        /// <summary>Lọc đến ngày (yyyy-MM-dd), bao gồm cả ngày này.</summary>
+        [BindProperty(SupportsGet = true)]
+        public string? ToDate { get; set; }
+
         [BindProperty(SupportsGet = true)]
         public int PageNumber { get; set; } = 1;
 
@@ -55,6 +63,15 @@ namespace BATT_PPMS.Pages.ExportSlips
             if (Status is ExportSlipStatus.Processing or ExportSlipStatus.Completed)
                 query = query.Where(s => s.Status == Status);
 
+            // Lọc theo khoảng ngày; nếu nhập ngược (từ > đến) thì tự đổi chỗ
+            var fromDate = ParseDate(FromDate);
+            var toDate = ParseDate(ToDate);
+            if (fromDate.HasValue && toDate.HasValue && fromDate > toDate) (fromDate, toDate) = (toDate, fromDate);
+            FromDate = fromDate?.ToString("yyyy-MM-dd");
+            ToDate = toDate?.ToString("yyyy-MM-dd");
+            if (fromDate.HasValue) query = query.Where(s => s.CreatedAt >= fromDate.Value);
+            if (toDate.HasValue) { var toExclusive = toDate.Value.AddDays(1); query = query.Where(s => s.CreatedAt < toExclusive); }
+
             TotalCount = await query.CountAsync();
             TotalPages = Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
             PageNumber = Math.Clamp(PageNumber, 1, TotalPages);
@@ -69,5 +86,9 @@ namespace BATT_PPMS.Pages.ExportSlips
 
             return Page();
         }
+
+        private static DateTime? ParseDate(string? value) =>
+            DateTime.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var d) ? d.Date : null;
     }
 }

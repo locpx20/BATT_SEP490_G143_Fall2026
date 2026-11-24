@@ -25,8 +25,12 @@
                 <option value="@ExportSlipStatus.Processing" selected="@(Model.Status == ExportSlipStatus.Processing)">@DeliveryWorkflow.SlipLabel(ExportSlipStatus.Processing)</option>
                 <option value="@ExportSlipStatus.Completed" selected="@(Model.Status == ExportSlipStatus.Completed)">@DeliveryWorkflow.SlipLabel(ExportSlipStatus.Completed)</option>
             </select>
+            <label class="form-hint" style="margin:0;white-space:nowrap;" for="filterFromDate">Từ ngày</label>
+            <input type="date" class="form-control" style="width:auto;" name="FromDate" id="filterFromDate" value="@Model.FromDate" max="@Model.ToDate" />
+            <label class="form-hint" style="margin:0;white-space:nowrap;" for="filterToDate">Đến ngày</label>
+            <input type="date" class="form-control" style="width:auto;" name="ToDate" id="filterToDate" value="@Model.ToDate" min="@Model.FromDate" />
             <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Lọc</button>
-            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.Status))
+            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.Status) || !string.IsNullOrWhiteSpace(Model.FromDate) || !string.IsNullOrWhiteSpace(Model.ToDate))
             {
                 <a href="/ExportSlips/Index" class="btn btn-secondary">Xóa lọc</a>
             }
@@ -74,7 +78,7 @@
             @for (var p = 1; p <= Model.TotalPages; p++)
             {
                 <a class="page-link @(p == Model.PageNumber ? "active" : "")"
-                   href="/ExportSlips/Index?PageNumber=@p&SearchTerm=@Uri.EscapeDataString(Model.SearchTerm ?? "")&Status=@Uri.EscapeDataString(Model.Status ?? "")">@p</a>
+                   href="/ExportSlips/Index?PageNumber=@p&SearchTerm=@Uri.EscapeDataString(Model.SearchTerm ?? "")&Status=@Uri.EscapeDataString(Model.Status ?? "")&FromDate=@Uri.EscapeDataString(Model.FromDate ?? "")&ToDate=@Uri.EscapeDataString(Model.ToDate ?? "")">@p</a>
             }
         </div>
     }

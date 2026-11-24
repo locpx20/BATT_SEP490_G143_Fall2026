@@ -1,9 +1,11 @@
-﻿namespace BATT_PPMS.Helpers;
+namespace BATT_PPMS.Helpers;
 
 /// <summary>
 /// Luồng yêu cầu sửa chữa máy móc:
 /// Pending (Staff tạo) -> Rejected (Manager từ chối, trả Staff) hoặc Assigned (Manager duyệt + phân công)
-/// -> InProgress (Maintenance Staff xác nhận) -> Completed. Staff có thể huỷ khi Pending / Rejected.
+/// -> InProgress (Maintenance Staff xác nhận) -> PendingVerification (Maintenance Staff hoàn thành, chờ Staff nghiệm thu)
+/// -> Completed (Staff nghiệm thu OK). Staff nghiệm thu không đạt -> reopen -> InProgress.
+/// Staff có thể huỷ khi Pending / Rejected.
 /// Trong InProgress, Maintenance Staff tự kiểm tra vật tư: đủ thì sửa và hoàn thành; thiếu thì gửi yêu cầu mua
 /// cho Manager và chuyển sang WaitingMaterial. Manager mua xong -> thông báo -> quay lại InProgress.
 /// </summary>
@@ -14,6 +16,7 @@ public static class RepairStatus
     public const string Assigned = "Assigned";
     public const string InProgress = "InProgress";
     public const string WaitingMaterial = "WaitingMaterial";
+    public const string PendingVerification = "PendingVerification";
     public const string Completed = "Completed";
     public const string Cancelled = "Cancelled";
 
@@ -44,6 +47,7 @@ public static class RepairStatus
         Assigned => "Đã phân công – chờ xác nhận",
         InProgress => "Đang sửa chữa",
         WaitingMaterial => "Chờ vật tư",
+        PendingVerification => "Chờ nghiệm thu",
         Completed => "Đã hoàn thành",
         Cancelled => "Đã hủy",
         var other => other
@@ -57,6 +61,7 @@ public static class RepairStatus
         Assigned => ("#dfe9f3", "#2f5a85", "#bfd2e5"),
         InProgress => ("#e3e7f6", "#3f4a94", "#c6cdea"),
         WaitingMaterial => ("#efe3f3", "#6b3f7a", "#d9c4e0"),
+        PendingVerification => ("#fff3cd", "#856404", "#ffd966"),
         Completed => ("#e2eee4", "#356e51", "#c6dbc9"),
         Cancelled => ("#ececea", "#6b7570", "#d6d9d4"),
         _ => ("#efefe7", "#45594f", "#e1e5da")
@@ -97,6 +102,9 @@ public static class RepairAction
     public const string MaterialsPurchased = "MaterialsPurchased";
     public const string PurchaseRejected = "PurchaseRejected";
     public const string MaterialsReady = "MaterialsReady";
+    public const string VerificationRequested = "VerificationRequested"; // Maintenance Staff báo xong, chờ Staff nghiệm thu
+    public const string VerificationAccepted = "VerificationAccepted";   // Staff nghiệm thu OK -> Completed
+    public const string VerificationRejected = "VerificationRejected";   // Staff nghiệm thu không đạt -> reopen InProgress
 
     public static string Label(string? action) => action switch
     {
@@ -112,6 +120,9 @@ public static class RepairAction
         MaterialsPurchased => "Quản lý đã mua vật tư",
         PurchaseRejected => "Quản lý từ chối mua vật tư",
         MaterialsReady => "Hết chờ vật tư – tiếp tục sửa chữa",
+        VerificationRequested => "Báo hoàn thành – chờ nghiệm thu",
+        VerificationAccepted => "Nghiệm thu đạt – đóng yêu cầu",
+        VerificationRejected => "Nghiệm thu không đạt – yêu cầu sửa lại",
         _ => action ?? "—"
     };
 
@@ -129,6 +140,9 @@ public static class RepairAction
         MaterialsPurchased => "bi-bag-check-fill",
         PurchaseRejected => "bi-cart-x-fill",
         MaterialsReady => "bi-play-circle-fill",
+        VerificationRequested => "bi-clipboard2-check-fill",
+        VerificationAccepted => "bi-patch-check-fill",
+        VerificationRejected => "bi-patch-exclamation-fill",
         _ => "bi-circle-fill"
     };
 
@@ -142,6 +156,9 @@ public static class RepairAction
         MaterialsPurchased or MaterialsReady => "#356e51",
         PurchaseRequested => "#6b3f7a",
         PurchaseRejected => "#94473e",
+        VerificationRequested => "#856404",
+        VerificationAccepted => "#356e51",
+        VerificationRejected => "#94473e",
         _ => "#8a6414"
     };
 }

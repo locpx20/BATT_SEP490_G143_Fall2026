@@ -24,6 +24,14 @@ namespace BATT_PPMS.Pages.Deliveries
         [BindProperty(SupportsGet = true)]
         public string? Status { get; set; }
 
+        /// <summary>Lọc từ ngày (yyyy-MM-dd), bao gồm cả ngày này.</summary>
+        [BindProperty(SupportsGet = true)]
+        public string? FromDate { get; set; }
+
+        /// <summary>Lọc đến ngày (yyyy-MM-dd), bao gồm cả ngày này.</summary>
+        [BindProperty(SupportsGet = true)]
+        public string? ToDate { get; set; }
+
         [BindProperty(SupportsGet = true)]
         public int PageNumber { get; set; } = 1;
 
@@ -54,7 +62,7 @@ namespace BATT_PPMS.Pages.Deliveries
             if (check != null) return check;
 
             WaitingCheckCount = await _context.Deliveries.CountAsync(d =>
-                d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlip == null);
+                d.DeliveryStatus == StatusConstants.Prepared && !d.ExportSlips.Any());
 
             if (IsManager)
             {
@@ -68,7 +76,7 @@ namespace BATT_PPMS.Pages.Deliveries
 
             var query = _context.Deliveries.AsNoTracking()
                 .Include(d => d.Order).ThenInclude(o => o.Customer)
-                .Include(d => d.ExportSlip)
+                .Include(d => d.ExportSlips)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(SearchTerm))
@@ -80,12 +88,21 @@ namespace BATT_PPMS.Pages.Deliveries
             if (!string.IsNullOrWhiteSpace(Status))
                 query = query.Where(d => d.DeliveryStatus == Status);
 
+            // Lọc theo khoảng ngày; nếu nhập ngược (từ > đến) thì tự đổi chỗ
+            var fromDate = ParseDate(FromDate);
+            var toDate = ParseDate(ToDate);
+            if (fromDate.HasValue && toDate.HasValue && fromDate > toDate) (fromDate, toDate) = (toDate, fromDate);
+            FromDate = fromDate?.ToString("yyyy-MM-dd");
+            ToDate = toDate?.ToString("yyyy-MM-dd");
+            if (fromDate.HasValue) query = query.Where(d => d.PickupDate >= fromDate.Value);
+            if (toDate.HasValue) { var toExclusive = toDate.Value.AddDays(1); query = query.Where(d => d.PickupDate < toExclusive); }
+
             TotalCount = await query.CountAsync();
             TotalPages = Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
             PageNumber = Math.Clamp(PageNumber, 1, TotalPages);
 
             Deliveries = await query
-                .OrderByDescending(d => d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlip == null)
+                .OrderByDescending(d => d.DeliveryStatus == StatusConstants.Prepared && !d.ExportSlips.Any())
                 .ThenByDescending(d => d.PickupDate)
                 .ThenByDescending(d => d.DeliveryId)
                 .Skip((PageNumber - 1) * PageSize)
@@ -94,5 +111,9 @@ namespace BATT_PPMS.Pages.Deliveries
 
             return Page();
         }
+
+        private static DateTime? ParseDate(string? value) =>
+            DateTime.TryParseExact(value, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var d) ? d.Date : null;
     }
 }

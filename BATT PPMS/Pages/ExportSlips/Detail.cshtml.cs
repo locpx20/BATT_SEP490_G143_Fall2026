@@ -93,9 +93,27 @@ namespace BATT_PPMS.Pages.ExportSlips
             slip.Delivery.DeliveryStatus = StatusConstants.Delivered;
             slip.Delivery.ConfirmedBy = CurrentUserId;
             slip.Delivery.UpdatedAt = now;
-            slip.Order.Status = StatusConstants.Completed;
 
-            var message = $"{slip.Order.OrderCode}: phiếu {slip.SlipCode} đã hoàn thành, đã trừ {slip.Lines.Sum(l => l.Bags):N0} bao khỏi kho thành phẩm.";
+            // Tính tổng số lượng kg đã xuất của tất cả các phiếu thuộc đơn hàng này (bao gồm cả phiếu vừa hoàn thành)
+            var totalExportedKg = await _context.ExportSlips
+                .Where(s => s.OrderId == slip.OrderId && s.Status == ExportSlipStatus.Completed)
+                .SelectMany(s => s.Lines)
+                .SumAsync(l => l.Quantity);
+
+            if (totalExportedKg >= slip.Order.Quantity)
+            {
+                slip.Order.Status = StatusConstants.Completed;
+            }
+
+            var slipBags = slip.Lines.Sum(l => l.Bags);
+            var orderTotalBags = (int)Math.Round(slip.Order.Quantity / (decimal)SalesFlow.KgPerBag);
+            var exportedBags = (int)Math.Round(totalExportedKg / (decimal)SalesFlow.KgPerBag);
+            var remainingBags = Math.Max(0, orderTotalBags - exportedBags);
+
+            var message = slip.Order.Status == StatusConstants.Completed
+                ? $"{slip.Order.OrderCode}: Xe {slip.Delivery.LicensePlate} đã hoàn thành xuất {slipBags:N0} bao. Đơn hàng đã xuất đủ {orderTotalBags:N0} bao và hoàn thành!"
+                : $"{slip.Order.OrderCode}: Xe {slip.Delivery.LicensePlate} đã hoàn thành xuất {slipBags:N0} bao. Đơn hàng còn lại {remainingBags:N0} bao cần xuất.";
+
             await SalesFlow.NotifyUserOrRoleAsync(_context, slip.Delivery.CreatedBy ?? slip.Order.CreatedBy, RoleConstants.Manager,
                 "Đã hoàn thành xuất kho", message, $"/ExportSlips/Detail?id={slip.SlipId}");
             await SalesFlow.NotifyRoleAsync(_context, RoleConstants.Owner,

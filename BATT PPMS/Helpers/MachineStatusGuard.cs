@@ -22,7 +22,8 @@ public static class MachineStatusGuard
         RepairStatus.Pending, "Reported",
         RepairStatus.Assigned,
         RepairStatus.InProgress, "In Progress",
-        RepairStatus.WaitingMaterial
+        RepairStatus.WaitingMaterial,
+        RepairStatus.PendingVerification
     };
 
     private static IQueryable<MaintenanceRequest> OpenStoppedRequests(AppDbContext db) =>

@@ -47,10 +47,10 @@ public partial class ProductionManagementDbContext
             entity.Property(e => e.CompletedBy).HasColumnName("completed_by");
             entity.Property(e => e.CompletedAt).HasColumnType("datetime").HasColumnName("completed_at");
             entity.HasIndex(e => e.SlipCode).IsUnique();
-            entity.HasIndex(e => e.DeliveryId).IsUnique();
+            entity.HasIndex(e => e.DeliveryId);
 
-            entity.HasOne(e => e.Delivery).WithOne(d => d.ExportSlip)
-                .HasForeignKey<ExportSlip>(e => e.DeliveryId)
+            entity.HasOne(e => e.Delivery).WithMany(d => d.ExportSlips)
+                .HasForeignKey(e => e.DeliveryId)
                 .OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(e => e.Order).WithMany()
                 .HasForeignKey(e => e.OrderId)

@@ -56,9 +56,14 @@ namespace BATT_PPMS.Pages.Orders
                 case StatusConstants.Cancelled: return ("Đã hủy", "badge-inactive");
                 case StatusConstants.Completed: return ("Đã xuất kho", "badge-completed");
                 case StatusConstants.Approved:
-                    var d = ActiveDelivery(order);
-                    if (d == null) return ("Chờ tạo yêu cầu xuất kho", "badge-approved");
-                    return DeliveryWorkflow.Stage(d);
+                    var active = order.Deliveries.Where(d => d.DeliveryStatus != StatusConstants.Cancelled).ToList();
+                    if (active.Count == 0) return ("Chờ tạo xe lấy hàng", "badge-approved");
+                    if (active.Any(d => d.DeliveryStatus == "Returned")) return ("Xe bị trả lại – cần sửa", "badge-rejected");
+                    if (active.Any(d => d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlips.Count == 0)) return ("Có xe chờ kiểm tra", "badge-pending");
+                    // Đơn còn Approved nghĩa là chưa xuất đủ: đã có phiếu hoàn thành thì là xuất một phần.
+                    if (active.Any(d => d.ExportSlips.Any(s => s.Status == ExportSlipStatus.Completed))) return ("Đã xuất một phần", "badge-medium");
+                    if (active.Any(d => d.ExportSlips.Any(s => s.Status == ExportSlipStatus.Processing))) return ("Đang lập phiếu xuất", "badge-medium");
+                    return ("Chờ lập phiếu xuất", "badge-pending");
                 default: return (Label(order.Status), Badge(order.Status));
             }
         }
@@ -74,14 +79,14 @@ namespace BATT_PPMS.Pages.Orders
     {
         /// <summary>Manager chỉ sửa được khi thủ kho chưa lập phiếu (Prepared / Returned).</summary>
         public static bool CanEdit(Delivery d) =>
-            d.DeliveryStatus is StatusConstants.Prepared or "Returned" && d.ExportSlip == null;
+            d.DeliveryStatus is StatusConstants.Prepared or "Returned" && d.ExportSlips.Count == 0;
 
         public static string Label(string? status) => status switch
         {
             StatusConstants.Prepared => "Chờ thủ kho kiểm tra",
             "Returned" => "Thủ kho trả lại – cần sửa",
             StatusConstants.InTransit => "Đang vận chuyển",
-            StatusConstants.Delivered => "Đã xuất kho",
+            StatusConstants.Delivered => "Đã xuất",
             StatusConstants.Cancelled => "Đã hủy",
             _ => status ?? "—"
         };
@@ -94,10 +99,20 @@ namespace BATT_PPMS.Pages.Orders
             _ => "badge-inactive"
         };
 
-        public static (string Label, string Badge) Stage(Delivery d) =>
-            d.DeliveryStatus == StatusConstants.Prepared && d.ExportSlip != null
-                ? ("Đang lập phiếu xuất kho", "badge-medium")
-                : (Label(d.DeliveryStatus), Badge(d.DeliveryStatus));
+        /// <summary>Xe đã xuất nhưng đơn chưa xuất đủ thì hiển thị "Đã xuất một phần"; chỉ khi đơn Completed mới là "Đã xuất kho".</summary>
+        public static (string Label, string Badge) Stage(Delivery d, Order? order = null)
+        {
+            if (d.ExportSlips.Any(s => s.Status == ExportSlipStatus.Processing))
+                return ("Đang lập phiếu xuất kho", "badge-medium");
+            if (d.DeliveryStatus == StatusConstants.Delivered)
+            {
+                var status = (order ?? d.Order)?.Status;
+                return status == StatusConstants.Completed
+                    ? ("Đã xuất kho", "badge-completed")
+                    : ("Đã xuất một phần", "badge-medium");
+            }
+            return (Label(d.DeliveryStatus), Badge(d.DeliveryStatus));
+        }
 
         public static string SlipLabel(string? status) => status switch
         {

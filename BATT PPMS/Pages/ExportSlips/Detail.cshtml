@@ -8,99 +8,401 @@
     var s = Model.Slip;
     var o = s.Order;
     var d = s.Delivery;
+    var totalBags = s.Lines.Sum(l => l.Bags);
+    var totalKg = s.Lines.Sum(l => l.Quantity);
 }
 
 @if (!string.IsNullOrEmpty(Model.SuccessMessage))
 {
-    <div class="alert alert-success" style="border-radius:12px;">
+    <div class="alert alert-success no-print" style="border-radius:12px;">
         <i class="bi bi-check-circle-fill" style="margin-right:8px;"></i><span>@Model.SuccessMessage</span>
     </div>
 }
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
 {
-    <div class="alert alert-danger" style="border-radius:12px;">
+    <div class="alert alert-danger no-print" style="border-radius:12px;">
         <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i><span>@Model.ErrorMessage</span>
     </div>
 }
 
-<div class="page-header">
+<div class="page-header no-print">
     <div>
         <h1 class="page-title">
             Phiếu xuất kho @s.SlipCode
             <span class="badge @DeliveryWorkflow.SlipBadge(s.Status)" style="vertical-align:middle;margin-left:8px;">@DeliveryWorkflow.SlipLabel(s.Status)</span>
         </h1>
-        <p class="page-subtitle">Lập bởi @(s.CreatedByNavigation?.FullName ?? "—") lúc @s.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
+        <p class="page-subtitle">Xe @d.LicensePlate (tài xế @d.DriverName) · Lập bởi @(s.CreatedByNavigation?.FullName ?? "—") lúc @s.CreatedAt.ToString("dd/MM/yyyy HH:mm")</p>
     </div>
     <div class="page-actions">
-        <a href="/ExportSlips/Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
-        <a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-outline">Yêu cầu xuất kho</a>
-        <button type="button" class="btn btn-outline" onclick="window.print()"><i class="bi bi-printer"></i> In phiếu</button>
+        <a href="/ExportSlips/Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Danh sách phiếu</a>
+        <a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-outline"><i class="bi bi-truck"></i> Xe @d.LicensePlate</a>
+        <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> In phiếu xuất kho</button>
     </div>
 </div>
 
 @if (Model.CanComplete)
 {
-    <div class="card" style="margin-bottom:20px;">
-        <div class="card-body">
-            <p style="margin-top:0;">Sau khi hàng đã lên xe và giao cho tài xế, bấm hoàn thành để hệ thống trừ tồn kho từng lô bên dưới.</p>
+    <div class="card no-print" style="margin-bottom:20px;border-left:4px solid var(--primary,#1b5e20);">
+        <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div>
+                <h4 style="margin:0 0 4px;font-size:16px;"><i class="bi bi-box-seam"></i> Sẵn sàng xuất kho</h4>
+                <p style="margin:0;color:var(--text-secondary,#52675d);">Sau khi bốc hàng lên xe và tài xế ký nhận, bấm nút xác nhận để trừ kho thành phẩm và chuyển trạng thái giao hàng.</p>
+            </div>
             <form method="post" asp-page-handler="Complete" asp-route-id="@s.SlipId"
-                  onsubmit="return confirm('Hoàn thành phiếu @s.SlipCode và trừ kho thành phẩm?');">
-                <button type="submit" class="btn btn-success" id="btn-complete-slip"><i class="bi bi-check2-circle"></i> Hoàn thành xuất kho</button>
+                  data-admin-confirm data-confirm-title="Hoàn thành xuất kho"
+                  data-confirm-message="Xác nhận hoàn thành phiếu @s.SlipCode cho xe @d.LicensePlate? Tồn kho các lô đã chọn sẽ bị trừ và không thể hoàn tác."
+                  data-confirm-label="Hoàn thành xuất kho">
+                <button type="submit" class="btn btn-success" id="btn-complete-slip" style="padding:10px 22px;font-weight:600;">
+                    <i class="bi bi-check2-circle"></i> Hoàn thành xuất kho
+                </button>
             </form>
         </div>
     </div>
 }
 
-<div class="card" style="margin-bottom:20px;">
-    <div class="card-header"><h3 class="card-title">Thông tin xuất kho</h3></div>
-    <div class="card-body">
-        <div class="form-grid">
-            <div class="form-group"><span class="form-label">Yêu cầu bán</span><div><a href="/Orders/Detail?id=@o.OrderId">@o.OrderCode</a></div></div>
-            <div class="form-group"><span class="form-label">Người mua</span><div>@(o.Customer?.CustomerName ?? "—")</div>@if (!string.IsNullOrWhiteSpace(o.Customer?.Phone)) { <span class="form-hint">@(o.Customer?.ContactPerson) · @(o.Customer?.Phone)</span> }</div>
-            <div class="form-group"><span class="form-label">Tài xế</span><div>@d.DriverName</div>@if (!string.IsNullOrWhiteSpace(d.DriverPhone)) { <span class="form-hint">@d.DriverPhone</span> }</div>
-            <div class="form-group"><span class="form-label">Biển số xe</span><div>@d.LicensePlate</div></div>
-            <div class="form-group"><span class="form-label">Ngày lấy hàng</span><div>@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</div></div>
-            <div class="form-group"><span class="form-label">Hoàn thành</span>
-                <div>@(s.CompletedAt.HasValue ? s.CompletedAt.Value.ToString("dd/MM/yyyy HH:mm") + " · " + (s.CompletedByNavigation?.FullName ?? "Tài khoản đã xóa") : "Chưa hoàn thành")</div>
+<!-- MẪU PHIẾU XUẤT KHO IN CHUẨN A4 -->
+<div class="card print-slip-container" style="margin-bottom:24px;">
+    <div class="slip-print-content">
+        <!-- HEADER PHIẾU -->
+        <div class="slip-header">
+            <div class="slip-company">
+                <div class="company-name">CÔNG TY CỔ PHẦN NĂNG LƯỢNG TÁI TẠO BATT</div>
+                <div class="company-info">Đ/c: Bản 1 Vài Siêu, Xã Thượng Hà, Tỉnh Lào Cai</div>
+            </div>
+            <div class="slip-doc-info">
+                <div class="form-standard">Mẫu số: 02 - VT</div>
+                <div class="form-standard-sub">(Ban hành theo TT số 200/2014/TT-BTC)</div>
+                <div class="slip-code-print">Số: <strong>@s.SlipCode</strong></div>
+                <div class="slip-date-print">Ngày @s.CreatedAt.Day tháng @s.CreatedAt.Month năm @s.CreatedAt.Year</div>
+            </div>
+        </div>
+
+        <div class="slip-title-block">
+            <h2 class="slip-main-title">PHIẾU XUẤT KHO</h2>
+            <div class="slip-sub-title">(KIÊM BIÊN BẢN BÀN GIAO HÀNG HÓA)</div>
+        </div>
+
+        <!-- THÔNG TIN ĐƠN VỊ VÀ PHƯƠNG TIỆN -->
+        <div class="slip-meta-grid">
+            <div class="slip-meta-row">
+                <span class="meta-label">Người nhận hàng (Tài xế):</span>
+                <span class="meta-val"><strong>@d.DriverName</strong></span>
+                <span class="meta-label" style="margin-left:24px;">Điện thoại:</span>
+                <span class="meta-val">@(d.DriverPhone ?? "—")</span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Phương tiện vận chuyển / Biển số:</span>
+                <span class="meta-val"><strong style="letter-spacing:0.5px;">@d.LicensePlate</strong></span>
+                <span class="meta-label" style="margin-left:24px;">Ngày lấy hàng:</span>
+                <span class="meta-val">@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Đơn vị nhận hàng (Khách hàng):</span>
+                <span class="meta-val"><strong>@(o.Customer?.CustomerName ?? "—")</strong></span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Địa chỉ nhận hàng:</span>
+                <span class="meta-val">@(o.Customer?.Address ?? "—")</span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Theo đơn bán hàng:</span>
+                <span class="meta-val"><strong>@o.OrderCode</strong> (ngày @o.OrderDate.ToString("dd/MM/yyyy"))</span>
+                <span class="meta-label" style="margin-left:24px;">Loại hàng:</span>
+                <span class="meta-val"><strong>@SalesFlow.GradeLabel(o.Grade)</strong></span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Lý do xuất kho:</span>
+                <span class="meta-val">Xuất bán bột đá thành phẩm cho khách hàng</span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Xuất tại kho:</span>
+                <span class="meta-val">Kho thành phẩm Nhà máy BATT (Hà Nam)</span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(s.Note))
+            {
+                <div class="slip-meta-row">
+                    <span class="meta-label">Ghi chú phiếu:</span>
+                    <span class="meta-val">@s.Note</span>
+                </div>
+            }
+        </div>
+
+        <!-- BẢNG HÀNG XUẤT KHO -->
+        <table class="slip-items-table">
+            <thead>
+                <tr>
+                    <th style="width:40px;">STT</th>
+                    <th>Tên, nhãn hiệu hàng hóa</th>
+                    <th style="width:130px;">Mã lot</th>
+                    <th style="width:105px;">Ngày sản xuất</th>
+                    <th style="width:65px;">ĐVT</th>
+                    <th style="width:85px;text-align:right;">Số lượng</th>
+                    <th style="width:125px;text-align:right;">Khối lượng (kg)</th>
+                    <th style="width:110px;">Ghi chú</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ var rowIdx = 1; }
+                @foreach (var line in s.Lines.OrderBy(l => l.Batch.ProductionDate).ThenBy(l => l.BatchId))
+                {
+                    <tr>
+                        <td style="text-align:center;">@(rowIdx++)</td>
+                        <td>
+                            <strong>Viên nén năng lượng - @SalesFlow.GradeLabel(line.Grade)</strong>
+                        </td>
+                        <td style="text-align:center;font-weight:600;">@line.Batch.BagNumber</td>
+                        <td style="text-align:center;">@line.Batch.ProductionDate.ToString("dd/MM/yyyy")</td>
+                        <td style="text-align:center;">Bao</td>
+                        <td style="text-align:right;font-weight:600;">@line.Bags.ToString("N0")</td>
+                        <td style="text-align:right;font-weight:600;">@line.Quantity.ToString("N0")</td>
+                        <td style="font-size:12px;color:#555;"></td>
+                    </tr>
+                }
+                <!-- DÒNG TỔNG CỘNG -->
+                <tr class="slip-total-row">
+                    <td colspan="5" style="text-align:center;font-weight:700;">CỘNG TỔNG:</td>
+                    <td style="text-align:right;font-weight:700;">@totalBags.ToString("N0")</td>
+                    <td style="text-align:right;font-weight:700;">@totalKg.ToString("N0")</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- ĐỌC SỐ THÀNH CHỮ -->
+        <div class="slip-words-block">
+            <div class="slip-words-row">
+                - Tổng số lượng xuất (bằng chữ): <strong>@VietnameseNumberReader.ToBagsWords(totalBags)</strong>
+            </div>
+            <div class="slip-words-row">
+                - Tổng khối lượng xuất (bằng chữ): <strong>@VietnameseNumberReader.ToKgWords(totalKg)</strong>
+            </div>
+        </div>
+
+        <!-- 4 Ô CHỮ KÝ TRANG TRỌNG -->
+        <div class="slip-signatures-container">
+            <div class="sig-box">
+                <div class="sig-title">NGƯỜI LẬP PHIẾU</div>
+                <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">@(s.CreatedByNavigation?.FullName ?? "")</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-title">NGƯỜI NHẬN (TÀI XẾ)</div>
+                <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">@d.DriverName</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-title">THỦ KHO (NGƯỜI GIAO)</div>
+                <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">@(s.CompletedByNavigation?.FullName ?? "")</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-title">QUẢN LÝ / GIÁM ĐỐC</div>
+                <div class="sig-sub">(Ký, đóng dấu)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name"></div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- KHỐI ẢNH CỦA XE (CHỈ HIỂN THỊ TRÊN MÀN HÌNH WEB, ẨN KHI IN) -->
 @if (!string.IsNullOrEmpty(s.ImagePath))
 {
-    <div class="card" style="margin-bottom:20px;">
-        <div class="card-header"><h3 class="card-title">Ảnh phiếu xuất kho thực tế</h3></div>
+    var images = s.ImagePath.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    <div class="card no-print" style="margin-bottom:20px;">
+        <div class="card-header"><h3 class="card-title"><i class="bi bi-camera"></i> Ảnh thực tế của xe lấy hàng (@images.Length ảnh)</h3></div>
         <div class="card-body">
-            <a href="@s.ImagePath" target="_blank" rel="noopener"><img src="@s.ImagePath" alt="Ảnh phiếu xuất kho @s.SlipCode" style="max-width:100%;max-height:480px;border-radius:8px;border:1px solid var(--border);" /></a>
+            <div style="display:flex;flex-wrap:wrap;gap:16px;">
+                @foreach (var img in images)
+                {
+                    <a href="@img" target="_blank" rel="noopener" title="Bấm để xem ảnh gốc">
+                        <img src="@img" alt="Ảnh xe đến lấy hàng @s.SlipCode" style="max-width:280px;max-height:210px;object-fit:cover;border-radius:8px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06);transition:transform 0.15s ease;" />
+                    </a>
+                }
+            </div>
         </div>
     </div>
 }
 
-<div class="card">
-    <div class="card-header"><h3 class="card-title">Chi tiết lô xuất</h3></div>
-    <div class="table-wrapper">
-        <table class="data-table">
-            <thead><tr><th>Mã lot</th><th>Loại</th><th>Ngày sản xuất</th><th>Số bao</th><th>Số lượng (kg)</th><th>Tồn lô hiện tại (kg)</th></tr></thead>
-            <tbody>
-                @foreach (var line in s.Lines.OrderBy(l => l.Batch.ProductionDate).ThenBy(l => l.BatchId))
-                {
-                    <tr>
-                        <td><strong>@line.Batch.BagNumber</strong></td>
-                        <td>@SalesFlow.GradeLabel(line.Grade)</td>
-                        <td>@line.Batch.ProductionDate.ToString("dd/MM/yyyy")</td>
-                        <td>@line.Bags.ToString("N0")</td>
-                        <td>@line.Quantity.ToString("N0")</td>
-                        <td>@line.Batch.Quantity.ToString("N0")</td>
-                    </tr>
-                }
-                <tr>
-                    <td colspan="3"><strong>Tổng</strong></td>
-                    <td><strong>@s.Lines.Sum(l => l.Bags).ToString("N0")</strong></td>
-                    <td><strong>@s.Lines.Sum(l => l.Quantity).ToString("N0")</strong></td>
-                    <td></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
+<style>
+    /* Styling phiếu xuất kho hiển thị màn hình & khi in */
+    .print-slip-container {
+        background: #ffffff;
+        color: #111827;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid var(--border, #e5e7eb);
+    }
+    .slip-print-content {
+        padding: 32px 36px;
+        font-family: 'Times New Roman', Times, serif, Arial;
+        color: #111;
+        line-height: 1.45;
+    }
+    .slip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #111;
+        padding-bottom: 12px;
+    }
+    .company-name {
+        font-size: 15px;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #000;
+    }
+    .company-info {
+        font-size: 13px;
+        color: #333;
+    }
+    .slip-doc-info {
+        text-align: right;
+        font-size: 13px;
+    }
+    .form-standard {
+        font-weight: 700;
+        font-size: 13px;
+    }
+    .form-standard-sub {
+        font-style: italic;
+        font-size: 11px;
+        color: #555;
+        margin-bottom: 6px;
+    }
+    .slip-code-print {
+        font-size: 14px;
+    }
+    .slip-date-print {
+        font-style: italic;
+        font-size: 12px;
+        color: #444;
+    }
+    .slip-title-block {
+        text-align: center;
+        margin: 16px 0 20px;
+    }
+    .slip-main-title {
+        font-size: 24px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        margin: 0;
+        color: #000;
+    }
+    .slip-sub-title {
+        font-size: 13px;
+        font-style: italic;
+        color: #333;
+        margin-top: 4px;
+    }
+    .slip-meta-grid {
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+    .slip-meta-row {
+        margin-bottom: 6px;
+        display: flex;
+        flex-wrap: wrap;
+    }
+    .meta-label {
+        color: #333;
+        margin-right: 8px;
+    }
+    .meta-val {
+        color: #000;
+    }
+    .slip-items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+        font-size: 13px;
+    }
+    .slip-items-table th, .slip-items-table td {
+        border: 1px solid #333;
+        padding: 6px 8px;
+    }
+    .slip-items-table th {
+        background-color: #f3f4f6;
+        font-weight: 700;
+        text-align: center;
+        color: #000;
+    }
+    .slip-total-row td {
+        background-color: #fafafa;
+        font-size: 13.5px;
+    }
+    .slip-words-block {
+        margin-bottom: 28px;
+        font-size: 14px;
+        font-style: italic;
+    }
+    .slip-words-row {
+        margin-bottom: 4px;
+    }
+    .slip-signatures-container {
+        display: flex;
+        justify-content: space-between;
+        text-align: center;
+        margin-top: 24px;
+        page-break-inside: avoid;
+    }
+    .sig-box {
+        flex: 1;
+        padding: 0 4px;
+    }
+    .sig-title {
+        font-weight: 700;
+        font-size: 13.5px;
+        color: #000;
+    }
+    .sig-sub {
+        font-size: 11.5px;
+        font-style: italic;
+        color: #555;
+    }
+    .sig-space {
+        height: 75px;
+    }
+    .sig-name {
+        font-weight: 700;
+        font-size: 13.5px;
+        color: #000;
+    }
+
+    /* ĐỊNH DẠNG TRANG IN media print */
+    @@media print {
+        body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .sidebar, .topbar, .app-header, .page-header, .page-actions, .alert, .no-print, button, a.btn {
+            display: none !important;
+        }
+        .main-content, .content-container, .page-container, .container-fluid, .card, .card-body {
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+        }
+        .print-slip-container {
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100% !important;
+        }
+        .slip-print-content {
+            padding: 0 !important;
+            width: 100% !important;
+        }
+        @@page {
+            size: A4 portrait;
+            margin: 15mm 15mm 15mm 15mm;
+        }
+    }
+</style>

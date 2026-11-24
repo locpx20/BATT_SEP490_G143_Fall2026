@@ -66,7 +66,8 @@ namespace BATT_PPMS.Pages.Maintenance
         public bool CanReview { get; private set; }       // Manager: duyệt + phân công / từ chối
         public bool CanReassign { get; private set; }     // Manager: phân công lại khi chưa xác nhận
         public bool CanConfirm { get; private set; }      // Maintenance Staff được giao: xác nhận nhận việc
-        public bool CanComplete { get; private set; }     // Maintenance Staff được giao: hoàn thành
+        public bool CanComplete { get; private set; }     // Maintenance Staff được giao: hoàn thành sửa chữa (chờ Staff nghiệm thu)
+        public bool CanVerify { get; private set; }       // Staff: kiểm tra máy sau sửa chữa (đồng ý đóng / trả lại sửa tiếp)
         public bool CanEditResubmit { get; private set; } // Staff tạo: sửa và gửi lại khi bị từ chối
         public bool CanCancel { get; private set; }       // Staff tạo: hủy khi chờ duyệt / bị từ chối
         public bool CanRequestMaterial { get; private set; } // Maintenance Staff được giao: thiếu vật tư thì tạo yêu cầu mua
@@ -106,6 +107,7 @@ namespace BATT_PPMS.Pages.Maintenance
             CanRequestMaterial = IsMaintenanceStaff && mine &&
                                  (Status == RepairStatus.InProgress || Status == RepairStatus.WaitingMaterial);
             CanComplete = IsMaintenanceStaff && mine && Status == RepairStatus.InProgress;
+            CanVerify = IsStaff && Status == RepairStatus.PendingVerification;
             CanEditResubmit = IsStaff && owner && Status == RepairStatus.Rejected;
             CanCancel = IsStaff && owner && (Status == RepairStatus.Pending || Status == RepairStatus.Rejected);
 
@@ -326,7 +328,7 @@ namespace BATT_PPMS.Pages.Maintenance
         }
 
         // ------------------------------------------------------------------
-        // Maintenance Staff: hoàn thành sửa chữa
+        // Maintenance Staff: hoàn thành sửa chữa (chuyển sang chờ nhân viên kiểm tra máy)
         // ------------------------------------------------------------------
         public async Task<IActionResult> OnPostCompleteAsync(int id, string? note)
         {
@@ -345,18 +347,99 @@ namespace BATT_PPMS.Pages.Maintenance
             var now = DateTime.Now;
             var cleanNote = note!.Trim();
 
-            request.Status = RepairStatus.Completed;
+            request.Status = RepairStatus.PendingVerification;
             request.CompletedAt = now;
             request.CompletionNote = cleanNote;
-            request.BrokenReport.Status = StatusConstants.Fixed;
 
-            // Sửa xong: mở khóa, máy trở lại Đang hoạt động
-            await MachineStatusGuard.ReleaseAsync(_context, request.BrokenReport.MachineId, request.RequestId);
+            AddLog(request, RepairAction.VerificationRequested, RepairStatus.InProgress, RepairStatus.PendingVerification, cleanNote, now);
 
-            AddLog(request, RepairAction.Completed, RepairStatus.InProgress, RepairStatus.Completed, cleanNote, now);
+            Notifier.Add(_context, request.RequestedBy, "Máy đã sửa xong – Chờ kiểm tra",
+                $"{CurrentFullName} đã hoàn thành sửa chữa REQ-{id:D4}. Vui lòng kiểm tra vận hành máy và nghiệm thu.",
+                $"/Maintenance/Details?id={id}");
+
             await _context.SaveChangesAsync();
 
-            SuccessMessage = $"Đã hoàn thành sửa chữa REQ-{id:D4}.";
+            SuccessMessage = $"Đã báo cáo hoàn thành sửa chữa REQ-{id:D4}. Yêu cầu chuyển sang trạng thái chờ nhân viên kiểm tra máy.";
+            return Back(id);
+        }
+
+        // ------------------------------------------------------------------
+        // Staff: kiểm tra máy đạt yêu cầu -> nghiệm thu, đóng yêu cầu sửa chữa
+        // ------------------------------------------------------------------
+        public async Task<IActionResult> OnPostAcceptAsync(int id, string? note)
+        {
+            var check = RequireRole(RoleConstants.Staff);
+            if (check != null) return check;
+
+            var request = await FindTrackedAsync(id);
+            if (request == null) return MissingRequest();
+
+            if (RepairStatus.Normalize(request.Status) != RepairStatus.PendingVerification)
+                return Fail(id, "Yêu cầu này không ở trạng thái chờ nghiệm thu.");
+
+            var noteError = InputValidator.Text(note, "Ghi chú nghiệm thu", 500);
+            if (noteError != null) return Fail(id, noteError);
+
+            var now = DateTime.Now;
+            var cleanNote = InputValidator.Clean(note);
+
+            request.Status = RepairStatus.Completed;
+            request.BrokenReport.Status = StatusConstants.Fixed;
+
+            // Nghiệm thu xong: mở khóa, máy trở lại Đang hoạt động
+            await MachineStatusGuard.ReleaseAsync(_context, request.BrokenReport.MachineId, request.RequestId);
+
+            var logNote = "Kiểm tra máy đạt yêu cầu. Nghiệm thu hoàn tất." + (cleanNote != null ? $" Ghi chú: {cleanNote}" : "");
+            AddLog(request, RepairAction.VerificationAccepted, RepairStatus.PendingVerification, RepairStatus.Completed, logNote, now);
+
+            if (request.AssignedTo.HasValue)
+            {
+                Notifier.Add(_context, request.AssignedTo.Value, "Nghiệm thu đạt yêu cầu sửa chữa",
+                    $"Nhân viên đã kiểm tra máy và nghiệm thu hoàn tất REQ-{id:D4}.", $"/Maintenance/Details?id={id}");
+            }
+
+            await _context.SaveChangesAsync();
+
+            SuccessMessage = $"Đã nghiệm thu và đóng yêu cầu REQ-{id:D4}. Máy đã sẵn sàng hoạt động bình thường.";
+            return Back(id);
+        }
+
+        // ------------------------------------------------------------------
+        // Staff: kiểm tra máy không đạt -> yêu cầu bảo trì sửa lại (reopen)
+        // ------------------------------------------------------------------
+        public async Task<IActionResult> OnPostReopenAsync(int id, string? reason)
+        {
+            var check = RequireRole(RoleConstants.Staff);
+            if (check != null) return check;
+
+            var request = await FindTrackedAsync(id);
+            if (request == null) return MissingRequest();
+
+            if (RepairStatus.Normalize(request.Status) != RepairStatus.PendingVerification)
+                return Fail(id, "Yêu cầu này không ở trạng thái chờ nghiệm thu.");
+
+            var reasonError = InputValidator.Text(reason, "Lý do chưa đạt", 500, required: true);
+            if (reasonError != null) return Fail(id, reasonError);
+
+            var now = DateTime.Now;
+            var cleanReason = reason!.Trim();
+
+            request.Status = RepairStatus.InProgress;
+            request.BrokenReport.Status = StatusConstants.UnderMaintenance;
+
+            AddLog(request, RepairAction.VerificationRejected, RepairStatus.PendingVerification, RepairStatus.InProgress,
+                $"Kiểm tra máy chưa đạt: {cleanReason}", now);
+
+            if (request.AssignedTo.HasValue)
+            {
+                Notifier.Add(_context, request.AssignedTo.Value, "Yêu cầu sửa chữa cần xử lý lại",
+                    $"REQ-{id:D4} kiểm tra chưa đạt: {cleanReason}. Vui lòng kiểm tra và sửa chữa lại.",
+                    $"/Maintenance/Details?id={id}");
+            }
+
+            await _context.SaveChangesAsync();
+
+            SuccessMessage = $"Đã trả lại yêu cầu REQ-{id:D4} cho nhân viên bảo trì tiếp tục xử lý.";
             return Back(id);
         }
 
@@ -433,9 +516,8 @@ namespace BATT_PPMS.Pages.Maintenance
         // ------------------------------------------------------------------
         private bool CanView(MaintenanceRequest request)
         {
-            if (IsStaff) return request.RequestedBy == CurrentUserId;
             if (IsMaintenanceStaff) return request.AssignedTo == CurrentUserId;
-            return true; // Manager / Owner
+            return true; // Staff, Manager, Owner đều có quyền xem
         }
 
         private Task<MaintenanceRequest?> FindTrackedAsync(int id) =>

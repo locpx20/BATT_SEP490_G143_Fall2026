@@ -9,10 +9,10 @@
     var sb = RepairStatus.Badge(Model.Status);
     var pb = RepairStatus.PriorityBadge(it.Priority);
     var machine = it.BrokenReport.Machine;
-    var hasAnyAction = Model.CanReview || Model.CanReassign || Model.CanConfirm || Model.CanComplete || Model.CanEditResubmit || Model.CanCancel;
+    var hasAnyAction = Model.CanReview || Model.CanReassign || Model.CanConfirm || Model.CanComplete || Model.CanVerify || Model.CanEditResubmit || Model.CanCancel;
     var assignPriority = RepairStatus.PriorityLevels.Contains(it.Priority ?? "") ? it.Priority : "Medium";
 
-    // Thanh tiến trình: 0 Gửi yêu cầu, 1 Quản lý duyệt, 2 Nhận việc, 3 Sửa chữa, 4 Hoàn thành
+    // Thanh tiến trình: 0 Gửi yêu cầu, 1 Quản lý duyệt, 2 Nhận việc, 3 Sửa chữa, 4 Kiểm tra máy, 5 Hoàn thành
     int stepNow;
     string stepMode = "";          // "", "warn" (chờ vật tư), "fail" (bị từ chối)
     var stopped = false;           // đã hủy
@@ -23,7 +23,8 @@
         case RepairStatus.Assigned: stepNow = 2; break;
         case RepairStatus.InProgress: stepNow = 3; break;
         case RepairStatus.WaitingMaterial: stepNow = 3; stepMode = "warn"; break;
-        case RepairStatus.Completed: stepNow = 5; break;
+        case RepairStatus.PendingVerification: stepNow = 4; break;
+        case RepairStatus.Completed: stepNow = 6; break;
         case RepairStatus.Cancelled: stepNow = 0; stopped = true; break;
         default: stepNow = 0; break;
     }
@@ -33,7 +34,8 @@
         (Name: stepMode == "fail" ? "Bị từ chối" : "Quản lý duyệt", Sub: it.ReviewedAt.HasValue ? it.ReviewedAt.Value.ToString("dd/MM HH:mm") : ""),
         (Name: "Nhận việc", Sub: it.ConfirmedAt.HasValue ? it.ConfirmedAt.Value.ToString("dd/MM HH:mm") : ""),
         (Name: stepMode == "warn" ? "Chờ vật tư" : "Sửa chữa", Sub: ""),
-        (Name: "Hoàn thành", Sub: it.CompletedAt.HasValue ? it.CompletedAt.Value.ToString("dd/MM HH:mm") : "")
+        (Name: "Kiểm tra máy", Sub: it.CompletedAt.HasValue ? it.CompletedAt.Value.ToString("dd/MM HH:mm") : ""),
+        (Name: "Hoàn thành", Sub: "")
     };
     string NextHint() => Model.Status switch
     {
@@ -42,7 +44,8 @@
         RepairStatus.Assigned => "Đang chờ nhân viên bảo trì xác nhận nhận việc.",
         RepairStatus.InProgress => "Nhân viên bảo trì đang sửa chữa. Thiếu vật tư thì tạo yêu cầu mua; đủ thì hoàn thành.",
         RepairStatus.WaitingMaterial => "Đang chờ Quản lý mua vật tư. Mua xong, yêu cầu tự quay lại trạng thái sửa chữa.",
-        RepairStatus.Completed => "Yêu cầu đã hoàn thành.",
+        RepairStatus.PendingVerification => "Nhân viên bảo trì đã sửa xong. Đang chờ nhân viên kiểm tra máy và nghiệm thu.",
+        RepairStatus.Completed => "Yêu cầu đã được nghiệm thu và hoàn thành.",
         RepairStatus.Cancelled => "Yêu cầu đã bị hủy.",
         _ => ""
     };
@@ -140,6 +143,20 @@
             <div>
                 <b>Đang chờ vật tư</b>
                 Yêu cầu mua vật tư đã gửi cho Quản lý. Khi Quản lý mua xong, yêu cầu tự quay lại trạng thái đang sửa chữa và nhân viên bảo trì được thông báo để tiếp tục.
+            </div>
+        </div>
+    }
+    @if (Model.Status == RepairStatus.PendingVerification)
+    {
+        <div class="rf-callout warn">
+            <i class="bi bi-clipboard2-check"></i>
+            <div>
+                <b>Máy đã sửa xong – Chờ nhân viên kiểm tra máy &amp; nghiệm thu</b>
+                Nhân viên bảo trì đã hoàn thành sửa chữa@(string.IsNullOrWhiteSpace(Model.CompletionNote) ? "." : $": \"{Model.CompletionNote}\".")
+                @if (Model.CanVerify)
+                {
+                    <div style="margin-top: 6px;">Vui lòng kiểm tra vận hành máy thực tế. Nếu máy hoạt động tốt, bấm <strong>Nghiệm thu &amp; Đóng yêu cầu</strong>; nếu máy chưa đạt hoặc còn lỗi, bấm <strong>Yêu cầu sửa lại</strong> để chuyển lại cho bảo trì.</div>
+                }
             </div>
         </div>
     }
@@ -419,7 +436,19 @@
                     @if (Model.CanComplete)
                     {
                         <button type="button" class="btn btn-success" style="border-radius: 10px; font-weight: 700;" data-bs-toggle="modal" data-bs-target="#completeModal">
-                            <i class="bi bi-check2-circle"></i> Hoàn thành sửa chữa
+                            <i class="bi bi-check2-circle"></i> Báo hoàn thành sửa chữa
+                        </button>
+                    }
+                    @if (Model.CanVerify)
+                    {
+                        <div style="font-size: 13px; font-weight: 700; color: #243d35; margin-bottom: 2px;">
+                            <i class="bi bi-clipboard2-check"></i> Nghiệm thu vận hành:
+                        </div>
+                        <button type="button" class="btn btn-success" style="border-radius: 10px; font-weight: 700;" data-bs-toggle="modal" data-bs-target="#acceptModal">
+                            <i class="bi bi-patch-check"></i> Nghiệm thu &amp; Đóng yêu cầu
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" style="border-radius: 10px; font-weight: 700;" data-bs-toggle="modal" data-bs-target="#reopenModal">
+                            <i class="bi bi-arrow-repeat"></i> Chưa đạt – Yêu cầu sửa lại
                         </button>
                     }
                     @if (Model.CanEditResubmit)
@@ -633,6 +662,68 @@
     </div>
 }
 
+@if (Model.CanVerify)
+{
+    <!-- Nghiệm thu & Đóng yêu cầu -->
+    <div class="modal fade" id="acceptModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="Accept" asp-route-id="@it.RequestId">
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #193f35;">
+                            <i class="bi bi-patch-check"></i> Nghiệm thu &amp; Đóng yêu cầu REQ-@it.RequestId.ToString("D4")
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <p style="font-size: 13px; color: #243d35;">
+                            Xác nhận máy <strong>@machine.MachineName</strong> đã được kiểm tra vận hành thử và hoạt động bình thường?
+                        </p>
+                        <div class="mb-1">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ghi chú nghiệm thu (không bắt buộc)</label>
+                            <textarea name="note" rows="3" maxlength="500" class="form-control" style="font-size: 12px; border-radius: 10px;"
+                                      placeholder="Ví dụ: Đã chạy thử 30 phút, máy hoạt động ổn định..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-success" style="border-radius: 8px; font-size: 12px; font-weight: 700;">
+                            <i class="bi bi-check2"></i> Xác nhận đạt &amp; Đóng yêu cầu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yêu cầu sửa lại (Reopen) -->
+    <div class="modal fade" id="reopenModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
+                <form method="post" asp-page-handler="Reopen" asp-route-id="@it.RequestId" novalidate>
+                    <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
+                        <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #94473e;">
+                            <i class="bi bi-arrow-repeat"></i> Yêu cầu sửa lại REQ-@it.RequestId.ToString("D4")
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <p style="font-size: 12px; color: #52675d;">Yêu cầu sẽ được chuyển lại cho nhân viên bảo trì <strong>@(it.AssignedToNavigation?.FullName ?? "phụ trách")</strong> để tiếp tục sửa chữa.</p>
+                        <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Lý do chưa đạt / Hiện tượng lỗi còn lại <span style="color: #a55449;">*</span></label>
+                        <textarea name="reason" id="reopenReason" rows="4" maxlength="500" required class="form-control" style="font-size: 12px; border-radius: 10px;"
+                                  placeholder="Mô tả cụ thể hiện tượng còn lỗi sau khi chạy thử..."></textarea>
+                        <div id="reopenReasonError" class="text-danger" style="font-size: 11.5px; margin-top: 4px; display: none;">Vui lòng nhập lý do chưa đạt.</div>
+                    </div>
+                    <div class="modal-footer" style="border-top: 1px solid #efefe7; padding: 12px 20px;">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-size: 12px;">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-danger" style="border-radius: 8px; font-size: 12px; font-weight: 700;">Gửi yêu cầu sửa lại</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
     <script>
         (function () {
@@ -715,8 +806,31 @@
                 }
             }
 
+            // reopenModal: textarea lý do chưa đạt bắt buộc
+            var reopenForm = document.querySelector('#reopenModal form');
+            if (reopenForm) {
+                var reopenReasonTA = document.getElementById('reopenReason');
+                var reopenReasonError = document.getElementById('reopenReasonError');
+                if (reopenReasonTA && reopenReasonError) {
+                    reopenReasonTA.addEventListener('input', function () {
+                        if (reopenReasonTA.value.trim()) {
+                            reopenReasonTA.style.borderColor = '';
+                            reopenReasonError.style.display = 'none';
+                        }
+                    });
+                    reopenForm.addEventListener('submit', function (e) {
+                        if (!reopenReasonTA.value.trim()) {
+                            e.preventDefault();
+                            reopenReasonTA.style.borderColor = '#dc3545';
+                            reopenReasonError.style.display = 'block';
+                            reopenReasonTA.focus();
+                        }
+                    });
+                }
+            }
+
             // Reset lỗi khi đóng modal
-            ['assignModal', 'rejectModal'].forEach(function (id) {
+            ['assignModal', 'rejectModal', 'reopenModal'].forEach(function (id) {
                 var modal = document.getElementById(id);
                 if (!modal) return;
                 modal.addEventListener('hidden.bs.modal', function () {

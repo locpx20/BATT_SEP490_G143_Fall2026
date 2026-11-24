@@ -37,9 +37,9 @@
         {
             <a href="/Deliveries/Edit?id=@d.DeliveryId" class="btn btn-primary" id="btn-edit-delivery"><i class="bi bi-pencil"></i> Cập nhật</a>
         }
-        @if (d.ExportSlip != null)
+        @if (Model.CanAddSlip)
         {
-            <a href="/ExportSlips/Detail?id=@d.ExportSlip.SlipId" class="btn btn-primary"><i class="bi bi-file-earmark-text"></i> Phiếu @d.ExportSlip.SlipCode</a>
+            <a href="/ExportSlips/Create?deliveryId=@d.DeliveryId" class="btn btn-success" id="btn-add-slip"><i class="bi bi-file-earmark-plus"></i> Lập thêm phiếu xuất kho</a>
         }
     </div>
 </div>
@@ -49,33 +49,6 @@
     <div class="alert alert-danger" style="border-radius:12px;">
         <i class="bi bi-arrow-return-left" style="margin-right:8px;"></i>
         <strong>Thủ kho trả lại:</strong> @d.ReturnReason
-    </div>
-}
-
-@if (Model.CanCheck)
-{
-    <div class="card" style="margin-bottom:20px;">
-        <div class="card-header"><h3 class="card-title">Kiểm tra khi người mua đến lấy hàng</h3></div>
-        <div class="card-body">
-            <p style="margin-top:0;">Đối chiếu tài xế, biển số xe, ngày lấy hàng và người mua với thông tin bên dưới. Đúng thì lập phiếu xuất kho; sai thì trả lại Manager sửa.</p>
-            <div class="form-grid">
-                <form method="post" asp-page-handler="CreateSlip" asp-route-id="@d.DeliveryId" enctype="multipart/form-data">
-                    <div class="form-group" style="margin-bottom:12px;">
-                        <label class="form-label" for="inp-slip-image">Ảnh phiếu xuất kho thực tế (không bắt buộc)</label>
-                        <input class="form-control" type="file" name="slipImage" id="inp-slip-image" accept="image/jpeg,image/png,image/webp" />
-                        <span class="form-hint">JPG, PNG hoặc WEBP, tối đa 10 MB.</span>
-                    </div>
-                    <button type="submit" class="btn btn-success" id="btn-create-slip"><i class="bi bi-check-lg"></i> Thông tin đúng – tạo phiếu xuất kho</button>
-                </form>
-                <form method="post" asp-page-handler="Return" asp-route-id="@d.DeliveryId" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:16px;">
-                    <div class="form-group">
-                        <label class="form-label" for="inp-reason">Thông tin chưa đúng – lý do gửi lại Manager <span class="required-star">*</span></label>
-                        <textarea class="form-control" name="reason" id="inp-reason" rows="2" maxlength="500" required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-danger" id="btn-return-delivery"><i class="bi bi-arrow-return-left"></i> Trả lại Manager</button>
-                </form>
-            </div>
-        </div>
     </div>
 }
 
@@ -111,7 +84,7 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card" style="margin-bottom:20px;">
     <div class="card-header"><h3 class="card-title">Lô thành phẩm xuất (FIFO)</h3></div>
     <div class="table-wrapper">
         <table class="data-table">
@@ -131,3 +104,65 @@
         </table>
     </div>
 </div>
+
+@if (d.ExportSlips.Count > 0)
+{
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header">
+            <h3 class="card-title"><i class="bi bi-file-earmark-text"></i> Phiếu xuất kho của xe này (@d.ExportSlips.Count phiếu)</h3>
+            <p class="form-hint" style="margin:0;">
+                Tổng đơn @Model.TotalOrderBags bao · đã xuất @Model.ExportedOrderBags bao
+                @if (Model.PendingOrderBags > 0) { <text>· đang xử lý @Model.PendingOrderBags bao </text> }
+                · còn có thể lập phiếu @Model.RemainingOrderBags bao
+            </p>
+        </div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead><tr><th>Mã phiếu</th><th>Ngày lập</th><th>Số bao</th><th>Khối lượng (kg)</th><th>Trạng thái</th></tr></thead>
+                <tbody>
+                    @foreach (var sl in d.ExportSlips.OrderBy(x => x.CreatedAt).ThenBy(x => x.SlipId))
+                    {
+                        <tr>
+                            <td><a href="/ExportSlips/Detail?id=@sl.SlipId" style="font-weight:600;">@sl.SlipCode</a></td>
+                            <td>@sl.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@sl.Lines.Sum(l => l.Bags)</td>
+                            <td>@sl.Lines.Sum(l => l.Quantity).ToString("N0")</td>
+                            <td><span class="badge @DeliveryWorkflow.SlipBadge(sl.Status)">@DeliveryWorkflow.SlipLabel(sl.Status)</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (Model.CanCheck)
+{
+    <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><h3 class="card-title"><i class="bi bi-shield-check"></i> Kiểm tra xe đến lấy hàng</h3></div>
+        <div class="card-body">
+            <p style="margin-top:0;color:var(--text-secondary,#52675d);">
+                Đối chiếu tài xế, biển số xe, ngày lấy hàng và người mua với thông tin bên trên.
+                Nếu thông tin xe chính xác, bấm <strong>Lập phiếu xuất kho</strong> để sang trang riêng nhập số bao thực tế bốc lên xe và tải ảnh xe. Số bao do thủ kho nhập; có thể lập nhiều phiếu cho đến khi đủ số bao của đơn.
+                Nếu thông tin chưa đúng, ghi lý do và trả lại Manager sửa.
+            </p>
+            <div style="display:flex;flex-direction:column;gap:16px;">
+                <div>
+                    <a href="/ExportSlips/Create?deliveryId=@d.DeliveryId" class="btn btn-success" id="btn-to-create-slip">
+                        <i class="bi bi-file-earmark-plus"></i> Thông tin đúng – Chuyển sang Lập phiếu xuất kho
+                    </a>
+                </div>
+                <form method="post" asp-page-handler="Return" asp-route-id="@d.DeliveryId" style="border-top:1px solid var(--border);padding-top:16px;"
+                      data-admin-confirm data-confirm-title="Trả lại Manager"
+                      data-confirm-message="Gửi lại yêu cầu xuất kho xe @d.LicensePlate cho Manager chỉnh sửa thông tin tài xế/xe?"
+                      data-confirm-label="Trả lại Manager" data-confirm-danger="true">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label class="form-label" for="inp-reason">Thông tin chưa đúng – lý do gửi lại Manager <span class="required-star">*</span></label>
+                        <textarea class="form-control" name="reason" id="inp-reason" rows="2" maxlength="500" required placeholder="Ghi rõ lý do (ví dụ: sai biển số xe, tài xế không đúng...)"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger" id="btn-return-delivery"><i class="bi bi-arrow-return-left"></i> Trả lại Manager</button>
+                </form>
+            </div>
+        </div>
+    </div>
+}

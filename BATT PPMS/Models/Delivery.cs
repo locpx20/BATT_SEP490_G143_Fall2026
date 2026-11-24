@@ -39,5 +39,6 @@ public partial class Delivery
 
     public virtual Order Order { get; set; } = null!;
 
-    public virtual ExportSlip? ExportSlip { get; set; }
+    /// <summary>Thủ kho có thể lập nhiều phiếu xuất cho cùng một xe cho đến khi đủ số bao của đơn.</summary>
+    public virtual ICollection<ExportSlip> ExportSlips { get; set; } = new List<ExportSlip>();
 }

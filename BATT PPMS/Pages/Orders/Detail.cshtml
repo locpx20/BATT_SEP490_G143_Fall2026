@@ -8,7 +8,7 @@
     var o = Model.Order;
     var d = Model.ActiveDelivery;
     var stage = OrderWorkflow.Stage(o);
-    var slip = d?.ExportSlip;
+    var hasSlip = d != null && d.ExportSlips.Count > 0;
 
     // Tiến độ luồng: 0 tạo yêu cầu, 1 Owner duyệt, 2 yêu cầu xuất kho, 3 thủ kho kiểm tra, 4 phiếu xuất kho, 5 hoàn thành
     var step = o.Status switch
@@ -16,7 +16,7 @@
         StatusConstants.Pending => 1,
         StatusConstants.Rejected => 1,
         StatusConstants.Completed => 5,
-        StatusConstants.Approved => d == null ? 2 : (slip != null ? 4 : (d.DeliveryStatus == "Returned" ? 2 : 3)),
+        StatusConstants.Approved => d == null ? 2 : (hasSlip ? 4 : (d.DeliveryStatus == "Returned" ? 2 : 3)),
         _ => 0
     };
     var steps = new[] { "Tạo yêu cầu", "Owner duyệt", "Yêu cầu xuất kho", "Thủ kho kiểm tra", "Phiếu xuất kho", "Hoàn thành" };
@@ -52,7 +52,7 @@
         }
         @if (Model.CanCreateDelivery)
         {
-            <a href="/Deliveries/Edit?orderId=@o.OrderId" class="btn btn-primary" id="btn-create-delivery"><i class="bi bi-truck"></i> Tạo yêu cầu xuất kho</a>
+            <a href="/Deliveries/Edit?orderId=@o.OrderId" class="btn btn-primary" id="btn-create-delivery"><i class="bi bi-truck"></i> Thêm xe lấy hàng</a>
         }
     </div>
 </div>
@@ -196,45 +196,121 @@
 </div>
 
 <div class="card">
-    <div class="card-header">
-        <h3 class="card-title">Yêu cầu xuất kho</h3>
-        @if (Model.CanEditDelivery && d != null)
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+            <h3 class="card-title" style="margin-bottom:4px;"><i class="bi bi-truck"></i> Danh sách xe đến lấy hàng (@o.Deliveries.Count xe)</h3>
+            <p class="form-hint" style="margin:0;">
+                Đặt hàng: <strong>@Model.TotalBags bao</strong> (@o.Quantity.ToString("N0") kg)
+                · Đã xuất: <strong style="color:var(--primary);">@Model.ExportedBags bao</strong> (@Model.ExportedKg.ToString("N0") kg)
+                · Còn lại: <strong style="color:var(--text-secondary);">@Model.RemainingBags bao</strong> (@Model.RemainingKg.ToString("N0") kg)
+            </p>
+        </div>
+        @if (Model.CanCreateDelivery)
         {
-            var editDeliveryId = d.DeliveryId;
-            <a href="/Deliveries/Edit?id=@editDeliveryId" class="btn btn-sm btn-primary"><i class="bi bi-pencil"></i> Cập nhật</a>
+            <a href="/Deliveries/Edit?orderId=@o.OrderId" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg"></i> Thêm xe lấy hàng
+            </a>
         }
     </div>
-    <div class="card-body">
-        @if (d == null)
+    <div class="card-body" style="padding:0;">
+        @if (!o.Deliveries.Any())
         {
-            <div class="empty-state" style="padding:24px;">
-                <p>@(o.Status == StatusConstants.Approved ? "Yêu cầu đã được duyệt, chưa có yêu cầu xuất kho." : "Chỉ tạo được yêu cầu xuất kho sau khi Owner duyệt.")</p>
+            <div class="empty-state" style="padding:28px;">
+                <i class="bi bi-truck" style="font-size:32px;color:var(--text-secondary);"></i>
+                <h4 style="margin:8px 0 4px;">Chưa có xe nào được đăng ký</h4>
+                <p style="margin:0;color:var(--text-secondary);">@(o.Status == StatusConstants.Approved ? "Bấm 'Thêm xe lấy hàng' để nhập thông tin tài xế và biển số xe." : "Chỉ đăng ký xe lấy hàng sau khi Owner duyệt yêu cầu.")</p>
             </div>
         }
         else
         {
-            @if (d.DeliveryStatus == "Returned" && !string.IsNullOrWhiteSpace(d.ReturnReason))
-            {
-                <div class="alert alert-danger" style="border-radius:12px;">
-                    <i class="bi bi-arrow-return-left" style="margin-right:8px;"></i>
-                    <strong>Thủ kho trả lại:</strong> @d.ReturnReason
-                </div>
-            }
-            <div class="form-grid">
-                <div class="form-group"><span class="form-label">Tài xế</span><div>@d.DriverName</div>@if (!string.IsNullOrWhiteSpace(d.DriverPhone)) { <span class="form-hint">@d.DriverPhone</span> }</div>
-                <div class="form-group"><span class="form-label">Biển số xe</span><div>@d.LicensePlate</div></div>
-                <div class="form-group"><span class="form-label">Ngày lấy hàng</span><div>@d.PickupDate.ToString("dd/MM/yyyy HH:mm")</div></div>
-                <div class="form-group"><span class="form-label">Trạng thái</span><div><span class="badge @DeliveryWorkflow.Stage(d).Badge">@DeliveryWorkflow.Stage(d).Label</span></div></div>
-                @if (!string.IsNullOrWhiteSpace(d.Note))
-                {
-                    <div class="form-group" style="grid-column:1/-1;"><span class="form-label">Ghi chú</span><div>@d.Note</div></div>
-                }
-                @if (slip != null)
-                {
-                    <div class="form-group"><span class="form-label">Phiếu xuất kho</span><div><a href="/ExportSlips/Detail?id=@slip.SlipId">@slip.SlipCode</a> · @DeliveryWorkflow.SlipLabel(slip.Status)</div></div>
-                }
+            <div class="table-wrapper" style="border:none;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Biển số xe</th>
+                            <th>Tài xế</th>
+                            <th>Số điện thoại</th>
+                            <th>Ngày lấy hàng</th>
+                            <th>Hàng trên xe</th>
+                            <th>Trạng thái xe</th>
+                            <th>Phiếu xuất kho</th>
+                            <th>Ghi chú</th>
+                            <th style="text-align:right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ var idx = 1; }
+                        @foreach (var del in o.Deliveries.OrderBy(d => d.PickupDate).ThenBy(d => d.DeliveryId))
+                        {
+                            var delStage = DeliveryWorkflow.Stage(del, o);
+                            var delSlips = del.ExportSlips.OrderBy(x => x.CreatedAt).ThenBy(x => x.SlipId).ToList();
+                            var bagsOnVehicle = delSlips.Sum(x => x.Lines.Sum(l => l.Bags));
+                            var kgOnVehicle = delSlips.Sum(x => x.Lines.Sum(l => l.Quantity));
+                            <tr>
+                                <td>@(idx++)</td>
+                                <td><strong>@del.LicensePlate</strong></td>
+                                <td>@del.DriverName</td>
+                                <td>@(del.DriverPhone ?? "—")</td>
+                                <td>@del.PickupDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    @if (delSlips.Count > 0)
+                                    {
+                                        <span><strong>@bagsOnVehicle bao</strong> (@kgOnVehicle.ToString("N0") kg)</span>
+                                    }
+                                    else
+                                    {
+                                        <span style="color:var(--text-secondary);">Chờ bốc hàng</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge @delStage.Badge">@delStage.Label</span>
+                                    @if (del.DeliveryStatus == "Returned" && !string.IsNullOrWhiteSpace(del.ReturnReason))
+                                    {
+                                        <div style="font-size:12px;color:var(--danger);margin-top:2px;">
+                                            <i class="bi bi-exclamation-circle"></i> @del.ReturnReason
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (delSlips.Count > 0)
+                                    {
+                                        @foreach (var delSlip in delSlips)
+                                        {
+                                            <div>
+                                                <a href="/ExportSlips/Detail?id=@delSlip.SlipId" style="font-weight:600;">@delSlip.SlipCode</a>
+                                                <span style="font-size:12px;color:var(--text-secondary);">· @DeliveryWorkflow.SlipLabel(delSlip.Status)</span>
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                                <td style="max-width:180px;white-space:normal;">@(string.IsNullOrWhiteSpace(del.Note) ? "—" : del.Note)</td>
+                                <td style="text-align:right;white-space:nowrap;">
+                                    <a href="/Deliveries/Detail?id=@del.DeliveryId" class="btn btn-sm btn-outline" title="Chi tiết xe">
+                                        <i class="bi bi-eye"></i> Chi tiết
+                                    </a>
+                                    @if (Model.CanManage && DeliveryWorkflow.CanEdit(del))
+                                    {
+                                        <a href="/Deliveries/Edit?id=@del.DeliveryId" class="btn btn-sm btn-primary" title="Sửa thông tin xe">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" asp-page-handler="DeleteDelivery" asp-route-deliveryId="@del.DeliveryId" asp-route-orderId="@o.OrderId" style="display:inline;"
+                                              data-admin-confirm data-confirm-title="Xóa xe lấy hàng"
+                                              data-confirm-message="Xóa xe biển số @del.LicensePlate khỏi yêu cầu xuất kho này?"
+                                              data-confirm-label="Xóa xe" data-confirm-danger="true">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Xóa xe"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
-            <div style="margin-top:12px;"><a href="/Deliveries/Detail?id=@d.DeliveryId" class="btn btn-sm btn-outline">Xem chi tiết yêu cầu xuất kho</a></div>
         }
     </div>
 </div>

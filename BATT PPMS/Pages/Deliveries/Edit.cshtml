@@ -2,7 +2,7 @@
 @using BATT_PPMS.Helpers
 @model BATT_PPMS.Pages.Deliveries.EditModel
 @{
-    ViewData["Title"] = Model.IsEdit ? "Cập nhật yêu cầu xuất kho" : "Tạo yêu cầu xuất kho";
+    ViewData["Title"] = Model.IsEdit ? "Cập nhật xe lấy hàng" : "Thêm xe lấy hàng";
     ViewData["ActivePage"] = "Delivery";
     var o = Model.Order;
     var errors = ViewData.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
@@ -11,10 +11,10 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">@(Model.IsEdit ? "Cập nhật yêu cầu xuất kho" : "Tạo yêu cầu xuất kho") <span style="color:var(--primary);">@o.OrderCode</span></h1>
-        <p class="page-subtitle">Nhập thông tin tài xế đến lấy hàng. Thủ kho sẽ đối chiếu khi người mua đến.</p>
+        <h1 class="page-title">@(Model.IsEdit ? "Cập nhật thông tin xe lấy hàng" : "Thêm xe lấy hàng cho đơn") <span style="color:var(--primary);">@o.OrderCode</span></h1>
+        <p class="page-subtitle">Nhập thông tin tài xế và xe đến lấy hàng. Mỗi xe sẽ được thủ kho lập phiếu xuất kho riêng khi đến lấy.</p>
     </div>
-    <a href="/Orders/Detail?id=@o.OrderId" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại</a>
+    <a href="/Orders/Detail?id=@o.OrderId" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Quay lại đơn hàng</a>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.ReturnReason))
@@ -80,7 +80,7 @@
 
             <div class="form-actions" style="display:flex;gap:8px;margin-top:20px;">
                 <button type="submit" class="btn btn-primary" id="btn-submit-delivery">
-                    <i class="bi bi-check-lg"></i> @(Model.IsEdit ? "Lưu và gửi thủ kho" : "Tạo yêu cầu xuất kho")
+                    <i class="bi bi-check-lg"></i> @(Model.IsEdit ? "Lưu thông tin xe" : "Xác nhận thêm xe lấy hàng")
                 </button>
                 <a href="/Orders/Detail?id=@o.OrderId" class="btn btn-secondary">Hủy</a>
             </div>

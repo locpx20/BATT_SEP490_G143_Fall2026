@@ -63,7 +63,7 @@ namespace BATT_PPMS.Pages.Deliveries
             if (id.HasValue)
             {
                 var delivery = await _context.Deliveries.AsNoTracking()
-                    .Include(d => d.ExportSlip)
+                    .Include(d => d.ExportSlips)
                     .FirstOrDefaultAsync(d => d.DeliveryId == id);
                 if (delivery == null) return NotFound();
                 if (!DeliveryWorkflow.CanEdit(delivery))
@@ -109,7 +109,7 @@ namespace BATT_PPMS.Pages.Deliveries
             Delivery? delivery = null;
             if (id.HasValue)
             {
-                delivery = await _context.Deliveries.Include(d => d.ExportSlip).FirstOrDefaultAsync(d => d.DeliveryId == id);
+                delivery = await _context.Deliveries.Include(d => d.ExportSlips).FirstOrDefaultAsync(d => d.DeliveryId == id);
                 if (delivery == null) return NotFound();
                 if (!DeliveryWorkflow.CanEdit(delivery))
                 {
@@ -176,9 +176,9 @@ namespace BATT_PPMS.Pages.Deliveries
             }
 
             SuccessMessage = creating
-                ? $"Đã tạo yêu cầu xuất kho cho {Order.OrderCode} và gửi thủ kho."
-                : $"Đã cập nhật yêu cầu xuất kho của {Order.OrderCode} và gửi lại thủ kho.";
-            return RedirectToPage("/Deliveries/Detail", new { id = delivery.DeliveryId });
+                ? $"Đã thêm xe lấy hàng (Biển số {delivery.LicensePlate}) cho đơn {Order.OrderCode} và gửi thủ kho."
+                : $"Đã cập nhật xe lấy hàng (Biển số {delivery.LicensePlate}) của đơn {Order.OrderCode} và gửi lại thủ kho.";
+            return RedirectToPage("/Orders/Detail", new { id = Order.OrderId });
         }
 
         private void ValidateInput()
@@ -198,9 +198,7 @@ namespace BATT_PPMS.Pages.Deliveries
                 .FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null) return "Yêu cầu bán không tồn tại.";
             if (order.Status != StatusConstants.Approved)
-                return $"Yêu cầu {order.OrderCode} chưa được Owner duyệt hoặc đã đóng nên không thể tạo yêu cầu xuất kho.";
-            if (OrderWorkflow.ActiveDelivery(order) != null)
-                return $"Yêu cầu {order.OrderCode} đã có yêu cầu xuất kho. Hãy cập nhật yêu cầu hiện có.";
+                return $"Yêu cầu {order.OrderCode} chưa được Owner duyệt hoặc đã đóng nên không thể thêm xe lấy hàng.";
             return null;
         }
 

@@ -28,8 +28,10 @@
     <a class="nav-item @(ap == "Customers" ? "active" : "")" href="/Suppliers/Index?tab=customers"><i class="bi bi-people"></i><span>Khách hàng</span></a>
     <details class="owner-nav-details" open="@financeActive">
         <summary class="nav-item"><i class="bi bi-cash-coin" aria-hidden="true"></i><span>Công nợ &amp; tài chính</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
-        <a class="nav-item @(financeActive && tab != "materials" ? "active" : "")" href="/Finance/Index?tab=exports"><i class="bi bi-truck" aria-hidden="true"></i><span>Tổng hợp hàng xuất</span></a>
+        <a class="nav-item @(financeActive && (string.IsNullOrEmpty(tab) || tab == "exports") ? "active" : "")" href="/Finance/Index?tab=exports"><i class="bi bi-truck" aria-hidden="true"></i><span>Tổng hợp hàng xuất</span></a>
         <a class="nav-item @(financeActive && tab == "materials" ? "active" : "")" href="/Finance/Index?tab=materials"><i class="bi bi-box-seam" aria-hidden="true"></i><span>TH nguyên liệu</span></a>
+        <a class="nav-item @(financeActive && tab == "customer-debts" ? "active" : "")" href="/Finance/Index?tab=customer-debts"><i class="bi bi-people" aria-hidden="true"></i><span>Công nợ khách hàng</span></a>
+        <a class="nav-item @(financeActive && tab == "supplier-debts" ? "active" : "")" href="/Finance/Index?tab=supplier-debts"><i class="bi bi-buildings" aria-hidden="true"></i><span>Công nợ nhà phân phối</span></a>
     </details>
     <details class="owner-nav-details" open="@reportActive">
         <summary class="nav-item"><i class="bi bi-graph-up" aria-hidden="true"></i><span>Báo cáo vận hành</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>

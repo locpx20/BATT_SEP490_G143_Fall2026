@@ -3,13 +3,23 @@
 @using System.Globalization
 @using System.Text.Json
 @{
-    var isMaterials = Model.Tab == "materials";
-    ViewData["Title"] = isMaterials
-        ? $"Tổng hợp nguyên liệu {Model.Year}"
-        : $"Tổng hợp hàng xuất {Model.Year}";
+    var tab = Model.Tab;
+    var isExports = tab == "exports";
+    var isMaterials = tab == "materials";
+    var isCustomerDebts = tab == "customer-debts";
+    var isSupplierDebts = tab == "supplier-debts";
+
+    ViewData["Title"] = tab switch
+    {
+        "materials" => $"TH nguyên liệu {Model.Year}",
+        "customer-debts" => "Công nợ khách hàng",
+        "supplier-debts" => "Công nợ nhà phân phối",
+        _ => $"Tổng hợp hàng xuất {Model.Year}"
+    };
     ViewData["ActivePage"] = "Finance";
     var vi = new CultureInfo("vi-VN");
-    var activeRows = isMaterials ? Model.MaterialRows : Model.ExportRows;
+    var activeMonthlyRows = isMaterials ? Model.MaterialRows : Model.ExportRows;
+    var activeDebtRows = isSupplierDebts ? Model.SupplierDebtRows : Model.CustomerDebtRows;
 }
 
 <style>
@@ -115,7 +125,7 @@
     }
 
     .fin-kpi-val {
-        font-size: 26px;
+        font-size: 24px;
         font-weight: 800;
         color: #1e293b;
         margin-top: 6px;
@@ -162,6 +172,23 @@
         color: #1e293b;
         background-color: #ffffff;
         cursor: pointer;
+    }
+
+    .fin-search-input {
+        height: 38px;
+        min-width: 260px;
+        padding: 0 12px 0 34px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #1e293b;
+        background: #ffffff;
+    }
+
+    .fin-search-input:focus {
+        outline: none;
+        border-color: #1a4332;
+        box-shadow: 0 0 0 3px rgba(26, 67, 50, 0.12);
     }
 
     .fin-table {
@@ -271,6 +298,33 @@
         border-color: #1a4332;
     }
 
+    .fin-pay-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 32px;
+        padding: 0 12px;
+        border-radius: 6px;
+        border: none;
+        background: #1a4332;
+        color: #ffffff;
+        font-size: 12.5px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .fin-pay-btn:hover {
+        background: #143326;
+    }
+
+    .fin-pay-btn:disabled {
+        background: #cbd5e1;
+        color: #64748b;
+        cursor: not-allowed;
+    }
+
     .fin-modal-table {
         width: 100%;
         border-collapse: collapse;
@@ -340,14 +394,27 @@
         <span style="color: #2d3748; font-weight: 500;">Công nợ &amp; Tài chính</span>
     </div>
 
-    <!-- Thanh chuyển đổi 2 trang (đồng bộ với Kho nguyên liệu) -->
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert alert-success" style="border-radius: 10px; font-size: 13px; margin-bottom: 16px;">
+            <i class="bi bi-check-circle-fill me-2"></i>@Model.SuccessMessage
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger" style="border-radius: 10px; font-size: 13px; margin-bottom: 16px;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@Model.ErrorMessage
+        </div>
+    }
+
+    <!-- Thanh chuyển đổi 4 trang trong Công nợ & Tài chính -->
     <div class="fin-switcher-bar">
         <div class="fin-tab-group">
             <a href="@Url.Page("/Finance/Index", new { tab = "exports", year = Model.Year })"
-               class="fin-tab-pill @(!isMaterials ? "active" : "inactive")">
+               class="fin-tab-pill @(isExports ? "active" : "inactive")">
                 <i class="bi bi-truck"></i>
                 <span>Tổng hợp hàng xuất</span>
-                <span style="padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; @(!isMaterials ? "background: rgba(255,255,255,0.2); color: #ffffff;" : "background: #f1f5f9; color: #334155;")">
+                <span style="padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; @(isExports ? "background: rgba(255,255,255,0.2); color: #ffffff;" : "background: #f1f5f9; color: #334155;")">
                     @Model.TotalExportCount
                 </span>
             </a>
@@ -360,6 +427,24 @@
                     @Model.TotalMaterialCount
                 </span>
             </a>
+
+            <a href="@Url.Page("/Finance/Index", new { tab = "customer-debts" })"
+               class="fin-tab-pill @(isCustomerDebts ? "active" : "inactive")">
+                <i class="bi bi-people-fill"></i>
+                <span>Công nợ khách hàng</span>
+                <span style="padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; @(isCustomerDebts ? "background: rgba(255,255,255,0.2); color: #ffffff;" : "background: #f1f5f9; color: #334155;")">
+                    @Model.CustomerDebtRows.Count
+                </span>
+            </a>
+
+            <a href="@Url.Page("/Finance/Index", new { tab = "supplier-debts" })"
+               class="fin-tab-pill @(isSupplierDebts ? "active" : "inactive")">
+                <i class="bi bi-buildings-fill"></i>
+                <span>Công nợ nhà phân phối</span>
+                <span style="padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; @(isSupplierDebts ? "background: rgba(255,255,255,0.2); color: #ffffff;" : "background: #f1f5f9; color: #334155;")">
+                    @Model.SupplierDebtRows.Count
+                </span>
+            </a>
         </div>
     </div>
 
@@ -367,17 +452,45 @@
     <div class="fin-header-row">
         <div>
             <h1 class="fin-page-title">
-                @(isMaterials ? $"TH nguyên liệu {Model.Year}" : $"Tổng hợp hàng xuất {Model.Year}")
+                @if (isMaterials)
+                {
+                    @($"TH nguyên liệu {Model.Year}")
+                }
+                else if (isCustomerDebts)
+                {
+                    @("Bảng công nợ khách hàng")
+                }
+                else if (isSupplierDebts)
+                {
+                    @("Bảng công nợ nhà phân phối")
+                }
+                else
+                {
+                    @($"Tổng hợp hàng xuất {Model.Year}")
+                }
             </h1>
             <p class="fin-page-subtitle">
-                @(isMaterials
-                    ? "Thống kê khối lượng nguyên liệu nhập kho (kg) và thành tiền thu mua theo 12 tháng trong năm."
-                    : "Thống kê khối lượng thành phẩm xuất bán và doanh thu theo 12 tháng trong năm.")
+                @if (isMaterials)
+                {
+                    @("Thống kê khối lượng nguyên liệu nhập kho (kg) và thành tiền thu mua theo 12 tháng trong năm.")
+                }
+                else if (isCustomerDebts)
+                {
+                    @("Theo dõi tổng tiền đơn hàng, số tiền đã trả, số tiền còn lại phải trả và lịch sử thanh toán của từng khách hàng.")
+                }
+                else if (isSupplierDebts)
+                {
+                    @("Theo dõi tổng tiền thu mua nguyên liệu, số tiền đã trả, số tiền còn lại phải trả và lịch sử thanh toán cho các nhà phân phối / nhà cung cấp.")
+                }
+                else
+                {
+                    @("Thống kê khối lượng thành phẩm xuất bán và doanh thu theo 12 tháng trong năm.")
+                }
             </p>
         </div>
     </div>
 
-    @if (!isMaterials)
+    @if (isExports)
     {
         <!-- KPI Cards: Trang Tổng hợp hàng xuất -->
         <div class="fin-kpi-grid">
@@ -476,7 +589,7 @@
             </div>
         </div>
     }
-    else
+    else if (isMaterials)
     {
         <!-- KPI Cards: Trang TH nguyên liệu -->
         <div class="fin-kpi-grid">
@@ -575,9 +688,142 @@
             </div>
         </div>
     }
+    else
+    {
+        var debtPartnerLabel = isSupplierDebts ? "Tên nhà phân phối" : "Tên khách hàng";
+        var totalDebtAmt = isSupplierDebts ? Model.TotalSupplierDebtAmount : Model.TotalCustomerDebtAmount;
+        var totalPaidAmt = isSupplierDebts ? Model.TotalSupplierPaidAmount : Model.TotalCustomerPaidAmount;
+        var totalRemainAmt = isSupplierDebts ? Model.TotalSupplierRemainingAmount : Model.TotalCustomerRemainingAmount;
+
+        <!-- KPI Cards: Công nợ Khách hàng / Nhà phân phối -->
+        <div class="fin-kpi-grid">
+            <div class="fin-kpi-card">
+                <div class="fin-kpi-label">Số tiền tổng (@(isSupplierDebts ? "Nhà phân phối" : "Khách hàng"))</div>
+                <div class="fin-kpi-val">@totalDebtAmt.ToString("N0", vi) <span style="font-size: 13px; font-weight: 600; color: #64748b;">VNĐ</span></div>
+            </div>
+            <div class="fin-kpi-card">
+                <div class="fin-kpi-label">Số tiền đã trả</div>
+                <div class="fin-kpi-val" style="color: #15803d;">@totalPaidAmt.ToString("N0", vi) <span style="font-size: 13px; font-weight: 600; color: #64748b;">VNĐ</span></div>
+            </div>
+            <div class="fin-kpi-card">
+                <div class="fin-kpi-label">Số tiền còn lại phải trả</div>
+                <div class="fin-kpi-val" style="color: #b45309;">@totalRemainAmt.ToString("N0", vi) <span style="font-size: 13px; font-weight: 600; color: #64748b;">VNĐ</span></div>
+            </div>
+        </div>
+
+        <!-- Bảng Công nợ -->
+        <div class="fin-card">
+            <div class="fin-card-toolbar">
+                <h2 class="fin-card-heading">
+                    <i class="bi @(isSupplierDebts ? "bi-buildings" : "bi-people")" style="color: #1a4332;"></i>
+                    <span>@(isSupplierDebts ? "Danh sách công nợ nhà phân phối" : "Danh sách công nợ khách hàng")</span>
+                </h2>
+
+                <form method="get" style="position: relative; margin: 0;">
+                    <input type="hidden" name="tab" value="@Model.Tab" />
+                    <i class="bi bi-search" style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px;"></i>
+                    <input type="text"
+                           name="SearchTerm"
+                           value="@Model.SearchTerm"
+                           class="fin-search-input"
+                           placeholder="Tìm theo tên, mã, SĐT..."
+                           onchange="this.form.submit()" />
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="fin-table">
+                    <thead>
+                        <tr>
+                            <th>@debtPartnerLabel</th>
+                            <th style="text-align: right;">Số tiền tổng (VNĐ)</th>
+                            <th style="text-align: right;">Số tiền còn lại phải trả (VNĐ)</th>
+                            <th style="text-align: right;">Số tiền đã trả (VNĐ)</th>
+                            <th style="text-align: center;">Chức năng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!activeDebtRows.Any())
+                        {
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 48px 20px; color: #94a3b8;">
+                                    Không tìm thấy dữ liệu công nợ nào phù hợp.
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var d in activeDebtRows)
+                            {
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <span class="fin-code-badge">@d.PartnerCode</span>
+                                            <div>
+                                                <div style="font-weight: 700; color: #1e293b;">@d.PartnerName</div>
+                                                <div style="font-size: 12px; color: #64748b;">
+                                                    @if (!string.IsNullOrWhiteSpace(d.ContactPerson))
+                                                    {
+                                                        <span>@d.ContactPerson</span>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(d.Phone))
+                                                    {
+                                                        <span> · @d.Phone</span>
+                                                    }
+                                                    <span> · @d.OrderOrImportCount @(isSupplierDebts ? "phiếu nhập" : "đơn hàng")</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="text-align: right; font-weight: 700; color: #1e293b;">
+                                        @d.TotalAmount.ToString("N0", vi) VNĐ
+                                    </td>
+                                    <td style="text-align: right; font-weight: 700; color: @(d.RemainingAmount > 0 ? "#b45309" : "#64748b");">
+                                        @d.RemainingAmount.ToString("N0", vi) VNĐ
+                                    </td>
+                                    <td style="text-align: right; font-weight: 700; color: #15803d;">
+                                        @d.PaidAmount.ToString("N0", vi) VNĐ
+                                    </td>
+                                    <td style="text-align: center; white-space: nowrap;">
+                                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                            <button type="button"
+                                                    class="fin-pay-btn"
+                                                    disabled="@(d.RemainingAmount <= 0)"
+                                                    onclick="openDebtPaymentModal('@d.PartnerType', @d.PartnerId)"
+                                                    title="@(d.RemainingAmount > 0 ? $"Thanh toán công nợ cho {d.PartnerName}" : "Đã thanh toán đủ")">
+                                                <i class="bi bi-cash-stack"></i>
+                                                <span>Thanh toán</span>
+                                            </button>
+
+                                            <button type="button"
+                                                    class="fin-eye-btn"
+                                                    onclick="openDebtDetailModal(@d.PartnerId)"
+                                                    title="Xem chi tiết lịch sử thanh toán của @d.PartnerName">
+                                                <i class="bi bi-eye"></i>
+                                                <span>Xem chi tiết</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>TỔNG CỘNG (@activeDebtRows.Count @(isSupplierDebts ? "nhà phân phối" : "khách hàng"))</td>
+                            <td style="text-align: right;">@totalDebtAmt.ToString("N0", vi) VNĐ</td>
+                            <td style="text-align: right; color: #b45309;">@totalRemainAmt.ToString("N0", vi) VNĐ</td>
+                            <td style="text-align: right;">@totalPaidAmt.ToString("N0", vi) VNĐ</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    }
 </div>
 
-<!-- POPUP: CHI TIẾT TỪNG THÁNG -->
+<!-- POPUP: CHI TIẾT TỪNG THÁNG (CHO TAB HÀNG XUẤT & TH NGUYÊN LIỆU) -->
 <div class="pm-overlay" id="monthDetailModal" onclick="if (event.target === this) closeMonthDetailModal()">
     <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" style="max-width: 920px;">
         <div class="pm-head">
@@ -592,11 +838,136 @@
     </div>
 </div>
 
+<!-- POPUP: THANH TOÁN CÔNG NỢ -->
+<div class="pm-overlay" id="debtPaymentModal" onclick="if (event.target === this) closeDebtPaymentModal()">
+    <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" style="max-width: 580px;">
+        <form method="post" asp-page-handler="RecordPayment">
+            <input type="hidden" name="partnerType" id="payPartnerTypeInput" />
+            <input type="hidden" name="partnerId" id="payPartnerIdInput" />
+            <input type="hidden" name="returnTab" value="@Model.Tab" />
+            <input type="hidden" name="searchTerm" value="@Model.SearchTerm" />
+
+            <div class="pm-head">
+                <h5 class="pm-title" id="payModalTitle">Thanh toán công nợ</h5>
+                <button type="button" class="pm-close" aria-label="Đóng" onclick="closeDebtPaymentModal()">&times;</button>
+            </div>
+
+            <div class="pm-body">
+                <div class="pm-grid">
+                    <div class="pm-full">
+                        <label class="pm-label">Đối tác thanh toán</label>
+                        <input type="text" id="payPartnerDisplay" class="pm-input" readonly tabindex="-1" />
+                    </div>
+                    <div>
+                        <label class="pm-label">Số tiền tổng (VNĐ)</label>
+                        <input type="text" id="payTotalDisplay" class="pm-input" readonly tabindex="-1" />
+                    </div>
+                    <div>
+                        <label class="pm-label">Số tiền đã trả (VNĐ)</label>
+                        <input type="text" id="payPaidDisplay" class="pm-input" readonly tabindex="-1" />
+                    </div>
+                    <div class="pm-full">
+                        <label class="pm-label">Số tiền còn lại phải trả (VNĐ)</label>
+                        <input type="text" id="payRemainingDisplay" class="pm-input" readonly tabindex="-1" style="color: #b45309; font-weight: 700;" />
+                    </div>
+                    <div>
+                        <label class="pm-label">Số tiền thanh toán đợt này (VNĐ) <span style="color: #e53e3e;">*</span></label>
+                        <input type="number" name="paymentAmount" id="payAmountInput" min="1" step="any" required class="pm-input" placeholder="Nhập số tiền thanh toán..." />
+                        <span class="pm-hint" id="payAmountHint">Tối đa bằng số tiền còn lại phải trả</span>
+                    </div>
+                    <div>
+                        <label class="pm-label">Thời gian thanh toán <span style="color: #e53e3e;">*</span></label>
+                        <input type="datetime-local" name="paymentDate" id="payDateInput" required class="pm-input" />
+                    </div>
+                    <div class="pm-full">
+                        <label class="pm-label">Hình thức thanh toán</label>
+                        <select name="paymentMethod" class="pm-input">
+                            <option value="Chuyển khoản ngân hàng">Chuyển khoản ngân hàng</option>
+                            <option value="Tiền mặt">Tiền mặt</option>
+                            <option value="Đối trừ công nợ">Đối trừ công nợ</option>
+                        </select>
+                    </div>
+                    <div class="pm-full">
+                        <label class="pm-label">Ghi chú thanh toán</label>
+                        <textarea name="paymentNote" rows="2" class="pm-input" placeholder="Nhập mã giao dịch ngân hàng, số ủy nhiệm chi hoặc ghi chú đợt thanh toán..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pm-foot">
+                <button type="button" class="pm-btn-cancel" onclick="closeDebtPaymentModal()">Hủy</button>
+                <button type="submit" class="pm-btn-primary">Xác nhận thanh toán</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- POPUP: XEM CHI TIẾT LỊCH SỬ THANH TOÁN (TÌM KIẾM THEO THỜI GIAN) -->
+<div class="pm-overlay" id="debtDetailModal" onclick="if (event.target === this) closeDebtDetailModal()">
+    <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" style="max-width: 900px;">
+        <div class="pm-head">
+            <h5 class="pm-title" id="debtDetailTitle">Lịch sử thanh toán công nợ</h5>
+            <button type="button" class="pm-close" aria-label="Đóng" onclick="closeDebtDetailModal()">&times;</button>
+        </div>
+
+        <div class="pm-body" style="padding: 16px 20px;">
+            <!-- Tóm tắt công nợ của đối tác -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 12px; color: #64748b;">Số tiền tổng</div>
+                    <div id="ddTotalAmount" style="font-size: 16px; font-weight: 800; color: #1e293b; margin-top: 2px;">0 VNĐ</div>
+                </div>
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 12px; color: #92400e;">Số tiền còn lại phải trả</div>
+                    <div id="ddRemainingAmount" style="font-size: 16px; font-weight: 800; color: #b45309; margin-top: 2px;">0 VNĐ</div>
+                </div>
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 12px; color: #166534;">Số tiền đã trả</div>
+                    <div id="ddPaidAmount" style="font-size: 16px; font-weight: 800; color: #15803d; margin-top: 2px;">0 VNĐ</div>
+                </div>
+            </div>
+
+            <!-- Bộ lọc tìm kiếm thanh toán theo thời gian -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap;">
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px;">Từ ngày</label>
+                        <input type="date" id="ddFromDate" class="pm-input" style="height: 36px; width: 165px;" onchange="renderDebtPaymentsTable()" />
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px;">Đến ngày</label>
+                        <input type="date" id="ddToDate" class="pm-input" style="height: 36px; width: 165px;" onchange="renderDebtPaymentsTable()" />
+                    </div>
+                    <button type="button" class="fin-pay-btn" style="height: 36px;" onclick="renderDebtPaymentsTable()">
+                        <i class="bi bi-funnel-fill"></i>
+                        <span>Tìm kiếm theo thời gian</span>
+                    </button>
+                    <button type="button" class="fin-eye-btn" style="height: 36px;" onclick="resetDebtDateFilter()">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                        <span>Tất cả thời gian</span>
+                    </button>
+                </div>
+                <div id="ddCountSummary" style="font-size: 12.5px; font-weight: 600; color: #475569;"></div>
+            </div>
+
+            <!-- Danh sách các lần thanh toán -->
+            <div id="debtDetailTableContainer" style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; max-height: 46vh; overflow-y: auto;">
+            </div>
+        </div>
+
+        <div class="pm-foot">
+            <button type="button" class="pm-btn-cancel" onclick="closeDebtDetailModal()">Đóng</button>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         var isMaterialsTab = @(isMaterials ? "true" : "false");
         var reportYear = @Model.Year;
-        var monthlyRowsData = @Html.Raw(JsonSerializer.Serialize(activeRows));
+        var monthlyRowsData = @Html.Raw(JsonSerializer.Serialize(activeMonthlyRows));
+        var debtRowsData = @Html.Raw(JsonSerializer.Serialize(activeDebtRows));
+        var currentDetailPartner = null;
 
         function openMonthDetailModal(month) {
             var row = monthlyRowsData.find(function (r) { return r.Month === month; });
@@ -659,8 +1030,133 @@
             if (modal) modal.classList.remove('open');
         }
 
+        function openDebtPaymentModal(partnerType, partnerId) {
+            var row = debtRowsData.find(function (r) { return r.PartnerId === partnerId; });
+            if (!row) return;
+
+            document.getElementById('payPartnerTypeInput').value = partnerType;
+            document.getElementById('payPartnerIdInput').value = partnerId;
+            document.getElementById('payModalTitle').innerText = 'Thanh toán công nợ — ' + row.PartnerCode;
+            document.getElementById('payPartnerDisplay').value = row.PartnerCode + ' — ' + row.PartnerName;
+            document.getElementById('payTotalDisplay').value = Number(row.TotalAmount).toLocaleString('vi-VN') + ' VNĐ';
+            document.getElementById('payPaidDisplay').value = Number(row.PaidAmount).toLocaleString('vi-VN') + ' VNĐ';
+            document.getElementById('payRemainingDisplay').value = Number(row.RemainingAmount).toLocaleString('vi-VN') + ' VNĐ';
+
+            var amtInput = document.getElementById('payAmountInput');
+            if (amtInput) {
+                amtInput.max = row.RemainingAmount;
+                amtInput.value = row.RemainingAmount;
+            }
+            var amtHint = document.getElementById('payAmountHint');
+            if (amtHint) {
+                amtHint.innerText = 'Tối đa: ' + Number(row.RemainingAmount).toLocaleString('vi-VN') + ' VNĐ';
+            }
+
+            var dtInput = document.getElementById('payDateInput');
+            if (dtInput) {
+                var now = new Date();
+                var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+                dtInput.value = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+            }
+
+            document.getElementById('debtPaymentModal').classList.add('open');
+            if (amtInput) amtInput.focus();
+        }
+
+        function closeDebtPaymentModal() {
+            var modal = document.getElementById('debtPaymentModal');
+            if (modal) modal.classList.remove('open');
+        }
+
+        function openDebtDetailModal(partnerId) {
+            var row = debtRowsData.find(function (r) { return r.PartnerId === partnerId; });
+            if (!row) return;
+            currentDetailPartner = row;
+
+            document.getElementById('debtDetailTitle').innerText = 'Chi tiết lịch sử thanh toán — ' + row.PartnerCode + ' (' + row.PartnerName + ')';
+            document.getElementById('ddTotalAmount').innerText = Number(row.TotalAmount).toLocaleString('vi-VN') + ' VNĐ';
+            document.getElementById('ddRemainingAmount').innerText = Number(row.RemainingAmount).toLocaleString('vi-VN') + ' VNĐ';
+            document.getElementById('ddPaidAmount').innerText = Number(row.PaidAmount).toLocaleString('vi-VN') + ' VNĐ';
+
+            document.getElementById('ddFromDate').value = '';
+            document.getElementById('ddToDate').value = '';
+
+            renderDebtPaymentsTable();
+            document.getElementById('debtDetailModal').classList.add('open');
+        }
+
+        function resetDebtDateFilter() {
+            document.getElementById('ddFromDate').value = '';
+            document.getElementById('ddToDate').value = '';
+            renderDebtPaymentsTable();
+        }
+
+        function renderDebtPaymentsTable() {
+            if (!currentDetailPartner) return;
+            var fromDate = document.getElementById('ddFromDate').value;
+            var toDate = document.getElementById('ddToDate').value;
+            var container = document.getElementById('debtDetailTableContainer');
+            var summaryEl = document.getElementById('ddCountSummary');
+
+            var list = (currentDetailPartner.Payments || []).filter(function (p) {
+                var iso = p.PaidAtIso || '';
+                if (fromDate && iso < fromDate) return false;
+                if (toDate && iso > toDate) return false;
+                return true;
+            });
+
+            var filteredSum = list.reduce(function (acc, p) { return acc + Number(p.Amount || 0); }, 0);
+            summaryEl.innerText = 'Tìm thấy ' + list.length + ' đợt thanh toán (' + filteredSum.toLocaleString('vi-VN') + ' VNĐ)';
+
+            if (list.length === 0) {
+                container.innerHTML =
+                    '<div style="text-align: center; padding: 40px 20px; color: #94a3b8; font-size: 13.5px;">' +
+                    '<i class="bi bi-calendar2-x" style="font-size: 32px; display: block; margin-bottom: 8px;"></i>' +
+                    'Chưa có đợt thanh toán nào trong khoảng thời gian đã chọn.' +
+                    '</div>';
+                return;
+            }
+
+            var html = '<table class="fin-modal-table"><thead><tr>' +
+                '<th>Mã thanh toán</th>' +
+                '<th>Thời gian thanh toán</th>' +
+                '<th>Hình thức</th>' +
+                '<th style="text-align: right;">Số tiền đã trả</th>' +
+                '<th>Người thực hiện</th>' +
+                '<th>Ghi chú</th>' +
+                '</tr></thead><tbody>';
+
+            list.forEach(function (p) {
+                html += '<tr>' +
+                    '<td><span class="fin-code-badge">' + (p.PaymentId || '') + '</span></td>' +
+                    '<td style="white-space: nowrap; font-weight: 600;">' + (p.PaidAtDisplay || '') + '</td>' +
+                    '<td>' + (p.PaymentMethod || 'Chuyển khoản') + '</td>' +
+                    '<td style="text-align: right; font-weight: 700; color: #15803d;">' + Number(p.Amount).toLocaleString('vi-VN') + ' VNĐ</td>' +
+                    '<td>' + (p.CreatedByName || '—') + '</td>' +
+                    '<td style="color: #475569;">' + (p.Note || '—') + '</td>' +
+                    '</tr>';
+            });
+
+            html += '</tbody><tfoot><tr>' +
+                '<td colspan="3" style="text-align: right;">TỔNG TIỀN THANH TOÁN THEO BỘ LỌC:</td>' +
+                '<td style="text-align: right;">' + filteredSum.toLocaleString('vi-VN') + ' VNĐ</td>' +
+                '<td colspan="2"></td>' +
+                '</tr></tfoot></table>';
+
+            container.innerHTML = html;
+        }
+
+        function closeDebtDetailModal() {
+            var modal = document.getElementById('debtDetailModal');
+            if (modal) modal.classList.remove('open');
+        }
+
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeMonthDetailModal();
+            if (e.key === 'Escape') {
+                closeMonthDetailModal();
+                closeDebtPaymentModal();
+                closeDebtDetailModal();
+            }
         });
     </script>
 }

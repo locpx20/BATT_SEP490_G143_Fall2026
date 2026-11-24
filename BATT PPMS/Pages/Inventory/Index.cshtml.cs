@@ -33,6 +33,11 @@ namespace BATT_PPMS.Pages.Inventory
         public string CreatedByName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
 
+        // Thông tin vận chuyển từ Yêu cầu nhập kho (Inbound Request)
+        public string? LicensePlate { get; set; }
+        public string? DriverName { get; set; }
+        public string? DeliveryTime { get; set; }
+
         // Thông tin phiếu nhập kho nguyên liệu liên kết (nếu kho đã xác nhận)
         public int? ImportId { get; set; }
         public string? ImportCode { get; set; }
@@ -76,11 +81,16 @@ namespace BATT_PPMS.Pages.Inventory
 
     public class IndexModel : BasePageModel
     {
-        private readonly AppDbContext _context;
+        private static readonly string[] AllowedImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".jfif", ".heic" };
+        private const long MaxImageBytes = 20 * 1024 * 1024;
 
-        public IndexModel(AppDbContext context)
+        private readonly AppDbContext _context;
+        private readonly IWebHostEnvironment _env;
+
+        public IndexModel(AppDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -375,6 +385,7 @@ namespace BATT_PPMS.Pages.Inventory
                 var matName = matDetail?.Material?.MaterialName ?? "Nguyên liệu thô";
 
                 importByReceiptId.TryGetValue(r.ReceiptId, out var linkedImport);
+                var delivery = NoteTags.GetInboundDelivery(r.Invoice?.Note, r.ReceiptId);
 
                 return new WarehouseReceiptRowViewModel
                 {
@@ -398,6 +409,9 @@ namespace BATT_PPMS.Pages.Inventory
                     InvoicePhotoPath = r.InvoicePhotoPath,
                     CreatedByName = r.CreatedByNavigation?.FullName ?? "—",
                     CreatedAt = r.CreatedAt,
+                    LicensePlate = delivery?.LicensePlate,
+                    DriverName = delivery?.DriverName,
+                    DeliveryTime = delivery?.DeliveryTime,
                     ImportId = linkedImport?.ImportId,
                     ImportCode = linkedImport != null
                         ? (string.IsNullOrWhiteSpace(linkedImport.ImportCode) ? $"PNK-26{linkedImport.ImportId:D3}" : linkedImport.ImportCode)
@@ -587,6 +601,30 @@ namespace BATT_PPMS.Pages.Inventory
             return false;
         }
 
+        private string? ValidateImage(IFormFile? file, bool required, string label)
+        {
+            if (file == null || file.Length == 0)
+                return required ? $"Vui lòng chọn {label.ToLowerInvariant()}." : null;
+            if (file.Length > MaxImageBytes)
+                return $"{label} không được vượt quá 20 MB.";
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!AllowedImageExtensions.Contains(ext) && !(file.ContentType?.StartsWith("image/") ?? false))
+                return $"{label} phải là tệp hình ảnh hợp lệ.";
+            return null;
+        }
+
+        private async Task<string> SavePhotoAsync(IFormFile file)
+        {
+            var dir = Path.Combine(_env.WebRootPath, "uploads", "purchase");
+            Directory.CreateDirectory(dir);
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(ext)) ext = ".jpg";
+            var name = $"{Guid.NewGuid():N}{ext}";
+            await using (var stream = System.IO.File.Create(Path.Combine(dir, name)))
+                await file.CopyToAsync(stream);
+            return $"/uploads/purchase/{name}";
+        }
+
         // BƯỚC 5 TRÊN SWIMLANE: Chỉ Warehouse Staff -> Check and compare with IR -> Create Goods Receipt Raw Material note (PNK-26xxx)
         public async Task<IActionResult> OnPostConfirmReceiptAsync(
             int receiptId,
@@ -594,7 +632,9 @@ namespace BATT_PPMS.Pages.Inventory
             int? supplierId,
             string? importedQuantity,
             string? unitPrice,
-            string? warehouseNote)
+            string? warehouseNote,
+            IFormFile? warehouseScalePhoto,
+            IFormFile? invoicePhoto)
         {
             var check = RequireRole(RoleConstants.WarehouseStaff);
             if (check != null) return check;
@@ -669,6 +709,29 @@ namespace BATT_PPMS.Pages.Inventory
                     ErrorMessage = "Đơn giá nhập kho phải lớn hơn 0.";
                     return Back();
                 }
+            }
+
+            var isReCreate = receipt.Status == "ImportRejected";
+            var scaleErr = ValidateImage(warehouseScalePhoto, required: !isReCreate, "Hình ảnh cân thực tế tại kho");
+            if (scaleErr != null)
+            {
+                ErrorMessage = scaleErr;
+                return Back();
+            }
+            var invErr = ValidateImage(invoicePhoto, required: false, "Hóa đơn");
+            if (invErr != null)
+            {
+                ErrorMessage = invErr;
+                return Back();
+            }
+
+            if (warehouseScalePhoto is { Length: > 0 })
+            {
+                receipt.ScalePhotoPath = await SavePhotoAsync(warehouseScalePhoto);
+            }
+            if (invoicePhoto is { Length: > 0 })
+            {
+                receipt.InvoicePhotoPath = await SavePhotoAsync(invoicePhoto);
             }
 
             // Sinh mã Phiếu nhập kho nguyên liệu: PNK-26xxx

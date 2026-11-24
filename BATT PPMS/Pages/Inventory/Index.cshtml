@@ -616,6 +616,16 @@ else
                                 <tr>
                                     <td>
                                         <span class="wh-code-pm">@r.ReceiptCode</span>
+                                        @if (!string.IsNullOrWhiteSpace(r.LicensePlate))
+                                        {
+                                            <div style="font-size: 11px; color: #1e40af; margin-top: 3px; font-weight: 600;">
+                                                <i class="bi bi-truck"></i> @r.LicensePlate · @r.DriverName
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(r.DeliveryTime))
+                                            {
+                                                <div style="font-size: 11px; color: #64748b;">Giao: @r.DeliveryTime</div>
+                                            }
+                                        }
                                     </td>
                                     <td>
                                         <span class="wh-code-tm">@r.InvoiceCode</span>
@@ -681,6 +691,9 @@ else
                                                data-status="@r.StatusText"
                                                data-raw-status="@r.Status"
                                                data-rejection="@(r.RejectionReason ?? "")"
+                                               data-license-plate="@(r.LicensePlate ?? "")"
+                                               data-driver-name="@(r.DriverName ?? "")"
+                                               data-delivery-time="@(r.DeliveryTime ?? "")"
                                                data-scale="@r.ScalePhotoPath"
                                                data-invoice="@r.InvoicePhotoPath"
                                                title="Đối chiếu & xem chi tiết phiếu @r.ReceiptCode"
@@ -940,7 +953,7 @@ else
     {
         <div class="pm-overlay" id="createImportModal" onclick="if (event.target === this) closePmModal('createImportModal')">
             <div class="pm-dialog pm-lg" role="dialog" aria-modal="true">
-                <form method="post" asp-page-handler="ConfirmReceipt">
+                <form method="post" asp-page-handler="ConfirmReceipt" enctype="multipart/form-data">
                     <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
                     <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
                     <input type="hidden" name="SupplierFilter" value="@Model.SupplierFilter" />
@@ -986,7 +999,11 @@ else
                                                 data-material-name="@ir.MaterialName"
                                                 data-qty="@ir.WeighedQuantity.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
                                                 data-price="@ir.ActualPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-status="@ir.Status"
                                                 data-rejection="@(ir.RejectionReason ?? "")"
+                                                data-license-plate="@(ir.LicensePlate ?? "")"
+                                                data-driver-name="@(ir.DriverName ?? "")"
+                                                data-delivery-time="@(ir.DeliveryTime ?? "")"
                                                 data-scale="@ir.ScalePhotoPath">
                                             @ir.ReceiptCode — @ir.WeighedQuantity.ToString("N0", viCulture) kg (@ir.InvoiceCode)
                                         </option>
@@ -1031,6 +1048,18 @@ else
                                 <label class="pm-label">Đơn giá nhập kho (VNĐ/kg) <span style="color: #e53e3e;">*</span></label>
                                 <input type="number" name="unitPrice" id="ciPriceInput" min="1" step="any" required class="pm-input" oninput="updateCiTotalPreview()" />
                                 <span class="pm-hint" id="ciPriceHint">Thành tiền dự kiến: 0 VNĐ</span>
+                            </div>
+
+                            <div>
+                                <label class="pm-label">Hình ảnh cân thực tế tại kho <span id="ciScaleReqStar" style="color: #e53e3e;">*</span></label>
+                                <input type="file" name="warehouseScalePhoto" id="ciWarehouseScalePhotoInput" accept="image/*" required class="pm-input" />
+                                <span class="pm-hint">Chọn ảnh cân tại kho hoặc bấm Ctrl+V để dán ảnh</span>
+                            </div>
+
+                            <div>
+                                <label class="pm-label">Hóa đơn (nếu có)</label>
+                                <input type="file" name="invoicePhoto" id="ciInvoicePhotoInput" accept="image/*" class="pm-input" />
+                                <span class="pm-hint">Có thể chọn tệp hoặc kéo-thả ảnh hóa đơn vào ô này</span>
                             </div>
 
                             <div class="pm-full">
@@ -1117,6 +1146,9 @@ else
                     <div class="wh-detail-field"><span class="wh-dialog-label">Người tạo</span><div id="rdBy" class="wh-dialog-value"></div></div>
                     <div class="wh-detail-field"><span class="wh-dialog-label">Thời điểm tạo</span><div id="rdAt" class="wh-dialog-value"></div></div>
                     <div class="wh-detail-field"><span class="wh-dialog-label">Phiếu nhập kho nguyên liệu</span><div id="rdImportCode" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field" id="rdLicensePlateWrap" style="display: none;"><span class="wh-dialog-label">Biển số xe giao hàng</span><div id="rdLicensePlate" class="wh-dialog-value" style="color: #1e40af;"></div></div>
+                    <div class="wh-detail-field" id="rdDriverNameWrap" style="display: none;"><span class="wh-dialog-label">Tên lái xe</span><div id="rdDriverName" class="wh-dialog-value"></div></div>
+                    <div class="wh-detail-field" id="rdDeliveryTimeWrap" style="display: none;"><span class="wh-dialog-label">Thời gian giao hàng</span><div id="rdDeliveryTime" class="wh-dialog-value"></div></div>
                     <div class="pm-full" id="rdRejectionWrap" style="display: none;">
                         <div class="wh-note-block danger">
                             <strong>Lý do từ chối:</strong> <span id="rdRejection"></span>
@@ -1217,12 +1249,25 @@ else
             var matName = opt.getAttribute('data-material-name') || '';
             var qty = opt.getAttribute('data-qty') || '0';
             var price = opt.getAttribute('data-price') || '0';
+            var status = opt.getAttribute('data-status') || '';
             var rejection = opt.getAttribute('data-rejection') || '';
+            var licensePlate = opt.getAttribute('data-license-plate') || '';
+            var driverName = opt.getAttribute('data-driver-name') || '';
+            var deliveryTime = opt.getAttribute('data-delivery-time') || '';
             var scale = opt.getAttribute('data-scale') || '';
 
             document.getElementById('ciSugCode').innerText = code + ' (' + invCode + ')';
+            var deliverySummary = licensePlate ? (' · Xe: ' + licensePlate + ' (' + driverName + ', giao: ' + deliveryTime + ')') : '';
             document.getElementById('ciSugSummary').innerText =
-                Number(qty).toLocaleString('vi-VN') + ' kg × ' + Number(price).toLocaleString('vi-VN') + ' VNĐ/kg · ' + supName;
+                Number(qty).toLocaleString('vi-VN') + ' kg × ' + Number(price).toLocaleString('vi-VN') + ' VNĐ/kg · ' + supName + deliverySummary;
+
+            var scalePhotoInput = document.getElementById('ciWarehouseScalePhotoInput');
+            var scaleStar = document.getElementById('ciScaleReqStar');
+            if (scalePhotoInput) {
+                var isReCreate = (status === 'ImportRejected');
+                scalePhotoInput.required = !isReCreate;
+                if (scaleStar) scaleStar.style.display = isReCreate ? 'none' : '';
+            }
 
             var supSel = document.getElementById('ciSupplierSelect');
             if (supSel && supId) {
@@ -1309,6 +1354,31 @@ else
             }
         });
 
+        // Hỗ trợ dán ảnh trực tiếp (Ctrl+V) vào popup Lập Phiếu nhập kho nguyên liệu
+        document.addEventListener('paste', function (e) {
+            var modal = document.getElementById('createImportModal');
+            if (!modal || !modal.classList.contains('open')) return;
+            var items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    var file = items[i].getAsFile();
+                    if (file) {
+                        var dt = new DataTransfer();
+                        dt.items.add(file);
+                        var scaleInput = document.getElementById('ciWarehouseScalePhotoInput');
+                        var invoiceInput = document.getElementById('ciInvoicePhotoInput');
+                        if (scaleInput && (!scaleInput.files || scaleInput.files.length === 0)) {
+                            scaleInput.files = dt.files;
+                        } else if (invoiceInput) {
+                            invoiceInput.files = dt.files;
+                        }
+                    }
+                    break;
+                }
+            }
+        });
+
         document.querySelectorAll('.receipt-detail-trigger').forEach(function (a) {
             a.addEventListener('click', function () {
                 var d = a.dataset;
@@ -1323,6 +1393,19 @@ else
                 document.getElementById('rdBy').innerText = d.by;
                 document.getElementById('rdAt').innerText = d.at;
                 document.getElementById('rdImportCode').innerText = d.importCode || 'Chưa lập';
+
+                var lpWrap = document.getElementById('rdLicensePlateWrap');
+                var dnWrap = document.getElementById('rdDriverNameWrap');
+                var dtWrap = document.getElementById('rdDeliveryTimeWrap');
+                if (d.licensePlate) {
+                    if (lpWrap) { lpWrap.style.display = ''; document.getElementById('rdLicensePlate').innerText = d.licensePlate; }
+                    if (dnWrap) { dnWrap.style.display = ''; document.getElementById('rdDriverName').innerText = d.driverName || '—'; }
+                    if (dtWrap) { dtWrap.style.display = ''; document.getElementById('rdDeliveryTime').innerText = d.deliveryTime || '—'; }
+                } else {
+                    if (lpWrap) lpWrap.style.display = 'none';
+                    if (dnWrap) dnWrap.style.display = 'none';
+                    if (dtWrap) dtWrap.style.display = 'none';
+                }
 
                 var rejWrap = document.getElementById('rdRejectionWrap');
                 if (d.rejection) {

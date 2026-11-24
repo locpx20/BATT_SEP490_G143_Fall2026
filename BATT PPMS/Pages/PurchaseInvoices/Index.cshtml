@@ -595,15 +595,10 @@
                             <input type="number" name="actualPrice" id="quickActualPriceInput" min="1" step="any" required class="pm-input" />
                             <span class="pm-hint" id="quickCeilingHint">VNĐ / kg (tối đa theo giá trần của yêu cầu thu mua)</span>
                         </div>
-                        <div>
+                        <div class="pm-full">
                             <label class="pm-label">Ảnh minh chứng / hàng hóa <span style="color: #e53e3e;">*</span></label>
                             <input type="file" name="scalePhoto" id="quickScalePhotoInput" accept="image/*" required class="pm-input" />
                             <span class="pm-hint">Có thể chọn tệp, kéo-thả ảnh hoặc bấm Ctrl+V để dán ảnh</span>
-                        </div>
-                        <div>
-                            <label class="pm-label">Hóa đơn (nếu có)</label>
-                            <input type="file" name="invoicePhoto" id="quickInvoicePhotoInput" accept="image/*" class="pm-input" />
-                            <span class="pm-hint">Có thể chọn tệp hoặc kéo-thả ảnh vào ô này</span>
                         </div>
                     </div>
                 </div>
@@ -691,11 +686,8 @@
                         var dt = new DataTransfer();
                         dt.items.add(file);
                         var scaleInput = document.getElementById('quickScalePhotoInput');
-                        var invoiceInput = document.getElementById('quickInvoicePhotoInput');
-                        if (scaleInput && (!scaleInput.files || scaleInput.files.length === 0)) {
+                        if (scaleInput) {
                             scaleInput.files = dt.files;
-                        } else if (invoiceInput) {
-                            invoiceInput.files = dt.files;
                         }
                     }
                     break;

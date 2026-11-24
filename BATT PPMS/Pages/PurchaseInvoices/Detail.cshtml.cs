@@ -25,6 +25,11 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public string CreatedByName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
 
+        // Thông tin vận chuyển khi tạo Yêu cầu nhập kho (Inbound Request)
+        public string? LicensePlate { get; set; }
+        public string? DriverName { get; set; }
+        public string? DeliveryTime { get; set; }
+
         // Thông tin Phiếu nhập kho nguyên liệu (Receive Goods Receipt information)
         public string? ImportCode { get; set; }
         public string? ImportStatus { get; set; }
@@ -85,7 +90,8 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         public List<AssignedInvoiceOption> InvoiceOptions { get; set; } = new();
 
         public bool CanCreateReceipt { get; set; }
-        public bool CanManagerReviewOrder => IsManager || IsOwner;
+        public bool CanManagerReviewOrder => IsManager;
+        public bool IsOwnerView => IsOwner;
         public bool CanCreateInboundRequest => IsPurchasingStaff;
 
         [TempData]
@@ -294,10 +300,10 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             return Back();
         }
 
-        // BƯỚC 3A TRÊN SWIMLANE: Manager hoặc Owner -> Approved? -> Yes
+        // BƯỚC 3A TRÊN SWIMLANE: Chỉ Manager -> Approved? -> Yes
         public async Task<IActionResult> OnPostApproveOrderAsync(int receiptId)
         {
-            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
             var receipt = await _context.PurchaseReceipts.FirstOrDefaultAsync(r => r.ReceiptId == receiptId);
@@ -305,7 +311,6 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
 
             receipt.Status = "OrderApproved";
             receipt.RejectionReason = null;
-            var approverLabel = IsOwner ? "Chủ nhà máy (Owner)" : "Manager";
 
             if (receipt.CreatedBy.HasValue)
             {
@@ -313,19 +318,19 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                     _context,
                     receipt.CreatedBy.Value,
                     $"Phiếu mua hàng {receipt.ReceiptCode} đã được duyệt",
-                    $"{approverLabel} ({CurrentFullName}) đã phê duyệt phiếu mua hàng {receipt.ReceiptCode}. Vui lòng bấm 'Gửi yêu cầu nhập kho' để gửi sang Kho.",
+                    $"Manager ({CurrentFullName}) đã phê duyệt phiếu mua hàng {receipt.ReceiptCode}. Vui lòng bấm 'Tạo yêu cầu nhập kho' để điền thông tin vận chuyển và gửi sang Kho.",
                     $"/PurchaseInvoices/Detail?id={receipt.InvoiceId}");
             }
 
             await _context.SaveChangesAsync();
-            SuccessMessage = $"Đã phê duyệt phiếu mua hàng {receipt.ReceiptCode}. Nhân viên thu mua có thể bấm 'Gửi yêu cầu nhập kho' để gửi sang Kho.";
+            SuccessMessage = $"Đã phê duyệt phiếu mua hàng {receipt.ReceiptCode}. Nhân viên thu mua có thể bấm 'Tạo yêu cầu nhập kho' để gửi sang Kho.";
             return RedirectToPage(new { id = receipt.InvoiceId });
         }
 
-        // BƯỚC 3B TRÊN SWIMLANE: Manager hoặc Owner -> Approved? -> No -> Rejection Reason -> quay lại Create Purchase Order
+        // BƯỚC 3B TRÊN SWIMLANE: Chỉ Manager -> Approved? -> No -> Rejection Reason -> quay lại Create Purchase Order
         public async Task<IActionResult> OnPostRejectOrderAsync(int receiptId, string? rejectionReason)
         {
-            var check = RequireRole(RoleConstants.Manager, RoleConstants.Owner);
+            var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
 
             var receipt = await _context.PurchaseReceipts.FirstOrDefaultAsync(r => r.ReceiptId == receiptId);
@@ -340,7 +345,6 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             var reason = rejectionReason.Trim();
             receipt.Status = "OrderRejected";
             receipt.RejectionReason = reason;
-            var approverLabel = IsOwner ? "Chủ nhà máy (Owner)" : "Manager";
 
             if (receipt.CreatedBy.HasValue)
             {
@@ -348,7 +352,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                     _context,
                     receipt.CreatedBy.Value,
                     $"Phiếu mua hàng {receipt.ReceiptCode} bị từ chối",
-                    $"{approverLabel} ({CurrentFullName}) đã từ chối phiếu mua hàng {receipt.ReceiptCode}. Lý do: {reason}. Vui lòng bấm 'Sửa & gửi lại'.",
+                    $"Manager ({CurrentFullName}) đã từ chối phiếu mua hàng {receipt.ReceiptCode}. Lý do: {reason}. Vui lòng bấm 'Sửa & gửi lại'.",
                     $"/PurchaseInvoices/Detail?id={receipt.InvoiceId}");
             }
 
@@ -358,13 +362,18 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
         }
 
         // BƯỚC 4 TRÊN SWIMLANE: Purchasing Staff -> Create Inbound Request -> Warehouse Manager: Inbound Request Notification
-        public async Task<IActionResult> OnPostCreateInboundRequestAsync(int receiptId)
+        public async Task<IActionResult> OnPostCreateInboundRequestAsync(
+            int receiptId,
+            string? licensePlate,
+            string? driverName,
+            DateTime? deliveryTime)
         {
             var check = RequireRole(RoleConstants.PurchasingStaff);
             if (check != null) return check;
 
             var receipt = await _context.PurchaseReceipts
                 .Include(r => r.Supplier)
+                .Include(r => r.Invoice)
                 .FirstOrDefaultAsync(r => r.ReceiptId == receiptId);
             if (receipt == null) return NotFound();
 
@@ -372,6 +381,29 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             {
                 ErrorMessage = $"Đơn mua {receipt.ReceiptCode} cần được Manager phê duyệt trước khi tạo yêu cầu nhập kho.";
                 return RedirectToPage(new { id = receipt.InvoiceId });
+            }
+
+            if (string.IsNullOrWhiteSpace(licensePlate) ||
+                string.IsNullOrWhiteSpace(driverName) ||
+                !deliveryTime.HasValue)
+            {
+                ErrorMessage = "Vui lòng điền đầy đủ Biển số xe, Tên lái xe và Thời gian giao hàng khi tạo yêu cầu nhập kho.";
+                return RedirectToPage(new { id = receipt.InvoiceId });
+            }
+
+            var cleanPlate = licensePlate.Trim().ToUpperInvariant();
+            var cleanDriver = driverName.Trim();
+            var deliveryTimeText = deliveryTime.Value.ToString("HH:mm dd/MM/yyyy");
+
+            if (receipt.Invoice != null)
+            {
+                receipt.Invoice.Note = NoteTags.SetInboundDelivery(receipt.Invoice.Note, new InboundDeliveryInfo
+                {
+                    ReceiptId = receipt.ReceiptId,
+                    LicensePlate = cleanPlate,
+                    DriverName = cleanDriver,
+                    DeliveryTime = deliveryTimeText
+                });
             }
 
             receipt.Status = "WaitWarehouse";
@@ -390,12 +422,12 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                     _context,
                     whUserId,
                     $"Yêu cầu nhập kho nguyên liệu mới ({receipt.ReceiptCode})",
-                    $"Nhân viên thu mua ({CurrentFullName}) đã gửi Yêu cầu nhập kho (Inbound Request) cho phiếu {receipt.ReceiptCode} — {receipt.WeighedQuantity:N0} kg từ {receipt.Supplier?.SupplierName}. Vui lòng kiểm tra đối chiếu và lập Phiếu nhập kho nguyên liệu.",
+                    $"Nhân viên thu mua ({CurrentFullName}) đã tạo Yêu cầu nhập kho (Inbound Request) cho phiếu {receipt.ReceiptCode} — {receipt.WeighedQuantity:N0} kg từ {receipt.Supplier?.SupplierName} (Biển số xe: {cleanPlate} · Lái xe: {cleanDriver} · Giao lúc: {deliveryTimeText}). Vui lòng kiểm tra đối chiếu và lập Phiếu nhập kho nguyên liệu.",
                     "/Inventory/Index?tab=raw");
             }
 
             await _context.SaveChangesAsync();
-            SuccessMessage = $"Đã tạo Yêu cầu nhập kho (Inbound Request) cho phiếu {receipt.ReceiptCode} và gửi thông báo (Inbound Request Notification) tới Thủ kho.";
+            SuccessMessage = $"Đã tạo Yêu cầu nhập kho (Inbound Request) cho phiếu {receipt.ReceiptCode} (Xe: {cleanPlate} · Lái xe: {cleanDriver} · Giao lúc: {deliveryTimeText}) và gửi thông báo tới Thủ kho.";
             return RedirectToPage(new { id = receipt.InvoiceId });
         }
 
@@ -404,7 +436,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             var managerIds = await _context.Users
                 .Include(u => u.Role)
                 .Where(u => u.Status == StatusConstants.Active &&
-                            (u.Role.RoleName == RoleConstants.Manager || u.Role.RoleName == RoleConstants.Owner))
+                            u.Role.RoleName == RoleConstants.Manager)
                 .Select(u => u.UserId)
                 .ToListAsync();
 
@@ -497,6 +529,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                     var impCode = imp != null
                         ? (string.IsNullOrWhiteSpace(imp.ImportCode) ? $"PNK-26{imp.ImportId:D3}" : imp.ImportCode)
                         : null;
+                    var delivery = NoteTags.GetInboundDelivery(invoice.Note, r.ReceiptId);
 
                     return new PurchaseReceiptViewModel
                     {
@@ -514,6 +547,9 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                         InvoicePhoto = r.InvoicePhotoPath,
                         CreatedByName = r.CreatedByNavigation?.FullName ?? "—",
                         CreatedAt = r.CreatedAt,
+                        LicensePlate = delivery?.LicensePlate,
+                        DriverName = delivery?.DriverName,
+                        DeliveryTime = delivery?.DeliveryTime,
                         ImportCode = impCode,
                         ImportStatus = imp?.Status,
                         ImportedQuantity = imp?.Quantity,

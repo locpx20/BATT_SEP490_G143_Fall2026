@@ -10,10 +10,19 @@ namespace BATT_PPMS.Helpers
         public string? Note { get; set; }
     }
 
+    public class InboundDeliveryInfo
+    {
+        public int ReceiptId { get; set; }
+        public string LicensePlate { get; set; } = string.Empty;
+        public string DriverName { get; set; } = string.Empty;
+        public string DeliveryTime { get; set; } = string.Empty;
+    }
+
     /// <summary>
     /// Schema mới không còn các cột RejectionReason / CompletionNote.
-    /// Lý do từ chối, ghi chú nghiệm thu và danh sách phân công nhiều nhân viên thu mua
-    /// được lưu thành dòng có gắn thẻ ("[REJECTED] ...", "[COMPLETED] ...", "[ASSIGNMENTS] ...")
+    /// Lý do từ chối, ghi chú nghiệm thu, danh sách phân công nhiều nhân viên thu mua
+    /// và thông tin vận chuyển yêu cầu nhập kho được lưu thành dòng có gắn thẻ
+    /// ("[REJECTED] ...", "[COMPLETED] ...", "[ASSIGNMENTS] ...", "[IR_DELIVERIES] ...")
     /// ngay trong cột Note / Description sẵn có.
     /// </summary>
     public static class NoteTags
@@ -21,6 +30,7 @@ namespace BATT_PPMS.Helpers
         public const string Rejected = "REJECTED";
         public const string Completed = "COMPLETED";
         public const string Assignments = "ASSIGNMENTS";
+        public const string InboundDeliveries = "IR_DELIVERIES";
 
         private static Regex LineOf(string tag) =>
             new($@"^\[{Regex.Escape(tag)}\][ ]?(.*)$", RegexOptions.Multiline | RegexOptions.CultureInvariant);
@@ -51,7 +61,37 @@ namespace BATT_PPMS.Helpers
 
         /// <summary>Text hiển thị cho người dùng: bỏ mọi dòng gắn thẻ.</summary>
         public static string? Plain(string? existing) =>
-            Remove(Remove(Remove(existing, Rejected), Completed), Assignments);
+            Remove(Remove(Remove(Remove(existing, Rejected), Completed), Assignments), InboundDeliveries);
+
+        public static List<InboundDeliveryInfo> GetInboundDeliveries(string? existing)
+        {
+            var raw = Get(existing, InboundDeliveries);
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<List<InboundDeliveryInfo>>(raw);
+                    if (parsed != null)
+                        return parsed;
+                }
+                catch
+                {
+                    // Ignore malformed JSON
+                }
+            }
+            return new List<InboundDeliveryInfo>();
+        }
+
+        public static InboundDeliveryInfo? GetInboundDelivery(string? existing, int receiptId) =>
+            GetInboundDeliveries(existing).FirstOrDefault(x => x.ReceiptId == receiptId);
+
+        public static string SetInboundDelivery(string? existing, InboundDeliveryInfo item)
+        {
+            var list = GetInboundDeliveries(existing);
+            list.RemoveAll(x => x.ReceiptId == item.ReceiptId);
+            list.Add(item);
+            return Set(existing, InboundDeliveries, JsonSerializer.Serialize(list));
+        }
 
         public static string SetAssignments(string? existing, List<StaffAssignmentNote> items)
         {

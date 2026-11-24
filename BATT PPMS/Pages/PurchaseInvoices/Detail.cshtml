@@ -137,6 +137,12 @@
                                     <span>KL ước tính: <strong>@r.Quantity.ToString("N0", vi) kg</strong></span>
                                 }
                                 · @r.Price.ToString("N0", vi) VNĐ / kg (@r.SupplierName)
+                                @if (!string.IsNullOrWhiteSpace(r.LicensePlate))
+                                {
+                                    <span style="display: inline-block; margin-left: 6px; padding: 1px 8px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; color: #1e40af; font-size: 11.5px; font-weight: 600;">
+                                        <i class="bi bi-truck"></i> Xe: @r.LicensePlate · Lái xe: @r.DriverName · Giao: @r.DeliveryTime
+                                    </span>
+                                }
                             </span>
                             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <a href="javascript:void(0)" class="receipt-link"
@@ -148,6 +154,9 @@
                                    data-total="@(((r.ImportedQuantity ?? r.Quantity) * r.Price).ToString("N0", vi))" data-by="@r.CreatedByName"
                                    data-at="@r.CreatedAt.ToString("HH:mm dd/MM/yyyy")" data-status="@r.StatusText"
                                    data-rejection="@(r.RejectionReason ?? "")"
+                                   data-license-plate="@(r.LicensePlate ?? "")"
+                                   data-driver-name="@(r.DriverName ?? "")"
+                                   data-delivery-time="@(r.DeliveryTime ?? "")"
                                    data-import-code="@(r.ImportCode ?? "Chưa lập")"
                                    data-import-by="@(r.ImportedByName ?? "—")"
                                    data-approved-by="@(r.ApprovedByName ?? "—")"
@@ -187,12 +196,11 @@
                                 @* BƯỚC 4 TRÊN SWIMLANE: Purchasing Staff -> Create Inbound Request *@
                                 @if (Model.CanCreateInboundRequest && r.RawStatus == "OrderApproved")
                                 {
-                                    <form method="post" asp-page-handler="CreateInboundRequest" style="display: inline; margin: 0;">
-                                        <input type="hidden" name="receiptId" value="@r.ReceiptId" />
-                                        <button type="submit" style="background: #1e40af; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
-                                            Gửi yêu cầu nhập kho
-                                        </button>
-                                    </form>
+                                    <button type="button"
+                                            onclick="openCreateInboundRequestModal(@r.ReceiptId, '@r.Code', '@Html.Raw(r.SupplierName.Replace("'", "\\'"))', '@r.Quantity.ToString("N0", vi)', '@r.Price.ToString("N0", vi)', '@r.Total.ToString("N0", vi)')"
+                                            style="background: #1e40af; color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                        Tạo yêu cầu nhập kho
+                                    </button>
                                 }
                             </div>
                         </div>
@@ -252,8 +260,8 @@
                 <div style="font-size: 11.5px; color: #64748b; margin-top: 8px;">
                     Quy trình chuẩn:<br />
                     1. Nhân viên thu mua tạo <strong>Phiếu mua hàng</strong><br />
-                    2. Manager hoặc Owner phê duyệt phiếu mua hàng (<strong>Duyệt / Từ chối</strong>)<br />
-                    3. Nhân viên thu mua bấm <strong>Gửi yêu cầu nhập kho</strong> sang Kho<br />
+                    2. Manager phê duyệt phiếu mua hàng (<strong>Duyệt / Từ chối</strong>)<br />
+                    3. Nhân viên thu mua bấm <strong>Tạo yêu cầu nhập kho</strong> để nhập thông tin vận chuyển và gửi sang Kho<br />
                     4. Thủ kho (Warehouse) đối chiếu &amp; lập <strong>Phiếu nhập kho nguyên liệu (PNK-26xxx)</strong><br />
                     5. Manager duyệt phiếu nhập kho &rarr; Hoàn tất nhập kho.
                 </div>
@@ -267,9 +275,17 @@
             else if (Model.CanManagerReviewOrder)
             {
                 <div style="font-size: 12px; color: #475569; line-height: 1.6;">
-                    <strong>Vai trò Quản lý / Chủ nhà máy (Manager / Owner):</strong><br />
+                    <strong>Vai trò Quản lý (Manager):</strong><br />
                     • Chỉ <strong>Nhân viên thu mua (Purchasing Staff)</strong> được phân công mới tạo phiếu mua hàng.<br />
-                    • Khi nhân viên gửi phiếu mua hàng, cả <strong>Manager</strong> và <strong>Owner</strong> đều có thể bấm <strong>Duyệt</strong> hoặc <strong>Từ chối</strong> ngay tại danh sách bên trái.
+                    • Khi nhân viên gửi phiếu mua hàng, <strong>Manager</strong> có thể bấm <strong>Duyệt</strong> hoặc <strong>Từ chối</strong> ngay tại danh sách bên trái.
+                </div>
+            }
+            else if (Model.IsOwnerView)
+            {
+                <div style="font-size: 12px; color: #475569; line-height: 1.6;">
+                    <strong>Vai trò Chủ doanh nghiệp (Owner):</strong><br />
+                    • Chủ doanh nghiệp chỉ <strong>xem và theo dõi</strong> tiến độ yêu cầu thu mua, các phiếu mua hàng và kết quả nhập kho.<br />
+                    • Việc phê duyệt phiếu mua hàng và phiếu nhập kho nguyên liệu thuộc thẩm quyền của <strong>Manager</strong>.
                 </div>
             }
             else
@@ -318,21 +334,74 @@
                             <input type="number" name="actualPrice" id="actualPriceInput" min="1" max="@Model.CeilingPrice.ToString("0.##", CultureInfo.InvariantCulture)" step="any" value="@Model.CeilingPrice.ToString("0.##", CultureInfo.InvariantCulture)" required class="pm-input" />
                             <span class="pm-hint">VNĐ / kg (tối đa giá trần @Model.CeilingPrice.ToString("N0", vi))</span>
                         </div>
-                        <div>
+                        <div class="pm-full">
                             <label class="pm-label">Ảnh minh chứng / hàng hóa <span id="scalePhotoReqStar" style="color: #e53e3e;">*</span></label>
                             <input type="file" name="scalePhoto" id="scalePhotoInput" accept="image/*" required class="pm-input" />
                             <span class="pm-hint">Có thể chọn tệp, kéo-thả ảnh vào ô này hoặc bấm Ctrl+V để dán ảnh</span>
-                        </div>
-                        <div>
-                            <label class="pm-label">Hóa đơn (nếu có)</label>
-                            <input type="file" name="invoicePhoto" id="invoicePhotoInput" accept="image/*" class="pm-input" />
-                            <span class="pm-hint">Có thể chọn tệp hoặc kéo-thả ảnh vào ô này</span>
                         </div>
                     </div>
                 </div>
                 <div class="pm-foot">
                     <button type="button" class="pm-btn-cancel" onclick="closePmModal('createReceiptModal')">Hủy</button>
                     <button type="submit" class="pm-btn-primary" id="createReceiptSubmitBtn">Gửi đơn mua chờ Manager duyệt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<!-- POPUP: TẠO YÊU CẦU NHẬP KHO (INBOUND REQUEST - BƯỚC 4) -->
+@if (Model.CanCreateInboundRequest)
+{
+    <div class="pm-overlay" id="createInboundRequestModal" onclick="if (event.target === this) closePmModal('createInboundRequestModal')">
+        <div class="pm-dialog pm-lg" role="dialog" aria-modal="true">
+            <form method="post" asp-page-handler="CreateInboundRequest" asp-route-id="@Model.InvoiceId">
+                <input type="hidden" name="receiptId" id="irReceiptIdInput" />
+                <div class="pm-head">
+                    <h5 class="pm-title">Tạo yêu cầu nhập kho (<span id="irModalCodeText" style="font-family: monospace;"></span>)</h5>
+                    <button type="button" class="pm-close" aria-label="Đóng" onclick="closePmModal('createInboundRequestModal')">&times;</button>
+                </div>
+                <div class="pm-body">
+                    <div class="pm-grid">
+                        <div>
+                            <label class="pm-label">Yêu cầu thu mua được giao</label>
+                            <input type="text" class="pm-input" value="@Model.InvoiceCode" readonly tabindex="-1" />
+                        </div>
+                        <div>
+                            <label class="pm-label">Mã phiếu mua hàng</label>
+                            <input type="text" id="irCodeInput" class="pm-input" readonly tabindex="-1" style="font-family: monospace; font-weight: 700;" />
+                        </div>
+                        <div class="pm-full">
+                            <label class="pm-label">Nhà cung cấp</label>
+                            <input type="text" id="irSupplierInput" class="pm-input" readonly tabindex="-1" />
+                        </div>
+                        <div>
+                            <label class="pm-label">Khối lượng ước tính (kg)</label>
+                            <input type="text" id="irQtyInput" class="pm-input" readonly tabindex="-1" />
+                        </div>
+                        <div>
+                            <label class="pm-label">Giá mua thực tế (VNĐ/kg)</label>
+                            <input type="text" id="irPriceInput" class="pm-input" readonly tabindex="-1" />
+                            <span class="pm-hint" id="irTotalHint">Thành tiền ước tính: 0 VNĐ</span>
+                        </div>
+                        <div>
+                            <label class="pm-label">Biển số xe <span style="color: #e53e3e;">*</span></label>
+                            <input type="text" name="licensePlate" id="irLicensePlateInput" required class="pm-input" placeholder="Vd: 72C-184.92" />
+                        </div>
+                        <div>
+                            <label class="pm-label">Tên lái xe <span style="color: #e53e3e;">*</span></label>
+                            <input type="text" name="driverName" id="irDriverNameInput" required class="pm-input" placeholder="Vd: Nguyễn Văn Tài" />
+                        </div>
+                        <div class="pm-full">
+                            <label class="pm-label">Thời gian giao hàng <span style="color: #e53e3e;">*</span></label>
+                            <input type="datetime-local" name="deliveryTime" id="irDeliveryTimeInput" required class="pm-input" />
+                            <span class="pm-hint">Thời gian xe dự kiến/thực tế giao nguyên liệu tới kho</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="pm-foot">
+                    <button type="button" class="pm-btn-cancel" onclick="closePmModal('createInboundRequestModal')">Hủy</button>
+                    <button type="submit" class="pm-btn-primary" style="background: #1e40af;">Xác nhận tạo yêu cầu nhập kho</button>
                 </div>
             </form>
         </div>
@@ -382,6 +451,9 @@
                 <div><div style="@labelStyle">Phiếu nhập kho nguyên liệu</div><div id="rdImportCode" style="@valueStyle; color: #1a4332;"></div></div>
                 <div><div style="@labelStyle">Thủ kho lập phiếu nhập</div><div id="rdImportBy" style="@valueStyle"></div></div>
                 <div><div style="@labelStyle">Manager duyệt nhập kho</div><div id="rdApprovedBy" style="@valueStyle"></div></div>
+                <div id="rdLicensePlateWrap" style="display: none;"><div style="@labelStyle">Biển số xe giao hàng</div><div id="rdLicensePlate" style="@valueStyle; color: #1e40af;"></div></div>
+                <div id="rdDriverNameWrap" style="display: none;"><div style="@labelStyle">Tên lái xe</div><div id="rdDriverName" style="@valueStyle"></div></div>
+                <div id="rdDeliveryTimeWrap" style="display: none;"><div style="@labelStyle">Thời gian giao hàng</div><div id="rdDeliveryTime" style="@valueStyle"></div></div>
                 <div class="pm-full" id="rdRejectionWrap" style="display: none;">
                     <div style="padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 12px; color: #b91c1c;">
                         <strong>Lý do từ chối (Rejection Reason):</strong> <span id="rdRejection"></span>
@@ -453,11 +525,33 @@
             openPmModal('rejectOrderModal');
         }
 
+        function openCreateInboundRequestModal(receiptId, code, supplierName, qtyText, priceText, totalText) {
+            document.getElementById('irReceiptIdInput').value = receiptId;
+            document.getElementById('irModalCodeText').innerText = code;
+            document.getElementById('irCodeInput').value = code;
+            document.getElementById('irSupplierInput').value = supplierName;
+            document.getElementById('irQtyInput').value = qtyText + ' kg';
+            document.getElementById('irPriceInput').value = priceText + ' VNĐ / kg';
+            var totalHint = document.getElementById('irTotalHint');
+            if (totalHint) {
+                totalHint.innerText = 'Thành tiền ước tính: ' + totalText + ' VNĐ';
+            }
+            var dtInput = document.getElementById('irDeliveryTimeInput');
+            if (dtInput && !dtInput.value) {
+                var now = new Date();
+                var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+                dtInput.value = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+            }
+            openPmModal('createInboundRequestModal');
+            var plateInput = document.getElementById('irLicensePlateInput');
+            if (plateInput) plateInput.focus();
+        }
+
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') document.querySelectorAll('.pm-overlay.open').forEach(function (m) { m.classList.remove('open'); });
         });
 
-        // Hỗ trợ dán ảnh trực tiếp (Ctrl+V) vào Ảnh xe cân tại xưởng
+        // Hỗ trợ dán ảnh trực tiếp (Ctrl+V) vào Ảnh minh chứng / hàng hóa
         document.addEventListener('paste', function (e) {
             var modal = document.getElementById('createReceiptModal');
             if (!modal || !modal.classList.contains('open')) return;
@@ -470,11 +564,8 @@
                         var dt = new DataTransfer();
                         dt.items.add(file);
                         var scaleInput = document.getElementById('scalePhotoInput');
-                        var invoiceInput = document.getElementById('invoicePhotoInput');
-                        if (scaleInput && (!scaleInput.files || scaleInput.files.length === 0)) {
+                        if (scaleInput) {
                             scaleInput.files = dt.files;
-                        } else if (invoiceInput) {
-                            invoiceInput.files = dt.files;
                         }
                     }
                     break;
@@ -498,6 +589,19 @@
                 document.getElementById('rdImportCode').innerText = d.importCode || 'Chưa lập';
                 document.getElementById('rdImportBy').innerText = d.importBy || '—';
                 document.getElementById('rdApprovedBy').innerText = d.approvedBy || '—';
+
+                var lpWrap = document.getElementById('rdLicensePlateWrap');
+                var dnWrap = document.getElementById('rdDriverNameWrap');
+                var dtWrap = document.getElementById('rdDeliveryTimeWrap');
+                if (d.licensePlate) {
+                    if (lpWrap) { lpWrap.style.display = ''; document.getElementById('rdLicensePlate').innerText = d.licensePlate; }
+                    if (dnWrap) { dnWrap.style.display = ''; document.getElementById('rdDriverName').innerText = d.driverName || '—'; }
+                    if (dtWrap) { dtWrap.style.display = ''; document.getElementById('rdDeliveryTime').innerText = d.deliveryTime || '—'; }
+                } else {
+                    if (lpWrap) lpWrap.style.display = 'none';
+                    if (dnWrap) dnWrap.style.display = 'none';
+                    if (dtWrap) dtWrap.style.display = 'none';
+                }
 
                 var rejWrap = document.getElementById('rdRejectionWrap');
                 if (d.rejection) {

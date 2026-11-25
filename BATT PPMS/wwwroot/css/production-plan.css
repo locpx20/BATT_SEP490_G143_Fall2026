@@ -1,4 +1,24 @@
 /* Phân công lao động dùng bảng màu và kiểu chữ của BATT PPMS. */
+.labor-context { margin: 0 0 20px; padding: 20px; border: 1px solid #cfdfd2; border-radius: 12px; background: #f2f7f2; color: #243d35; }
+.labor-context-message { margin: 12px 0 0; color: #52675d; font-size: 13px; }
+.labor-context-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.labor-context-grid[hidden] { display: none; }
+.labor-context-card { min-width: 0; padding: 14px; border: 1px solid #dce8dd; border-radius: 9px; background: #fffefa; }
+.labor-context-card h3 { margin: 0 0 10px; color: #193f35; font-size: 14px; font-weight: 700; }
+.labor-context-card h3 i { margin-right: 5px; }
+.labor-context-stock { margin: 16px 0 4px; color: #193f35; font-size: 25px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.labor-context-stock-note { color: #64796b; font-size: 12px; }
+.labor-context-list { display: grid; max-height: 220px; overflow-y: auto; padding: 0; margin: 0; list-style: none; }
+.labor-context-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid #ebf0e9; font-size: 14px; }
+.labor-context-list li > div { min-width: 0; overflow-wrap: anywhere; }
+.labor-context-list li strong { font-size: 14px; font-weight: 600; }
+.labor-context-list li small { display: block; margin-top: 3px; color: #64796b; font-size: 12px; }
+.labor-context-quantity { flex-shrink: 0; color: #193f35; font-weight: 700; white-space: nowrap; }
+.labor-context-state { flex-shrink: 0; padding: 4px 8px; border-radius: 6px; background: #e2f0e6; color: #285c40; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.labor-context-state.is-warning { background: #f8edce; color: #745117; }
+.labor-context-state.is-stopped { background: #f9e7e2; color: #984238; }
+.labor-context-state.is-unknown { background: #eef1ec; color: #627368; }
+@media (max-width: 700px) { .labor-context-grid { grid-template-columns: 1fr; } .labor-context { padding: 16px; } }
 .labor-page {
     --labor-muted: var(--primary);
     --labor-ink-on-green: var(--sidebar-text-active);
@@ -198,6 +218,9 @@
     box-shadow: 0 20px 60px rgb(0 0 0 / 24%);
 }
 .labor-create-dialog[open] { display: flex; flex-direction: column; }
+.labor-create-dialog [data-edit-dialog-content] { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.labor-create-dialog [data-edit-dialog-content] > .labor-form { flex: 1 1 auto; }
+[data-plan-edit-back][hidden], [data-plan-edit-cancel][hidden] { display: none !important; }
 .labor-create-dialog::backdrop { background: rgb(20 46 37 / 52%); }
 .labor-dialog-head {
     display: flex;

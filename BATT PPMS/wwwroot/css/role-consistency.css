@@ -1,0 +1,30 @@
+/* Giao diện chung trên màn hình; các biểu tượng và bản in dùng kiểu riêng. */
+@media screen {
+    .batt-role-workspace :where(.page-content, .sidebar, .topbar),
+    .batt-role-workspace :where(.page-content, .sidebar, .topbar) :where(*):not(i, .bi, .material-icons, svg, path) {
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif !important;
+    }
+
+    .batt-role-workspace .page-content { width: 100%; max-width: none; }
+    .batt-role-workspace .page-content :is(.closeout, .fin-container, .wh-page-container) { width: 100%; max-width: none; }
+    .batt-role-workspace .page-content > .space-y-5 { width: 100%; max-width: none !important; }
+    .batt-role-workspace .page-content :is(.table-wrapper, .table-responsive, .warehouse-plans-scroll, .qc-table-wrap, .owner-table-scroll) { max-width: 100%; }
+
+    .batt-role-workspace .page-content :is(h1, .page-title, .fin-page-title) { font-size: 30px !important; font-weight: 700 !important; line-height: 1.3; }
+    .batt-role-workspace .page-content h2 { font-size: 21px !important; font-weight: 650 !important; line-height: 1.4; }
+    .batt-role-workspace .page-content h3 { font-size: 16px !important; font-weight: 650 !important; line-height: 1.4; }
+    .batt-role-workspace .page-content :is(label, .form-label) { font-size: 14px !important; font-weight: 600 !important; }
+    .batt-role-workspace .page-content :is(input:not([type="checkbox"], [type="radio"]), select, textarea) { font-size: 15px !important; font-weight: 400 !important; }
+    .batt-role-workspace .page-content :is(button:not([aria-label]), .btn:not([aria-label]), .closeout-button:not([aria-label])) { font-size: 14px !important; font-weight: 600 !important; }
+
+    /* Lịch ca giữ bố cục riêng đã đồng bộ giữa các vai trò. */
+    .batt-role-workspace .page-content :is(table.data-table, table.wh-table, table.fin-table, table.qc-table, table.warehouse-plans-table, table.owner-partner-table, table.wo-table, table.table):not(:is(.modal, .pm-overlay, dialog) *) { line-height: 1.5; }
+    .batt-role-workspace .page-content :is(table.data-table, table.wh-table, table.fin-table, table.qc-table, table.warehouse-plans-table, table.owner-partner-table, table.wo-table, table.table):not(:is(.modal, .pm-overlay, dialog) *) th { font-size: 14px !important; font-weight: 600 !important; line-height: 1.4; }
+    .batt-role-workspace .page-content :is(table.data-table, table.wh-table, table.fin-table, table.qc-table, table.warehouse-plans-table, table.owner-partner-table, table.wo-table, table.table):not(:is(.modal, .pm-overlay, dialog) *) td { font-size: 15px !important; font-weight: 500 !important; line-height: 1.5; }
+    .batt-role-workspace .page-content :is(table.data-table, table.wh-table, table.fin-table, table.qc-table, table.warehouse-plans-table, table.owner-partner-table, table.wo-table, table.table):not(:is(.modal, .pm-overlay, dialog) *) th :is(strong, b, span):not(.bi) { font-size: 14px !important; font-weight: 600 !important; }
+    .batt-role-workspace .page-content :is(table.data-table, table.wh-table, table.fin-table, table.qc-table, table.warehouse-plans-table, table.owner-partner-table, table.wo-table, table.table):not(:is(.modal, .pm-overlay, dialog) *) td :is(strong, b, span, small):not(:is(button, a) *, .bi) { font-size: 15px !important; font-weight: 500 !important; }
+}
+
+@media screen and (max-width: 600px) {
+    .batt-role-workspace .page-content :is(h1, .page-title, .fin-page-title) { font-size: 25px !important; }
+}

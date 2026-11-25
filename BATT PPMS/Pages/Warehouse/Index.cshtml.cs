@@ -54,6 +54,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     public List<QcShiftOption> StaffAssignments { get; set; } = new();
     public List<ProductionQualityRequest> StaffQcRows { get; set; } = new();
     public IReadOnlyDictionary<int, ProductionQcResult> StaffQcResults { get; private set; } = new Dictionary<int, ProductionQcResult>();
+    public bool CanManageStaffQc(ProductionQualityRequest request) => request.Inspection.RequestedBy == CurrentUserId;
 
     public static string FormatShift(string? shift) {
         if (string.IsNullOrWhiteSpace(shift)) return "Chưa ghi nhận ca";
@@ -130,7 +131,9 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
             } else if (IsStaff && EffectiveStep == 4) {
                 StaffAssignments = await new ProductionFlow(db).QcShiftOptions(CurrentUserId);
                 StaffQcRows = await new ProductionFlow(db).QualityQuery.AsNoTracking()
-                    .Where(q => q.Inspection.RequestedBy == CurrentUserId)
+                    .Where(q => q.Inspection.RequestedBy == CurrentUserId || db.PersonnelAssignments.Any(a =>
+                        a.StaffId == CurrentUserId && a.Status != "Cancelled"
+                        && a.AssignmentDate == q.Assignment.AssignmentDate && a.Shift == q.Assignment.Shift))
                     .OrderByDescending(q => q.RequestId).ToListAsync();
                 var qcIds = StaffQcRows.Select(q => q.RequestId).ToArray();
                 if (qcIds.Length > 0)
@@ -167,7 +170,11 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
                 .Include(x => x.QualityRequest).ThenInclude(x => x.Report)
                 .Include(x => x.QualityRequest).ThenInclude(x => x.Inspection).ThenInclude(x => x.Batch).AsQueryable();
         if (IsStaff) {
-            query = query.Where(x => x.RequestedBy == CurrentUserId);
+            if (!StaffReceivedView)
+                query = query.Where(x => x.RequestedBy == CurrentUserId || db.PersonnelAssignments.Any(a =>
+                    a.StaffId == CurrentUserId && a.Status != "Cancelled"
+                    && a.AssignmentDate == x.QualityRequest.Assignment.AssignmentDate
+                    && a.Shift == x.QualityRequest.Assignment.Shift));
             // The former confirmation status already recorded the stock movement.
             query = StaffReceivedView
                 ? query.Where(x => x.Status == "Received" || x.Status == "AwaitingStaffConfirmation")

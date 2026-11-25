@@ -26,7 +26,7 @@
     .fin-container {
         max-width: 1400px;
         margin: 0 auto;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-family: var(--font);
     }
 
     .fin-breadcrumb {
@@ -119,14 +119,14 @@
     }
 
     .fin-kpi-label {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
         color: #64748b;
     }
 
     .fin-kpi-val {
         font-size: 24px;
-        font-weight: 800;
+        font-weight: 700;
         color: #1e293b;
         margin-top: 6px;
         font-variant-numeric: tabular-nums;
@@ -173,6 +173,7 @@
         background-color: #ffffff;
         cursor: pointer;
     }
+    .fin-card-toolbar .batt-select { width: 170px; flex: 0 0 170px; }
 
     .fin-search-input {
         height: 38px;
@@ -196,6 +197,22 @@
         border-collapse: collapse;
         vertical-align: middle;
     }
+
+    .fin-export-table { min-width: 850px; table-layout: fixed; }
+    .fin-export-table .fin-export-month { width: 16%; }
+    .fin-export-table .fin-export-quantity { width: 19%; }
+    .fin-export-table .fin-export-amount { width: 23%; }
+    .fin-export-table .fin-export-note { width: 26%; }
+    .fin-export-table .fin-export-detail { width: 16%; }
+    .fin-export-table .fin-export-number { text-align: left; white-space: nowrap; }
+    .fin-debt-table { min-width: 1400px; table-layout: fixed; }
+    .fin-debt-table .fin-debt-partner { width: 27%; }
+    .fin-debt-table .fin-debt-total { width: 17%; }
+    .fin-debt-table .fin-debt-remaining { width: 22%; }
+    .fin-debt-table .fin-debt-paid { width: 16%; }
+    .fin-debt-table .fin-debt-actions { width: 18%; }
+    .fin-debt-table th { white-space: normal; }
+    .fin-debt-table .fin-debt-number { text-align: left; white-space: nowrap; }
 
     .fin-table thead tr {
         background: #f8fafc;
@@ -328,13 +345,13 @@
     .fin-modal-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
+        font-size: 15px;
     }
 
     .fin-modal-table th {
         background: #f8fafc;
         color: #64748b;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
         padding: 11px 14px;
         border-bottom: 1px solid #e2e8f0;
@@ -346,6 +363,7 @@
         padding: 11px 14px;
         border-bottom: 1px solid #f1f5f9;
         color: #1e293b;
+        font-size: 15px;
         font-variant-numeric: tabular-nums;
     }
 
@@ -469,6 +487,8 @@
                     @($"Tổng hợp hàng xuất {Model.Year}")
                 }
             </h1>
+            @if (!isSupplierDebts)
+            {
             <p class="fin-page-subtitle">
                 @if (isMaterials)
                 {
@@ -478,15 +498,12 @@
                 {
                     @("Theo dõi tổng tiền đơn hàng, số tiền đã trả, số tiền còn lại phải trả và lịch sử thanh toán của từng khách hàng.")
                 }
-                else if (isSupplierDebts)
-                {
-                    @("Theo dõi tổng tiền thu mua nguyên liệu, số tiền đã trả, số tiền còn lại phải trả và lịch sử thanh toán cho các nhà phân phối / nhà cung cấp.")
-                }
                 else
                 {
                     @("Thống kê khối lượng thành phẩm xuất bán và doanh thu theo 12 tháng trong năm.")
                 }
             </p>
+            }
         </div>
     </div>
 
@@ -528,12 +545,13 @@
             </div>
 
             <div class="table-responsive">
-                <table class="fin-table">
+                <table class="fin-table fin-export-table">
+                    <colgroup><col class="fin-export-month" /><col class="fin-export-quantity" /><col class="fin-export-amount" /><col class="fin-export-note" /><col class="fin-export-detail" /></colgroup>
                     <thead>
                         <tr>
                             <th>KL xuất (Tháng)</th>
-                            <th style="text-align: right;">Khối lượng / Tấn (kg)</th>
-                            <th style="text-align: right;">Thành tiền (VNĐ)</th>
+                            <th class="fin-export-number">Khối lượng / Tấn (kg)</th>
+                            <th class="fin-export-number">Thành tiền (VNĐ)</th>
                             <th>Ghi chú</th>
                             <th style="text-align: center;">Chi tiết</th>
                         </tr>
@@ -546,10 +564,10 @@
                                 <td>
                                     <span class="fin-month-badge @(hasData ? "has-data" : "")">@row.MonthLabel</span>
                                 </td>
-                                <td style="text-align: right; font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#1e293b" : "#94a3b8");">
+                                <td class="fin-export-number" style="font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#1e293b" : "#94a3b8");">
                                     @row.Quantity.ToString("N0", vi)
                                 </td>
-                                <td style="text-align: right; font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#15803d" : "#94a3b8");">
+                                <td class="fin-export-number" style="font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#15803d" : "#94a3b8");">
                                     @row.TotalAmount.ToString("N0", vi) VNĐ
                                 </td>
                                 <td>
@@ -574,8 +592,8 @@
                     <tfoot>
                         <tr>
                             <td>TỔNG CỘNG NĂM @Model.Year</td>
-                            <td style="text-align: right;">@Model.TotalExportQuantity.ToString("N0", vi) kg</td>
-                            <td style="text-align: right;">@Model.TotalExportAmount.ToString("N0", vi) VNĐ</td>
+                            <td class="fin-export-number">@Model.TotalExportQuantity.ToString("N0", vi) kg</td>
+                            <td class="fin-export-number">@Model.TotalExportAmount.ToString("N0", vi) VNĐ</td>
                             <td>
                                 @if (Model.TotalExportCount > 0)
                                 {
@@ -627,12 +645,13 @@
             </div>
 
             <div class="table-responsive">
-                <table class="fin-table">
+                <table class="fin-table fin-export-table">
+                    <colgroup><col class="fin-export-month" /><col class="fin-export-quantity" /><col class="fin-export-amount" /><col class="fin-export-note" /><col class="fin-export-detail" /></colgroup>
                     <thead>
                         <tr>
                             <th>KL xuất (Tháng)</th>
-                            <th style="text-align: right;">Khối lượng (kg)</th>
-                            <th style="text-align: right;">Thành tiền (VNĐ)</th>
+                            <th class="fin-export-number">Khối lượng (kg)</th>
+                            <th class="fin-export-number">Thành tiền (VNĐ)</th>
                             <th>Ghi chú</th>
                             <th style="text-align: center;">Chi tiết</th>
                         </tr>
@@ -645,10 +664,10 @@
                                 <td>
                                     <span class="fin-month-badge @(hasData ? "has-data" : "")">@row.MonthLabel</span>
                                 </td>
-                                <td style="text-align: right; font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#1e293b" : "#94a3b8");">
+                                <td class="fin-export-number" style="font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#1e293b" : "#94a3b8");">
                                     @row.Quantity.ToString("N0", vi) kg
                                 </td>
-                                <td style="text-align: right; font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#15803d" : "#94a3b8");">
+                                <td class="fin-export-number" style="font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#15803d" : "#94a3b8");">
                                     @row.TotalAmount.ToString("N0", vi) VNĐ
                                 </td>
                                 <td>
@@ -673,8 +692,8 @@
                     <tfoot>
                         <tr>
                             <td>TỔNG CỘNG NĂM @Model.Year</td>
-                            <td style="text-align: right;">@Model.TotalMaterialQuantity.ToString("N0", vi) kg</td>
-                            <td style="text-align: right;">@Model.TotalMaterialAmount.ToString("N0", vi) VNĐ</td>
+                            <td class="fin-export-number">@Model.TotalMaterialQuantity.ToString("N0", vi) kg</td>
+                            <td class="fin-export-number">@Model.TotalMaterialAmount.ToString("N0", vi) VNĐ</td>
                             <td>
                                 @if (Model.TotalMaterialCount > 0)
                                 {
@@ -732,13 +751,14 @@
             </div>
 
             <div class="table-responsive">
-                <table class="fin-table">
+                <table class="fin-table fin-debt-table">
+                    <colgroup><col class="fin-debt-partner" /><col class="fin-debt-total" /><col class="fin-debt-remaining" /><col class="fin-debt-paid" /><col class="fin-debt-actions" /></colgroup>
                     <thead>
                         <tr>
                             <th>@debtPartnerLabel</th>
-                            <th style="text-align: right;">Số tiền tổng (VNĐ)</th>
-                            <th style="text-align: right;">Số tiền còn lại phải trả (VNĐ)</th>
-                            <th style="text-align: right;">Số tiền đã trả (VNĐ)</th>
+                            <th>Số tiền tổng (VNĐ)</th>
+                            <th>Số tiền còn lại phải trả (VNĐ)</th>
+                            <th>Số tiền đã trả (VNĐ)</th>
                             <th style="text-align: center;">Chức năng</th>
                         </tr>
                     </thead>
@@ -775,13 +795,13 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td style="text-align: right; font-weight: 700; color: #1e293b;">
+                                    <td class="fin-debt-number" style="font-weight: 700; color: #1e293b;">
                                         @d.TotalAmount.ToString("N0", vi) VNĐ
                                     </td>
-                                    <td style="text-align: right; font-weight: 700; color: @(d.RemainingAmount > 0 ? "#b45309" : "#64748b");">
+                                    <td class="fin-debt-number" style="font-weight: 700; color: @(d.RemainingAmount > 0 ? "#b45309" : "#64748b");">
                                         @d.RemainingAmount.ToString("N0", vi) VNĐ
                                     </td>
-                                    <td style="text-align: right; font-weight: 700; color: #15803d;">
+                                    <td class="fin-debt-number" style="font-weight: 700; color: #15803d;">
                                         @d.PaidAmount.ToString("N0", vi) VNĐ
                                     </td>
                                     <td style="text-align: center; white-space: nowrap;">
@@ -811,9 +831,9 @@
                     <tfoot>
                         <tr>
                             <td>TỔNG CỘNG (@activeDebtRows.Count @(isSupplierDebts ? "nhà phân phối" : "khách hàng"))</td>
-                            <td style="text-align: right;">@totalDebtAmt.ToString("N0", vi) VNĐ</td>
-                            <td style="text-align: right; color: #b45309;">@totalRemainAmt.ToString("N0", vi) VNĐ</td>
-                            <td style="text-align: right;">@totalPaidAmt.ToString("N0", vi) VNĐ</td>
+                            <td class="fin-debt-number">@totalDebtAmt.ToString("N0", vi) VNĐ</td>
+                            <td class="fin-debt-number" style="color: #b45309;">@totalRemainAmt.ToString("N0", vi) VNĐ</td>
+                            <td class="fin-debt-number">@totalPaidAmt.ToString("N0", vi) VNĐ</td>
                             <td></td>
                         </tr>
                     </tfoot>

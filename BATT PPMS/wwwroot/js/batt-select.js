@@ -1,10 +1,12 @@
 (() => {
     let active = null;
-    document.querySelectorAll('select').forEach((select, index) => {
-        // Native dialog content lives in the top layer; a menu appended to body is hidden behind it.
-        // Keep the QC dialog's native selects, including its hidden assignment field.
-        if (select.multiple || select.size > 1 || select.closest('.batt-select, #workflow-request-qc')) return;
-        if (!select.id) select.id = `batt-select-${index}`;
+    const controls = new Set();
+    let nextId = 0;
+    function initialize(root = document) {
+    root.querySelectorAll('select').forEach(select => {
+        // Do not replace hidden fields, multi-selects, or controls with their own custom UI.
+        if (select.hidden || select.multiple || select.size > 1 || select.closest('.batt-select, .owner-status-control')) return;
+        if (!select.id) select.id = `batt-select-${nextId++}`;
         const originalStyle = getComputedStyle(select);
         const wrapper = document.createElement('div');
         wrapper.className = 'batt-select';
@@ -40,7 +42,12 @@
             trigger.setAttribute('aria-label', select.getAttribute('aria-label') || select.name);
             menu.setAttribute('aria-label', select.getAttribute('aria-label') || select.name);
         }
-        const options = Array.from(select.options, option => {
+        let options = [];
+        let optionNodes = [];
+        function rebuildOptions() {
+        menu.replaceChildren();
+        optionNodes = Array.from(select.options);
+        options = optionNodes.map(option => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'batt-select-option';
@@ -60,7 +67,10 @@
             menu.append(button);
             return button;
         });
+        }
         function refresh() {
+            const currentOptions = Array.from(select.options);
+            if (currentOptions.length !== optionNodes.length || currentOptions.some((option, i) => option !== optionNodes[i])) rebuildOptions();
             caption.textContent = select.selectedOptions[0]?.textContent || 'Chọn một mục';
             trigger.title = caption.textContent;
             trigger.disabled = select.disabled;
@@ -69,13 +79,16 @@
                 option.setAttribute('aria-selected', String(i === select.selectedIndex));
                 option.disabled = select.options[i].disabled;
                 option.hidden = select.options[i].hidden;
+                option.querySelector('.batt-select-option-label').textContent = select.options[i].textContent;
             });
         }
         function position() {
             if (menu.hidden) return;
             const rect = trigger.getBoundingClientRect();
-            const below = innerHeight - rect.bottom - 16;
-            const above = rect.top - 16;
+            const dialog = select.closest('dialog[open]');
+            const bounds = dialog?.getBoundingClientRect();
+            const below = (bounds?.bottom ?? innerHeight) - rect.bottom - 16;
+            const above = rect.top - (bounds?.top ?? 0) - 16;
             const placeAbove = below < 220 && above > below;
             menu.style.maxHeight = `${Math.max(44, Math.min(320, placeAbove ? above : below))}px`;
             const width = Math.min(rect.width, innerWidth - 24);
@@ -122,12 +135,23 @@
         select.addEventListener('invalid', event => { event.preventDefault(); trigger.setAttribute('aria-invalid', 'true'); trigger.focus(); });
         select.form?.addEventListener('reset', () => setTimeout(refresh, 0));
         wrapper.append(trigger);
-        (select.closest('.modal, .pm-overlay') || document.body).append(menu);
+        (select.closest('dialog, .modal, .pm-overlay') || document.body).append(menu);
         select.hidden = true;
+        new MutationObserver(refresh).observe(select, { attributes: true, childList: true, subtree: true, characterData: true, attributeFilter: ['disabled', 'hidden', 'selected', 'label'] });
+        controls.add({ select, refresh });
         refresh();
     });
+    }
+    initialize();
+    window.BattSelect = { init: initialize };
     document.addEventListener('click', event => {
         if (active && !active.wrapper.contains(event.target) && !active.menu.contains(event.target)) active.close();
+        queueMicrotask(() => {
+            controls.forEach(control => {
+                if (!control.select.isConnected) controls.delete(control);
+                else control.refresh();
+            });
+        });
     });
     document.addEventListener('focusin', event => {
         if (active && !active.wrapper.contains(event.target) && !active.menu.contains(event.target)) active.close();

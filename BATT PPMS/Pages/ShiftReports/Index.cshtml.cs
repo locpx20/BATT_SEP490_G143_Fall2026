@@ -70,10 +70,47 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         Pagination = new PageWindow(await query.CountAsync(cancellationToken), PageWindow.ReadRequestedPage(Request.Query));
         Reports = await query.OrderByDescending(row => row.Date).ThenByDescending(row => row.Id)
             .Skip(Pagination.Offset).Take(Pagination.PageSize).ToListAsync(cancellationToken);
+        await LoadShiftComparisonsAsync(cancellationToken);
         if (ShowReceipts)
             Notices = await Notifier.TakeUnreadAsync(db, CurrentUserId);
         return Page();
     }
+
+    private async Task LoadShiftComparisonsAsync(CancellationToken cancellationToken)
+    {
+        if (Reports.Count == 0) return;
+        var dates = Reports.Select(r => r.Date).Distinct().ToArray();
+        var plans = await db.ShiftProductionPlans.AsNoTracking()
+            .Where(p => dates.Contains(p.PlanDate) && !p.IsDayOff)
+            .ToDictionaryAsync(p => (p.PlanDate, p.Shift), cancellationToken);
+        var reviews = await db.MaterialUsageReviews.AsNoTracking()
+            .Where(r => r.Status == "Approved" && dates.Contains(r.Report.ShiftDate))
+            .Select(r => new {
+                Date = r.Report.ShiftDate, r.Report.Assignment.Shift,
+                HasUsage = db.ShiftMaterialUsages.Any(u => u.ReportId == r.ReportId),
+                Invalid = db.ShiftMaterialUsages.Any(u => u.ReportId == r.ReportId && (u.ExportId == null || u.Material.Unit.Trim().ToLower() != "kg")),
+                Kg = db.ShiftMaterialUsages.Where(u => u.ReportId == r.ReportId).Sum(u => (decimal?)u.Quantity) ?? 0
+            }).ToListAsync(cancellationToken);
+        var usage = reviews.GroupBy(r => (r.Date, r.Shift)).ToDictionary(g => g.Key,
+            g => g.All(r => r.HasUsage && !r.Invalid) ? (decimal?)g.Sum(r => r.Kg) : null);
+        var receipts = await db.FinishedGoodsReceipts.AsNoTracking()
+            .Where(r => dates.Contains(r.QualityRequest.Assignment.AssignmentDate) && r.ReceivedAt != null
+                && r.ActualQuantity.HasValue && (r.Status == "Received" || r.Status == "AwaitingStaffConfirmation"))
+            .Select(r => new { Date = r.QualityRequest.Assignment.AssignmentDate, r.QualityRequest.Assignment.Shift, Kg = r.ActualQuantity!.Value })
+            .ToListAsync(cancellationToken);
+        var received = receipts.GroupBy(r => (r.Date, r.Shift)).ToDictionary(g => g.Key, g => g.Sum(r => r.Kg));
+        foreach (var report in Reports)
+        {
+            if (string.IsNullOrWhiteSpace(report.Shift)) continue;
+            var key = (report.Date, report.Shift);
+            plans.TryGetValue(key, out var plan);
+            report.Comparison = new ShiftComparison(plan?.ExpectedMaterialKg, usage.GetValueOrDefault(key),
+                plan?.ExpectedFinishedKg, received.TryGetValue(key, out var kg) ? kg : null);
+        }
+    }
+
+    public sealed record ShiftComparison(decimal? ExpectedMaterialKg, decimal? ActualMaterialKg,
+        decimal? ExpectedFinishedKg, decimal? ActualFinishedKg);
 
     private IQueryable<ReportRow> ReadMaterials() => db.MaterialUsageReviews.AsNoTracking().Select(review => new ReportRow
     {
@@ -115,5 +152,6 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         public string Status { get; init; } = string.Empty;
         public string? Note { get; init; }
         public string? RejectionReason { get; init; }
+        public ShiftComparison? Comparison { get; set; }
     }
 }

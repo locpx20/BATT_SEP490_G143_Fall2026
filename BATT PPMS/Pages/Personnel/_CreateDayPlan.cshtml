@@ -14,12 +14,13 @@
       asp-route-StatusFilter="@(!editing ? Model.StatusFilter : null)"
       asp-route-SearchTerm="@(!editing ? Model.SearchTerm : null)"
       data-today="@today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+      data-plan-context-url="@Url.Page("./Index", "PlanContext")"
       data-scheduled-url="@(!editing ? Url.Page("./Index", "ScheduledShifts") : null)">
     @if (editing) {
         <input asp-for="EditShift" type="hidden" />
     }
     <div class="labor-form-body">
-        @if (!editing && Model.Create && !string.IsNullOrEmpty(Model.ErrorMessage)) {
+        @if ((editing || Model.Create) && !string.IsNullOrEmpty(Model.ErrorMessage)) {
             <p class="labor-message labor-message-error" role="alert" tabindex="-1" data-plan-error>
                 <i class="bi bi-exclamation-circle" aria-hidden="true"></i> @Model.ErrorMessage
             </p>
@@ -42,6 +43,21 @@
         @if (!editing) {
             <p class="labor-message labor-message-error" role="status" data-plan-lookup-error hidden>Không tải được lịch ca. Hãy chọn lại ngày sản xuất.</p>
         }
+
+        <section class="labor-context" aria-label="Tồn kho và tình trạng máy móc">
+            <p class="labor-context-message" role="status" data-plan-context-message hidden></p>
+            <div class="labor-context-grid" data-plan-context-content hidden>
+                <section class="labor-context-card" aria-labelledby="labor-material-title">
+                    <h3 id="labor-material-title"><i class="bi bi-box-seam" aria-hidden="true"></i> Tồn kho nguyên liệu thô</h3>
+                    <p class="labor-context-stock" data-plan-total-kg>—</p>
+                    <small class="labor-context-stock-note">Tổng các nguyên liệu có đơn vị kg</small>
+                </section>
+                <section class="labor-context-card" aria-labelledby="labor-machine-title">
+                    <h3 id="labor-machine-title"><i class="bi bi-gear" aria-hidden="true"></i> Tình trạng máy móc</h3>
+                    <ul class="labor-context-list" data-plan-machines></ul>
+                </section>
+            </div>
+        </section>
 
         @for (var i = 0; i < shifts.Count; i++) {
             var shift = shifts[i];
@@ -130,8 +146,9 @@
 
     <footer class="labor-form-footer">
         @if (editing) {
+            <button class="labor-button" type="button" data-plan-edit-cancel hidden>Hủy</button>
             <a class="labor-button" asp-page="./Index" asp-route-PlanDate="@Model.NewPlanDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-               asp-route-ShiftFilter="@Model.EditShift">Hủy</a>
+               asp-route-ShiftFilter="@Model.EditShift" data-plan-edit-back>Quay lại</a>
         } else {
             <button class="labor-button" type="button" data-plan-close>Hủy</button>
         }

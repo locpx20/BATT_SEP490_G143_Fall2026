@@ -60,6 +60,13 @@
             </header>
             <partial name="_CreateDayPlan" model="Model" />
         </dialog>
+        <dialog class="labor-create-dialog" id="labor-edit-dialog" aria-labelledby="labor-edit-title">
+            <header class="labor-dialog-head">
+                <h2 id="labor-edit-title"><i class="bi bi-pencil-square" aria-hidden="true"></i> Chỉnh sửa phân công công việc</h2>
+                <button class="labor-dialog-close" type="button" aria-label="Đóng" data-edit-dialog-close><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </header>
+            <div data-edit-dialog-content><p class="labor-message" role="status">Đang tải phiếu chỉnh sửa...</p></div>
+        </dialog>
         </div>
     }
     return;

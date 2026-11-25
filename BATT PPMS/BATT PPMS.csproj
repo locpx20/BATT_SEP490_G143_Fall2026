@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>BATT_PPMS</RootNamespace>
     <CodePage>65001</CodePage>
+    <UserSecretsId>batt-ppms-local-development-1e4508e2-6836-46fc-b8d4-bc2aee996412</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

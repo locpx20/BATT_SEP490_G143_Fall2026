@@ -3,6 +3,7 @@ using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using BATT_PPMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -33,6 +34,9 @@ namespace BATT_PPMS.Pages.Personnel
         public bool CanCreatePlan { get; set; }
         public bool IsEditingPlan => !string.IsNullOrEmpty(EditShift);
         public IReadOnlyList<string> ExistingCreateShifts { get; private set; } = [];
+        public sealed record PlanMachine(string MachineCode, string MachineName, string Status, bool Stopped, string? Repair);
+        public sealed record PlanMachineStage(string Name, List<PlanMachine> Machines);
+        public sealed record PlanContext(decimal? TotalKg, List<PlanMachineStage> Stages);
         public bool IsStaffView => IsStaff;
         public bool IsOwnerView => IsOwner;
         public bool IsWarehouseView => IsWarehouseStaff;
@@ -147,6 +151,62 @@ namespace BATT_PPMS.Pages.Personnel
                 return BadRequest();
 
             return new JsonResult(await FindScheduledShiftsAsync(date, ProductionShifts));
+        }
+
+        public async Task<IActionResult> OnGetEditFormAsync()
+        {
+            var check = RequireRole(RoleConstants.Manager);
+            if (check != null) return check;
+            CanCreatePlan = true;
+            var result = await OpenPlanEditorAsync();
+            return result is PageResult ? Partial("_CreateDayPlan", this) : result;
+        }
+
+        public async Task<IActionResult> OnGetPlanContextAsync()
+        {
+            var check = RequireRole(RoleConstants.Manager);
+            if (check != null) return check;
+            Response.Headers.CacheControl = "no-store";
+            return new JsonResult(await ReadPlanContextAsync());
+        }
+
+        private async Task<PlanContext> ReadPlanContextAsync()
+        {
+            var totalKg = await _context.RawMaterials.AsNoTracking()
+                .Where(m => m.Unit.Trim().ToLower() == "kg")
+                .SumAsync(m => (decimal?)m.CurrentQuantity);
+            var machines = await _context.Machines.AsNoTracking()
+                .OrderBy(m => m.MachineName).ThenBy(m => m.MachineId)
+                .Select(m => new { m.MachineId, m.MachineCode, m.MachineName, m.Status }).ToListAsync();
+            var openStatuses = new[] { RepairStatus.Pending, "Reported", RepairStatus.Assigned, RepairStatus.InProgress,
+                "In Progress", RepairStatus.WaitingMaterial, RepairStatus.PendingVerification };
+            var repairs = await _context.MaintenanceRequests.AsNoTracking()
+                .Where(r => r.Status != null && openStatuses.Contains(r.Status))
+                .OrderByDescending(r => r.RequestDate).ThenByDescending(r => r.RequestId)
+                .Select(r => new { r.BrokenReport.MachineId, r.Status, r.MachineStopped }).ToListAsync();
+            var repairGroups = repairs.ToLookup(r => r.MachineId);
+            var stageDefinitions = new[] {
+                (Name: "Máy băm", Terms: new[] { "băm" }),
+                (Name: "Máy nghiền", Terms: new[] { "nghiền" }),
+                (Name: "Máy sấy", Terms: new[] { "sấy" }),
+                (Name: "Máy nén", Terms: new[] { "máy nén", "máy ép", "ép viên" })
+            };
+            var stages = stageDefinitions.Select(stage => new PlanMachineStage(stage.Name,
+                machines.Where(m => !string.Equals(m.MachineCode?.Trim(), "M-03B", StringComparison.OrdinalIgnoreCase)
+                    && stage.Terms.Any(term =>
+                    (m.MachineName ?? "").Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .Select(m => {
+                    var activeRepairs = repairGroups[m.MachineId].ToList();
+                    var stopped = activeRepairs.Any(r => r.MachineStopped) || m.Status?.Trim() == MachineStatusGuard.Down;
+                    var repairStatus = activeRepairs.FirstOrDefault(r => RepairStatus.Normalize(r.Status) == RepairStatus.InProgress)
+                        ?? activeRepairs.FirstOrDefault();
+                    var status = repairStatus != null ? RepairStatus.Label(repairStatus.Status)
+                        : stopped ? "Ngừng hoạt động"
+                        : m.Status?.Trim() == MachineStatusGuard.Warning ? "Cần bảo trì" : "Đang hoạt động";
+                    return new PlanMachine(m.MachineCode, m.MachineName, status, stopped,
+                        repairStatus == null ? null : RepairStatus.Label(repairStatus.Status));
+                }).ToList())).ToList();
+            return new PlanContext(totalKg, stages);
         }
 
         private async Task<string[]> FindScheduledShiftsAsync(DateOnly day, IReadOnlyList<string> shifts) =>
@@ -443,7 +503,8 @@ namespace BATT_PPMS.Pages.Personnel
                 await LoadStaffWeekAsync();
                 DisplayDate = PlanDate ?? Today;
             }
-            return Page();
+            return IsEditingPlan && Request.Headers["X-Requested-With"] == "XMLHttpRequest"
+                ? Partial("_CreateDayPlan", this) : Page();
         }
 
         private IActionResult PlanEditUnavailable(DateOnly day, string message = "Chỉ được chỉnh sửa phân công của ngày hôm nay.")
@@ -708,6 +769,7 @@ namespace BATT_PPMS.Pages.Personnel
 
             SuccessMessage = input.IsDayOff ? $"Đã đánh dấu {shift} ngày {day:dd/MM/yyyy} là ca nghỉ."
                 : $"Đã lưu phân công {shift} ngày {day:dd/MM/yyyy}.";
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest") return new JsonResult(new { success = true });
             return RedirectToPage(new { PlanDate = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), ShiftFilter = shift });
         }
 

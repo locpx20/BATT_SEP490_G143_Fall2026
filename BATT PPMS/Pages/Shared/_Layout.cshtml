@@ -13,7 +13,7 @@
     {
         <link rel="stylesheet" href="~/css/admin-dialogs.css" asp-append-version="true" />
     }
-    @if (Context.Session.GetString("RoleName") is "Admin" or "Admin System" or "Staff" or "QC Staff" or "Warehouse Staff")
+    @if (!string.IsNullOrWhiteSpace(Context.Session.GetString("RoleName")))
     {
         <link rel="stylesheet" href="~/css/batt-select.css" asp-append-version="true" />
     }
@@ -39,8 +39,12 @@
     {
         <link rel="stylesheet" href="~/css/warehouse-inbox.css" asp-append-version="true" />
     }
+    @if (!string.IsNullOrWhiteSpace(Context.Session.GetString("RoleName")))
+    {
+        <link rel="stylesheet" href="~/css/role-consistency.css" asp-append-version="true" />
+    }
 </head>
-<body class="@(Context.Session.GetString("RoleName") == "Staff" ? "staff-workspace" : BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")) ? "owner-workspace" : "") @(Context.Session.GetString("RoleName") == "Manager" ? "manager-workspace" : "") @(Context.Session.GetString("RoleName") is "QC Staff" or "Warehouse Staff" ? "operations-workspace" : "") @ViewData["PageClass"]">
+<body data-role="@Context.Session.GetString("RoleName")" class="@(!string.IsNullOrWhiteSpace(Context.Session.GetString("RoleName")) ? "batt-role-workspace" : "") @(Context.Session.GetString("RoleName") == "Staff" ? "staff-workspace" : BATT_PPMS.Helpers.RoleViews.IsWorkspaceRole(Context.Session.GetString("RoleName")) ? "owner-workspace" : "") @(Context.Session.GetString("RoleName") == "Manager" ? "manager-workspace" : "") @(Context.Session.GetString("RoleName") is "QC Staff" or "Warehouse Staff" ? "operations-workspace" : "") @ViewData["PageClass"]">
 
 @{
     var roleName        = Context.Session.GetString("RoleName") ?? "";
@@ -253,7 +257,7 @@
     <partial name="~/Pages/Shared/_AdminConfirmation.cshtml" />
     <script src="~/js/admin-dialogs.js" asp-append-version="true"></script>
 }
-@if (isAdmin || isStaff || roleName is "QC Staff" or "Warehouse Staff")
+@if (!string.IsNullOrWhiteSpace(roleName))
 {
     <script src="~/js/batt-select.js" asp-append-version="true"></script>
 }

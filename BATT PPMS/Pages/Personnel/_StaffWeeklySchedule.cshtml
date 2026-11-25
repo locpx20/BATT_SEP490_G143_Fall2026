@@ -190,7 +190,7 @@
                                         }
                                         @if (Model.CanCreatePlan && day == today && cell.Status != "Cancelled") {
                                             <div class="staff-schedule-actions">
-                                                <a class="staff-schedule-edit" asp-page="./Index" asp-route-PlanDate="@day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" asp-route-EditShift="@shift"><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</a>
+                                                <a class="staff-schedule-edit" asp-page="./Index" asp-route-PlanDate="@day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" asp-route-EditShift="@shift" data-open-plan-edit><i class="bi bi-pencil" aria-hidden="true"></i> Chỉnh sửa</a>
                                                 <button type="button" class="staff-schedule-delete" data-delete-day="@day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" data-delete-label="@day.ToString("dd/MM/yyyy")" data-delete-shift="@shift"><i class="bi bi-trash" aria-hidden="true"></i> Xóa</button>
                                             </div>
                                         }

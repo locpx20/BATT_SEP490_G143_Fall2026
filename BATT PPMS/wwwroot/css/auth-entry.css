@@ -35,11 +35,12 @@ body.auth-entry {
 .auth-entry .btn-login:hover { background: #123329; border-color: #dfc983; transform: none; box-shadow: none; }
 .auth-entry a:focus-visible, .auth-entry button:focus-visible { outline: 2px solid #b5974f; outline-offset: 4px; }
 .auth-entry .auth-footer-action { margin-top: 26px; padding-top: 22px; border-top: 1px solid #527263; text-align: center; }
+.auth-entry--forgot .auth-footer-action { border-top: 0; padding-top: 0; }
 .auth-entry .auth-back-link { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; color: #dfc983; font-size: 18px; font-weight: 600; text-decoration: none; }
-.auth-entry .auth-back-link:hover { color: #f0e1b8; text-decoration: underline; text-underline-offset: 4px; }
+.auth-entry .auth-back-link:hover { color: #f0e1b8; text-decoration: none; }
 .auth-entry .alert { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 30px; padding: 18px 20px; border-radius: 10px; font-size: 17px; line-height: 1.6; overflow-wrap: anywhere; }
 .auth-entry .alert-danger { background: #fbefea; border: 1px solid #e7c5bc; color: #873f36; }
-.auth-entry .alert-success { background: #e5eee7; border: 1px solid #bfd3c4; color: #28553e; }
+.auth-entry .alert-success { background: #31594b; border: 1px solid #789487; color: #f4f2ea; }
 .auth-entry .alert-icon { flex-shrink: 0; font-size: 16px; }
 @media (min-width: 641px) and (max-height: 820px) {
     body.auth-entry { padding: 24px 20px; }

@@ -36,6 +36,7 @@ namespace BATT_PPMS
 
             builder.Services.AddSingleton<BATT_PPMS.Services.IEmailService, BATT_PPMS.Services.EmailService>();
             builder.Services.AddSingleton<BATT_PPMS.Services.IOtpService, BATT_PPMS.Services.OtpService>();
+            builder.Services.AddHttpClient<BATT_PPMS.Services.TwilioVerifyService>();
 
             var app = builder.Build();
 

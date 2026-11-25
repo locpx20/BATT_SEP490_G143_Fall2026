@@ -41,7 +41,8 @@
                 var shiftKey = (row.Date, row.Shift);
                 var firstInShift = previousShift != shiftKey;
                 previousShift = shiftKey;
-                var pending = q is { RequestId: > 0 } && q.Inspection.Status == "Pending" && q.Inspection.InspectedBy == null && q.Receipt == null;
+                var canManage = q != null && Model.CanManageStaffQc(q);
+                var pending = canManage && q is { RequestId: > 0 } && q.Inspection.Status == "Pending" && q.Inspection.InspectedBy == null && q.Receipt == null;
                 <tr class="@(firstInShift ? "staff-lots-first" : "staff-lots-continuation")">
                     @if (firstInShift) { <td rowspan="@groupSizes[shiftKey]" class="staff-lots-shift">@row.Date.ToString("dd/MM/yyyy")<br /><small>@row.Shift</small></td> }
                     <td class="staff-lots-code-cell">@(q?.Inspection.Batch.BagNumber ?? "—")</td>
@@ -73,15 +74,15 @@
                     }
                     <td>
                       <div class="staff-workflow-actions">
-                        @if (q is { RequestId: > 0 } && q.Inspection.Status == "Completed" && q.Inspection.Result == "Pass" && q.Receipt == null) {
+                        @if (canManage && q is { RequestId: > 0 } && q.Inspection.Status == "Completed" && q.Inspection.Result == "Pass" && q.Receipt == null) {
                             <form method="post" asp-page-handler="RequestReceipt"><input type="hidden" name="requestId" value="@q.RequestId" /><button class="closeout-button primary" type="submit">Yêu cầu nhập kho</button></form>
                         }
                         @if (pending && LotCode.BagCount(q!.Inspection.Batch.BagNumber) is { } bags) {
                             <button type="button" class="staff-workflow-action" aria-label="Chỉnh sửa yêu cầu QC" title="Chỉnh sửa yêu cầu QC" data-workflow-edit data-id="@q.RequestId" data-bags="@bags" data-note="@q.Inspection.Note"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
                             <button type="button" class="staff-workflow-action staff-workflow-action-delete" aria-label="Xóa yêu cầu QC" title="Xóa yêu cầu QC" data-workflow-delete data-id="@q.RequestId" data-lot="@q.Inspection.Batch.BagNumber"><i class="bi bi-trash" aria-hidden="true"></i></button>
-                        } else if (q is { RequestId: > 0 } && q.Inspection.Status == "Completed" && q.Inspection.Result == "Fail") {
+                        } else if (canManage && q is { RequestId: > 0 } && q.Inspection.Status == "Completed" && q.Inspection.Result == "Fail") {
                             <form method="post" asp-page-handler="RecheckQc"><input type="hidden" name="requestId" value="@q.RequestId" /><button type="submit" class="closeout-button secondary">Gửi QC kiểm tra lại</button></form>
-                        } else if (q?.Receipt?.Status == "Rejected") {
+                        } else if (canManage && q?.Receipt?.Status == "Rejected") {
                             <button type="button" class="staff-workflow-action" aria-label="Sửa và gửi lại yêu cầu nhập kho" title="Sửa và gửi lại yêu cầu nhập kho" data-workflow-revise data-id="@q.RequestId" data-note="@q.Receipt.RequestNote" data-reason="@q.Receipt.RejectionReason"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>
                         }
                         @if (q != null) { <button type="button" class="staff-workflow-action" aria-label="Xem chi tiết QC" title="Xem chi tiết QC" data-bs-toggle="modal" data-bs-target="#qc-details-@q.Inspection.InspectionId"><i class="bi bi-eye" aria-hidden="true"></i></button> }

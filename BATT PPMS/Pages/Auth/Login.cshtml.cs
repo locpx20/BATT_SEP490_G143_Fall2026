@@ -32,7 +32,7 @@ namespace BATT_PPMS.Pages.Auth
 
             if (reset == "1")
             {
-                SuccessMessage = "✅ Đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.";
+                SuccessMessage = "Đặt lại mật khẩu thành công! Vui lòng đăng nhập bằng mật khẩu mới.";
             }
             else if (!string.IsNullOrEmpty(msg))
             {

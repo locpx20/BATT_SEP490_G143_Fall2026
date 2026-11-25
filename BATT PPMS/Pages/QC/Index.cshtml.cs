@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Pages.QC
 {
-    [RequestSizeLimit(6 * 1024 * 1024)]
+    [RequestSizeLimit(52 * 1024 * 1024)]
     public class IndexModel : BasePageModel
     {
         private readonly AppDbContext _context;
@@ -89,7 +89,7 @@ namespace BATT_PPMS.Pages.QC
             catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
             return RedirectToPage();
         }
-        public async Task<IActionResult> OnPostFinishAsync(IFormFile? image)
+        public async Task<IActionResult> OnPostFinishAsync(List<IFormFile>? images)
         {
             var check = RequireRole(RoleConstants.QCStaff);
             if (check != null) return check;
@@ -97,11 +97,18 @@ namespace BATT_PPMS.Pages.QC
                 ResultError = "Dữ liệu kết quả kiểm tra không hợp lệ. Vui lòng kiểm tra các chỉ tiêu đã nhập.";
             else try
             {
-                if (image == null || image.Length == 0 || image.Length > QcEvidence.MaxBytes)
-                    throw new ProductionFlowException("Vui lòng đính kèm ảnh kết quả, tối đa 5 MB.");
-                using var buffer = new MemoryStream();
-                await image.CopyToAsync(buffer, HttpContext.RequestAborted);
-                await new ProductionFlow(_context).FinishQc(CurrentUserId, ResultInput, buffer.ToArray());
+                if (images == null || images.Count == 0 || images.Count > QcEvidence.MaxImages)
+                    throw new ProductionFlowException($"Vui lòng chọn từ 1 đến {QcEvidence.MaxImages} ảnh kết quả.");
+                var evidence = new List<byte[]>(images.Count);
+                foreach (var image in images)
+                {
+                    if (image.Length == 0 || image.Length > QcEvidence.MaxBytes)
+                        throw new ProductionFlowException("Mỗi ảnh kết quả phải có dung lượng tối đa 5 MB.");
+                    using var buffer = new MemoryStream();
+                    await image.CopyToAsync(buffer, HttpContext.RequestAborted);
+                    evidence.Add(buffer.ToArray());
+                }
+                await new ProductionFlow(_context).FinishQc(CurrentUserId, ResultInput, evidence);
                 SuccessMessage = "Đã trả kết quả và hình ảnh kiểm tra cho Staff.";
                 return RedirectToPage(new { StatusFilter, SearchTerm, PageNumber });
             }
@@ -113,15 +120,16 @@ namespace BATT_PPMS.Pages.QC
             Legacy = false;
             return await OnGetAsync();
         }
-        public async Task<IActionResult> OnGetImageAsync(int requestId) {
+        public async Task<IActionResult> OnGetImageAsync(int requestId, int imageIndex = 0) {
             var check=RequireRole(RoleConstants.Staff,RoleConstants.QCStaff,RoleConstants.WarehouseStaff,RoleConstants.Manager,RoleConstants.Owner);
             if(check!=null)return check;
             var query=_context.ProductionQualityRequests.AsNoTracking().Where(x=>x.RequestId==requestId);
             if(IsStaff)query=query.Where(x=>x.Inspection.RequestedBy==CurrentUserId);
             var item=await query.Select(x=>new{x.ResultImage,x.ResultImageType}).SingleOrDefaultAsync();
-            if(item?.ResultImage==null)return NotFound();
+            var image = QcEvidence.Get(item?.ResultImage, item?.ResultImageType, imageIndex);
+            if(image == null)return NotFound();
             Response.Headers["X-Content-Type-Options"]="nosniff";Response.Headers["Cache-Control"]="private, no-store";
-            return File(item.ResultImage,item.ResultImageType??"application/octet-stream");
+            return File(image.Value.Data, image.Value.Type);
         }
     }
 }

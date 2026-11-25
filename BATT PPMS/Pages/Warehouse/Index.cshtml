@@ -20,19 +20,40 @@
     @if (Model.StaffView && Model.EffectiveStep == 4) { <link rel="stylesheet" href="~/css/production-plan.css" asp-append-version="true" /> }
     @if (Model.StaffView && Model.EffectiveStep == 4) { <link rel="stylesheet" href="~/css/qc.css" asp-append-version="true" /> }
     <style>
-        .staff-notice-dialog { width: min(500px, calc(100% - 32px)); max-height: min(75vh, 600px); padding: 0; border: 1px solid #cbded0; border-radius: 16px; background: #fffefa; color: #243d35; box-shadow: 0 20px 60px rgb(12 37 29 / 20%); }
-        .staff-notice-dialog::backdrop { background: rgb(20 46 37 / 45%); }
-        .staff-notice-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; border-bottom: 1px solid #e2ebe3; }
-        .staff-notice-header h2 { margin: 0; color: #193f35; font-size: 20px; }
+        .staff-notice-dialog { position: fixed; inset: 0; margin: auto; width: min(480px, calc(100% - 32px)); max-height: min(75vh, 600px); padding: 0; overflow-y: auto; border: 1px solid #d6e2d8; border-radius: 16px; background: #fffefa; color: #243d35; box-shadow: 0 20px 60px rgb(12 37 29 / 22%); }
+        .staff-notice-dialog::backdrop { background: rgb(20 46 37 / 48%); }
+        .staff-notice-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px 14px; }
+        .staff-notice-header h2 { display: flex; align-items: center; gap: 10px; margin: 0; color: #193f35; font-size: 20px; font-weight: 700; }
+        .staff-notice-header h2 i { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: #e5f1e9; color: #2d694e; font-size: 19px; }
         .staff-notice-close { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 36px; width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: #52675d; font-size: 24px; line-height: 1; cursor: pointer; }
         .staff-notice-close:hover { background: #e5eee7; color: #193f35; }
         .staff-notice-close:focus-visible, .staff-notice-body a:focus-visible { outline: 2px solid #193f35; outline-offset: 2px; }
-        .staff-notice-body { display: grid; gap: 12px; padding: 20px 24px 24px; }
-        .staff-notice-item { padding: 14px 16px; border: 1px solid #c6dbc9; border-radius: 10px; background: #e8f2e9; overflow-wrap: anywhere; }
+        .staff-notice-body { display: grid; gap: 12px; padding: 0 24px 24px; }
+        .staff-notice-item { padding: 15px 16px; border: 1px solid #d7e8db; border-radius: 10px; background: #f2f7f1; line-height: 1.55; overflow-wrap: anywhere; }
         .staff-notice-item strong { display: block; color: #193f35; }
         .staff-notice-item p { margin: 5px 0 0; white-space: pre-line; }
+        .staff-notice-item p:first-child { margin-top: 0; }
         .staff-notice-item a { display: inline-block; margin-top: 8px; color: #215c49; font-weight: 600; }
-        .staff-workflow-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .staff-qc-request-dialog { position: fixed; inset: 0; margin: auto; width: min(680px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; overflow: auto; border: 1px solid #d6e2d8; border-radius: 16px; background: #fffefa; color: #243d35; box-shadow: 0 20px 60px rgb(12 37 29 / 22%); }
+        .staff-qc-request-dialog::backdrop { background: rgb(20 46 37 / 48%); }
+        .staff-qc-request-body { display: grid; gap: 16px; padding: 20px 24px; }
+        .staff-qc-request-body select:not([hidden]) { width: 100%; min-height: 54px; padding: 12px 16px; border: 1px solid #b7c6ba; border-radius: 8px; background: #fffefa; color: #243d35; font: inherit; cursor: pointer; }
+        .staff-qc-request-shift { margin: 0; padding: 12px 14px; border-radius: 9px; background: #e8f2e9; color: #193f35; }
+        .staff-qc-request-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 16px 24px; border-top: 1px solid #d6e2d8; background: #f4f2ea; }
+        .staff-lots-table { min-width: 1200px; }
+        .staff-lots-table .staff-lots-date { width: 14%; }
+        .staff-lots-table .staff-lots-code { width: 23%; }
+        .staff-lots-table .staff-lots-bags { width: 8%; }
+        .staff-lots-table .staff-lots-status { width: 16%; }
+        .staff-lots-table .staff-lots-create { width: 17%; }
+        .staff-lots-table .staff-lots-actions { width: 22%; }
+        .staff-lots-table .staff-lots-code-cell { overflow-wrap: anywhere; }
+        .staff-lots-table tbody tr { background: var(--bg-card, #fffefa) !important; }
+        .staff-lots-table tbody tr:hover { background: var(--plan-row-hover, #edf3ed) !important; }
+        .staff-lots-table tbody tr:has(+ .staff-lots-continuation) > td:not([rowspan]) { border-bottom: 0; }
+        .staff-lots-table .staff-lots-create-cell .closeout-button { white-space: nowrap; }
+        .staff-workflow-actions { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; }
+        .staff-workflow-actions .closeout-button { white-space: nowrap; }
         .staff-workflow-action { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 42px; width: 42px; height: 42px; border: 1px solid #cbdcd0; border-radius: 8px; background: #edf3ed; color: #245247; font-size: 17px; line-height: 1; text-decoration: none; cursor: pointer; }
         .staff-workflow-action:hover { background: #dcebe0; color: #193f35; }
         .staff-workflow-action-delete { border-color: #e8c8c0; background: #fdf3f0; color: #ae5048; }
@@ -237,7 +258,8 @@
     </header>
 
     @if (Model.StaffView || Model.CanReceive) {
-        var visibleNotices = Model.Notices.Where(notice => notice.Title != "Xác nhận phiếu nhập thành phẩm").ToList();
+        var visibleNotices = Model.Notices.Where(notice => notice.Title != "Xác nhận phiếu nhập thành phẩm"
+            && (!Model.StaffView || notice.Title != "QC đã trả kết quả kiểm tra")).ToList();
         @if (visibleNotices.Count > 0 || Model.SuccessMessage != null) {
             <dialog class="staff-notice-dialog" id="staff-notice-dialog" aria-labelledby="staff-notice-title">
                 <header class="staff-notice-header">
@@ -361,7 +383,7 @@
                                     <option value="">Chọn ca làm việc</option>
                                     @foreach (var a in Model.StaffAssignments) {
                                         <option value="@a.AssignmentId" data-date="@a.AssignmentDate.ToString("yyyy-MM-dd")" data-shift="@a.Shift"
-                                                data-lot-prefix="@a.LotPrefix" data-recheck-lot="@a.RecheckLot" data-recheck-bags="@LotCode.BagCount(a.RecheckLot)">
+                                                data-lot-prefix="@a.LotPrefix" data-next-sequence="@a.NextSequence" data-recheck-lot="@a.RecheckLot" data-recheck-bags="@LotCode.BagCount(a.RecheckLot)">
                                             @IndexModel.FormatShift(a.Shift)@(a.RecheckLot != null ? " · Kiểm tra lại" : "")
                                         </option>
                                     }
@@ -1175,10 +1197,21 @@
 </div>
 
 @section Scripts {
-    @if (Model.StaffView && Model.EffectiveStep == 1) {
+    @if (Model.StaffView && (Model.EffectiveStep == 1 || Model.EffectiveStep == 4)) {
         <script src="~/js/qc-request.js" asp-append-version="true"></script>
     }
     <script>
+        document.querySelectorAll('[data-workflow-request-qc]').forEach(button => {
+            button.addEventListener('click', () => {
+                const dialog = document.getElementById('workflow-request-qc');
+                const form = dialog.querySelector('form');
+                form.reset();
+                form.elements.assignmentId.value = button.dataset.assignment;
+                form.elements.assignmentId.dispatchEvent(new Event('change', { bubbles: true }));
+                dialog.querySelector('[data-qc-selected-shift]').textContent = button.dataset.shiftLabel + ' · ' + button.dataset.dateLabel;
+                dialog.showModal();
+            });
+        });
         const staffNoticeDialog = document.getElementById('staff-notice-dialog');
         if (staffNoticeDialog) {
             staffNoticeDialog.showModal();

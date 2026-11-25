@@ -8,6 +8,7 @@
     gap: 20px;
     min-width: 0;
     color: var(--schedule-ink);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
 }
 
 .staff-schedule-breadcrumb {
@@ -23,6 +24,12 @@
 }
 
 .staff-schedule-breadcrumb a:hover { text-decoration: underline; }
+.staff-schedule-notice { padding: 12px 16px; border: 1px solid #c6dbc9; border-radius: 10px; background: #e8f2e9; color: #28543f; }
+.staff-schedule-views { display: inline-flex; padding: 4px; margin-bottom: 16px; gap: 4px; border: 1px solid var(--schedule-border); border-radius: 10px; background: #f0f5f1; }
+.staff-schedule-view { padding: 8px 16px; border-radius: 7px; color: var(--schedule-ink); font-weight: 600; text-decoration: none; }
+.staff-schedule-view.is-active { background: #193f35; color: #fff; }
+.staff-schedule-view:focus-visible { outline: 2px solid #b5974f; outline-offset: 2px; }
+.staff-schedule-table.staff-schedule-table-day { min-width: 520px; }
 
 .staff-schedule-manager-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
 .staff-schedule-manager-head h1 { margin: 0; font-size: 28px; }
@@ -216,6 +223,7 @@
 }
 
 .staff-schedule-status[data-status="InProgress"] { background: #f8edce; color: #684a16; }
+.staff-schedule-status[data-status="Rejected"] { background: #faeae5; color: #8b4035; }
 .staff-schedule-status[data-status="Completed"] { background: #dbede1; color: #22563d; }
 .staff-schedule-status[data-status="Cancelled"] { background: #faeae5; color: #8b4035; }
 .staff-schedule-status[data-status="Off"] { background: #eef0eb; color: var(--schedule-muted); }
@@ -257,6 +265,35 @@
 
 .staff-schedule-self { margin-inline-start: 3px; font-weight: 700; }
 .staff-schedule-note { margin: 8px 0 0; color: var(--schedule-muted); font-size: 13px; overflow-wrap: anywhere; }
+
+/* Bố cục ngày có nhiều không gian hơn lịch tuần, nên dùng cỡ chữ và các nhóm thông tin riêng. */
+.staff-schedule-table.staff-schedule-table-day { min-width: 520px; font-size: 16px; }
+.staff-schedule-table-day :is(th, td) { padding: 20px 22px; }
+.staff-schedule-table-day .staff-schedule-shift { width: 155px; padding: 22px 20px; font-size: 18px; font-weight: 700; }
+.staff-schedule-table-day .staff-schedule-shift span { margin-top: 8px; font-size: 14px; white-space: nowrap; }
+.staff-schedule-table-day thead th:not(.staff-schedule-shift) { text-align: left; font-size: 17px; font-weight: 700; }
+.staff-schedule-table-day thead time { display: inline; margin-left: 8px; font-size: 14px; }
+.staff-schedule-table-day thead .staff-schedule-today { background: #e3f0e8; }
+.staff-schedule-table-day tbody .staff-schedule-today { background: #f8fbf8; }
+.staff-schedule-table-day .staff-schedule-status { padding: 5px 11px; border-radius: 7px; font-size: 13px; line-height: 1.4; }
+.staff-schedule-table-day .staff-schedule-estimates { display: grid; grid-template-columns: repeat(2, minmax(0, 230px)); gap: 10px; margin: 16px 0 0; padding: 0; border: 0; font-size: 14px; }
+.staff-schedule-table-day .staff-schedule-estimates > div { display: grid; justify-content: stretch; gap: 5px; padding: 12px 15px; border: 1px solid #dce9df; border-radius: 9px; background: #fff; }
+.staff-schedule-table-day .staff-schedule-estimates dd { color: #193f35; font-size: 16px; }
+.staff-schedule-table-day .staff-schedule-stages { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 16px; }
+.staff-schedule-table-day .staff-schedule-stages > li { min-width: 0; padding: 13px 14px; border: 1px solid #dce9df; border-radius: 9px; background: #fff; }
+.staff-schedule-table-day .staff-schedule-stages > li > strong { display: block; color: #193f35; font-size: 15px; line-height: 1.4; }
+.staff-schedule-table-day .staff-schedule-workers { gap: 6px; margin-top: 9px; }
+.staff-schedule-table-day .staff-schedule-workers li { padding: 4px 9px; font-size: 13px; line-height: 1.4; }
+.staff-schedule-table-day .staff-schedule-note { margin-top: 14px; font-size: 14px; }
+.staff-schedule-table-day .staff-schedule-actions { margin-top: 16px; }
+.staff-schedule-table-day .staff-schedule-empty { padding: 4px 0; color: #82958a; }
+
+@media (max-width: 700px) {
+    .staff-schedule-table-day :is(th, td) { padding: 15px 13px; }
+    .staff-schedule-table-day .staff-schedule-shift { width: 120px; padding: 16px 12px; font-size: 16px; }
+    .staff-schedule-table-day .staff-schedule-estimates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .staff-schedule-table-day .staff-schedule-stages { grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); }
+}
 
 @media (max-width: 1200px) {
     .staff-schedule-guide-columns { grid-template-columns: 1fr; }

@@ -1,7 +1,7 @@
 @using BATT_PPMS.Helpers
 
 <div class="closeout-field">
-    <label for="qc-bag-count">Tổng số bao thành phẩm của ca</label>
+    <label for="qc-bag-count">Số bao thành phẩm của lô</label>
     <input id="qc-bag-count" name="bags" type="number" min="1" max="@FinishedGoodsQuantity.MaxBags" step="1" required
            inputmode="numeric" data-kg-per-bag="@FinishedGoodsQuantity.KilogramsPerBag" aria-describedby="qc-bag-weight" />
     <small id="qc-bag-weight">
@@ -24,4 +24,5 @@
 <div class="closeout-field" data-qc-lot-preview hidden>
     <label for="qc-lot-preview">Mã lô</label>
     <output id="qc-lot-preview" aria-live="polite"></output>
+    <small>Mã dự kiến; hệ thống cấp số lô chính thức khi gửi yêu cầu.</small>
 </div>

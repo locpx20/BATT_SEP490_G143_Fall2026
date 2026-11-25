@@ -1,7 +1,9 @@
 (() => {
     let active = null;
     document.querySelectorAll('select').forEach((select, index) => {
-        if (select.multiple || select.size > 1 || select.closest('.batt-select')) return;
+        // Native dialog content lives in the top layer; a menu appended to body is hidden behind it.
+        // Keep the QC dialog's native selects, including its hidden assignment field.
+        if (select.multiple || select.size > 1 || select.closest('.batt-select, #workflow-request-qc')) return;
         if (!select.id) select.id = `batt-select-${index}`;
         const originalStyle = getComputedStyle(select);
         const wrapper = document.createElement('div');

@@ -35,8 +35,12 @@ namespace BATT_PPMS.Pages.Personnel
         public IReadOnlyList<string> ExistingCreateShifts { get; private set; } = [];
         public bool IsStaffView => IsStaff;
         public bool IsOwnerView => IsOwner;
+        public bool IsWarehouseView => IsWarehouseStaff;
+        public List<AppNotification> WarehousePlanNotices { get; private set; } = [];
         public int StaffWorkerId => CurrentUserId;
         public DateOnly StaffWeekStart { get; private set; }
+        public DateOnly SelectedScheduleDate { get; private set; }
+        public bool IsDaySchedule => !IsOwnerView && string.Equals(ScheduleView, "day", StringComparison.OrdinalIgnoreCase);
         public DateOnly? PreviousStaffWeek => StaffWeekStart.DayNumber >= 7 ? StaffWeekStart.AddDays(-7) : null;
         public DateOnly? NextStaffWeek => StaffWeekStart.AddDays(6).DayNumber <= DateOnly.MaxValue.DayNumber - 7
             ? StaffWeekStart.AddDays(7) : null;
@@ -55,6 +59,7 @@ namespace BATT_PPMS.Pages.Personnel
         {
             "Completed" => "Hoàn thành",
             "InProgress" => "Đang thực hiện",
+            "Rejected" => "Thủ kho từ chối",
             "Cancelled" => "Đã hủy",
             "Off" => "Nghỉ",
             "Assigned" => "Chờ thực hiện",
@@ -79,6 +84,7 @@ namespace BATT_PPMS.Pages.Personnel
         [BindProperty(SupportsGet = true)] public string? ShiftFilter { get; set; }
         [BindProperty(SupportsGet = true)] public DateOnly? PlanDate { get; set; }
         [BindProperty(SupportsGet = true)] public string? Week { get; set; }
+        [BindProperty(SupportsGet = true)] public string? ScheduleView { get; set; }
         [BindProperty(SupportsGet = true)] public bool Create { get; set; }
         [BindProperty(SupportsGet = true)] public string? EditShift { get; set; }
 
@@ -102,7 +108,8 @@ namespace BATT_PPMS.Pages.Personnel
             var check = RequireRole(
                 RoleConstants.Owner,
                 RoleConstants.Manager,
-                RoleConstants.Staff);
+                RoleConstants.Staff,
+                RoleConstants.WarehouseStaff);
             if (check != null) return check;
 
             CanCreatePlan = IsManager;
@@ -110,9 +117,12 @@ namespace BATT_PPMS.Pages.Personnel
                 return await OpenPlanEditorAsync();
             if (Create && !CanCreatePlan)
                 return RedirectToPage("/Auth/AccessDenied");
-            if (IsStaff || IsOwner)
+            if (IsStaff || IsOwner || IsWarehouseStaff)
             {
                 await LoadStaffWeekAsync();
+                if (IsWarehouseStaff)
+                    WarehousePlanNotices = await WarehouseNavigationNotices.OpenAsync(_context, CurrentUserId,
+                        WarehouseNavigationNotice.Plans, HttpContext.RequestAborted);
                 return Page();
             }
             if (CanCreatePlan)
@@ -223,6 +233,12 @@ namespace BATT_PPMS.Pages.Personnel
             {
                 shift.AssignmentDate,
                 shift.Shift,
+                HasRejectedUsage = _context.MaterialUsageReviews.Any(review => review.Status == "Rejected"
+                        && review.Report.ShiftDate == shift.AssignmentDate
+                        && review.Report.Assignment.Shift == shift.Shift),
+                HasRejectedReceipt = _context.FinishedGoodsReceipts.Any(receipt => receipt.Status == "Rejected"
+                        && receipt.QualityRequest.Assignment.AssignmentDate == shift.AssignmentDate
+                        && receipt.QualityRequest.Assignment.Shift == shift.Shift),
                 HasDeduction = _context.MaterialUsageReviews.Any(review => review.Status == "Approved"
                         && review.Report.ShiftDate == shift.AssignmentDate
                         && review.Report.Assignment.Shift == shift.Shift
@@ -246,6 +262,7 @@ namespace BATT_PPMS.Pages.Personnel
 
             return rows.ToDictionary(row => (row.AssignmentDate, row.Shift), row =>
                 !row.HasActiveAssignment ? "Cancelled" :
+                row.HasRejectedUsage || row.HasRejectedReceipt ? "Rejected" :
                 row.HasDeduction && row.HasReceipt && !row.HasOutstandingLots ? "Completed" :
                 row.HasDeduction || row.HasReceipt ? "InProgress" : "Assigned");
         }
@@ -271,7 +288,7 @@ namespace BATT_PPMS.Pages.Personnel
         private async Task LoadStaffWeekAsync()
         {
             var selectedDate = PlanDate ?? Today;
-            if (Request.Query.ContainsKey(nameof(Week)))
+            if (!IsDaySchedule && Request.Query.ContainsKey(nameof(Week)))
             {
                 var requestedWeek = ParseWeek(Week);
                 InvalidStaffWeek = requestedWeek is null || requestedWeek.Value.DayNumber > DateOnly.MaxValue.DayNumber - 6;
@@ -283,13 +300,18 @@ namespace BATT_PPMS.Pages.Personnel
             StaffWeekStart = selectedDate.AddDays(-(((int)selectedDate.DayOfWeek + 6) % 7));
             if (StaffWeekStart.DayNumber > DateOnly.MaxValue.DayNumber - 6)
                 StaffWeekStart = StaffWeekStart.AddDays(-7);
-            var weekEnd = StaffWeekStart.AddDays(6);
+            SelectedScheduleDate = !IsDaySchedule && Request.Query.ContainsKey(nameof(Week))
+                ? (PlanDate is { } requestedDay && requestedDay >= StaffWeekStart && requestedDay <= StaffWeekStart.AddDays(6)
+                    ? requestedDay : Today >= StaffWeekStart && Today <= StaffWeekStart.AddDays(6) ? Today : StaffWeekStart)
+                : selectedDate;
+            var scheduleStart = IsDaySchedule ? SelectedScheduleDate : StaffWeekStart;
+            var scheduleEnd = IsDaySchedule ? SelectedScheduleDate : StaffWeekStart.AddDays(6);
             var cancellationToken = HttpContext.RequestAborted;
             var plans = await _context.ShiftProductionPlans.AsNoTracking()
-                .Where(plan => plan.PlanDate >= StaffWeekStart && plan.PlanDate <= weekEnd && ProductionShifts.Contains(plan.Shift))
+                .Where(plan => plan.PlanDate >= scheduleStart && plan.PlanDate <= scheduleEnd && ProductionShifts.Contains(plan.Shift))
                 .ToDictionaryAsync(plan => (plan.PlanDate, plan.Shift), cancellationToken);
             var query = _context.PersonnelAssignments.AsNoTracking()
-                .Where(assignment => assignment.AssignmentDate >= StaffWeekStart && assignment.AssignmentDate <= weekEnd
+                .Where(assignment => assignment.AssignmentDate >= scheduleStart && assignment.AssignmentDate <= scheduleEnd
                     && assignment.Shift != null && ProductionShifts.Contains(assignment.Shift));
             var assignments = await query.Include(assignment => assignment.Staff)
                 .OrderBy(assignment => assignment.AssignmentId).ToListAsync(cancellationToken);

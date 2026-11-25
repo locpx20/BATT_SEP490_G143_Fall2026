@@ -19,6 +19,12 @@ public static class LotCode
     public static string Create(string prefix, int sequence, int bags) =>
         FormattableString.Invariant($"{prefix}{sequence}-{bags}");
 
+    public static int? Sequence(string? lot)
+    {
+        if (!BagCount(lot).HasValue) return null;
+        return int.TryParse(lot!.Split('-')[3], NumberStyles.None, CultureInfo.InvariantCulture, out var sequence) ? sequence : null;
+    }
+
     public static int? BagCount(string? lot)
     {
         var parts = lot?.Split('-');

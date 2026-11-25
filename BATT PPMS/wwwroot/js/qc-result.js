@@ -5,7 +5,9 @@
     const image = modal.querySelector('#qc-result-image');
     const imageName = modal.querySelector('#qc-result-image-name');
     function showImageName() {
-        imageName.textContent = image.files[0]?.name ?? 'Chưa chọn ảnh';
+        const files = [...image.files];
+        imageName.textContent = files.length === 0 ? 'Chưa chọn ảnh' : files.length === 1 ? files[0].name : `Đã chọn ${files.length} ảnh`;
+        image.setCustomValidity(files.length > 10 ? 'Vui lòng chọn tối đa 10 ảnh.' : '');
     }
     image?.addEventListener('change', showImageName);
 

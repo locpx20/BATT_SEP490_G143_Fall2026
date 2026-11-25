@@ -72,9 +72,11 @@
             </div>
             @if (q.ResultImage != null) {
                 <footer class="modal-footer qc-detail-footer">
-                    <a class="closeout-button secondary" asp-page="/QC/Index" asp-page-handler="Image" asp-route-requestId="@q.RequestId" target="_blank" rel="noopener">
-                        <i class="bi bi-image" aria-hidden="true"></i> Xem ảnh kết quả
-                    </a>
+                    @for (var i = 0; i < QcEvidence.Count(q.ResultImage, q.ResultImageType); i++) {
+                        <a class="closeout-button secondary" asp-page="/QC/Index" asp-page-handler="Image" asp-route-requestId="@q.RequestId" asp-route-imageIndex="@i" target="_blank" rel="noopener">
+                            <i class="bi bi-image" aria-hidden="true"></i> Xem ảnh @(i + 1)
+                        </a>
+                    }
                 </footer>
             }
         </section>

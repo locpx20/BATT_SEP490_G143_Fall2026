@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BATT_PPMS.Services;
 
 public sealed class ProductionFlowException(string message) : Exception(message);
-public sealed record QcShiftOption(int AssignmentId, DateOnly AssignmentDate, string? Shift, string LotPrefix, string? RecheckLot);
+public sealed record QcShiftOption(int AssignmentId, DateOnly AssignmentDate, string? Shift, string LotPrefix, string? RecheckLot, int NextSequence);
 
 /// <summary>Enforces production handoffs and posts stock exactly once, in one transaction.</summary>
 public sealed class ProductionFlow(ProductionManagementDbContext db)
@@ -71,32 +71,20 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             return [];
 
         var dates = assignments.Select(a => a.AssignmentDate).Distinct().ToArray();
-        var existing = (await ReadShiftQcAsync(dates)).ToLookup(q => (q.Date, LotCode.ShiftNumber(q.Shift)));
+        var codes = await db.FinishedGoodBatches.AsNoTracking().Where(b => dates.Contains(b.ProductionDate))
+            .Select(b => b.BagNumber).ToListAsync();
         var options = new List<QcShiftOption>();
         foreach (var shift in assignments.GroupBy(a => (a.AssignmentDate, LotCode.ShiftNumber(a.Shift))))
         {
-            var requests = existing[shift.Key];
-            var latest = requests.FirstOrDefault();
-            if (requests.Any(q => !q.Failed) || (latest != null && latest.RequestedBy != staff))
-                continue;
-
             var assignment = shift.First();
+            var prefix = LotCode.ShiftPrefix(assignment.AssignmentDate, shift.Key.Item2!.Value);
+            var next = codes.Where(code => code.StartsWith(prefix, StringComparison.Ordinal))
+                .Select(code => LotCode.Sequence(code) ?? 0).DefaultIfEmpty(0).Max() + 1;
             options.Add(new QcShiftOption(assignment.AssignmentId, assignment.AssignmentDate, assignment.Shift,
-                LotCode.ShiftPrefix(assignment.AssignmentDate, shift.Key.Item2!.Value), latest?.Lot));
+                prefix, null, next));
         }
         return options;
     }
-
-    private sealed record ShiftQcRequest(DateOnly Date, string? Shift, int BatchId, string Lot,
-        int? RequestedBy, bool Failed, string? Note);
-
-    private Task<List<ShiftQcRequest>> ReadShiftQcAsync(DateOnly[] dates) =>
-        db.ProductionQualityRequests.AsNoTracking().Where(q => dates.Contains(q.Assignment.AssignmentDate))
-            .OrderByDescending(q => q.RequestId)
-            .Select(q => new ShiftQcRequest(q.Assignment.AssignmentDate, q.Assignment.Shift,
-                q.Inspection.BatchId, q.Inspection.Batch.BagNumber, q.Inspection.RequestedBy,
-                q.Inspection.Status == "Completed" && q.Inspection.Result == "Fail", q.Inspection.Note))
-            .ToListAsync();
 
     public async Task<(bool HasChipperAssignment, List<PersonnelAssignment> AvailableShifts)> ConsumptionShiftOptions(
         int staff, DateOnly date, string? shift = null)
@@ -130,7 +118,7 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
     }
 
     public Task<int> RequestQc(int staff, int assignmentId, int? bags, string? note,
-        bool hasShiftIncident = false, string? exceptionReason = null) => Change(async () => {
+        bool hasShiftIncident = false, string? exceptionReason = null, int? recheckRequestId = null) => Change(async () => {
         await Actor(staff, RoleConstants.Staff); var a = await OwnAssignment(assignmentId, staff);
         Need(a.AssignmentDate >= DateOnly.FromDateTime(Now), "Chỉ được tạo yêu cầu QC từ ngày hôm nay trở đi.");
         var shift = LotCode.ShiftNumber(a.Shift);
@@ -151,31 +139,33 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             throw new ProductionFlowException("Ca này đang được cấp mã lô. Vui lòng thử gửi lại.");
         }
 
-        var previous = (await ReadShiftQcAsync([a.AssignmentDate])).Where(q => LotCode.ShiftNumber(q.Shift) == shift).ToList();
-        Need(previous.All(q => q.Failed), "Ca này đã có lô thành phẩm gửi QC. Mỗi ca ghi nhận một lô tổng.");
-        var latest = previous.FirstOrDefault();
         var text = Text(note, 5000, "ghi chú");
         FinishedGoodBatch batch;
         string? incidentNote;
-        if (latest != null)
+        if (recheckRequestId.HasValue)
         {
-            Need(latest.RequestedBy == staff, "Người đã gửi lô thành phẩm của ca mới có thể yêu cầu QC kiểm tra lại.");
-            batch = await db.FinishedGoodBatches.SingleAsync(b => b.BatchId == latest.BatchId);
+            var old = await db.ProductionQualityRequests.Include(q => q.Inspection).ThenInclude(i => i.Batch)
+                .Include(q => q.Assignment).SingleOrDefaultAsync(q => q.RequestId == recheckRequestId.Value);
+            Need(old != null && old.Inspection.RequestedBy == staff && old.Assignment.AssignmentDate == a.AssignmentDate
+                && LotCode.ShiftNumber(old.Assignment.Shift) == shift && old.Inspection.Status == "Completed"
+                && old.Inspection.Result == "Fail", "Không thể yêu cầu kiểm tra lại lô này.");
+            batch = old!.Inspection.Batch;
             Need(batch.Status == "QC Failed", "Lô thành phẩm không còn ở trạng thái cần kiểm tra lại.");
             batch.Status = "Pending QC";
-            var firstLine = latest.Note?.Split('\n', 2)[0];
+            var firstLine = old.Inspection.Note?.Split('\n', 2)[0];
             incidentNote = IsShiftIncidentNote(firstLine) ? firstLine : null;
         }
         else
         {
             Need(bags is >= 1 and <= FinishedGoodsQuantity.MaxBags, "Số bao thành phẩm phải là số nguyên dương trong giới hạn cho phép.");
-            Need(!await db.FinishedGoodBatches.AnyAsync(b => b.BagNumber.StartsWith(prefix)),
-                "Ca này đã có mã lô thành phẩm.");
+            var codes = await db.FinishedGoodBatches.Where(b => b.BagNumber.StartsWith(prefix))
+                .Select(b => b.BagNumber).ToListAsync();
+            var sequence = codes.Select(code => LotCode.Sequence(code) ?? 0).DefaultIfEmpty(0).Max() + 1;
             var reason = Text(hasShiftIncident ? exceptionReason : null, 1000, "lý do phát sinh trong ca", hasShiftIncident);
             incidentNote = reason == null ? null : $"{ShiftIncidentNotePrefix} {reason.ReplaceLineEndings(" ")}";
             batch = new FinishedGoodBatch
             {
-                BagNumber = LotCode.Create(prefix, hasShiftIncident ? 2 : 1, bags!.Value),
+                BagNumber = LotCode.Create(prefix, sequence, bags!.Value),
                 ProductionDate = a.AssignmentDate,
                 Quantity = (decimal)bags.Value * FinishedGoodsQuantity.KilogramsPerBag,
                 CreatedBy = staff,
@@ -246,7 +236,7 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         else batch.Status = "QC Failed";
         return requestId;
     });
-    public Task<int> FinishQc(int qc, QcResultInput input, byte[] image) => Change(async () => {
+    public Task<int> FinishQc(int qc, QcResultInput input, IReadOnlyList<byte[]> images) => Change(async () => {
         await Actor(qc, RoleConstants.QCStaff);
         Need(input.Grade is "A" or "B", "Vui lòng chọn hàng loại A hoặc hàng loại B.");
         Need(input.HasImpurities.HasValue, "Vui lòng chọn có hoặc không có tạp chất.");
@@ -267,7 +257,7 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
             Grade = input.Grade!
         };
 
-        var imageType = QcEvidence.Validate(image);
+        var evidence = QcEvidence.Pack(images);
         var lockName = FormattableString.Invariant($"ProductionQcResult:{input.RequestId}");
         try
         {
@@ -289,8 +279,8 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         var inspection = request!.Inspection;
         Need(inspection.Status == "Pending" || (inspection.Status == "In Progress" && inspection.InspectedBy == qc),
             "Yêu cầu đã có kết quả hoặc đang do nhân viên QC khác phụ trách.");
-        request.ResultImageType = imageType;
-        request.ResultImage = image;
+        request.ResultImageType = evidence.Type;
+        request.ResultImage = evidence.Data;
         db.ProductionQcResults.Add(details);
         // Phiếu QC dùng phân loại A/B làm kết luận duy nhất; cả hai loại đều được chuyển tiếp nhập kho.
         inspection.Result = "Pass";
@@ -299,10 +289,6 @@ public sealed class ProductionFlow(ProductionManagementDbContext db)
         inspection.InspectedBy = qc;
         inspection.Status = "Completed";
         inspection.Batch.Status = "Pending Receipt";
-        if (inspection.RequestedBy.HasValue)
-            Notifier.Add(db, inspection.RequestedBy.Value, "QC đã trả kết quả kiểm tra",
-                $"{inspection.InspectionCode}: Đạt · Hàng loại {details.Grade}. {text}",
-                $"/Warehouse/Index?tab=receipts&QualityRequestId={input.RequestId}");
         return input.RequestId;
     });
     private async Task SetUsage(EndOfShiftReport report, List<MaterialUsageInput>? input) {

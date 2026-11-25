@@ -5,7 +5,9 @@
 @{
     var vi = CultureInfo.GetCultureInfo("vi-VN");
     var today = Model.Today;
-    var days = Enumerable.Range(0, 7).Select(offset => Model.StaffWeekStart.AddDays(offset)).ToArray();
+    var selectedDay = Model.SelectedScheduleDate;
+    var selectedDayValue = selectedDay.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    var days = Model.IsDaySchedule ? new[] { selectedDay } : Enumerable.Range(0, 7).Select(offset => Model.StaffWeekStart.AddDays(offset)).ToArray();
     var stageOrder = IndexModel.ProductionStages
         .Select((stage, index) => (Name: ProductionAssignmentTasks.MachineName(stage.TaskDescription), Index: index))
         .ToDictionary(stage => stage.Name, stage => stage.Index, StringComparer.OrdinalIgnoreCase);
@@ -15,8 +17,14 @@
     <nav class="staff-schedule-breadcrumb" aria-label="Đường dẫn">
         <a asp-page="/Dashboard/Index"><i class="bi bi-house-door" aria-hidden="true"></i> Trang chủ</a>
         <span aria-hidden="true">/</span>
-        <strong aria-current="page">@(Model.IsStaffView ? "Lịch sản xuất" : "Phân công công việc")</strong>
+        <strong aria-current="page">@(Model.IsStaffView || Model.IsWarehouseView ? "Lịch sản xuất" : "Phân công công việc")</strong>
     </nav>
+
+    @if (Model.WarehousePlanNotices.Count > 0) {
+        <div class="staff-schedule-notice" role="status" data-warehouse-schedule-notice>
+            <i class="bi bi-calendar-check" aria-hidden="true"></i> Đã có cập nhật mới ngày @Model.WarehousePlanNotices[0].CreatedAt.ToString("dd/MM/yyyy")
+        </div>
+    }
 
     @if (Model.CanCreatePlan) {
         <div class="staff-schedule-manager-head">
@@ -35,7 +43,35 @@
 
     <div class="staff-schedule-card staff-schedule-toolbar">
         <div>
+            @if (!Model.IsOwnerView) {
+                <nav class="staff-schedule-views" aria-label="Chế độ xem lịch">
+                    <a class="staff-schedule-view @(Model.IsDaySchedule ? "is-active" : null)" asp-page="./Index" asp-route-ScheduleView="day" asp-route-PlanDate="@selectedDayValue" asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter" aria-current="@(Model.IsDaySchedule ? "page" : null)">Theo ngày</a>
+                    <a class="staff-schedule-view @(!Model.IsDaySchedule ? "is-active" : null)" asp-page="./Index" asp-route-ScheduleView="week" asp-route-Week="@IndexModel.FormatWeek(selectedDay)" asp-route-PlanDate="@selectedDayValue" asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter" aria-current="@(!Model.IsDaySchedule ? "page" : null)">Theo tuần</a>
+                </nav>
+            }
+            @if (Model.IsDaySchedule) {
             <form method="get" asp-page="./Index" class="staff-schedule-picker">
+                <input type="hidden" name="ScheduleView" value="day" />
+                <input type="hidden" name="ShiftFilter" value="@Model.ShiftFilter" />
+                <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+                <label for="staff-schedule-day">Chọn ngày</label>
+                <input type="date" id="staff-schedule-day" name="PlanDate" value="@selectedDayValue" required />
+                <noscript><button type="submit" class="staff-schedule-link">Xem ngày</button></noscript>
+            </form>
+            <nav class="staff-schedule-weeks" aria-label="Điều hướng theo ngày">
+                @if (selectedDay > DateOnly.MinValue) {
+                    <a class="staff-schedule-link" asp-page="./Index" asp-route-ScheduleView="day" asp-route-PlanDate="@selectedDay.AddDays(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter"><i class="bi bi-arrow-left" aria-hidden="true"></i> Ngày trước</a>
+                }
+                <a class="staff-schedule-link staff-schedule-current" asp-page="./Index" asp-route-ScheduleView="day" asp-route-PlanDate="@today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter"><i class="bi bi-calendar-check" aria-hidden="true"></i> Hôm nay</a>
+                @if (selectedDay < DateOnly.MaxValue) {
+                    <a class="staff-schedule-link" asp-page="./Index" asp-route-ScheduleView="day" asp-route-PlanDate="@selectedDay.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)" asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter">Ngày sau <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                }
+            </nav>
+            } else {
+            <form method="get" asp-page="./Index" class="staff-schedule-picker">
+                <input type="hidden" name="ScheduleView" value="week" />
+                <input type="hidden" name="ShiftFilter" value="@Model.ShiftFilter" />
+                <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
                 <label for="staff-schedule-week">Chọn tuần</label>
                 <input type="week" id="staff-schedule-week" name="Week" value="@IndexModel.FormatWeek(Model.StaffWeekStart)"
                        placeholder="2026-W46" pattern="[0-9]{4}-W[0-9]{2}" title="Nhập năm và số tuần, ví dụ 2026-W46" required />
@@ -43,21 +79,22 @@
             </form>
             <nav class="staff-schedule-weeks" aria-label="Điều hướng theo tuần">
                 @if (Model.PreviousStaffWeek is { } previous) {
-                    <a class="staff-schedule-link" asp-page="./Index" asp-route-Week="@IndexModel.FormatWeek(previous)">
+                    <a class="staff-schedule-link" asp-page="./Index" asp-route-ScheduleView="week" asp-route-Week="@IndexModel.FormatWeek(previous)" asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter">
                         <i class="bi bi-arrow-left" aria-hidden="true"></i> Tuần trước
                     </a>
                 }
-                <a class="staff-schedule-link staff-schedule-current" asp-page="./Index" asp-route-Week="@IndexModel.FormatWeek(today)">
+                <a class="staff-schedule-link staff-schedule-current" asp-page="./Index" asp-route-ScheduleView="week" asp-route-Week="@IndexModel.FormatWeek(today)" asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter">
                     <i class="bi bi-calendar-check" aria-hidden="true"></i> Tuần hiện tại
                 </a>
                 @if (Model.NextStaffWeek is { } next) {
-                    <a class="staff-schedule-link" asp-page="./Index" asp-route-Week="@IndexModel.FormatWeek(next)">
+                    <a class="staff-schedule-link" asp-page="./Index" asp-route-ScheduleView="week" asp-route-Week="@IndexModel.FormatWeek(next)" asp-route-ShiftFilter="@Model.ShiftFilter" asp-route-StatusFilter="@Model.StatusFilter">
                         Tuần sau <i class="bi bi-arrow-right" aria-hidden="true"></i>
                     </a>
                 }
             </nav>
+            }
             @if (Model.InvalidStaffWeek) {
-                <p class="staff-schedule-error" role="alert">Tuần đã chọn không hợp lệ. Đang hiển thị tuần hiện tại.</p>
+                <p class="staff-schedule-error" role="alert">@(Model.IsDaySchedule ? "Ngày đã chọn không hợp lệ. Đang hiển thị hôm nay." : "Tuần đã chọn không hợp lệ. Đang hiển thị tuần hiện tại.")</p>
             }
         </div>
         <div class="staff-schedule-guide">
@@ -80,18 +117,19 @@
     <section class="staff-schedule-card staff-schedule-calendar" aria-labelledby="staff-schedule-title">
         <header>
             <h1 id="staff-schedule-title">Lịch sản xuất</h1>
-            <p id="staff-schedule-range">Tuần @days[0].ToString("dd/MM/yyyy") – @days[^1].ToString("dd/MM/yyyy")</p>
+            <p id="staff-schedule-range">@if (Model.IsDaySchedule) { <text>Ngày @selectedDay.ToString("dd/MM/yyyy")</text> } else { <text>Tuần @days[0].ToString("dd/MM/yyyy") – @days[^1].ToString("dd/MM/yyyy")</text> }</p>
         </header>
         @if (Model.CanCreatePlan || Model.IsOwnerView) {
             <form method="get" asp-page="./Index" class="staff-schedule-manager-filters">
-                <input type="hidden" name="Week" value="@IndexModel.FormatWeek(Model.StaffWeekStart)" />
+                <input type="hidden" name="ScheduleView" value="@(Model.IsDaySchedule ? "day" : "week")" />
+                @if (Model.IsDaySchedule) { <input type="hidden" name="PlanDate" value="@selectedDayValue" /> } else { <input type="hidden" name="Week" value="@IndexModel.FormatWeek(Model.StaffWeekStart)" /> }
                 <label>Ca sản xuất <select name="ShiftFilter"><option value="">Tất cả ca</option>@foreach (var item in IndexModel.ProductionShifts) { <option value="@item" selected="@(Model.ShiftFilter == item)">@item</option> }</select></label>
-                <label>Trạng thái <select name="StatusFilter"><option value="">Tất cả trạng thái</option>@foreach (var status in new[] { "Assigned", "InProgress", "Completed", "Cancelled", "Off" }) { <option value="@status" selected="@(Model.StatusFilter == status)">@IndexModel.AssignmentStatusLabel(status)</option> }</select></label>
+                <label>Trạng thái <select name="StatusFilter"><option value="">Tất cả trạng thái</option>@foreach (var status in new[] { "Assigned", "InProgress", "Rejected", "Completed", "Cancelled", "Off" }) { <option value="@status" selected="@(Model.StatusFilter == status)">@IndexModel.AssignmentStatusLabel(status)</option> }</select></label>
                 <button class="staff-schedule-link" type="submit">Tìm kiếm</button>
             </form>
         }
         <div class="staff-schedule-scroll" role="region" aria-labelledby="staff-schedule-title" tabindex="0">
-            <table class="staff-schedule-table" aria-labelledby="staff-schedule-range">
+            <table class="staff-schedule-table @(Model.IsDaySchedule ? "staff-schedule-table-day" : null)" aria-labelledby="staff-schedule-range">
                 <thead>
                     <tr>
                         <th scope="col" class="staff-schedule-shift">Ca làm việc</th>

@@ -66,7 +66,11 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         var check = RequireRole(RoleConstants.WarehouseStaff, RoleConstants.Manager, RoleConstants.Owner, RoleConstants.Staff);
         if (check != null) return check;
         if (Tab is not ("plans" or "receipts")) Tab = "receipts";
-        if (IsStaff && Tab == "plans") return RedirectToPage("/Personnel/Index");
+        if ((IsStaff || IsWarehouseStaff) && Tab == "plans")
+            return RedirectToPage("/Personnel/Index", new {
+                PlanDate = Request.Query.ContainsKey(nameof(PlanDate)) ? Request.Query[nameof(PlanDate)].ToString() : null,
+                Week = Request.Query.ContainsKey("Week") ? Request.Query["Week"].ToString() : null
+            });
         var page = PageWindow.ReadRequestedPage(Request.Query, PageNumber);
         if (Tab == "plans") {
             PlanDateInvalid = Request.Query.ContainsKey(nameof(PlanDate))
@@ -233,8 +237,16 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         }
         return RedirectToPage(new { tab, step, qcDate, qcShift });
     }
-    public async Task<IActionResult> OnPostRequestQcAsync(int assignmentId, int? bags, string? note, bool hasShiftIncident, string? exceptionReason) {
+    public async Task<IActionResult> OnPostRequestQcAsync(int assignmentId, int? bags, string? note, bool hasShiftIncident, string? exceptionReason, bool returnToList = false) {
         var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
+        if (returnToList) {
+            if (!ModelState.IsValid) ErrorMessage = "Dữ liệu nhập không hợp lệ. Vui lòng kiểm tra lại.";
+            else try {
+                await new ProductionFlow(db).RequestQc(CurrentUserId, assignmentId, bags, note, hasShiftIncident, exceptionReason);
+                SuccessMessage = "Đã gửi yêu cầu kiểm tra chất lượng cho nhân viên QC.";
+            } catch (ProductionFlowException ex) { ErrorMessage = ex.Message; }
+            return RedirectToPage(new { tab = "receipts", step = 4, ReceiptDate = ReceiptDateInput, PageNumber });
+        }
         var assignment = await db.PersonnelAssignments.AsNoTracking().FirstOrDefaultAsync(x => x.AssignmentId == assignmentId);
         var targetDate = assignment?.AssignmentDate ?? Today;
         return await Act(() => new ProductionFlow(db).RequestQc(CurrentUserId, assignmentId, bags, note, hasShiftIncident, exceptionReason),
@@ -243,6 +255,15 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
     public Task<IActionResult> OnPostRequestReceiptAsync(int requestId, string? note) {
         var check = RequireRole(RoleConstants.Staff); if (check != null) return Task.FromResult(check);
         return Act(() => new ProductionFlow(db).RequestReceipt(CurrentUserId, requestId, note), "Đã gửi yêu cầu nhập thành phẩm cho Thủ kho.", "receipts", 4);
+    }
+    public async Task<IActionResult> OnPostRecheckQcAsync(int requestId) {
+        var check = RequireRole(RoleConstants.Staff); if (check != null) return check;
+        var request = await db.ProductionQualityRequests.AsNoTracking()
+            .Where(q => q.RequestId == requestId && q.Inspection.RequestedBy == CurrentUserId)
+            .Select(q => new { q.AssignmentId }).SingleOrDefaultAsync();
+        if (request == null) { ErrorMessage = "Không tìm thấy yêu cầu QC của bạn."; return RedirectToPage(new { tab = "receipts", step = 4 }); }
+        return await Act(() => new ProductionFlow(db).RequestQc(CurrentUserId, request.AssignmentId, null, null, recheckRequestId: requestId),
+            "Đã gửi lại lô cho QC kiểm tra.", "receipts", 4);
     }
     public Task<IActionResult> OnPostEditQcAsync(int requestId, int bags, string? note) {
         var check = RequireRole(RoleConstants.Staff); if (check != null) return Task.FromResult(check);

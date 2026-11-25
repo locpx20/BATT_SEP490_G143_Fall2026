@@ -13,7 +13,7 @@
 <div class="warehouse-inbox-nav" data-warehouse-inbox>
 <div class="owner-nav-section">
     <a class="nav-item @(Model.ActivePage == "Dashboard" ? "active" : "")" href="/Dashboard/Index"><i class="bi bi-grid" aria-hidden="true"></i><span>Tổng quan vận hành</span></a>
-    <a class="nav-item @(Model.ActivePage == "Warehouse" && tab == "plans" ? "active" : "")" href="/Warehouse/Index?tab=plans"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Lịch phân công lao động</span><span class="warehouse-pending-count" data-warehouse-count="plans" hidden="@(Model.Counts.Plans == 0)" aria-label="@Model.Counts.Plans thông báo chưa đọc">@Model.Counts.Plans</span></a>
+    <a class="nav-item @(Model.ActivePage == "Personnel" || (Model.ActivePage == "Warehouse" && tab == "plans") ? "active" : "")" href="/Personnel/Index"><i class="bi bi-calendar-week" aria-hidden="true"></i><span>Lịch phân công lao động</span><span class="warehouse-pending-count" data-warehouse-count="plans" hidden="@(Model.Counts.Plans == 0)" aria-label="@Model.Counts.Plans thông báo chưa đọc">@Model.Counts.Plans</span></a>
 </div>
 <div class="owner-nav-section">
     <div class="owner-nav-label">Tồn kho</div>

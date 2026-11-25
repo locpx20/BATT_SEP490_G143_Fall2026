@@ -3,14 +3,14 @@
 @using BATT_PPMS.Pages.Personnel
 @using System.Globalization
 @{
-    ViewData["Title"] = Model.IsStaffView ? "Lịch sản xuất hàng ngày"
+    ViewData["Title"] = Model.IsStaffView || Model.IsWarehouseView ? "Lịch sản xuất hàng ngày"
         : Model.IsEditingPlan ? "Chỉnh sửa phân công công việc"
         : "Phân công công việc";
     ViewData["ActivePage"] = "Personnel";
 }
 
 @section Styles {
-    @if (Model.IsStaffView || Model.IsOwnerView) {
+    @if (Model.IsStaffView || Model.IsOwnerView || Model.IsWarehouseView) {
         <link rel="stylesheet" href="~/css/staff-weekly-schedule.css" asp-append-version="true" />
     } else {
         <link rel="stylesheet" href="~/css/production-plan.css" asp-append-version="true" />
@@ -24,12 +24,18 @@
     @if (Model.CanCreatePlan) {
         <script src="~/js/production-plan.js" asp-append-version="true"></script>
     }
-    @if (Model.IsStaffView || Model.IsOwnerView || (Model.CanCreatePlan && !Model.IsEditingPlan)) {
+    @if (Model.IsStaffView || Model.IsOwnerView || Model.IsWarehouseView || (Model.CanCreatePlan && !Model.IsEditingPlan)) {
         <script>
             const weekPicker = document.getElementById('staff-schedule-week');
             weekPicker?.addEventListener('change', () => {
                 if (weekPicker.value && weekPicker.checkValidity()) weekPicker.form.requestSubmit();
             });
+            const dayPicker = document.getElementById('staff-schedule-day');
+            dayPicker?.addEventListener('change', () => {
+                if (dayPicker.value && dayPicker.checkValidity()) dayPicker.form.requestSubmit();
+            });
+            const warehouseNotice = document.querySelector('[data-warehouse-schedule-notice]');
+            if (warehouseNotice) window.setTimeout(() => warehouseNotice.remove(), 10000);
             const deleteDialog = document.getElementById('staff-schedule-delete-dialog');
             document.querySelectorAll('[data-delete-day]').forEach(button => button.addEventListener('click', () => {
                 deleteDialog.querySelector('[data-delete-date-input]').value = button.dataset.deleteDay;
@@ -42,7 +48,7 @@
     }
 }
 
-@if (Model.IsStaffView || Model.IsOwnerView || (Model.CanCreatePlan && !Model.IsEditingPlan)) {
+@if (Model.IsStaffView || Model.IsOwnerView || Model.IsWarehouseView || (Model.CanCreatePlan && !Model.IsEditingPlan)) {
     <partial name="_StaffWeeklySchedule" model="Model" />
     @if (Model.CanCreatePlan) {
         <div class="labor-page">

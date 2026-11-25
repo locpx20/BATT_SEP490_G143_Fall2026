@@ -20,7 +20,7 @@
             : '';
         const selected = shift.selectedOptions[0];
         const prefix = selected?.dataset.lotPrefix;
-        const sequence = incident.value === 'true' ? 2 : 1;
+        const sequence = selected?.dataset.nextSequence || 1;
         lot.value = selected?.dataset.recheckLot || (prefix && validBags ? `${prefix}${sequence}-${count}` : '');
         lot.parentElement.hidden = !lot.value;
     }

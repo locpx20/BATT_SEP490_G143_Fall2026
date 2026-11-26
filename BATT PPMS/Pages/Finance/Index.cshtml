@@ -560,9 +560,13 @@
                         @foreach (var row in Model.ExportRows)
                         {
                             var hasData = row.Quantity > 0 || row.TotalAmount > 0;
-                            <tr>
+                            <tr style="@(row.IsCurrentMonth ? "background: #f7fcf8;" : "")">
                                 <td>
-                                    <span class="fin-month-badge @(hasData ? "has-data" : "")">@row.MonthLabel</span>
+                                    <span class="fin-month-badge @(hasData || row.IsCurrentMonth ? "has-data" : "")">@row.MonthLabel</span>
+                                    @if (row.IsCurrentMonth)
+                                    {
+                                        <span style="display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #1a4332; color: #ffffff;">Tháng hiện tại</span>
+                                    }
                                 </td>
                                 <td class="fin-export-number" style="font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#1e293b" : "#94a3b8");">
                                     @row.Quantity.ToString("N0", vi)
@@ -660,9 +664,13 @@
                         @foreach (var row in Model.MaterialRows)
                         {
                             var hasData = row.Quantity > 0 || row.TotalAmount > 0;
-                            <tr>
+                            <tr style="@(row.IsCurrentMonth ? "background: #f7fcf8;" : "")">
                                 <td>
-                                    <span class="fin-month-badge @(hasData ? "has-data" : "")">@row.MonthLabel</span>
+                                    <span class="fin-month-badge @(hasData || row.IsCurrentMonth ? "has-data" : "")">@row.MonthLabel</span>
+                                    @if (row.IsCurrentMonth)
+                                    {
+                                        <span style="display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #1a4332; color: #ffffff;">Tháng hiện tại</span>
+                                    }
                                 </td>
                                 <td class="fin-export-number" style="font-weight: @(hasData ? "700" : "500"); color: @(hasData ? "#1e293b" : "#94a3b8");">
                                     @row.Quantity.ToString("N0", vi) kg
@@ -806,14 +814,17 @@
                                     </td>
                                     <td style="text-align: center; white-space: nowrap;">
                                         <div style="display: inline-flex; align-items: center; gap: 8px;">
-                                            <button type="button"
-                                                    class="fin-pay-btn"
-                                                    disabled="@(d.RemainingAmount <= 0)"
-                                                    onclick="openDebtPaymentModal('@d.PartnerType', @d.PartnerId)"
-                                                    title="@(d.RemainingAmount > 0 ? $"Thanh toán công nợ cho {d.PartnerName}" : "Đã thanh toán đủ")">
-                                                <i class="bi bi-cash-stack"></i>
-                                                <span>Thanh toán</span>
-                                            </button>
+                                            @if (Model.CanPayDebt)
+                                            {
+                                                <button type="button"
+                                                        class="fin-pay-btn"
+                                                        disabled="@(d.RemainingAmount <= 0)"
+                                                        onclick="openDebtPaymentModal('@d.PartnerType', @d.PartnerId)"
+                                                        title="@(d.RemainingAmount > 0 ? $"Thanh toán công nợ cho {d.PartnerName}" : "Đã thanh toán đủ")">
+                                                    <i class="bi bi-cash-stack"></i>
+                                                    <span>Thanh toán</span>
+                                                </button>
+                                            }
 
                                             <button type="button"
                                                     class="fin-eye-btn"
@@ -858,7 +869,9 @@
     </div>
 </div>
 
-<!-- POPUP: THANH TOÁN CÔNG NỢ -->
+<!-- POPUP: THANH TOÁN CÔNG NỢ (CHỈ OWNER) -->
+@if (Model.CanPayDebt)
+{
 <div class="pm-overlay" id="debtPaymentModal" onclick="if (event.target === this) closeDebtPaymentModal()">
     <div class="pm-dialog pm-lg" role="dialog" aria-modal="true" style="max-width: 580px;">
         <form method="post" asp-page-handler="RecordPayment">
@@ -921,6 +934,7 @@
         </form>
     </div>
 </div>
+}
 
 <!-- POPUP: XEM CHI TIẾT LỊCH SỬ THANH TOÁN (TÌM KIẾM THEO THỜI GIAN) -->
 <div class="pm-overlay" id="debtDetailModal" onclick="if (event.target === this) closeDebtDetailModal()">

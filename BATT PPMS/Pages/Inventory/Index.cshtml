@@ -633,7 +633,13 @@ else
                                     <td>
                                         @if (!string.IsNullOrEmpty(r.ImportCode))
                                         {
-                                            <span class="wh-code-pnk">@r.ImportCode</span>
+                                            <a href="@Url.Page("/Inventory/Index", new { Tab = "raw", ViewMode = "imports", SearchTerm = r.ImportCode })"
+                                               class="wh-code-pnk"
+                                               style="text-decoration: none; gap: 4px;"
+                                               title="Xem Phiếu nhập kho @r.ImportCode">
+                                                <span>@r.ImportCode</span>
+                                                <i class="bi bi-box-arrow-up-right" style="font-size: 10px;"></i>
+                                            </a>
                                         }
                                         else
                                         {
@@ -706,22 +712,6 @@ else
                                                 <button type="button" class="wh-btn-approve" style="background: #1a4332;"
                                                         onclick="openCreateImportModal(@r.ReceiptId)">
                                                     @(r.Status == "ImportRejected" ? "Lập lại PNK" : "Lập PNK")
-                                                </button>
-                                            }
-
-                                            @if (Model.CanManagerApprove && r.Status == "WaitManagerApproval")
-                                            {
-                                                <form method="post" asp-page-handler="ApproveImport" style="display: inline; margin: 0;">
-                                                    <input type="hidden" name="importId" value="@r.ImportId" />
-                                                    <input type="hidden" name="receiptId" value="@r.ReceiptId" />
-                                                    <input type="hidden" name="ViewMode" value="requests" />
-                                                    <button type="submit" class="wh-btn-approve" title="Manager phê duyệt phiếu nhập kho">
-                                                        Duyệt
-                                                    </button>
-                                                </form>
-                                                <button type="button" class="wh-btn-reject"
-                                                        onclick="openRejectImportModal('@(r.ImportId?.ToString() ?? "")', '@r.ReceiptId', '@(r.ImportCode ?? r.ReceiptCode)')">
-                                                    Từ chối
                                                 </button>
                                             }
                                         </div>
@@ -837,17 +827,14 @@ else
                             <th>Thời gian lập</th>
                             <th>Trạng thái / Lý do</th>
                             <th>Người duyệt</th>
-                            @if (Model.CanManagerApprove)
-                            {
-                                <th>Thao tác</th>
-                            }
+                            <th>Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!Model.ImportTickets.Any())
                         {
                             <tr>
-                                <td colspan="@(Model.CanManagerApprove ? 12 : 11)" style="text-align: center; padding: 36px 20px; color: #a0aec0;">
+                                <td colspan="12" style="text-align: center; padding: 36px 20px; color: #a0aec0;">
                                     Chưa có phiếu nhập kho nguyên liệu nào phù hợp với bộ lọc.
                                 </td>
                             </tr>
@@ -856,8 +843,18 @@ else
                         {
                             @foreach (var imp in Model.ImportTickets)
                             {
-                                <tr>
-                                    <td><span class="wh-code-pnk">@imp.ImportCode</span></td>
+                                var isHighlighted = !string.IsNullOrWhiteSpace(Model.SearchTerm) &&
+                                                    string.Equals(Model.SearchTerm.Trim(), imp.ImportCode, StringComparison.OrdinalIgnoreCase);
+                                <tr style="@(isHighlighted ? "background: #f0fdf4;" : "")">
+                                    <td>
+                                        <a href="/Inventory/ImportDetail?id=@imp.ImportId"
+                                           class="wh-code-pnk"
+                                           style="text-decoration: none; gap: 4px;"
+                                           title="Mở trang Xem &amp; In phiếu nhập kho @imp.ImportCode">
+                                            <span>@imp.ImportCode</span>
+                                            <i class="bi bi-printer" style="font-size: 11px;"></i>
+                                        </a>
+                                    </td>
                                     <td>
                                         @if (imp.ReceiptCode != "—")
                                         {
@@ -888,29 +885,55 @@ else
                                         }
                                     </td>
                                     <td>@(string.IsNullOrWhiteSpace(imp.ApprovedByName) ? "—" : imp.ApprovedByName)</td>
-                                    @if (Model.CanManagerApprove)
-                                    {
-                                        <td>
-                                            @if (imp.Status == "Pending")
+                                    <td style="white-space: nowrap;">
+                                        <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                            <a href="javascript:void(0)"
+                                               class="wh-link-detail receipt-detail-trigger"
+                                               data-id="@(imp.ReceiptId ?? 0)"
+                                               data-code="@imp.ImportCode"
+                                               data-import-id="@imp.ImportId"
+                                               data-import-code="@imp.ImportCode"
+                                               data-supplier="@imp.SupplierName"
+                                               data-qty="@imp.Quantity.ToString("N0", viCulture)"
+                                               data-qty-label="Khối lượng cân thực tế (tại kho)"
+                                               data-price="@imp.UnitPrice.ToString("N0", viCulture)"
+                                               data-total="@imp.TotalAmount.ToString("N0", viCulture)"
+                                               data-by="@imp.ImportedByName"
+                                               data-at="@imp.ImportDate.ToString("HH:mm dd/MM/yyyy")"
+                                               data-status="@imp.StatusText"
+                                               data-raw-status="@imp.Status"
+                                               data-rejection="@(imp.RejectionReason ?? "")"
+                                               data-license-plate="@(imp.LicensePlate ?? "")"
+                                               data-driver-name="@(imp.DriverName ?? "")"
+                                               data-delivery-time="@(imp.DeliveryTime ?? "")"
+                                               data-scale="@(imp.ScalePhotoPath ?? "")"
+                                               data-invoice="@(imp.InvoicePhotoPath ?? "")"
+                                               data-from-pnk="true"
+                                               title="Xem nhanh ảnh &amp; thông tin @imp.ImportCode"
+                                               style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; color: #1e293b; font-size: 15px;">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+
+                                            <a href="/Inventory/ImportDetail?id=@imp.ImportId"
+                                               title="Xem bản in A4 &amp; In phiếu nhập kho @imp.ImportCode"
+                                               style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #cde2d3; background: #eef6f0; color: #1a4332; font-size: 15px; text-decoration: none;">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+
+                                            @if (Model.CanManagerApprove && imp.Status == "Pending")
                                             {
-                                                <div style="display: flex; align-items: center; gap: 6px;">
-                                                    <form method="post" asp-page-handler="ApproveImport" style="margin: 0;">
-                                                        <input type="hidden" name="importId" value="@imp.ImportId" />
-                                                        <input type="hidden" name="ViewMode" value="imports" />
-                                                        <button type="submit" class="wh-btn-approve">Duyệt</button>
-                                                    </form>
-                                                    <button type="button" class="wh-btn-reject"
-                                                            onclick="openRejectImportModal('@imp.ImportId', '@(imp.ReceiptId?.ToString() ?? "")', '@imp.ImportCode')">
-                                                        Từ chối
-                                                    </button>
-                                                </div>
+                                                <form method="post" asp-page-handler="ApproveImport" style="margin: 0;">
+                                                    <input type="hidden" name="importId" value="@imp.ImportId" />
+                                                    <input type="hidden" name="ViewMode" value="imports" />
+                                                    <button type="submit" class="wh-btn-approve">Duyệt</button>
+                                                </form>
+                                                <button type="button" class="wh-btn-reject"
+                                                        onclick="openRejectImportModal('@imp.ImportId', '@(imp.ReceiptId?.ToString() ?? "")', '@imp.ImportCode')">
+                                                    Từ chối
+                                                </button>
                                             }
-                                            else
-                                            {
-                                                <span style="font-size: 12px; color: #64748b;">Đã xử lý</span>
-                                            }
-                                        </td>
-                                    }
+                                        </div>
+                                    </td>
                                 </tr>
                             }
                         }
@@ -1173,6 +1196,20 @@ else
             <div class="pm-foot">
                 <button type="button" class="wh-dialog-button" onclick="closePmModal('receiptDetailModal')">Đóng</button>
 
+                <a id="rdGoToImportBtn"
+                   href="#"
+                   class="wh-dialog-button wh-dialog-button--primary"
+                   style="display: none; text-decoration: none;">
+                    <i class="bi bi-box-arrow-up-right" style="margin-right: 4px;"></i>Xem Phiếu nhập kho
+                </a>
+
+                <a id="rdPrintImportBtn"
+                   href="#"
+                   class="wh-dialog-button"
+                   style="display: none; text-decoration: none; background: #eef6f0; color: #1a4332; border: 1px solid #cde2d3;">
+                    <i class="bi bi-printer" style="margin-right: 4px;"></i>In Phiếu nhập kho (A4)
+                </a>
+
                 @if (Model.CanWarehouseConfirm)
                 {
                     <input type="hidden" id="rdReceiptId" />
@@ -1180,21 +1217,6 @@ else
                             onclick="openCreateImportModalFromDetail()">
                         Lập Phiếu nhập kho từ phiếu này
                     </button>
-                }
-
-                @if (Model.CanManagerApprove)
-                {
-                    <form method="post" asp-page-handler="ApproveImport" id="rdManagerApproveForm" style="margin: 0; display: none;">
-                        <input type="hidden" name="receiptId" id="rdApproveReceiptId" />
-                        <input type="hidden" name="importId" id="rdApproveImportId" />
-                        <input type="hidden" name="SearchTerm" value="@Model.SearchTerm" />
-                        <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
-                        <input type="hidden" name="SupplierFilter" value="@Model.SupplierFilter" />
-                        <input type="hidden" name="DateFilter" value="@Model.DateFilter" />
-                        <input type="hidden" name="PageSize" value="@Model.PageSize" />
-                        <input type="hidden" name="CurrentPage" value="@Model.CurrentPage" />
-                        <button type="submit" class="wh-dialog-button wh-dialog-button--primary">Manager Approve (Duyệt nhập kho)</button>
-                    </form>
                 }
             </div>
         </div>
@@ -1392,7 +1414,38 @@ else
                 document.getElementById('rdTotal').innerText = d.total;
                 document.getElementById('rdBy').innerText = d.by;
                 document.getElementById('rdAt').innerText = d.at;
-                document.getElementById('rdImportCode').innerText = d.importCode || 'Chưa lập';
+                var importCodeEl = document.getElementById('rdImportCode');
+                var goToImportBtn = document.getElementById('rdGoToImportBtn');
+                var printImportBtn = document.getElementById('rdPrintImportBtn');
+                var isFromPnk = (d.fromPnk === 'true');
+                if (d.importCode && d.importCode !== 'Chưa lập') {
+                    var pnkUrl = '/Inventory/Index?Tab=raw&ViewMode=imports&SearchTerm=' + encodeURIComponent(d.importCode);
+                    var printUrl = d.importId
+                        ? ('/Inventory/ImportDetail?id=' + encodeURIComponent(d.importId))
+                        : ('/Inventory/ImportDetail?code=' + encodeURIComponent(d.importCode));
+                    importCodeEl.innerHTML = '<a href="' + pnkUrl + '" class="wh-code-pnk" style="text-decoration: none; gap: 5px;" title="Mở Phiếu nhập kho ' + d.importCode + '"><span>' + d.importCode + '</span><i class="bi bi-box-arrow-up-right" style="font-size: 11px;"></i></a>';
+                    if (goToImportBtn) {
+                        if (!isFromPnk) {
+                            goToImportBtn.href = pnkUrl;
+                            goToImportBtn.innerHTML = '<i class="bi bi-box-arrow-up-right" style="margin-right: 4px;"></i>Xem Phiếu nhập kho (' + d.importCode + ')';
+                            goToImportBtn.style.display = 'inline-flex';
+                        } else {
+                            goToImportBtn.style.display = 'none';
+                        }
+                    }
+                    if (printImportBtn) {
+                        printImportBtn.href = printUrl;
+                        printImportBtn.style.display = 'inline-flex';
+                    }
+                } else {
+                    importCodeEl.innerText = 'Chưa lập';
+                    if (goToImportBtn) {
+                        goToImportBtn.style.display = 'none';
+                    }
+                    if (printImportBtn) {
+                        printImportBtn.style.display = 'none';
+                    }
+                }
 
                 var lpWrap = document.getElementById('rdLicensePlateWrap');
                 var dnWrap = document.getElementById('rdDriverNameWrap');

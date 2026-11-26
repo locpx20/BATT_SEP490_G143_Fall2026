@@ -1,4 +1,12 @@
 @model List<BATT_PPMS.Models.AppNotification>
-@foreach(var notice in Model.Where(notice => notice.Title != "Xác nhận phiếu nhập thành phẩm" && notice.Title != "QC đã trả kết quả kiểm tra")){
-    <div class="closeout-message success" role="status"><strong>@notice.Title</strong><p>@notice.Message</p>@if(notice.Url!=null){<a href="@notice.Url">Xem chi tiết</a>}</div>
+@foreach(var notice in Model.Where(notice => notice.Title != "Xác nhận phiếu nhập thành phẩm" && notice.Title != "QC đã trả kết quả kiểm tra").Take(1)){
+    <div class="closeout-message success" role="status" style="position: relative; padding-right: 32px;">
+        <strong>@notice.Title</strong>
+        <p>@notice.Message</p>
+        @if(notice.Url!=null){<a href="@notice.Url">Xem chi tiết</a>}
+        <button type="button" onclick="this.parentElement.remove()" aria-label="Đóng thông báo"
+                style="position: absolute; top: 8px; right: 10px; border: none; background: transparent; color: inherit; opacity: .65; font-size: 18px; line-height: 1; cursor: pointer;">
+            &times;
+        </button>
+    </div>
 }

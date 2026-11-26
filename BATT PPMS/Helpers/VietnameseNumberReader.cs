@@ -52,6 +52,13 @@ public static class VietnameseNumberReader
         return $"{words} bao";
     }
 
+    public static string ToVndWords(decimal amount)
+    {
+        var longAmt = (long)Math.Round(amount);
+        var words = ToWords(longAmt);
+        return $"{words} đồng";
+    }
+
     private static string ReadThreeDigits(int number, bool fullPrefix)
     {
         var h = number / 100;

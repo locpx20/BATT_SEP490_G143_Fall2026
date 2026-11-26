@@ -1,9 +1,9 @@
-﻿@model List<BATT_PPMS.Models.AppNotification>
+@model List<BATT_PPMS.Models.AppNotification>
 @if (Model != null && Model.Any())
 {
-    foreach (var n in Model)
+    foreach (var n in Model.Take(1))
     {
-        <div class="rf-callout info">
+        <div class="rf-callout info" style="position: relative; align-items: center;">
             <i class="bi bi-bell-fill"></i>
             <div style="flex: 1;">
                 <b>@n.Title <span style="font-weight: 500; font-size: 11px; opacity: .8;">· @n.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></b>
@@ -13,6 +13,10 @@
                     <a href="@n.Url" style="font-size: 12px; font-weight: 700;">Xem chi tiết →</a>
                 }
             </div>
+            <button type="button" onclick="this.parentElement.remove()" aria-label="Đóng thông báo"
+                    style="border: none; background: transparent; color: inherit; opacity: .65; font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 6px;">
+                &times;
+            </button>
         </div>
     }
 }

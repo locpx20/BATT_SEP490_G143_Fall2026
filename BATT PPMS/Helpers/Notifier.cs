@@ -42,7 +42,7 @@ public static class Notifier
             foreach (var n in items) n.IsRead = true;
             await context.SaveChangesAsync();
         }
-        return items;
+        return items.Take(1).ToList();
     }
 
     private static string Trim(string s, int max) => s.Length <= max ? s : s.Substring(0, max - 1) + "…";

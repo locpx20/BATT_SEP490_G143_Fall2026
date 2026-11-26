@@ -737,13 +737,10 @@
 
                                 @if (Model.CanDelete && m.TotalIncidents == 0)
                                 {
-                                    <form method="post" asp-page-handler="DeleteMachine" style="display: inline;"
-                                          onsubmit="return confirm('Bạn có chắc chắn muốn xóa thiết bị \'@m.MachineName\'?\nThao tác này không thể hoàn tác.')">
-                                        <input type="hidden" name="machineId" value="@m.MachineId" />
-                                        <button type="submit" class="btn-delete-action" title="Xóa thiết bị">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
+                                    <button type="button" class="btn-delete-action" title="Xóa thiết bị"
+                                            onclick="openDeleteMachineModal(@m.MachineId, '@Html.Raw(m.MachineCode.Replace("'", "\\'"))', '@Html.Raw(m.MachineName.Replace("'", "\\'"))', '@Html.Raw(m.ProcessName.Replace("'", "\\'"))')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
                                 }
                             </div>
                         }
@@ -969,6 +966,53 @@
             </form>
         </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════
+         MODAL 3: XÁC NHẬN XÓA THIẾT BỊ (CHỈ HIỆN KHI BẤM)
+    ══════════════════════════════════════════════ -->
+    <div class="mmodal-overlay" id="deleteMachineModal" onclick="closeModalOnBackdrop(event, 'deleteMachineModal')">
+        <div class="mmodal-box" style="max-width: 460px;">
+            <div class="mmodal-header">
+                <div class="mmodal-header-info">
+                    <div class="mmodal-icon-box" style="background: #fae8e5; color: #a55449;">
+                        <i class="bi bi-trash3-fill"></i>
+                    </div>
+                    <div>
+                        <h4 class="mmodal-title" style="color: #a55449;">Xác nhận xóa thiết bị</h4>
+                        <p class="mmodal-subtitle">Thao tác này không thể hoàn tác sau khi xác nhận</p>
+                    </div>
+                </div>
+                <button type="button" class="mmodal-close-btn" onclick="closeModal('deleteMachineModal')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <form method="post" asp-page-handler="DeleteMachine">
+                <input type="hidden" name="machineId" id="deleteMachineId" />
+                <div class="mmodal-body">
+                    <p style="font-size: 13.5px; color: #243d35; margin: 0 0 12px 0; line-height: 1.5;">
+                        Bạn có chắc chắn muốn xóa thiết bị này khỏi danh mục máy móc của nhà máy không?
+                    </p>
+                    <div style="background: #fae8e5; border: 1px solid #f2cfc9; border-radius: 10px; padding: 12px 14px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span class="machine-code-badge" id="deleteMachineCodeBadge" style="background: #fffefa; border-color: #f2cfc9; color: #a55449;"></span>
+                            <span style="font-size: 12px; color: #7a887f;" id="deleteMachineProcessText"></span>
+                        </div>
+                        <div style="font-size: 14px; font-weight: 800; color: #243d35;" id="deleteMachineNameText"></div>
+                    </div>
+                </div>
+
+                <div class="mmodal-footer">
+                    <button type="button" class="btn-mmodal-cancel" onclick="closeModal('deleteMachineModal')">
+                        Hủy bỏ
+                    </button>
+                    <button type="submit" class="btn-mmodal-submit" style="background: #a55449;">
+                        <i class="bi bi-trash3"></i> Xác nhận xóa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 }
 
 @section Scripts {
@@ -1019,6 +1063,19 @@
         }
     }
 
+    function openDeleteMachineModal(id, code, name, processName) {
+        document.getElementById('deleteMachineId').value = id;
+        document.getElementById('deleteMachineCodeBadge').textContent = code || '';
+        document.getElementById('deleteMachineNameText').textContent = name || '';
+        document.getElementById('deleteMachineProcessText').textContent = processName ? ('Công đoạn: ' + processName) : '';
+
+        const modal = document.getElementById('deleteMachineModal');
+        if (modal) {
+            modal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
     function closeModal(modalId) {
         const modal = document.getElementById(modalId);
         if (modal) {
@@ -1038,6 +1095,7 @@
         if (e.key === 'Escape') {
             closeModal('addMachineModal');
             closeModal('editMachineModal');
+            closeModal('deleteMachineModal');
         }
     });
 </script>

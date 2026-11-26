@@ -69,6 +69,10 @@ namespace BATT_PPMS.Pages.Inventory
         public string? ApprovedByName { get; set; }
         public DateTime? ApprovedAt { get; set; }
         public string? Note { get; set; }
+        public string? RejectionReason { get; set; }
+        public string? LicensePlate { get; set; }
+        public string? DriverName { get; set; }
+        public string? DeliveryTime { get; set; }
         public string? ScalePhotoPath { get; set; }
         public string? InvoicePhotoPath { get; set; }
     }
@@ -321,6 +325,9 @@ namespace BATT_PPMS.Pages.Inventory
                 var invCode = i.Receipt?.Invoice != null
                     ? BATT_PPMS.Pages.PurchaseInvoices.IndexModel.FormatInvoiceBadgeCode(i.Receipt.Invoice.InvoiceId > 0 ? i.Receipt.Invoice.InvoiceCode : null, i.Receipt.Invoice.InvoiceId)
                     : "—";
+                var delivery = i.Receipt != null
+                    ? NoteTags.GetInboundDelivery(i.Receipt.Invoice?.Note, i.Receipt.ReceiptId)
+                    : null;
 
                 return new RawMaterialImportRowViewModel
                 {
@@ -342,6 +349,10 @@ namespace BATT_PPMS.Pages.Inventory
                     ApprovedByName = i.ApprovedByNavigation?.FullName,
                     ApprovedAt = i.ApprovedAt,
                     Note = i.Note,
+                    RejectionReason = i.Receipt?.RejectionReason,
+                    LicensePlate = delivery?.LicensePlate,
+                    DriverName = delivery?.DriverName,
+                    DeliveryTime = delivery?.DeliveryTime,
                     ScalePhotoPath = i.Receipt?.ScalePhotoPath,
                     InvoicePhotoPath = i.Receipt?.InvoicePhotoPath
                 };
@@ -793,7 +804,7 @@ namespace BATT_PPMS.Pages.Inventory
                     mgrId,
                     $"Phiếu nhập kho nguyên liệu {importCode} chờ duyệt",
                     $"Thủ kho ({CurrentFullName}) đã đối chiếu IR và lập Phiếu nhập kho nguyên liệu {importCode} (từ phiếu {receipt.ReceiptCode}, KL cân thực tế {finalQuantity:N0} kg × {finalUnitPrice:N0} VNĐ/kg). Chờ Manager phê duyệt.",
-                    "/Inventory/Index?tab=raw");
+                    $"/Inventory/Index?Tab=raw&ViewMode=imports&SearchTerm={importCode}");
             }
 
             await _context.SaveChangesAsync();
@@ -897,7 +908,7 @@ namespace BATT_PPMS.Pages.Inventory
             await BATT_PPMS.Pages.PurchaseInvoices.IndexModel.ExpirePastDayInvoicesAsync(_context);
 
             SuccessMessage = $"Đã phê duyệt Phiếu nhập kho nguyên liệu {codeDisplay}: Đã cộng +{importTicket.Quantity:N0} kg vào tồn kho và gửi thông tin phiếu nhập kho về cho Nhân viên thu mua.";
-            return Back();
+            return Back("imports");
         }
 
         // BƯỚC 6B TRÊN SWIMLANE: Chỉ Manager -> Approved (No) -> Rejection Reason -> quay lại Warehouse Manager: Create Goods Receipt Raw Material note
@@ -979,7 +990,7 @@ namespace BATT_PPMS.Pages.Inventory
             await _context.SaveChangesAsync();
 
             SuccessMessage = $"Đã từ chối Phiếu nhập kho nguyên liệu {codeDisplay} kèm lý do và gửi trả về cho Thủ kho lập lại phiếu nhập kho.";
-            return Back();
+            return Back("imports");
         }
     }
 }

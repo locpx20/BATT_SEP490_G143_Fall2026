@@ -1,0 +1,421 @@
+@page
+@using System.Globalization
+@using BATT_PPMS.Helpers
+@model BATT_PPMS.Pages.Inventory.ImportDetailModel
+@{
+    ViewData["Title"] = $"Chi tiết phiếu nhập kho {Model.ImportCode}";
+    ViewData["ActivePage"] = "Inventory";
+    var imp = Model.Import;
+    var vi = new CultureInfo("vi-VN");
+}
+
+@if (!string.IsNullOrEmpty(Model.SuccessMessage))
+{
+    <div class="alert alert-success no-print" style="border-radius:12px;">
+        <i class="bi bi-check-circle-fill" style="margin-right:8px;"></i><span>@Model.SuccessMessage</span>
+    </div>
+}
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger no-print" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill" style="margin-right:8px;"></i><span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="page-header no-print">
+    <div>
+        <h1 class="page-title">
+            Phiếu nhập kho @Model.ImportCode
+            <span class="badge @Model.StatusBadgeClass" style="vertical-align:middle;margin-left:8px;">@Model.StatusText</span>
+        </h1>
+        <p class="page-subtitle">
+            @if (Model.LicensePlate != "—")
+            {
+                <span>Xe @Model.LicensePlate (lái xe @Model.DriverName) · </span>
+            }
+            <span>Lập bởi @Model.ImportedByName lúc @imp.ImportDate.ToString("dd/MM/yyyy HH:mm")</span>
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="/Inventory/Index?Tab=raw&ViewMode=imports" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Danh sách phiếu nhập kho
+        </a>
+        @if (Model.InvoiceId.HasValue)
+        {
+            <a href="/PurchaseInvoices/Detail?id=@Model.InvoiceId.Value" class="btn btn-outline">
+                <i class="bi bi-file-earmark-text"></i> Yêu cầu thu mua @Model.InvoiceCode
+            </a>
+        }
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            <i class="bi bi-printer"></i> In phiếu nhập kho
+        </button>
+    </div>
+</div>
+
+@if (Model.CanManagerApprove)
+{
+    <div class="card no-print" style="margin-bottom:20px;border-left:4px solid var(--primary,#1a4332);">
+        <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div>
+                <h4 style="margin:0 0 4px;font-size:16px;"><i class="bi bi-clipboard2-check"></i> Chờ Manager phê duyệt phiếu nhập kho</h4>
+                <p style="margin:0;color:var(--text-secondary,#52675d);">Sau khi kiểm tra khối lượng cân thực tế tại kho và hình ảnh chứng từ bên dưới, bấm xác nhận duyệt để cộng tồn kho nguyên liệu thô.</p>
+            </div>
+            <form method="post" asp-page-handler="Approve" asp-route-id="@imp.ImportId" style="margin:0;">
+                <button type="submit" class="btn btn-success" style="padding:10px 22px;font-weight:600;background:#15803d;border:none;color:#fff;border-radius:8px;cursor:pointer;">
+                    <i class="bi bi-check2-circle"></i> Duyệt phiếu nhập kho
+                </button>
+            </form>
+        </div>
+    </div>
+}
+
+<!-- MẪU PHIẾU NHẬP KHO IN CHUẨN A4 (ĐỒNG BỘ VỚI PHIẾU XUẤT KHO) -->
+<div class="card print-slip-container" style="margin-bottom:24px;">
+    <div class="slip-print-content">
+        <!-- HEADER PHIẾU -->
+        <div class="slip-header">
+            <div class="slip-company">
+                <div class="company-name">CÔNG TY CỔ PHẦN NĂNG LƯỢNG TÁI TẠO BATT</div>
+                <div class="company-info">Đ/c: Bản 1 Vài Siêu, Xã Thượng Hà, Tỉnh Lào Cai</div>
+            </div>
+            <div class="slip-doc-info">
+                <div class="form-standard">Mẫu số: 01 - VT</div>
+                <div class="form-standard-sub">(Ban hành theo TT số 200/2014/TT-BTC)</div>
+                <div class="slip-code-print">Số: <strong>@Model.ImportCode</strong></div>
+                <div class="slip-date-print">Ngày @imp.ImportDate.Day tháng @imp.ImportDate.Month năm @imp.ImportDate.Year</div>
+            </div>
+        </div>
+
+        <div class="slip-title-block">
+            <h2 class="slip-main-title">PHIẾU NHẬP KHO</h2>
+            <div class="slip-sub-title">(KIÊM BIÊN BẢN CÂN &amp; KIỂM NHẬN NGUYÊN VẬT LIỆU THÔ)</div>
+        </div>
+
+        <!-- THÔNG TIN ĐƠN VỊ CUNG CẤP VÀ PHƯƠNG TIỆN VẬN CHUYỂN -->
+        <div class="slip-meta-grid">
+            <div class="slip-meta-row">
+                <span class="meta-label">Họ và tên người giao hàng (Lái xe):</span>
+                <span class="meta-val"><strong>@Model.DriverName</strong></span>
+                <span class="meta-label" style="margin-left:24px;">Biển số phương tiện:</span>
+                <span class="meta-val"><strong style="letter-spacing:0.5px;">@Model.LicensePlate</strong></span>
+                <span class="meta-label" style="margin-left:24px;">Thời gian giao:</span>
+                <span class="meta-val">@Model.DeliveryTime</span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Đơn vị cung cấp (Nhà phân phối / NCC):</span>
+                <span class="meta-val"><strong>@Model.SupplierName</strong></span>
+                <span class="meta-label" style="margin-left:24px;">Điện thoại:</span>
+                <span class="meta-val">@Model.SupplierPhone</span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Địa chỉ nhà cung cấp:</span>
+                <span class="meta-val">@Model.SupplierAddress</span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Theo Phiếu mua hàng / Yêu cầu nhập kho:</span>
+                <span class="meta-val"><strong>@Model.ReceiptCode</strong></span>
+                <span class="meta-label" style="margin-left:24px;">Thuộc Yêu cầu thu mua:</span>
+                <span class="meta-val"><strong>@Model.InvoiceCode</strong></span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Lý do nhập kho:</span>
+                <span class="meta-val">Nhập kho nguyên vật liệu thô phục vụ sản xuất viên nén gỗ năng lượng</span>
+            </div>
+            <div class="slip-meta-row">
+                <span class="meta-label">Nhập tại kho:</span>
+                <span class="meta-val">Kho nguyên vật liệu thô — Nhà máy BATT</span>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(imp.Note))
+            {
+                <div class="slip-meta-row">
+                    <span class="meta-label">Ghi chú kiểm nhận:</span>
+                    <span class="meta-val">@imp.Note</span>
+                </div>
+            }
+        </div>
+
+        <!-- BẢNG HÀNG NHẬP KHO -->
+        <table class="slip-items-table">
+            <thead>
+                <tr>
+                    <th style="width:45px;">STT</th>
+                    <th>Tên, nhãn hiệu, quy cách nguyên vật liệu</th>
+                    <th style="width:120px;">Mã phiếu (IR)</th>
+                    <th style="width:65px;">ĐVT</th>
+                    <th style="width:140px;text-align:right;">Khối lượng cân thực tế</th>
+                    <th style="width:130px;text-align:right;">Đơn giá (VNĐ/kg)</th>
+                    <th style="width:155px;text-align:right;">Thành tiền (VNĐ)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="text-align:center;">1</td>
+                    <td>
+                        <strong>@Model.MaterialName</strong>
+                    </td>
+                    <td style="text-align:center;font-weight:600;">@Model.ReceiptCode</td>
+                    <td style="text-align:center;">@Model.MaterialUnit</td>
+                    <td style="text-align:right;font-weight:600;">@imp.Quantity.ToString("N0", vi)</td>
+                    <td style="text-align:right;font-weight:600;">@imp.UnitPrice.ToString("N0", vi)</td>
+                    <td style="text-align:right;font-weight:700;">@Model.TotalAmount.ToString("N0", vi)</td>
+                </tr>
+                <!-- DÒNG TỔNG CỘNG -->
+                <tr class="slip-total-row">
+                    <td colspan="4" style="text-align:center;font-weight:700;">CỘNG TỔNG:</td>
+                    <td style="text-align:right;font-weight:700;">@imp.Quantity.ToString("N0", vi) kg</td>
+                    <td></td>
+                    <td style="text-align:right;font-weight:700;">@Model.TotalAmount.ToString("N0", vi) VNĐ</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- ĐỌC SỐ THÀNH CHỮ -->
+        <div class="slip-words-block">
+            <div class="slip-words-row">
+                - Tổng khối lượng thực nhập (bằng chữ): <strong>@VietnameseNumberReader.ToKgWords(imp.Quantity)</strong>
+            </div>
+            <div class="slip-words-row">
+                - Tổng số tiền thanh toán (bằng chữ): <strong>@VietnameseNumberReader.ToVndWords(Model.TotalAmount)</strong>
+            </div>
+        </div>
+
+        <!-- 4 Ô CHỮ KÝ TRANG TRỌNG -->
+        <div class="slip-signatures-container">
+            <div class="sig-box">
+                <div class="sig-title">NGƯỜI LẬP PHIẾU (THỦ KHO)</div>
+                <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">@Model.ImportedByName</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-title">NGƯỜI GIAO (TÀI XẾ)</div>
+                <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">@(Model.DriverName != "—" ? Model.DriverName : "")</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-title">NHÂN VIÊN THU MUA</div>
+                <div class="sig-sub">(Ký, ghi rõ họ tên)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">@(Model.PurchasingStaffName != "—" ? Model.PurchasingStaffName : "")</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-title">QUẢN LÝ PHÊ DUYỆT</div>
+                <div class="sig-sub">(Ký, đóng dấu)</div>
+                <div class="sig-space"></div>
+                <div class="sig-name">@Model.ApprovedByName</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KHỐI ẢNH CÂN & HÓA ĐƠN (CHỈ HIỂN THỊ TRÊN MÀN HÌNH WEB, ẨN KHI IN) -->
+@if (!string.IsNullOrWhiteSpace(Model.ScalePhotoPath) || !string.IsNullOrWhiteSpace(Model.InvoicePhotoPath))
+{
+    <div class="card no-print" style="margin-bottom:20px;">
+        <div class="card-header">
+            <h3 class="card-title"><i class="bi bi-camera"></i> Hình ảnh cân thực tế &amp; Hóa đơn đính kèm</h3>
+        </div>
+        <div class="card-body">
+            <div style="display:flex;flex-wrap:wrap;gap:24px;">
+                @if (!string.IsNullOrWhiteSpace(Model.ScalePhotoPath))
+                {
+                    <div>
+                        <div style="font-size:12.5px;font-weight:600;color:#475569;margin-bottom:6px;">Ảnh cân thực tế tại kho</div>
+                        <a href="@Model.ScalePhotoPath" target="_blank" rel="noopener" title="Bấm để xem ảnh gốc">
+                            <img src="@Model.ScalePhotoPath" alt="Ảnh cân @Model.ImportCode" style="max-width:320px;max-height:220px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.06);" />
+                        </a>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.InvoicePhotoPath))
+                {
+                    <div>
+                        <div style="font-size:12.5px;font-weight:600;color:#475569;margin-bottom:6px;">Ảnh hóa đơn đính kèm</div>
+                        <a href="@Model.InvoicePhotoPath" target="_blank" rel="noopener" title="Bấm để xem ảnh gốc">
+                            <img src="@Model.InvoicePhotoPath" alt="Hóa đơn @Model.ImportCode" style="max-width:320px;max-height:220px;object-fit:cover;border-radius:8px;border:1px solid var(--border,#e2e8f0);box-shadow:0 1px 3px rgba(0,0,0,0.06);" />
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .print-slip-container {
+        background: #ffffff;
+        color: #111827;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid var(--border, #e5e7eb);
+    }
+    .slip-print-content {
+        padding: 32px 36px;
+        font-family: 'Times New Roman', Times, serif, Arial;
+        color: #111;
+        line-height: 1.45;
+    }
+    .slip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #111;
+        padding-bottom: 12px;
+    }
+    .company-name {
+        font-size: 15px;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #000;
+    }
+    .company-info {
+        font-size: 13px;
+        color: #333;
+    }
+    .slip-doc-info {
+        text-align: right;
+        font-size: 13px;
+    }
+    .form-standard {
+        font-weight: 700;
+        font-size: 13px;
+    }
+    .form-standard-sub {
+        font-style: italic;
+        font-size: 11px;
+        color: #555;
+        margin-bottom: 6px;
+    }
+    .slip-code-print {
+        font-size: 14px;
+    }
+    .slip-date-print {
+        font-style: italic;
+        font-size: 12px;
+        color: #444;
+    }
+    .slip-title-block {
+        text-align: center;
+        margin: 16px 0 20px;
+    }
+    .slip-main-title {
+        font-size: 24px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        margin: 0;
+        color: #000;
+    }
+    .slip-sub-title {
+        font-size: 13px;
+        font-style: italic;
+        color: #333;
+        margin-top: 4px;
+    }
+    .slip-meta-grid {
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+    .slip-meta-row {
+        margin-bottom: 6px;
+        display: flex;
+        flex-wrap: wrap;
+    }
+    .meta-label {
+        color: #333;
+        margin-right: 8px;
+    }
+    .meta-val {
+        color: #000;
+    }
+    .slip-items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+        font-size: 13px;
+    }
+    .slip-items-table th, .slip-items-table td {
+        border: 1px solid #333;
+        padding: 7px 10px;
+    }
+    .slip-items-table th {
+        background-color: #f3f4f6;
+        font-weight: 700;
+        text-align: center;
+        color: #000;
+    }
+    .slip-total-row td {
+        background-color: #fafafa;
+        font-size: 13.5px;
+    }
+    .slip-words-block {
+        margin-bottom: 28px;
+        font-size: 14px;
+        font-style: italic;
+    }
+    .slip-words-row {
+        margin-bottom: 4px;
+    }
+    .slip-signatures-container {
+        display: flex;
+        justify-content: space-between;
+        text-align: center;
+        margin-top: 24px;
+        page-break-inside: avoid;
+    }
+    .sig-box {
+        flex: 1;
+        padding: 0 4px;
+    }
+    .sig-title {
+        font-weight: 700;
+        font-size: 13.5px;
+        color: #000;
+    }
+    .sig-sub {
+        font-size: 11.5px;
+        font-style: italic;
+        color: #555;
+    }
+    .sig-space {
+        height: 75px;
+    }
+    .sig-name {
+        font-weight: 700;
+        font-size: 13.5px;
+        color: #000;
+    }
+
+    @@media print {
+        body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .sidebar, .topbar, .app-header, .page-header, .page-actions, .alert, .no-print, button, a.btn {
+            display: none !important;
+        }
+        .main-content, .content-container, .page-container, .container-fluid, .card, .card-body {
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+        }
+        .print-slip-container {
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            width: 100% !important;
+        }
+        .slip-print-content {
+            padding: 0 !important;
+            width: 100% !important;
+        }
+        @@page {
+            size: A4 portrait;
+            margin: 15mm 15mm 15mm 15mm;
+        }
+    }
+</style>
+

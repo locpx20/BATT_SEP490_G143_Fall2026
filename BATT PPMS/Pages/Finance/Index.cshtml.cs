@@ -26,6 +26,7 @@ namespace BATT_PPMS.Pages.Finance
     {
         public int Month { get; set; }
         public string MonthLabel => $"THÁNG {Month}";
+        public bool IsCurrentMonth { get; set; }
         public decimal Quantity { get; set; }
         public decimal TotalAmount { get; set; }
         public int TransactionCount { get; set; }
@@ -105,6 +106,8 @@ namespace BATT_PPMS.Pages.Finance
         public decimal TotalSupplierPaidAmount => SupplierDebtRows.Sum(r => r.PaidAmount);
         public decimal TotalSupplierRemainingAmount => SupplierDebtRows.Sum(r => r.RemainingAmount);
 
+        public bool CanPayDebt => IsOwner;
+
         [TempData]
         public string? SuccessMessage { get; set; }
 
@@ -161,7 +164,7 @@ namespace BATT_PPMS.Pages.Finance
             string? returnTab,
             string? searchTerm)
         {
-            var check = RequireRole(RoleConstants.Owner, RoleConstants.Manager);
+            var check = RequireRole(RoleConstants.Owner);
             if (check != null) return check;
 
             var targetTab = NormalizeTab(returnTab ?? (partnerType == "supplier" ? "supplier-debts" : "customer-debts"));
@@ -288,11 +291,16 @@ namespace BATT_PPMS.Pages.Finance
 
             var yearOrders = allApprovedOrders.Where(o => o.OrderDate.Year == Year).ToList();
 
+            var currentMonth = DateTime.Now.Month;
+            var orderedMonths = new[] { currentMonth }
+                .Concat(Enumerable.Range(1, 12).Where(m => m != currentMonth))
+                .ToList();
+
             var exportByMonth = yearOrders
                 .GroupBy(o => o.OrderDate.Month)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            ExportRows = Enumerable.Range(1, 12).Select(m =>
+            ExportRows = orderedMonths.Select(m =>
             {
                 exportByMonth.TryGetValue(m, out var list);
                 list ??= new List<Order>();
@@ -300,6 +308,7 @@ namespace BATT_PPMS.Pages.Finance
                 return new MonthlyFinanceRow
                 {
                     Month = m,
+                    IsCurrentMonth = (m == currentMonth),
                     Quantity = list.Sum(o => (decimal)o.Quantity),
                     TotalAmount = list.Sum(o => o.TotalAmount),
                     TransactionCount = cnt,
@@ -341,7 +350,7 @@ namespace BATT_PPMS.Pages.Finance
                 .GroupBy(i => i.ImportDate.Month)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            MaterialRows = Enumerable.Range(1, 12).Select(m =>
+            MaterialRows = orderedMonths.Select(m =>
             {
                 materialByMonth.TryGetValue(m, out var list);
                 list ??= new List<RawMaterialImport>();
@@ -349,6 +358,7 @@ namespace BATT_PPMS.Pages.Finance
                 return new MonthlyFinanceRow
                 {
                     Month = m,
+                    IsCurrentMonth = (m == currentMonth),
                     Quantity = list.Sum(i => i.Quantity),
                     TotalAmount = list.Sum(i => i.Quantity * i.UnitPrice),
                     TransactionCount = cnt,

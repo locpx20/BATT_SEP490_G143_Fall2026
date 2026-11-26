@@ -202,9 +202,18 @@
                             <input type="number" name="totalCost" min="0" step="1000" class="form-control" style="font-size: 12px; border-radius: 10px;" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ảnh hoá đơn (nếu có)</label>
-                            <input type="file" name="invoiceImage" accept="image/*" class="form-control" style="font-size: 12px; border-radius: 10px;" />
+                            <label class="form-label" for="invoiceImageInput" style="font-size: 12px; font-weight: 700; color: #243d35;">Ảnh hoá đơn (nếu có)</label>
+                            <input type="file" name="invoiceImage" id="invoiceImageInput" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="form-control" style="font-size: 12px; border-radius: 10px;" />
                             <div style="font-size: 11px; color: #7a887f; margin-top: 4px;">Chấp nhận ảnh JPG, PNG, WEBP (tối đa 10 MB)</div>
+                            <div id="invoiceImagePreviewWrap" style="display: none; margin-top: 10px; border: 1px solid #d9dfd3; border-radius: 10px; padding: 8px; background: #f8faf7;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+                                    <span id="invoiceImageFileName" style="font-size: 11px; font-weight: 600; color: #243d35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                                    <button type="button" id="invoiceImageClearBtn" class="btn btn-sm btn-outline-secondary" style="font-size: 11px; padding: 2px 8px; border-radius: 6px;">
+                                        <i class="bi bi-x"></i> Xoá ảnh
+                                    </button>
+                                </div>
+                                <img id="invoiceImagePreview" src="" alt="Xem trước ảnh hoá đơn" style="display: block; max-width: 100%; max-height: 220px; border-radius: 8px; object-fit: contain; margin: 0 auto; border: 1px solid #e6eae1; background: #fff;" />
+                            </div>
                         </div>
                         <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ghi chú </label>
                         <textarea name="note" rows="3" maxlength="300" class="form-control" style="font-size: 12px; border-radius: 10px;" placeholder="Nhà cung cấp, thời gian giao, vị trí để vật tư..."></textarea>
@@ -245,17 +254,66 @@
 
 @section Scripts {
     <script>
-        document.querySelectorAll('.js-purchased').forEach(function (b) {
-            b.addEventListener('click', function () {
-                document.getElementById('purchasedId').value = b.dataset.id;
-                document.getElementById('purchasedLabel').textContent = b.dataset.label;
+        (function () {
+            var invoiceInput = document.getElementById('invoiceImageInput');
+            var previewWrap = document.getElementById('invoiceImagePreviewWrap');
+            var previewImg = document.getElementById('invoiceImagePreview');
+            var previewName = document.getElementById('invoiceImageFileName');
+            var clearBtn = document.getElementById('invoiceImageClearBtn');
+            var currentObjectUrl = null;
+
+            function formatBytes(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+            }
+
+            function clearInvoicePreview() {
+                if (currentObjectUrl) {
+                    URL.revokeObjectURL(currentObjectUrl);
+                    currentObjectUrl = null;
+                }
+                if (invoiceInput) invoiceInput.value = '';
+                if (previewImg) previewImg.removeAttribute('src');
+                if (previewName) previewName.textContent = '';
+                if (previewWrap) previewWrap.style.display = 'none';
+            }
+
+            if (invoiceInput) {
+                invoiceInput.addEventListener('change', function () {
+                    if (currentObjectUrl) {
+                        URL.revokeObjectURL(currentObjectUrl);
+                        currentObjectUrl = null;
+                    }
+                    var file = invoiceInput.files && invoiceInput.files[0];
+                    if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+                        clearInvoicePreview();
+                        return;
+                    }
+                    currentObjectUrl = URL.createObjectURL(file);
+                    previewImg.src = currentObjectUrl;
+                    previewName.textContent = file.name + ' (' + formatBytes(file.size) + ')';
+                    previewWrap.style.display = 'block';
+                });
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', clearInvoicePreview);
+            }
+
+            document.querySelectorAll('.js-purchased').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    document.getElementById('purchasedId').value = b.dataset.id;
+                    document.getElementById('purchasedLabel').textContent = b.dataset.label;
+                    clearInvoicePreview();
+                });
             });
-        });
-        document.querySelectorAll('.js-reject').forEach(function (b) {
-            b.addEventListener('click', function () {
-                document.getElementById('rejectId').value = b.dataset.id;
-                document.getElementById('rejectLabel').textContent = b.dataset.label;
+            document.querySelectorAll('.js-reject').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    document.getElementById('rejectId').value = b.dataset.id;
+                    document.getElementById('rejectLabel').textContent = b.dataset.label;
+                });
             });
-        });
+        })();
     </script>
 }

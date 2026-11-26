@@ -207,6 +207,15 @@
                     </label>
                     <input class="form-control" type="file" name="vehicleImages" id="inp-vehicle-images" multiple accept="image/jpeg,image/png,image/webp" />
                     <span class="form-hint">Chụp rõ biển số xe, thùng xe chở hàng, toàn cảnh xe... Hỗ trợ tải nhiều ảnh (JPG, PNG, WEBP, tối đa 6 ảnh, mỗi ảnh ≤ 10 MB).</span>
+                    <div id="vehicle-images-preview-wrap" style="display:none; margin-top:12px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+                            <span id="vehicle-images-count" style="font-size:12px; font-weight:700; color:var(--primary,#193f35);"></span>
+                            <button type="button" id="vehicle-images-clear-all" class="btn btn-sm btn-outline-secondary" style="font-size:12px; padding:2px 10px; border-radius:6px;">
+                                <i class="bi bi-trash"></i> Xoá tất cả
+                            </button>
+                        </div>
+                        <div id="vehicle-images-preview" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px;"></div>
+                    </div>
                 </div>
                 <div class="form-group" style="grid-column:1/-1;">
                     <label class="form-label" for="inp-note">Ghi chú phiếu xuất kho</label>
@@ -295,5 +304,101 @@
         });
 
         recalculate();
+
+        var vehicleInput = document.getElementById('inp-vehicle-images');
+        var previewWrap = document.getElementById('vehicle-images-preview-wrap');
+        var previewGrid = document.getElementById('vehicle-images-preview');
+        var previewCount = document.getElementById('vehicle-images-count');
+        var clearAllBtn = document.getElementById('vehicle-images-clear-all');
+        var objectUrls = [];
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function revokeAllUrls() {
+            objectUrls.forEach(function (u) { URL.revokeObjectURL(u); });
+            objectUrls = [];
+        }
+
+        function renderVehiclePreviews() {
+            revokeAllUrls();
+            if (!vehicleInput || !previewWrap || !previewGrid) return;
+
+            var files = Array.prototype.slice.call(vehicleInput.files || []);
+            previewGrid.innerHTML = '';
+
+            if (files.length === 0) {
+                previewWrap.style.display = 'none';
+                if (previewCount) previewCount.textContent = '';
+                return;
+            }
+
+            previewWrap.style.display = 'block';
+            if (previewCount) {
+                if (files.length > 6) {
+                    previewCount.style.color = '#c53030';
+                    previewCount.textContent = 'Đã chọn ' + files.length + ' ảnh (tối đa 6 ảnh)';
+                } else {
+                    previewCount.style.color = 'var(--primary, #193f35)';
+                    previewCount.textContent = 'Đã chọn ' + files.length + ' ảnh';
+                }
+            }
+
+            files.forEach(function (file, index) {
+                var card = document.createElement('div');
+                card.style.cssText = 'position:relative;border:1px solid #d9dfd3;border-radius:10px;padding:6px;background:#f8faf7;display:flex;flex-direction:column;gap:4px;';
+
+                var removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.title = 'Xoá ảnh này';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.style.cssText = 'position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,0.65);color:#fff;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;';
+                removeBtn.addEventListener('click', function () {
+                    if (typeof DataTransfer !== 'undefined') {
+                        var dt = new DataTransfer();
+                        files.forEach(function (f, i) {
+                            if (i !== index) dt.items.add(f);
+                        });
+                        vehicleInput.files = dt.files;
+                    } else {
+                        vehicleInput.value = '';
+                    }
+                    renderVehiclePreviews();
+                });
+
+                var img = document.createElement('img');
+                img.alt = file.name;
+                img.style.cssText = 'width:100%;height:110px;object-fit:cover;border-radius:7px;border:1px solid #e6eae1;background:#fff;display:block;';
+                if (file.type && file.type.indexOf('image/') === 0) {
+                    var url = URL.createObjectURL(file);
+                    objectUrls.push(url);
+                    img.src = url;
+                }
+
+                var meta = document.createElement('div');
+                meta.style.cssText = 'font-size:11px;color:#243d35;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                meta.title = file.name + ' (' + formatBytes(file.size) + ')';
+                meta.textContent = file.name + ' · ' + formatBytes(file.size);
+
+                card.appendChild(removeBtn);
+                card.appendChild(img);
+                card.appendChild(meta);
+                previewGrid.appendChild(card);
+            });
+        }
+
+        if (vehicleInput) {
+            vehicleInput.addEventListener('change', renderVehiclePreviews);
+        }
+
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', function () {
+                if (vehicleInput) vehicleInput.value = '';
+                renderVehiclePreviews();
+            });
+        }
     })();
 </script>

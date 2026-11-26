@@ -632,6 +632,8 @@ namespace BATT_PPMS.Pages.Personnel
                             AssignedBy = manager,
                             AssignmentDate = NewPlanDate,
                             Shift = name,
+                            ShiftPlanDate = NewPlanDate,
+                            ShiftPlanShift = name,
                             TaskDescription = ProductionStages[index].TaskDescription,
                             Status = "Assigned"
                         }));
@@ -716,6 +718,8 @@ namespace BATT_PPMS.Pages.Personnel
                                 AssignedBy = manager,
                                 AssignmentDate = day,
                                 Shift = shift,
+                                ShiftPlanDate = day,
+                                ShiftPlanShift = shift,
                                 TaskDescription = ProductionStages[i].TaskDescription,
                                 Status = "Assigned"
                             });
@@ -749,6 +753,11 @@ namespace BATT_PPMS.Pages.Personnel
                     projection.ExpectedMaterialKg = materialKg;
                     projection.ExpectedFinishedKg = finishedKg;
                     projection.Note = note;
+                    foreach (var assignment in assignments.Except(removed))
+                    {
+                        assignment.ShiftPlanDate = day;
+                        assignment.ShiftPlanShift = shift;
+                    }
                     _context.PersonnelAssignments.RemoveRange(removed);
                     _context.PersonnelAssignments.AddRange(added);
                     await NotifyWarehouseOfPlanAsync(input.IsDayOff ? [] : [shift], materialKg, input.IsDayOff ? [shift] : []);

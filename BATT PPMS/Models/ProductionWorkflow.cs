@@ -87,6 +87,16 @@ public partial class ProductionManagementDbContext
             e.Property(x => x.ExpectedFinishedKg).HasPrecision(12, 2);
             e.Property(x => x.Note).HasMaxLength(1000);
         });
+        modelBuilder.Entity<PersonnelAssignment>(e =>
+        {
+            e.Property(x => x.ShiftPlanDate).HasColumnName("shift_plan_date");
+            e.Property(x => x.ShiftPlanShift).HasColumnName("shift_plan_shift").HasMaxLength(50);
+            e.HasOne<ShiftProductionPlan>().WithMany()
+                .HasForeignKey(x => new { x.ShiftPlanDate, x.ShiftPlanShift })
+                .HasPrincipalKey(x => new { x.PlanDate, x.Shift })
+                .OnDelete(DeleteBehavior.ClientNoAction)
+                .HasConstraintName("FK_PersonnelAssignment_ShiftProductionPlan");
+        });
         modelBuilder.Entity<MaterialUsageReview>(e => {
             e.ToTable("MaterialUsageReview"); e.HasKey(x => x.ReportId);
             e.Property(x => x.ReportId).ValueGeneratedNever();

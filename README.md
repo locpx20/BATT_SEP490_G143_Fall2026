@@ -1,5 +1,9 @@
 # BATT_SEP490_G143_Fall2026
 
+## Liên kết kế hoạch ca và phân công
+
+Trước khi chạy phiên bản có liên kết kế hoạch ca, chạy `Add_ShiftProductionPlan.sql` nếu database chưa có bảng kế hoạch, sau đó chạy `Add_PersonnelAssignment_ShiftPlan_FK.sql` trên database ứng dụng. Script có thể chạy lại và giữ dữ liệu cũ: phân công khớp ngày, ca được liên kết; phân công chưa có kế hoạch tương ứng vẫn được giữ và để trống liên kết. Khi xóa kế hoạch, database chỉ bỏ liên kết của các phân công còn lưu, không xóa phân công đó.
+
 ## Cập nhật database sau khi pull luồng bảo trì
 
 Với database đang có dữ liệu, chạy `Add_MaintenanceRequest_Workflow.sql` trước, rồi chạy `Add_MaintenanceMaterialFlow.sql` trên database ứng dụng đang sử dụng. Hai script bổ sung các cột bảo trì, nhật ký và thông báo còn thiếu, có thể chạy lại. Không cần chạy lại file tạo database nền. Nếu gặp `Invalid column name` với `due_date`, `location`, `machine_stopped`, `rejection_reason` hoặc `title`, database chưa được cập nhật phần cấu trúc bảo trì.

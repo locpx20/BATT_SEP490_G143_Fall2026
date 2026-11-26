@@ -15,6 +15,10 @@ public partial class PersonnelAssignment
 
     public string? Shift { get; set; }
 
+    public DateOnly? ShiftPlanDate { get; set; }
+
+    public string? ShiftPlanShift { get; set; }
+
     public string? TaskDescription { get; set; }
 
     public string? Status { get; set; }

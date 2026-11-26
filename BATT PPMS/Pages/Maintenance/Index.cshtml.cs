@@ -102,7 +102,7 @@ namespace BATT_PPMS.Pages.Maintenance
             InProgressCount = Count(RepairStatus.InProgress);
             WaitingMaterialCount = Count(RepairStatus.WaitingMaterial);
             PendingVerificationCount = Count(RepairStatus.PendingVerification);
-            Notices = await Notifier.TakeUnreadAsync(_context, CurrentUserId);
+            Notices = await Notifier.TakeUnreadAsync(_context, CurrentUserId, urlPrefix: "/Maintenance");
             CompletedCount = Count(RepairStatus.Completed);
 
             var query = scoped;

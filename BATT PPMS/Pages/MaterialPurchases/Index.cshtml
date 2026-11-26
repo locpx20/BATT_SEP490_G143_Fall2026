@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model BATT_PPMS.Pages.MaterialPurchases.IndexModel
 @using BATT_PPMS.Helpers
 @{
@@ -144,6 +144,14 @@
                                 {
                                     <div class="rf-sub rf-clamp">@r.ResultNote</div>
                                 }
+                                @if (!string.IsNullOrWhiteSpace(r.InvoiceImage))
+                                {
+                                    <div style="margin-top: 4px;">
+                                        <a href="@r.InvoiceImage" target="_blank" class="badge" style="background: #e8f4ec; color: #24583e; border: 1px solid #c2e2cc; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-size: 11px;">
+                                            <i class="bi bi-receipt"></i> Xem hóa đơn
+                                        </a>
+                                    </div>
+                                }
                             </td>
                             @if (Model.CanHandle)
                             {
@@ -181,7 +189,7 @@
     <div class="modal fade" id="purchasedModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 16px; border: 1px solid #e1e5da;">
-                <form method="post" asp-page-handler="Purchased">
+                <form method="post" asp-page-handler="Purchased" enctype="multipart/form-data">
                     <input type="hidden" name="id" id="purchasedId" />
                     <div class="modal-header" style="border-bottom: 1px solid #efefe7; padding: 16px 20px;">
                         <h5 class="modal-title" style="font-size: 15px; font-weight: 800; color: #243d35;"><i class="bi bi-bag-check"></i> Xác nhận đã mua vật tư</h5>
@@ -192,6 +200,11 @@
                         <div class="mb-3">
                             <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Tổng chi phí </label>
                             <input type="number" name="totalCost" min="0" step="1000" class="form-control" style="font-size: 12px; border-radius: 10px;" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ảnh hoá đơn (nếu có)</label>
+                            <input type="file" name="invoiceImage" accept="image/*" class="form-control" style="font-size: 12px; border-radius: 10px;" />
+                            <div style="font-size: 11px; color: #7a887f; margin-top: 4px;">Chấp nhận ảnh JPG, PNG, WEBP (tối đa 10 MB)</div>
                         </div>
                         <label class="form-label" style="font-size: 12px; font-weight: 700; color: #243d35;">Ghi chú </label>
                         <textarea name="note" rows="3" maxlength="300" class="form-control" style="font-size: 12px; border-radius: 10px;" placeholder="Nhà cung cấp, thời gian giao, vị trí để vật tư..."></textarea>

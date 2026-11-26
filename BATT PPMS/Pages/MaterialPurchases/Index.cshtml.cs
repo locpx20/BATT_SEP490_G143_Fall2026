@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +22,7 @@ namespace BATT_PPMS.Pages.MaterialPurchases
         public string? Note { get; set; }
         public string? ResultNote { get; set; }
         public decimal? TotalCost { get; set; }
+        public string? InvoiceImage { get; set; }
         public string? HandledByName { get; set; }
         public DateTime? HandledAt { get; set; }
     }
@@ -34,7 +35,12 @@ namespace BATT_PPMS.Pages.MaterialPurchases
     public class IndexModel : BasePageModel
     {
         private readonly AppDbContext _context;
-        public IndexModel(AppDbContext context) { _context = context; }
+        private readonly IWebHostEnvironment _env;
+        public IndexModel(AppDbContext context, IWebHostEnvironment env)
+        {
+            _context = context;
+            _env = env;
+        }
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -137,6 +143,7 @@ namespace BATT_PPMS.Pages.MaterialPurchases
                     Note = p.Note,
                     ResultNote = p.ResultNote,
                     TotalCost = p.TotalCost,
+                    InvoiceImage = p.InvoiceImage,
                     HandledByName = p.ApprovedByNavigation != null ? p.ApprovedByNavigation.FullName : null,
                     HandledAt = p.HandledAt
                 })
@@ -145,7 +152,7 @@ namespace BATT_PPMS.Pages.MaterialPurchases
             foreach (var r in items) r.Status = PurchaseRequestStatus.Normalize(r.Status);
             Rows = items;
 
-            Notices = await Notifier.TakeUnreadAsync(_context, CurrentUserId);
+            Notices = await Notifier.TakeUnreadAsync(_context, CurrentUserId, urlPrefix: "/MaterialPurchases");
 
             return Page();
         }
@@ -153,7 +160,7 @@ namespace BATT_PPMS.Pages.MaterialPurchases
         // ------------------------------------------------------------------
         // Manager: đã mua xong -> nhập kho vật tư -> thông báo nhân viên bảo trì
         // ------------------------------------------------------------------
-        public async Task<IActionResult> OnPostPurchasedAsync(int id, decimal? totalCost, string? note)
+        public async Task<IActionResult> OnPostPurchasedAsync(int id, decimal? totalCost, string? note, IFormFile? invoiceImage)
         {
             var check = RequireRole(RoleConstants.Manager);
             if (check != null) return check;
@@ -163,7 +170,24 @@ namespace BATT_PPMS.Pages.MaterialPurchases
                 totalCost is < 0m or > 99_999_999_999m ? "Tổng chi phí không hợp lệ." : null);
             if (error != null) return Fail(error);
 
-            return await ResolveAsync(id, purchased: true, totalCost, note);
+            string? invoicePath = null;
+            if (invoiceImage is { Length: > 0 })
+            {
+                if (invoiceImage.Length > 10 * 1024 * 1024)
+                    return Fail("Ảnh hoá đơn không được vượt quá 10 MB.");
+                var ext = Path.GetExtension(invoiceImage.FileName).ToLowerInvariant();
+                if (!new[] { ".jpg", ".jpeg", ".png", ".webp" }.Contains(ext))
+                    return Fail("Ảnh hoá đơn phải là file ảnh định dạng JPG, PNG hoặc WEBP.");
+
+                var dir = Path.Combine(_env.WebRootPath, "uploads", "material-purchases");
+                Directory.CreateDirectory(dir);
+                var name = $"{Guid.NewGuid():N}{ext}";
+                await using (var stream = System.IO.File.Create(Path.Combine(dir, name)))
+                    await invoiceImage.CopyToAsync(stream);
+                invoicePath = $"/uploads/material-purchases/{name}";
+            }
+
+            return await ResolveAsync(id, purchased: true, totalCost, note, invoicePath);
         }
 
         // ------------------------------------------------------------------
@@ -180,7 +204,7 @@ namespace BATT_PPMS.Pages.MaterialPurchases
             return await ResolveAsync(id, purchased: false, null, reason);
         }
 
-        private async Task<IActionResult> ResolveAsync(int id, bool purchased, decimal? totalCost, string? note)
+        private async Task<IActionResult> ResolveAsync(int id, bool purchased, decimal? totalCost, string? note, string? invoicePath = null)
         {
             var pr = await _context.MaterialPurchaseRequests
                 .Include(p => p.MaintenanceRequest).ThenInclude(m => m.AssignedToNavigation)
@@ -205,6 +229,10 @@ namespace BATT_PPMS.Pages.MaterialPurchases
             {
                 pr.Status = PurchaseRequestStatus.Purchased;
                 pr.TotalCost = totalCost;
+                if (!string.IsNullOrEmpty(invoicePath))
+                {
+                    pr.InvoiceImage = invoicePath;
+                }
             }
             else
             {

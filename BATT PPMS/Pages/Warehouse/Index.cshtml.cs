@@ -159,7 +159,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         }
         Notices=IsWarehouseStaff && Tab=="plans"
             ? await WarehouseNavigationNotices.OpenAsync(db,CurrentUserId,WarehouseNavigationNotice.Plans,HttpContext.RequestAborted)
-            : await Notifier.TakeUnreadAsync(db,CurrentUserId,preserveWarehouseNavigationNotices:IsWarehouseStaff);
+            : await Notifier.TakeUnreadAsync(db,CurrentUserId,preserveWarehouseNavigationNotices:IsWarehouseStaff,urlPrefix:"/Warehouse/Index");
         return Page();
     }
 

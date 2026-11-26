@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace BATT_PPMS.Models;
@@ -30,6 +30,9 @@ public partial class MaterialPurchaseRequest
     public string? ResultNote { get; set; }
 
     public decimal? TotalCost { get; set; }
+
+    // Đường dẫn ảnh hoá đơn mua vật tư (nếu có) do Manager tải lên
+    public string? InvoiceImage { get; set; }
 
     public DateTime? HandledAt { get; set; }
 

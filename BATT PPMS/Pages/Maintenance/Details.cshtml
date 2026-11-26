@@ -346,6 +346,14 @@
                                         {
                                             <div class="rf-pr-note"><i class="bi bi-person-badge"></i> Quản lý: @pr.ResultNote</div>
                                         }
+                                        @if (!string.IsNullOrWhiteSpace(pr.InvoiceImage))
+                                        {
+                                            <div style="margin-top: 4px;">
+                                                <a href="@pr.InvoiceImage" target="_blank" class="badge" style="background: #e8f4ec; color: #24583e; border: 1px solid #c2e2cc; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-size: 11px;">
+                                                    <i class="bi bi-receipt"></i> Xem hóa đơn mua hàng
+                                                </a>
+                                            </div>
+                                        }
                                     </div>
                                     <div><span class="rf-badge" style="background: @pb2.Bg; color: @pb2.Fg; border-color: @pb2.Border;">@PurchaseRequestStatus.Label(pr.Status)</span></div>
                                 </div>

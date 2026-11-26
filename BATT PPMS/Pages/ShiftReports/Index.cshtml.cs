@@ -72,7 +72,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
             .Skip(Pagination.Offset).Take(Pagination.PageSize).ToListAsync(cancellationToken);
         await LoadShiftComparisonsAsync(cancellationToken);
         if (ShowReceipts)
-            Notices = await Notifier.TakeUnreadAsync(db, CurrentUserId);
+            Notices = await Notifier.TakeUnreadAsync(db, CurrentUserId, urlPrefix: "/ShiftReports");
         return Page();
     }
 

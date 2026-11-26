@@ -383,6 +383,7 @@ public partial class ProductionManagementDbContext : DbContext
             entity.Property(e => e.Note).HasMaxLength(500).HasColumnName("note");
             entity.Property(e => e.ResultNote).HasMaxLength(500).HasColumnName("result_note");
             entity.Property(e => e.TotalCost).HasColumnType("decimal(14, 2)").HasColumnName("total_cost");
+            entity.Property(e => e.InvoiceImage).HasMaxLength(300).HasColumnName("invoice_image");
             entity.Property(e => e.HandledAt).HasColumnType("datetime").HasColumnName("handled_at");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)

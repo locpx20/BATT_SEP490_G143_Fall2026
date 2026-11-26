@@ -123,7 +123,7 @@ namespace BATT_PPMS.Pages.Maintenance
 
             await LoadPurchaseRequestsAsync(id);
 
-            Notices = await Notifier.TakeUnreadAsync(_context, CurrentUserId);
+            Notices = await Notifier.TakeUnreadAsync(_context, CurrentUserId, urlPrefix: $"/Maintenance/Details?id={id}");
 
             Timeline = await _context.MaintenanceRequestLogs
                 .AsNoTracking()

@@ -71,7 +71,7 @@ public class IndexModel(ProductionManagementDbContext db) : BasePageModel
         Reports = await query.OrderByDescending(row => row.Date).ThenByDescending(row => row.Id)
             .Skip(Pagination.Offset).Take(Pagination.PageSize).ToListAsync(cancellationToken);
         if (ShowReceipts)
-            Notices = await Notifier.TakeUnreadAsync(db, CurrentUserId);
+            Notices = await Notifier.TakeUnreadAsync(db, CurrentUserId, urlPrefix: "/ShiftReports");
         return Page();
     }
 

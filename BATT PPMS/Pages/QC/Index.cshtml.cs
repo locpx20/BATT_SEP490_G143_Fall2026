@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Data;
+using BATT_PPMS.Data;
 using BATT_PPMS.Helpers;
 using BATT_PPMS.Models;
 using BATT_PPMS.Services;
@@ -41,7 +41,7 @@ namespace BATT_PPMS.Pages.QC
         {
             var check = RequireRole(RoleConstants.Staff, RoleConstants.QCStaff, RoleConstants.Manager, RoleConstants.Owner);
             if (check != null) return check;
-            Notices=(await Notifier.TakeUnreadAsync(_context,CurrentUserId))
+            Notices=(await Notifier.TakeUnreadAsync(_context,CurrentUserId, urlPrefix: "/QC"))
                 .Where(notice => notice.Title != "Yêu cầu kiểm tra chất lượng mới")
                 .ToList();
             if (Legacy) {

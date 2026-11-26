@@ -1,4 +1,4 @@
-﻿using BATT_PPMS.Models;
+using BATT_PPMS.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace BATT_PPMS.Helpers;
@@ -19,13 +19,19 @@ public static class Notifier
         });
     }
 
-    /// <summary>Lấy thông báo chưa đọc của người dùng và đánh dấu đã đọc.</summary>
-    public static async Task<List<AppNotification>> TakeUnreadAsync(ProductionManagementDbContext context, int userId, bool preserveWarehouseNavigationNotices = false)
+    /// <summary>Lấy thông báo chưa đọc của người dùng (lọc theo tiền tố URL nếu có) và đánh dấu đã đọc.</summary>
+    public static async Task<List<AppNotification>> TakeUnreadAsync(
+        ProductionManagementDbContext context,
+        int userId,
+        bool preserveWarehouseNavigationNotices = false,
+        string? urlPrefix = null)
     {
         if (userId <= 0) return new List<AppNotification>();
 
         var query = context.AppNotifications.Where(n => n.UserId == userId && !n.IsRead);
         if (preserveWarehouseNavigationNotices) query = WarehouseNavigationNotices.ExcludeFrom(query);
+        if (!string.IsNullOrWhiteSpace(urlPrefix))
+            query = query.Where(n => n.Url != null && n.Url.StartsWith(urlPrefix));
         var items = await query
             .OrderByDescending(n => n.CreatedAt)
             .Take(10)

@@ -137,7 +137,7 @@ public class ConsumptionModel(ProductionManagementDbContext db) : BasePageModel
             if (EditId == 0 && HasSearchedDate)
                 (HasChipperAssignment, Assignments) = await flow.ConsumptionShiftOptions(CurrentUserId, SelectedDate, ShiftFilter);
         }
-        Notices=await Notifier.TakeUnreadAsync(db,CurrentUserId,preserveWarehouseNavigationNotices:IsWarehouseStaff);
+        Notices=await Notifier.TakeUnreadAsync(db,CurrentUserId,preserveWarehouseNavigationNotices:IsWarehouseStaff,urlPrefix:"/Warehouse/Consumption");
         return Page();
     }
     public async Task<IActionResult> OnPostSaveAsync()

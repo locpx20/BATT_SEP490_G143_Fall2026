@@ -17,6 +17,7 @@ namespace BATT_PPMS.Pages.Inventory
 
         public RawMaterialImport Import { get; private set; } = null!;
         public string ImportCode { get; private set; } = string.Empty;
+        public string InboundRequestCode { get; private set; } = "—";
         public string ReceiptCode { get; private set; } = "—";
         public int? InvoiceId { get; private set; }
         public string InvoiceCode { get; private set; } = "—";
@@ -61,6 +62,8 @@ namespace BATT_PPMS.Pages.Inventory
                 .Include(i => i.Supplier)
                 .Include(i => i.ImportedByNavigation)
                 .Include(i => i.ApprovedByNavigation)
+                .Include(i => i.InboundRequest)
+                    .ThenInclude(ir => ir!.CreatedByNavigation)
                 .Include(i => i.Receipt)
                     .ThenInclude(r => r!.CreatedByNavigation)
                 .Include(i => i.Receipt)
@@ -81,8 +84,11 @@ namespace BATT_PPMS.Pages.Inventory
 
             Import = imp;
             ImportCode = string.IsNullOrWhiteSpace(imp.ImportCode) ? $"PNK-26{imp.ImportId:D3}" : imp.ImportCode!;
+            InboundRequestCode = imp.InboundRequest != null
+                ? imp.InboundRequest.RequestCode
+                : (imp.ReceiptId.HasValue ? $"IR-26{imp.ReceiptId.Value:D3}" : "—");
             ReceiptCode = imp.Receipt?.ReceiptCode ?? "—";
-            InvoiceId = imp.Receipt?.InvoiceId;
+            InvoiceId = imp.Receipt?.InvoiceId ?? imp.InboundRequest?.InvoiceId;
             InvoiceCode = imp.Receipt?.Invoice != null
                 ? BATT_PPMS.Pages.PurchaseInvoices.IndexModel.FormatInvoiceBadgeCode(imp.Receipt.Invoice.InvoiceCode, imp.Receipt.Invoice.InvoiceId)
                 : "—";
@@ -93,7 +99,22 @@ namespace BATT_PPMS.Pages.Inventory
             SupplierPhone = string.IsNullOrWhiteSpace(imp.Supplier?.Phone) ? "—" : imp.Supplier!.Phone!;
             SupplierAddress = string.IsNullOrWhiteSpace(imp.Supplier?.Address) ? "—" : imp.Supplier!.Address!;
 
-            if (imp.Receipt != null)
+            if (imp.InboundRequest != null)
+            {
+                LicensePlate = string.IsNullOrWhiteSpace(imp.InboundRequest.LicensePlate) ? "—" : imp.InboundRequest.LicensePlate;
+                DriverName = string.IsNullOrWhiteSpace(imp.InboundRequest.DriverName) ? "—" : imp.InboundRequest.DriverName;
+                DeliveryTime = imp.InboundRequest.DeliveryTime.ToString("HH:mm dd/MM/yyyy");
+                PurchasingStaffName = imp.InboundRequest.CreatedByNavigation?.FullName
+                                      ?? imp.Receipt?.CreatedByNavigation?.FullName
+                                      ?? "—";
+                ScalePhotoPath = !string.IsNullOrWhiteSpace(imp.InboundRequest.ScalePhotoPath)
+                    ? imp.InboundRequest.ScalePhotoPath
+                    : imp.Receipt?.ScalePhotoPath;
+                InvoicePhotoPath = !string.IsNullOrWhiteSpace(imp.InboundRequest.InvoicePhotoPath)
+                    ? imp.InboundRequest.InvoicePhotoPath
+                    : imp.Receipt?.InvoicePhotoPath;
+            }
+            else if (imp.Receipt != null)
             {
                 var delivery = NoteTags.GetInboundDelivery(imp.Receipt.Invoice?.Note, imp.Receipt.ReceiptId);
                 if (delivery != null)
@@ -128,8 +149,11 @@ namespace BATT_PPMS.Pages.Inventory
             if (check != null) return check;
 
             var importTicket = await _context.RawMaterialImports
+                .Include(i => i.InboundRequest)
                 .Include(i => i.Receipt)
                     .ThenInclude(r => r!.Invoice)
+                .Include(i => i.Receipt)
+                    .ThenInclude(r => r!.InboundRequests)
                 .FirstOrDefaultAsync(i => i.ImportId == id);
 
             if (importTicket == null) return NotFound();
@@ -149,13 +173,27 @@ namespace BATT_PPMS.Pages.Inventory
             importTicket.ApprovedAt = DateTime.Now;
             importTicket.Note = $"Đã được phê duyệt nhập kho bởi {CurrentFullName} lúc {DateTime.Now:HH:mm dd/MM/yyyy}";
 
+            if (importTicket.InboundRequest != null)
+            {
+                importTicket.InboundRequest.Status = "Received";
+                importTicket.InboundRequest.RejectionReason = null;
+            }
+
             if (importTicket.Receipt != null)
             {
-                importTicket.Receipt.Status = "Received";
+                var receivedIrQty = importTicket.Receipt.InboundRequests
+                    .Where(ir => ir.Status == "Received" || ir.InboundRequestId == importTicket.InboundRequestId)
+                    .Sum(ir => ir.DeliveryQuantity);
+
+                if (importTicket.Receipt.WeighedQuantity > 0 && receivedIrQty >= importTicket.Receipt.WeighedQuantity)
+                {
+                    importTicket.Receipt.Status = "Received";
+                }
                 importTicket.Receipt.RejectionReason = null;
 
                 var notifyStaffIds = new HashSet<int>();
                 if (importTicket.Receipt.CreatedBy.HasValue) notifyStaffIds.Add(importTicket.Receipt.CreatedBy.Value);
+                if (importTicket.InboundRequest?.CreatedBy != null) notifyStaffIds.Add(importTicket.InboundRequest.CreatedBy.Value);
                 if (importTicket.Receipt.Invoice?.AssignedTo != null) notifyStaffIds.Add(importTicket.Receipt.Invoice.AssignedTo.Value);
 
                 foreach (var staffId in notifyStaffIds)
@@ -184,4 +222,3 @@ namespace BATT_PPMS.Pages.Inventory
         }
     }
 }
-

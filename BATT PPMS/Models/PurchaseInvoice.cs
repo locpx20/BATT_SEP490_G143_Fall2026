@@ -26,6 +26,8 @@ public partial class PurchaseInvoice
 
     public virtual ICollection<PurchaseReceipt> PurchaseReceipts { get; set; } = new List<PurchaseReceipt>();
 
+    public virtual ICollection<InboundRequest> InboundRequests { get; set; } = new List<InboundRequest>();
+
     public string? Note { get; set; }
 
 

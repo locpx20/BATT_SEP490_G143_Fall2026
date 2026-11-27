@@ -199,6 +199,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .Include(p => p.CreatedByNavigation)
                 .Include(p => p.AssignedToNavigation)
                 .Include(p => p.PurchaseReceipts)
+                .Include(p => p.InboundRequests)
                 .Include(p => p.PurchaseInvoiceDetails)
                     .ThenInclude(d => d.Material)
                 .AsNoTracking()
@@ -262,9 +263,11 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 filtered = filtered.Where(p =>
                 {
                     var plannedQty = QuantityOf(p);
-                    var activeReceipts = p.PurchaseReceipts.Where(r => r.Status != "Rejected").ToList();
+                    var activeReceipts = p.PurchaseReceipts.Where(r => r.Status != "Rejected" && r.Status != "OrderRejected").ToList();
                     var weighedQty = activeReceipts.Sum(r => r.WeighedQuantity);
-                    var receivedQty = activeReceipts.Where(r => r.Status == "Received").Sum(r => r.WeighedQuantity);
+                    var receivedQty = p.InboundRequests.Any()
+                        ? p.InboundRequests.Where(ir => ir.Status == "Received").Sum(ir => ir.DeliveryQuantity)
+                        : activeReceipts.Where(r => r.Status == "Received").Sum(r => r.WeighedQuantity);
                     var (disp, type) = MapStatus(p.Status, p.PurchaseDate, weighedQty, plannedQty, receivedQty);
                     if (sf == "received" || sf == "completed")
                         return type == "received" || type == "completed";
@@ -292,9 +295,11 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
                 .Select(p =>
                 {
                     var plannedQty = QuantityOf(p);
-                    var activeReceipts = p.PurchaseReceipts.Where(r => r.Status != "Rejected").ToList();
+                    var activeReceipts = p.PurchaseReceipts.Where(r => r.Status != "Rejected" && r.Status != "OrderRejected").ToList();
                     decimal weighedQty = activeReceipts.Sum(r => r.WeighedQuantity);
-                    decimal receivedQty = activeReceipts.Where(r => r.Status == "Received").Sum(r => r.WeighedQuantity);
+                    decimal receivedQty = p.InboundRequests.Any()
+                        ? p.InboundRequests.Where(ir => ir.Status == "Received").Sum(ir => ir.DeliveryQuantity)
+                        : activeReceipts.Where(r => r.Status == "Received").Sum(r => r.WeighedQuantity);
                     var (dispStatus, badgeType) = MapStatus(p.Status, p.PurchaseDate, weighedQty, plannedQty, receivedQty);
 
                     var badgeCode = FormatInvoiceBadgeCode(p.InvoiceCode, p.InvoiceId);
@@ -371,6 +376,7 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             var invoices = await context.PurchaseInvoices
                 .Include(p => p.PurchaseInvoiceDetails)
                 .Include(p => p.PurchaseReceipts)
+                .Include(p => p.InboundRequests)
                 .Where(p => p.Status != "Rejected")
                 .ToListAsync();
 
@@ -378,9 +384,11 @@ namespace BATT_PPMS.Pages.PurchaseInvoices
             foreach (var inv in invoices)
             {
                 var plannedQty = inv.PurchaseInvoiceDetails.Sum(d => d.Quantity);
-                var activeReceipts = inv.PurchaseReceipts.Where(r => r.Status != "Rejected").ToList();
+                var activeReceipts = inv.PurchaseReceipts.Where(r => r.Status != "Rejected" && r.Status != "OrderRejected").ToList();
                 var weighedQty = activeReceipts.Sum(r => r.WeighedQuantity);
-                var receivedQty = activeReceipts.Where(r => r.Status == "Received").Sum(r => r.WeighedQuantity);
+                var receivedQty = inv.InboundRequests.Any()
+                    ? inv.InboundRequests.Where(ir => ir.Status == "Received").Sum(ir => ir.DeliveryQuantity)
+                    : activeReceipts.Where(r => r.Status == "Received").Sum(r => r.WeighedQuantity);
 
                 string targetStatus;
                 if (plannedQty > 0 && receivedQty >= plannedQty)

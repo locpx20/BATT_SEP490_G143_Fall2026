@@ -43,6 +43,8 @@ public partial class ProductionManagementDbContext : DbContext
 
     public virtual DbSet<PurchaseReceipt> PurchaseReceipts { get; set; }
 
+    public virtual DbSet<InboundRequest> InboundRequests { get; set; }
+
     public virtual DbSet<PurchaseInvoiceDetail> PurchaseInvoiceDetails { get; set; }
 
     public virtual DbSet<Qcinspection> Qcinspections { get; set; }

@@ -35,5 +35,7 @@ public partial class PurchaseReceipt
     public virtual Supplier Supplier { get; set; } = null!;
 
     public virtual User? CreatedByNavigation { get; set; }
+
+    public virtual ICollection<InboundRequest> InboundRequests { get; set; } = new List<InboundRequest>();
 }
 

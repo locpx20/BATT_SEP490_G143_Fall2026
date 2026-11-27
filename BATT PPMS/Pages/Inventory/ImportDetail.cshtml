@@ -112,7 +112,9 @@
                 <span class="meta-val">@Model.SupplierAddress</span>
             </div>
             <div class="slip-meta-row">
-                <span class="meta-label">Theo Phiếu mua hàng / Yêu cầu nhập kho:</span>
+                <span class="meta-label">Theo Yêu cầu nhập kho (IR):</span>
+                <span class="meta-val"><strong>@Model.InboundRequestCode</strong></span>
+                <span class="meta-label" style="margin-left:24px;">Thuộc Phiếu mua hàng (PO):</span>
                 <span class="meta-val"><strong>@Model.ReceiptCode</strong></span>
                 <span class="meta-label" style="margin-left:24px;">Thuộc Yêu cầu thu mua:</span>
                 <span class="meta-val"><strong>@Model.InvoiceCode</strong></span>
@@ -153,7 +155,7 @@
                     <td>
                         <strong>@Model.MaterialName</strong>
                     </td>
-                    <td style="text-align:center;font-weight:600;">@Model.ReceiptCode</td>
+                    <td style="text-align:center;font-weight:600;">@Model.InboundRequestCode</td>
                     <td style="text-align:center;">@Model.MaterialUnit</td>
                     <td style="text-align:right;font-weight:600;">@imp.Quantity.ToString("N0", vi)</td>
                     <td style="text-align:right;font-weight:600;">@imp.UnitPrice.ToString("N0", vi)</td>

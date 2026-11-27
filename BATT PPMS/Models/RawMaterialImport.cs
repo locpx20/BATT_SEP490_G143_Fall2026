@@ -11,6 +11,8 @@ public partial class RawMaterialImport
 
     public int? ReceiptId { get; set; }
 
+    public int? InboundRequestId { get; set; }
+
     public int MaterialId { get; set; }
 
     public int SupplierId { get; set; }
@@ -36,6 +38,8 @@ public partial class RawMaterialImport
     public virtual User? ApprovedByNavigation { get; set; }
 
     public virtual PurchaseReceipt? Receipt { get; set; }
+
+    public virtual InboundRequest? InboundRequest { get; set; }
 
     public virtual RawMaterial Material { get; set; } = null!;
 

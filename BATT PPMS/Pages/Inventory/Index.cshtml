@@ -186,6 +186,20 @@
             background-color: #f8fafc;
         }
 
+        .wh-code-ir {
+            display: inline-flex;
+            align-items: center;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-left: 4px solid #1e40af;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e3a8a;
+        }
+
         .wh-code-pm {
             display: inline-flex;
             align-items: center;
@@ -503,7 +517,7 @@ else
             {
                 var firstPending = Model.PendingInboundRequests.First();
                 <button type="button"
-                        onclick="openCreateImportModal(@firstPending.ReceiptId)"
+                        onclick="openCreateImportModal(@firstPending.InboundRequestId)"
                         style="background: #1a4332; color: #ffffff; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                     <i class="bi bi-plus-lg"></i>
                     <span>Lập Phiếu nhập kho (PNK)</span>
@@ -587,11 +601,12 @@ else
                 <table class="wh-table">
                     <thead>
                         <tr>
-                            <th>Mã phiếu mua hàng (IR)</th>
+                            <th>Mã yêu cầu nhập kho (IR)</th>
+                            <th>Thuộc PO</th>
                             <th>Yêu cầu thu mua</th>
                             <th>Phiếu nhập kho</th>
                             <th>Nhà cung cấp</th>
-                            <th>KL ước tính / Cân thực tế</th>
+                            <th>KL giao / Cân thực tế</th>
                             <th>Giá mua thực tế</th>
                             <th>Thành tiền</th>
                             <th>Người tạo</th>
@@ -604,7 +619,7 @@ else
                         @if (!Model.Receipts.Any())
                         {
                             <tr>
-                                <td colspan="11" style="text-align: center; padding: 48px 20px; color: #a0aec0;">
+                                <td colspan="12" style="text-align: center; padding: 48px 20px; color: #a0aec0;">
                                     Chưa có yêu cầu nhập kho nào phù hợp với bộ lọc.
                                 </td>
                             </tr>
@@ -615,7 +630,7 @@ else
                             {
                                 <tr>
                                     <td>
-                                        <span class="wh-code-pm">@r.ReceiptCode</span>
+                                        <span class="wh-code-ir">@r.RequestCode</span>
                                         @if (!string.IsNullOrWhiteSpace(r.LicensePlate))
                                         {
                                             <div style="font-size: 11px; color: #1e40af; margin-top: 3px; font-weight: 600;">
@@ -626,6 +641,9 @@ else
                                                 <div style="font-size: 11px; color: #64748b;">Giao: @r.DeliveryTime</div>
                                             }
                                         }
+                                    </td>
+                                    <td>
+                                        <span class="wh-code-pm">@r.ReceiptCode</span>
                                     </td>
                                     <td>
                                         <span class="wh-code-tm">@r.InvoiceCode</span>
@@ -656,7 +674,7 @@ else
                                         else
                                         {
                                             <span class="wh-mono-num">@r.WeighedQuantity.ToString("N0", viCulture) kg</span>
-                                            <div style="font-size: 11px; color: #64748b;">KL ước tính (chưa cân kho)</div>
+                                            <div style="font-size: 11px; color: #64748b;">KL giao trên IR (chưa cân kho)</div>
                                         }
                                     </td>
                                     <td>
@@ -683,13 +701,14 @@ else
                                         <div style="display: inline-flex; align-items: center; gap: 6px;">
                                             <a href="javascript:void(0)"
                                                class="wh-link-detail receipt-detail-trigger"
-                                               data-id="@r.ReceiptId"
-                                               data-code="@r.ReceiptCode"
+                                               data-id="@r.InboundRequestId"
+                                               data-code="@r.RequestCode"
+                                               data-po-code="@r.ReceiptCode"
                                                data-import-id="@(r.ImportId?.ToString() ?? "")"
                                                data-import-code="@(r.ImportCode ?? "Chưa lập")"
                                                data-supplier="@r.SupplierName"
                                                data-qty="@r.DisplayQuantity.ToString("N0", viCulture)"
-                                               data-qty-label="@(r.ImportedQuantity.HasValue ? "Khối lượng cân thực tế (tại kho)" : "Khối lượng ước tính (trên IR)")"
+                                               data-qty-label="@(r.ImportedQuantity.HasValue ? "Khối lượng cân thực tế (tại kho)" : "Khối lượng giao (trên IR)")"
                                                data-price="@r.DisplayPrice.ToString("N0", viCulture)"
                                                data-total="@r.TotalAmount.ToString("N0", viCulture)"
                                                data-by="@r.CreatedByName"
@@ -702,7 +721,7 @@ else
                                                data-delivery-time="@(r.DeliveryTime ?? "")"
                                                data-scale="@r.ScalePhotoPath"
                                                data-invoice="@r.InvoicePhotoPath"
-                                               title="Đối chiếu & xem chi tiết phiếu @r.ReceiptCode"
+                                               title="Đối chiếu & xem chi tiết yêu cầu nhập kho @r.RequestCode"
                                                style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; color: #1e293b; font-size: 15px;">
                                                 <i class="bi bi-eye"></i>
                                             </a>
@@ -710,7 +729,7 @@ else
                                             @if (Model.CanWarehouseConfirm && (r.Status == "WaitWarehouse" || r.Status == "Pending" || r.Status == "ImportRejected"))
                                             {
                                                 <button type="button" class="wh-btn-approve" style="background: #1a4332;"
-                                                        onclick="openCreateImportModal(@r.ReceiptId)">
+                                                        onclick="openCreateImportModal(@r.InboundRequestId)">
                                                     @(r.Status == "ImportRejected" ? "Lập lại PNK" : "Lập PNK")
                                                 </button>
                                             }
@@ -817,7 +836,7 @@ else
                     <thead>
                         <tr>
                             <th>Mã phiếu nhập kho</th>
-                            <th>Từ phiếu mua hàng (IR)</th>
+                            <th>Từ IR / Thuộc PO</th>
                             <th>Nhà cung cấp</th>
                             <th>Nguyên liệu</th>
                             <th>Khối lượng cân thực tế</th>
@@ -856,14 +875,20 @@ else
                                         </a>
                                     </td>
                                     <td>
-                                        @if (imp.ReceiptCode != "—")
-                                        {
-                                            <span class="wh-code-pm">@imp.ReceiptCode</span>
-                                        }
-                                        else
-                                        {
-                                            <span style="color: #94a3b8;">—</span>
-                                        }
+                                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                            @if (imp.RequestCode != "—")
+                                            {
+                                                <span class="wh-code-ir">@imp.RequestCode</span>
+                                            }
+                                            @if (imp.ReceiptCode != "—")
+                                            {
+                                                <span class="wh-code-pm">@imp.ReceiptCode</span>
+                                            }
+                                            @if (imp.RequestCode == "—" && imp.ReceiptCode == "—")
+                                            {
+                                                <span style="color: #94a3b8;">—</span>
+                                            }
+                                        </div>
                                     </td>
                                     <td style="font-weight: 600;">@imp.SupplierName</td>
                                     <td>@imp.MaterialName</td>
@@ -1010,11 +1035,12 @@ else
                         <div class="pm-grid">
                             <div>
                                 <label class="pm-label">Phiếu Yêu cầu nhập kho (IR) <span style="color: #e53e3e;">*</span></label>
-                                <select name="receiptId" id="ciReceiptSelect" class="pm-input" required onchange="onCiReceiptChange(this)">
+                                <select name="inboundRequestId" id="ciReceiptSelect" class="pm-input" required onchange="onCiReceiptChange(this)">
                                     @foreach (var ir in Model.PendingInboundRequests)
                                     {
-                                        <option value="@ir.ReceiptId"
-                                                data-code="@ir.ReceiptCode"
+                                        <option value="@ir.InboundRequestId"
+                                                data-code="@ir.RequestCode"
+                                                data-po-code="@ir.ReceiptCode"
                                                 data-invoice-code="@ir.InvoiceCode"
                                                 data-supplier-id="@ir.SupplierId"
                                                 data-supplier-name="@ir.SupplierName"
@@ -1028,7 +1054,7 @@ else
                                                 data-driver-name="@(ir.DriverName ?? "")"
                                                 data-delivery-time="@(ir.DeliveryTime ?? "")"
                                                 data-scale="@ir.ScalePhotoPath">
-                                            @ir.ReceiptCode — @ir.WeighedQuantity.ToString("N0", viCulture) kg (@ir.InvoiceCode)
+                                            @ir.RequestCode (PO: @ir.ReceiptCode) — @ir.WeighedQuantity.ToString("N0", viCulture) kg (@ir.InvoiceCode)
                                         </option>
                                     }
                                 </select>
